@@ -199,14 +199,36 @@ namespace AmigaEmulator.Core.CustomChips
             _beamY = reader.ReadInt32();
             _lastIsVBlank = reader.ReadBoolean();
             StateSerializer.ReadObjectFields(reader, CustomRegisters, "_collisionUnit");
-            StateSerializer.ReadObjectFields(reader, Collisions);
+            ReadOptionalCollisionState(reader);
             CustomRegisters.AttachCollisionUnit(Collisions);
             Bitplanes.LoadState(reader);
             Sprites.LoadState(reader);
             Copper.LoadState(reader);
             Blitter.LoadState(reader);
             Beam = ReadBeamTrace(reader);
-            LastDmaSlot = ReadDmaSlotTrace(reader);
+            LastDmaSlot = ReadDmaSlotTraceCompatible(reader);
+        }
+
+        /// <summary>
+        /// Reads collision state when present while accepting savestates written before CLXDAT support.
+        /// </summary>
+        private void ReadOptionalCollisionState(BinaryReader reader)
+        {
+            long position = reader.BaseStream.CanSeek ? reader.BaseStream.Position : -1;
+            try
+            {
+                StateSerializer.ReadObjectFields(reader, Collisions);
+            }
+            catch (InvalidDataException)
+            {
+                if (position < 0)
+                {
+                    throw;
+                }
+
+                reader.BaseStream.Position = position;
+                Collisions.Reset();
+            }
         }
 
         /// <summary>
@@ -273,6 +295,75 @@ namespace AmigaEmulator.Core.CustomChips
                 AudioSlotPhase = reader.ReadInt32(),
                 CpuCanUseChipBus = reader.ReadBoolean()
             };
+        }
+
+        /// <summary>
+        /// Reads DMA slot traces written before or after audio channel trace fields were added.
+        /// </summary>
+        private static DmaSlotTraceEntry ReadDmaSlotTraceCompatible(BinaryReader reader)
+        {
+            long position = reader.BaseStream.CanSeek ? reader.BaseStream.Position : -1;
+            long globalChipCycle = reader.ReadInt64();
+            int slotIndex = reader.ReadInt32();
+            int beamY = reader.ReadInt32();
+            var owner = (DmaOwner)reader.ReadInt32();
+            var baseOwner = (DmaOwner)reader.ReadInt32();
+            int spriteIndex = reader.ReadInt32();
+            int spriteSlotPhase = reader.ReadInt32();
+            int audioChannelIndex = reader.ReadInt32();
+            int audioSlotPhase = reader.ReadInt32();
+            if (IsPlausibleAudioTrace(audioChannelIndex, audioSlotPhase))
+            {
+                return new DmaSlotTraceEntry
+                {
+                    GlobalChipCycle = globalChipCycle,
+                    SlotIndex = slotIndex,
+                    BeamY = beamY,
+                    Owner = owner,
+                    BaseOwner = baseOwner,
+                    SpriteIndex = spriteIndex,
+                    SpriteSlotPhase = spriteSlotPhase,
+                    AudioChannelIndex = audioChannelIndex,
+                    AudioSlotPhase = audioSlotPhase,
+                    CpuCanUseChipBus = reader.ReadBoolean()
+                };
+            }
+
+            if (position < 0)
+            {
+                throw new InvalidDataException("Invalid DMA slot trace in savestate.");
+            }
+
+            reader.BaseStream.Position = position;
+            return ReadLegacyDmaSlotTrace(reader);
+        }
+
+        /// <summary>
+        /// Reads DMA slot traces written before audio channel trace fields existed.
+        /// </summary>
+        private static DmaSlotTraceEntry ReadLegacyDmaSlotTrace(BinaryReader reader)
+        {
+            return new DmaSlotTraceEntry
+            {
+                GlobalChipCycle = reader.ReadInt64(),
+                SlotIndex = reader.ReadInt32(),
+                BeamY = reader.ReadInt32(),
+                Owner = (DmaOwner)reader.ReadInt32(),
+                BaseOwner = (DmaOwner)reader.ReadInt32(),
+                SpriteIndex = reader.ReadInt32(),
+                SpriteSlotPhase = reader.ReadInt32(),
+                AudioChannelIndex = -1,
+                AudioSlotPhase = -1,
+                CpuCanUseChipBus = reader.ReadBoolean()
+            };
+        }
+
+        /// <summary>
+        /// Returns whether decoded audio trace fields are in the valid OCS range.
+        /// </summary>
+        private static bool IsPlausibleAudioTrace(int audioChannelIndex, int audioSlotPhase)
+        {
+            return audioChannelIndex >= -1 && audioChannelIndex <= 3 && audioSlotPhase >= -1 && audioSlotPhase <= 1;
         }
 
         /// <summary>

@@ -223,6 +223,12 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int _lastDiskBlockWords;
         /// <summary>
+        /// Keeps older savestates readable after audio DMA changed from round-robin to fixed slots.
+        /// </summary>
+#pragma warning disable 0414
+        private int _audioDmaRoundRobin;
+#pragma warning restore 0414
+        /// <summary>
         /// Tracks the audio Sample Accumulator.
         /// </summary>
         private double _audioSampleAccumulator;
@@ -467,6 +473,7 @@ namespace AmigaEmulator.Core.CustomChips
             _lastDiskBlockStart = 0;
             _lastDiskBlockEnd = 0;
             _lastDiskBlockWords = 0;
+            _audioDmaRoundRobin = 0;
             _audioSampleAccumulator = 0.0;
             _audioSamplesGenerated = 0;
             _audioDmaWordsFetched = 0;

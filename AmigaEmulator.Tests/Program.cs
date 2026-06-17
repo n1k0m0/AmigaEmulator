@@ -578,6 +578,16 @@ namespace AmigaEmulator.Tests
                 TestStandardDiwDoesNotClipRightHalf);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "delayed bitplane DMA starts at BPLxPT instead of skipped DIW rows",
+                "Amiga HRM bitplane DMA pointer advancement only happens on fetched display lines",
+                TestDelayedBitplaneDmaStartsAtPointerRegister);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "DDF fetches before the visible edge are skipped at screen X zero",
+                "Amiga HRM DDFSTRT can start bitplane DMA before the left display edge",
+                TestDdfStartBeforeVisibleEdgeSkipsPrefetchedPixels);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
                 "Amiga HRM bitplane DMA reloads display data every frame",
                 TestFrameStartInvalidatesFetchedRows);
@@ -708,6 +718,55 @@ namespace AmigaEmulator.Tests
             bitplanes.RefreshFromRegisters();
 
             Check.Equal(1, bitplanes.RenderColorIndex(500, BitplaneUnit.PalVisibleTop), "Standard DIW should not clip the right half of a 640-pixel fetched playfield.");
+        }
+
+        /// <summary>
+        /// Verifies that a playfield enabled below the visible top does not pre-skip unfetched rows.
+        /// </summary>
+        private static void TestDelayedBitplaneDmaStartsAtPointerRegister()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[256];
+            memory[0] = 0x8000;
+            memory[145] = 0x0000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 0xFF]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x1921);
+            registers.WriteWord(Diwstop, 0x2FF1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            bitplanes.FetchDmaWords(0x38, 0xBD);
+
+            Check.Equal(1, bitplanes.RenderColorIndex(0, 0xBD), "The first active DMA line must fetch from BPL1PT, not from an offset for skipped DIW rows.");
+        }
+
+        /// <summary>
+        /// Verifies that DDF fetches before the PAL viewport are consumed before visible pixels begin.
+        /// </summary>
+        private static void TestDdfStartBeforeVisibleEdgeSkipsPrefetchedPixels()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x0000;
+            memory[1] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 3]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            bitplanes.FetchDmaWords(0x30, BitplaneUnit.PalVisibleTop);
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+
+            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Visible X zero should show the word fetched after the offscreen DDF lead-in.");
         }
 
         /// <summary>

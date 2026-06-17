@@ -28,6 +28,7 @@ using AmigaEmulator.Core.DevTools;
 using AmigaEmulator.Core.Input;
 using AmigaEmulator.Core.Media;
 using AmigaEmulator.Core.Memory;
+using AmigaEmulator.Core.SaveStates;
 
 namespace AmigaEmulator
 {
@@ -188,6 +189,20 @@ namespace AmigaEmulator
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_frame.png");
                 DumpFrame(cycles, imagePath, ParseModelArgument(args, 3));
                 Console.WriteLine("Frame written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-frame", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_frame.png");
+                int frames = args.Length >= 4 && int.TryParse(args[3], out int parsedSaveFrames) && parsedSaveFrames > 0
+                    ? parsedSaveFrames
+                    : 0;
+                DumpSavestateFrame(savePath, imagePath, frames, ParseModelArgument(args, 4));
+                Console.WriteLine("Savestate frame written: " + Path.GetFullPath(imagePath));
                 return;
             }
 
@@ -1293,6 +1308,105 @@ namespace AmigaEmulator
 
                     bitmap.Save(imagePath, ImageFormat.Png);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Dumps a frame after restoring an emulator savestate.
+        /// </summary>
+        private static void DumpSavestateFrame(string savePath, string imagePath, int framesToRun, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
+                for (int frame = 0; frame < framesToRun; frame++)
+                {
+                    system.RunChipCycles(frameCycles);
+                }
+
+                SaveFrameBuffer(system.PresentedFrameBuffer, imagePath);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Prints the display-related custom registers for savestate diagnostics.
+        /// </summary>
+        private static void DumpVideoRegisterSummary(AmigaSystem system)
+        {
+            var registers = system.Agnus.CustomRegisters;
+            Console.WriteLine("DMACON=$" + registers.ReadWord(0x096).ToString("X4"));
+            Console.WriteLine("BPLCON0=$" + registers.ReadWord(0x100).ToString("X4"));
+            Console.WriteLine("BPLCON1=$" + registers.ReadWord(0x102).ToString("X4"));
+            Console.WriteLine("BPLCON2=$" + registers.ReadWord(0x104).ToString("X4"));
+            Console.WriteLine("DIWSTRT=$" + registers.ReadWord(0x08E).ToString("X4"));
+            Console.WriteLine("DIWSTOP=$" + registers.ReadWord(0x090).ToString("X4"));
+            Console.WriteLine("DDFSTRT=$" + registers.ReadWord(0x092).ToString("X4"));
+            Console.WriteLine("DDFSTOP=$" + registers.ReadWord(0x094).ToString("X4"));
+            uint cop1 = ((uint)registers.ReadWord(0x080) << 16) | registers.ReadWord(0x082);
+            uint cop2 = ((uint)registers.ReadWord(0x084) << 16) | registers.ReadWord(0x086);
+            Console.WriteLine("COPPC=$" + system.Agnus.Copper.ProgramCounter.ToString("X8"));
+            Console.WriteLine("COP1LC=$" + cop1.ToString("X8"));
+            Console.WriteLine("COP2LC=$" + cop2.ToString("X8"));
+            for (int index = 0; index < 6; index++)
+            {
+                uint address = ((uint)registers.ReadWord((uint)(0x0E0 + (index * 4))) << 16) | registers.ReadWord((uint)(0x0E2 + (index * 4)));
+                Console.WriteLine("BPL" + (index + 1) + "PT=$" + address.ToString("X8"));
+            }
+
+            DumpChipWords(system, "COP1", cop1, 80);
+            DumpChipWords(system, "COPPC", system.Agnus.Copper.ProgramCounter, 80);
+        }
+
+        /// <summary>
+        /// Prints words from Chip RAM for display-list diagnostics.
+        /// </summary>
+        private static void DumpChipWords(AmigaSystem system, string label, uint address, int count)
+        {
+            Console.Write(label + " WORDS=");
+            for (int index = 0; index < count; index++)
+            {
+                uint current = address + (uint)(index * 2);
+                ushort word = (ushort)((system.Bus.ChipRam.Read(current) << 8) | system.Bus.ChipRam.Read(current + 1u));
+                if (index != 0)
+                {
+                    Console.Write(",");
+                }
+
+                Console.Write("$" + word.ToString("X4"));
+            }
+
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// Writes a frame buffer to a PNG file.
+        /// </summary>
+        private static void SaveFrameBuffer(AmigaEmulator.Core.Video.AmigaFrameBuffer frameBuffer, string imagePath)
+        {
+            string directory = Path.GetDirectoryName(Path.GetFullPath(imagePath));
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            using (var bitmap = new Bitmap(frameBuffer.Width, frameBuffer.Height, PixelFormat.Format32bppArgb))
+            {
+                uint[] pixels = frameBuffer.Pixels;
+                for (int y = 0; y < frameBuffer.Height; y++)
+                {
+                    for (int x = 0; x < frameBuffer.Width; x++)
+                    {
+                        bitmap.SetPixel(x, y, Color.FromArgb(unchecked((int)pixels[(y * frameBuffer.Width) + x])));
+                    }
+                }
+
+                bitmap.Save(imagePath, ImageFormat.Png);
             }
         }
 

@@ -899,9 +899,7 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 for (int plane = 0; plane < MaxPlanes; plane++)
                 {
-                    _dmaPointers[plane] = pointerRegistersChanged
-                        ? GetBitplanePointer(plane)
-                        : GetBitplaneLineStart(plane, row);
+                    _dmaPointers[plane] = GetBitplanePointer(plane);
                 }
 
                 CapturePointerRegisterSnapshot();
@@ -928,18 +926,6 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             _completedDmaLine = true;
-        }
-
-        /// <summary>
-        /// Returns the Bitplane Line Start.
-        /// </summary>
-        private uint GetBitplaneLineStart(int plane, int row)
-        {
-            int bytesPerFetchedLine = _wordsPerFetchedLine * 2;
-            int modulo = (plane & 1) == 0 ? SignedWord(Read(Bpl1mod)) : SignedWord(Read(Bpl2mod));
-            long stride = bytesPerFetchedLine + modulo;
-            long address = GetBitplanePointer(plane) + (row * stride);
-            return _dmaAddress.Normalize((uint)address);
         }
 
         /// <summary>
@@ -995,7 +981,7 @@ namespace AmigaEmulator.Core.CustomChips
             int splitPrefetchDelay = _splitFetchActive && _dmaActive
                 ? EnabledPlanes * HiresPixelsPerChipCycle
                 : 0;
-            return screenX - Math.Max(0, left) - splitPrefetchDelay;
+            return screenX - left - splitPrefetchDelay;
         }
 
         /// <summary>
