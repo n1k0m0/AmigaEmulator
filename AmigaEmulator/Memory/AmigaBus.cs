@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ namespace AmigaEmulator.Core.Memory
     /// <summary>
     /// Routes 68000 memory accesses between Chip RAM, Slow RAM, CIA chips, custom registers, and Kickstart ROM.
     /// </summary>
-    public sealed class AmigaBus : IM68kPeekableBus
+    public sealed class AmigaBus : IM68kPeekableBus, IM68kBusArbitration, IM68kResetVectorProvider
     {
         /// <summary>
         /// Tracks the chip RAM.
@@ -108,7 +108,7 @@ namespace AmigaEmulator.Core.Memory
 
             _chipRam = new ChipRam(model.ChipRamBytes);
             _slowRam = new SlowRam(model.SlowRamBytes);
-            _fastRam = new FastRam(0);
+            _fastRam = new FastRam(model.FastRamBytes);
             _chipRamEnd = model.ChipRamBytes > 0
                 ? (uint)model.ChipRamBytes - 1u
                 : MemoryMap.ChipRamEnd;
@@ -261,6 +261,14 @@ namespace AmigaEmulator.Core.Memory
                 return AmigaAddressRegion.SlowRam;
             }
 
+            if (_fastRam.Enabled &&
+                address >= MemoryMap.FastRamStart &&
+                address < MemoryMap.FastRamStart + (uint)_fastRam.Size &&
+                address <= MemoryMap.FastRamEnd)
+            {
+                return AmigaAddressRegion.FastRam;
+            }
+
             if (address >= MemoryMap.CustomStart && address <= MemoryMap.CustomEnd)
             {
                 return AmigaAddressRegion.CustomRegisters;
@@ -272,6 +280,51 @@ namespace AmigaEmulator.Core.Memory
             }
 
             return AmigaAddressRegion.Unmapped;
+        }
+
+        /// <summary>
+        /// Returns whether the CPU access must wait for a free Agnus-controlled bus slot.
+        /// </summary>
+        public bool RequiresChipBus(uint address, int size)
+        {
+            uint normalized = MemoryMap.Normalize(address);
+            if (IsKickstartOverlayRead(normalized))
+            {
+                return false;
+            }
+
+            AmigaAddressRegion first = GetRegion(normalized);
+            if (RegionRequiresChipBus(first))
+            {
+                return true;
+            }
+
+            if (size <= 1)
+            {
+                return false;
+            }
+
+            uint last = MemoryMap.Normalize(normalized + (uint)size - 1u);
+            return RegionRequiresChipBus(GetRegion(last));
+        }
+
+        /// <summary>
+        /// Reads CPU reset vectors through the current overlay and applies A500 ROM-stub vector handling.
+        /// </summary>
+        public bool TryReadResetVectors(out uint initialStackPointer, out uint initialProgramCounter)
+        {
+            initialStackPointer = ReadLong(0);
+            initialProgramCounter = ReadLong(4);
+            ushort wordAtTwo = ReadWord(2);
+            if (RomOverlayAtZero &&
+                wordAtTwo == 0x4EF9 &&
+                initialProgramCounter >= MemoryMap.KickstartStart &&
+                initialProgramCounter <= MemoryMap.KickstartEnd)
+            {
+                initialStackPointer = _chipRamEnd + 1u;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -298,6 +351,9 @@ namespace AmigaEmulator.Core.Memory
                     break;
                 case AmigaAddressRegion.SlowRam:
                     value = _slowRam.Read(address - MemoryMap.SlowRamStart);
+                    break;
+                case AmigaAddressRegion.FastRam:
+                    value = _fastRam.Read(address - MemoryMap.FastRamStart);
                     break;
                 case AmigaAddressRegion.CustomRegisters:
                     if (_paula != null && _paula.TryReadCustomRegisterWord(address & 0xFFFFFEu, out ushort paulaWord))
@@ -355,13 +411,15 @@ namespace AmigaEmulator.Core.Memory
                     return _chipRam.Read(address);
                 case AmigaAddressRegion.SlowRam:
                     return _slowRam.Read(address - MemoryMap.SlowRamStart);
+                case AmigaAddressRegion.FastRam:
+                    return _fastRam.Read(address - MemoryMap.FastRamStart);
                 case AmigaAddressRegion.CustomRegisters:
                     if (_paula != null && _paula.TryPeekCustomRegisterWord(address & 0xFFFFFEu, out ushort paulaWord))
                     {
                         return (address & 1) == 0 ? (byte)(paulaWord >> 8) : (byte)(paulaWord & 0xFF);
                     }
 
-                    return _customRegisters.ReadByte(address);
+                    return _customRegisters.PeekByte(address);
                 case AmigaAddressRegion.CiaA:
                     if (IsCiaAByteLane(address))
                     {
@@ -412,6 +470,12 @@ namespace AmigaEmulator.Core.Memory
                 return paulaWord;
             }
 
+            if (GetRegion(normalized) == AmigaAddressRegion.CustomRegisters &&
+                GetRegion(normalized + 1) == AmigaAddressRegion.CustomRegisters)
+            {
+                return _customRegisters.PeekWord(normalized);
+            }
+
             return (ushort)((PeekByte(normalized) << 8) | PeekByte(normalized + 1));
         }
 
@@ -455,6 +519,9 @@ namespace AmigaEmulator.Core.Memory
                     break;
                 case AmigaAddressRegion.SlowRam:
                     _slowRam.Write(address - MemoryMap.SlowRamStart, value);
+                    break;
+                case AmigaAddressRegion.FastRam:
+                    _fastRam.Write(address - MemoryMap.FastRamStart, value);
                     break;
                 case AmigaAddressRegion.CustomRegisters:
                     _customRegisters.WriteByte(address, value);
@@ -585,6 +652,14 @@ namespace AmigaEmulator.Core.Memory
         private bool IsKickstartOverlayRead(uint address)
         {
             return RomOverlayAtZero && _kickstart.IsPresent && address < (uint)_kickstart.OverlaySize && address <= MemoryMap.ChipRamEnd;
+        }
+
+        /// <summary>
+        /// Returns whether a decoded address region is part of the Agnus/custom-chip bus.
+        /// </summary>
+        private static bool RegionRequiresChipBus(AmigaAddressRegion region)
+        {
+            return region == AmigaAddressRegion.ChipRam || region == AmigaAddressRegion.CustomRegisters;
         }
 
         /// <summary>

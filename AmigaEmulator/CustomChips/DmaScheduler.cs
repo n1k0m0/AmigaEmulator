@@ -74,6 +74,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores the first or second word phase inside a sprite slot pair.
         /// </summary>
         public int SpriteSlotPhase;
+        /// <summary>
+        /// Stores the audio channel assigned to an audio DMA slot.
+        /// </summary>
+        public int AudioChannelIndex;
+        /// <summary>
+        /// Stores the first or second audio slot phase for one channel.
+        /// </summary>
+        public int AudioSlotPhase;
     }
 
     /// <summary>
@@ -180,6 +188,8 @@ namespace AmigaEmulator.Core.CustomChips
                 BaseOwner = baseSlot.Owner,
                 SpriteIndex = baseSlot.SpriteIndex,
                 SpriteSlotPhase = baseSlot.SpriteSlotPhase,
+                AudioChannelIndex = baseSlot.AudioChannelIndex,
+                AudioSlotPhase = baseSlot.AudioSlotPhase,
                 CpuCanUseChipBus = owner == DmaOwner.Cpu
             };
         }
@@ -288,7 +298,9 @@ namespace AmigaEmulator.Core.CustomChips
                 {
                     Owner = DmaOwner.Cpu,
                     SpriteIndex = -1,
-                    SpriteSlotPhase = -1
+                    SpriteSlotPhase = -1,
+                    AudioChannelIndex = -1,
+                    AudioSlotPhase = -1
                 };
             }
 
@@ -299,7 +311,10 @@ namespace AmigaEmulator.Core.CustomChips
 
             for (int slot = AudioSlotStart; slot < AudioSlotStart + 8; slot++)
             {
+                int offset = slot - AudioSlotStart;
                 table[slot].Owner = DmaOwner.Audio;
+                table[slot].AudioChannelIndex = offset >> 1;
+                table[slot].AudioSlotPhase = offset & 1;
             }
 
             for (int slot = DiskSlotStart; slot < DiskSlotStart + 4; slot++)

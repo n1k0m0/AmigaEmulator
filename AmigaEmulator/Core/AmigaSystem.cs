@@ -140,7 +140,7 @@ namespace AmigaEmulator.Core
                 potgo => _input.ReadPotInp(potgo));
             _bus.AttachCiaAPortAInputProvider(_input.GetCiaAPortAInputMask, _input.GetCiaAPortAInputValue);
             _agnus.AttachChipWordReader(ReadChipRamWord);
-            _denise = new Denise(_frameBuffer, _agnus.Bitplanes, _agnus.Sprites);
+            _denise = new Denise(_frameBuffer, _agnus.Bitplanes, _agnus.Sprites, _agnus.Collisions);
             _paula.AttachDisk(
                 _bus.FloppyController,
                 WriteChipRamWord,
@@ -454,7 +454,7 @@ namespace AmigaEmulator.Core
                         _ciaB.PulseFlag();
                     }
 
-                    _paula.Tick(slot.Owner == DmaOwner.Disk, slot.Owner == DmaOwner.Audio);
+                    _paula.Tick(slot.Owner == DmaOwner.Disk, slot.Owner == DmaOwner.Audio ? slot.AudioChannelIndex : -1);
                     long afterPaula = Stopwatch.GetTimestamp();
 
                     TickCiaTodFromVideo();
@@ -596,7 +596,7 @@ namespace AmigaEmulator.Core
                 _ciaB.PulseFlag();
             }
 
-            _paula.Tick(slot.Owner == DmaOwner.Disk, slot.Owner == DmaOwner.Audio);
+            _paula.Tick(slot.Owner == DmaOwner.Disk, slot.Owner == DmaOwner.Audio ? slot.AudioChannelIndex : -1);
             TickCiaTodFromVideo();
             TickCiasOnEClock();
 

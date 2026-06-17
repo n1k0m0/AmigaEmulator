@@ -184,7 +184,7 @@ namespace AmigaEmulator.Tests
                 else if (string.Equals(arg, "--vamigats-cycles", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
                 {
                     int.TryParse(args[++index], out int cycles);
-                    options.VAmigaTsCycles = Math.Max(1_000_000, cycles);
+                    options.VAmigaTsCycles = Math.Max(40_000_000, cycles);
                 }
             }
 
@@ -448,6 +448,8 @@ namespace AmigaEmulator.Tests
 
             Check.Equal(DmaOwner.Refresh, scheduler.GetSlot(0, 0, 0).Owner, "Slot 0 should be refresh.");
             Check.Equal(DmaOwner.Audio, scheduler.GetSlot(0, 8, 0).Owner, "Slot 8 should be audio when audio DMA is enabled.");
+            Check.Equal(0, scheduler.GetSlot(0, 8, 0).AudioChannelIndex, "Slot 8 should be assigned to audio channel 0.");
+            Check.Equal(3, scheduler.GetSlot(0, 14, 0).AudioChannelIndex, "Slot 14 should be assigned to audio channel 3.");
             Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, 16, 0).Owner, "Slot 16 should be disk when disk DMA is active.");
             DmaSlotTraceEntry spriteSlot = scheduler.GetSlot(0, 20, 0);
             Check.Equal(DmaOwner.Sprite, spriteSlot.Owner, "Slot 20 should be sprite DMA when sprite DMA is enabled.");
@@ -527,9 +529,17 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Bpl2dat = 0x112;
         /// <summary>
+        /// Defines the BPL6DAT custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl6dat = 0x11A;
+        /// <summary>
         /// Defines the COLOR00 custom register offset.
         /// </summary>
         private const uint Color00 = 0x180;
+        /// <summary>
+        /// Defines the COLOR01 custom register offset.
+        /// </summary>
+        private const uint Color01 = 0x182;
 
         /// <summary>
         /// Builds the value.
@@ -563,9 +573,24 @@ namespace AmigaEmulator.Tests
                 TestBorderRowsAboveLoweredDiw);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "standard DIW does not clip the right half of the fetched playfield",
+                "Amiga HRM DIWSTRT/DIWSTOP horizontal display window with standard DDF width",
+                TestStandardDiwDoesNotClipRightHalf);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
                 "Amiga HRM bitplane DMA reloads display data every frame",
                 TestFrameStartInvalidatesFetchedRows);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "six-plane EHB halves color bank 0 through plane 6",
+                "Amiga HRM Extra Half-Brite output mode",
+                TestExtraHalfBriteColor);
+            yield return new ChipTestCase(
+                "Denise/Collision",
+                "CLXDAT latches playfield collision and clears on read",
+                "Amiga HRM CLXCON/CLXDAT read-clear collision registers",
+                TestClxdatReadClear);
         }
 
         /// <summary>
@@ -668,6 +693,24 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that the common DIW/DDF setup remains visible across the fetched line width.
+        /// </summary>
+        private static void TestStandardDiwDoesNotClipRightHalf()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2CC1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x00D0);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0xFFFF);
+            bitplanes.RefreshFromRegisters();
+
+            Check.Equal(1, bitplanes.RenderColorIndex(500, BitplaneUnit.PalVisibleTop), "Standard DIW should not clip the right half of a 640-pixel fetched playfield.");
+        }
+
+        /// <summary>
         /// Verifies that fetched bitplane words from a previous frame cannot leak into the next frame.
         /// </summary>
         private static void TestFrameStartInvalidatesFetchedRows()
@@ -694,6 +737,44 @@ namespace AmigaEmulator.Tests
 
             bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
             Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After the next fetch, the new frame should render the updated word.");
+        }
+
+        /// <summary>
+        /// Verifies Extra Half-Brite color bank behavior.
+        /// </summary>
+        private static void TestExtraHalfBriteColor()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x6000);
+            registers.WriteWord(Color01, 0x0FFF);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0x8000);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl6dat, 0x8000);
+            bitplanes.RefreshFromRegisters();
+            Check.Equal(33, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "BPL1 plus BPL6 should select EHB color index 33.");
+            Check.Equal(0xFF7F7F7Fu, bitplanes.ReadColorArgb(33), "EHB color 33 should be half-bright COLOR01.");
+        }
+
+        /// <summary>
+        /// Verifies CLXDAT playfield collision latch and clear-on-read semantics.
+        /// </summary>
+        private static void TestClxdatReadClear()
+        {
+            var registers = new CustomRegisterMap();
+            var collisions = new CollisionUnit();
+            registers.AttachCollisionUnit(collisions);
+            var frameBuffer = new AmigaFrameBuffer(640, 256);
+            var bitplanes = new BitplaneUnit(registers, null);
+            var sprites = new SpriteUnit(registers, null);
+            var denise = new Denise(frameBuffer, bitplanes, sprites, collisions);
+
+            registers.WriteWord(Bplcon0, 0x2000);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0x8000);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl2dat, 0x8000);
+            denise.Tick(new BeamTraceEntry { BeamX = 0x38, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
+
+            Check.Equal(0x0001, registers.ReadWord(CustomRegisterMap.Clxdat), "PF1/PF2 collision should set CLXDAT bit 0.");
+            Check.Equal(0x0000, registers.ReadWord(CustomRegisterMap.Clxdat), "Reading CLXDAT should clear collision bits.");
         }
 
     }
@@ -1083,6 +1164,11 @@ namespace AmigaEmulator.Tests
                 "Kickstart overlay writes do not corrupt underlying chip RAM",
                 "A500 ROM overlay behavior at address zero",
                 TestKickstartOverlayWriteDoesNotTouchChipRam);
+            yield return new ChipTestCase(
+                "Integration",
+                "bus arbitration only contends Chip RAM and custom registers",
+                "A500 Gary bus arbitration for CPU accesses during custom-chip DMA",
+                TestBusArbitrationRegions);
         }
 
         /// <summary>
@@ -1114,6 +1200,25 @@ namespace AmigaEmulator.Tests
             bus.WriteWord(0, 0x1234);
             bus.RomOverlayAtZero = false;
             Check.Equal(0x0000, bus.ReadWord(0), "Writes while ROM overlay is active must not modify hidden Chip RAM.");
+        }
+
+        /// <summary>
+        /// Verifies that only Agnus-visible regions are reported as chip-bus contended.
+        /// </summary>
+        private static void TestBusArbitrationRegions()
+        {
+            var bus = new AmigaBus(AmigaModel.A500Pal, new CustomRegisterMap(), null, null, null);
+            byte[] rom = new byte[512 * 1024];
+            rom[0] = 0xAA;
+            bus.LoadKickstart(rom);
+            bus.RomOverlayAtZero = true;
+
+            Check.True(!bus.RequiresChipBus(0x000000, 2), "ROM overlay at zero should not be treated as Chip RAM contention.");
+            bus.RomOverlayAtZero = false;
+            Check.True(bus.RequiresChipBus(0x000000, 2), "Chip RAM should be contended by custom-chip DMA.");
+            Check.True(bus.RequiresChipBus(0x00DFF180, 2), "Custom registers should be on the custom-chip bus.");
+            Check.True(!bus.RequiresChipBus(0x00BFE001, 1), "CIA-A access should not wait for Agnus DMA slots.");
+            Check.True(!bus.RequiresChipBus(0x00F80000, 2), "Kickstart ROM access should not wait for Agnus DMA slots.");
         }
     }
 

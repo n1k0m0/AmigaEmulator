@@ -67,19 +67,32 @@ namespace AmigaEmulator.Core.Input
             input.AttachCiaA(cia);
             input.KeyboardKeyDown(0x20);
             input.TickEClock();
+            TickCiaSerial(cia, 8);
 
             byte expectedDown = AmigaInputDevice.EncodeKeyboardSerialByte(0x20, false);
             bool downOk = cia.SerialData == expectedDown && cia.IsSerialInputPending;
             cia.ReadByte(0x00BFED00);
 
             input.KeyboardKeyUp(0x20);
-            for (int index = 0; index < 16; index++)
+            for (int index = 0; index < 24; index++)
             {
                 input.TickEClock();
+                cia.Tick();
             }
 
             byte expectedUp = AmigaInputDevice.EncodeKeyboardSerialByte(0x20, true);
             return downOk && cia.SerialData == expectedUp && cia.IsSerialInputPending;
+        }
+
+        /// <summary>
+        /// Advances CIA serial shifting for tests that do not run the full machine E-clock loop.
+        /// </summary>
+        private static void TickCiaSerial(Cia8520 cia, int ticks)
+        {
+            for (int index = 0; index < ticks; index++)
+            {
+                cia.Tick();
+            }
         }
 
         /// <summary>

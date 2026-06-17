@@ -282,7 +282,6 @@ namespace AmigaEmulator.Core.Media
             _trackStream = null;
             _streamTrack = -1;
             _streamSide = -1;
-            _streamWordPosition = 0;
         }
 
         /// <summary>
@@ -296,7 +295,7 @@ namespace AmigaEmulator.Core.Media
                 _motorOffReadyGraceCycles--;
             }
 
-            if (!Selected || !HasDisk || !MotorOn)
+            if (!HasDisk || !MotorOn)
             {
                 _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
                 return;
@@ -306,7 +305,7 @@ namespace AmigaEmulator.Core.Media
             if (_indexPulseCountdown <= 0)
             {
                 _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
-                IndexPulsePending = true;
+                IndexPulsePending = Selected;
             }
         }
 
@@ -323,6 +322,11 @@ namespace AmigaEmulator.Core.Media
             EnsureTrackStream();
             ushort word = _trackStream != null ? _trackStream.ReadWord(_streamWordPosition) : (ushort)0xAAAA;
             _streamWordPosition++;
+            if (_trackStream != null && _trackStream.WordCount > 0 && _streamWordPosition >= _trackStream.WordCount)
+            {
+                _streamWordPosition %= _trackStream.WordCount;
+            }
+
             return word;
         }
 
@@ -415,7 +419,14 @@ namespace AmigaEmulator.Core.Media
             _trackStream = Image.BuildTrackStream(Track, Side);
             _streamTrack = Track;
             _streamSide = Side;
-            _streamWordPosition = 0;
+            if (_trackStream != null && _trackStream.WordCount > 0)
+            {
+                _streamWordPosition %= _trackStream.WordCount;
+                if (_streamWordPosition < 0)
+                {
+                    _streamWordPosition += _trackStream.WordCount;
+                }
+            }
         }
     }
 }

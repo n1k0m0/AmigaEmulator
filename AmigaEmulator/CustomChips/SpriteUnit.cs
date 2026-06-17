@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -290,6 +290,44 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns a bit mask of all sprite numbers that contribute a nontransparent pixel.
+        /// </summary>
+        public int RenderSpriteMask(int screenX, int beamY)
+        {
+            if (!HasActiveSprites || _registers == null)
+            {
+                return 0;
+            }
+
+            UpdateForBeamY(beamY);
+            int mask = 0;
+            for (int sprite = 0; sprite < 8; sprite++)
+            {
+                if ((sprite & 1) == 0 &&
+                    TryReadSpritePixel(sprite + 1, screenX, out int oddColor, out bool attached) &&
+                    attached)
+                {
+                    TryReadSpritePixel(sprite, screenX, out int evenColor, out _);
+                    if ((evenColor | (oddColor << 2)) != 0)
+                    {
+                        mask |= 1 << sprite;
+                        mask |= 1 << (sprite + 1);
+                    }
+
+                    sprite++;
+                    continue;
+                }
+
+                if (TryReadSpritePixel(sprite, screenX, out int colorIndex, out _) && colorIndex != 0)
+                {
+                    mask |= 1 << sprite;
+                }
+            }
+
+            return mask;
         }
 
         /// <summary>

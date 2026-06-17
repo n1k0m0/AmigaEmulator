@@ -74,6 +74,7 @@ namespace AmigaEmulator.Core.CustomChips
         {
             _model = model;
             CustomRegisters = new CustomRegisterMap();
+            Collisions = new CollisionUnit();
             Bitplanes = new BitplaneUnit(CustomRegisters, null, _model.ChipRamBytes);
             Sprites = new SpriteUnit(CustomRegisters, null, _model.ChipRamBytes);
             _dmaScheduler = new DmaScheduler(CustomRegisters, Bitplanes);
@@ -84,6 +85,7 @@ namespace AmigaEmulator.Core.CustomChips
             Copper.CustomRegisterWritten += Blitter.NotifyCustomRegisterWrite;
             CustomRegisters.CopperJumpRequested += Copper.StrobeJump;
             CustomRegisters.AttachBlitterStatus(() => Blitter.Busy, () => Blitter.ZeroFlag);
+            CustomRegisters.AttachCollisionUnit(Collisions);
             Denise.AttachCustomRegisters(CustomRegisters);
             Reset();
         }
@@ -102,6 +104,11 @@ namespace AmigaEmulator.Core.CustomChips
         /// Gets the sprite DMA and rendering state shared with Denise.
         /// </summary>
         public SpriteUnit Sprites { get; private set; }
+
+        /// <summary>
+        /// Gets the Denise collision register state.
+        /// </summary>
+        public CollisionUnit Collisions { get; private set; }
 
         /// <summary>
         /// Gets or updates the Copper.
@@ -134,12 +141,13 @@ namespace AmigaEmulator.Core.CustomChips
             _beamY = 0;
             _lastIsVBlank = true;
             CustomRegisters.Reset();
+            Collisions.Reset();
             Bitplanes.Reset();
             Sprites.Reset();
             Copper.Reset();
             Blitter.Reset();
             Beam = new BeamTraceEntry();
-            LastDmaSlot = new DmaSlotTraceEntry { Owner = DmaOwner.Cpu, BaseOwner = DmaOwner.Cpu, SpriteIndex = -1, SpriteSlotPhase = -1, CpuCanUseChipBus = true };
+            LastDmaSlot = new DmaSlotTraceEntry { Owner = DmaOwner.Cpu, BaseOwner = DmaOwner.Cpu, SpriteIndex = -1, SpriteSlotPhase = -1, AudioChannelIndex = -1, AudioSlotPhase = -1, CpuCanUseChipBus = true };
         }
 
         /// <summary>
@@ -170,7 +178,8 @@ namespace AmigaEmulator.Core.CustomChips
             writer.Write(_beamX);
             writer.Write(_beamY);
             writer.Write(_lastIsVBlank);
-            StateSerializer.WriteObjectFields(writer, CustomRegisters);
+            StateSerializer.WriteObjectFields(writer, CustomRegisters, "_collisionUnit");
+            StateSerializer.WriteObjectFields(writer, Collisions);
             Bitplanes.SaveState(writer);
             Sprites.SaveState(writer);
             Copper.SaveState(writer);
@@ -189,7 +198,9 @@ namespace AmigaEmulator.Core.CustomChips
             _beamX = reader.ReadInt32();
             _beamY = reader.ReadInt32();
             _lastIsVBlank = reader.ReadBoolean();
-            StateSerializer.ReadObjectFields(reader, CustomRegisters);
+            StateSerializer.ReadObjectFields(reader, CustomRegisters, "_collisionUnit");
+            StateSerializer.ReadObjectFields(reader, Collisions);
+            CustomRegisters.AttachCollisionUnit(Collisions);
             Bitplanes.LoadState(reader);
             Sprites.LoadState(reader);
             Copper.LoadState(reader);
@@ -239,6 +250,8 @@ namespace AmigaEmulator.Core.CustomChips
             writer.Write((int)value.BaseOwner);
             writer.Write(value.SpriteIndex);
             writer.Write(value.SpriteSlotPhase);
+            writer.Write(value.AudioChannelIndex);
+            writer.Write(value.AudioSlotPhase);
             writer.Write(value.CpuCanUseChipBus);
         }
 
@@ -256,6 +269,8 @@ namespace AmigaEmulator.Core.CustomChips
                 BaseOwner = (DmaOwner)reader.ReadInt32(),
                 SpriteIndex = reader.ReadInt32(),
                 SpriteSlotPhase = reader.ReadInt32(),
+                AudioChannelIndex = reader.ReadInt32(),
+                AudioSlotPhase = reader.ReadInt32(),
                 CpuCanUseChipBus = reader.ReadBoolean()
             };
         }

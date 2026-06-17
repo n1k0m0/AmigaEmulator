@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,7 @@
    limitations under the License.
 */
 using System;
+using System.Collections.Generic;
 using System.IO;
 using AmigaEmulator.Core.SaveStates;
 
@@ -182,6 +183,18 @@ namespace AmigaEmulator.Core.Cia
         /// Tracks the last Overlay At Zero.
         /// </summary>
         private bool _lastOverlayAtZero;
+        /// <summary>
+        /// Tracks keyboard/serial bytes waiting for the emulated CNT/SP shift.
+        /// </summary>
+        private readonly Queue<byte> _serialInputQueue = new Queue<byte>();
+        /// <summary>
+        /// Tracks the byte currently shifting into SDR.
+        /// </summary>
+        private byte _serialShiftByte;
+        /// <summary>
+        /// Tracks remaining serial bits before SDR is full.
+        /// </summary>
+        private int _serialBitsRemaining;
 
         /// <summary>
         /// Initializes a new instance of the Cia8520 class.
@@ -335,7 +348,7 @@ namespace AmigaEmulator.Core.Cia
         /// </summary>
         public bool IsSerialInputPending
         {
-            get { return (_interruptRequest & InterruptSerial) != 0; }
+            get { return (_interruptRequest & InterruptSerial) != 0 || _serialBitsRemaining > 0 || _serialInputQueue.Count > 0; }
         }
 
         /// <summary>
@@ -407,6 +420,9 @@ namespace AmigaEmulator.Core.Cia
             _todAlarmWriteMask = 0;
             _interruptMask = 0;
             _interruptRequest = 0;
+            _serialInputQueue.Clear();
+            _serialShiftByte = 0;
+            _serialBitsRemaining = 0;
             _lastOverlayAtZero = OverlayAtZero;
             RaiseOverlayChanged(_lastOverlayAtZero);
             RaiseInterruptChanged();
@@ -441,6 +457,8 @@ namespace AmigaEmulator.Core.Cia
             {
                 TickTimer(RegisterCrb, ref _timerBCounter, _timerBLatch, InterruptTimerB);
             }
+
+            TickSerialInput();
         }
 
         /// <summary>
@@ -476,7 +494,16 @@ namespace AmigaEmulator.Core.Cia
         public void LoadSerialInputByte(byte value)
         {
             _registers[RegisterSdr] = value;
+            _serialBitsRemaining = 0;
             RequestInterrupt(InterruptSerial);
+        }
+
+        /// <summary>
+        /// Queues one external serial byte and shifts it into SDR over CIA ticks.
+        /// </summary>
+        public void QueueSerialInputByte(byte value)
+        {
+            _serialInputQueue.Enqueue(value);
         }
 
         /// <summary>
@@ -806,6 +833,35 @@ namespace AmigaEmulator.Core.Cia
         private bool TimerBCountsTimerAUnderflow()
         {
             return (_registers[RegisterCrb] & 0x40) != 0;
+        }
+
+        /// <summary>
+        /// Advances the external serial input shift register.
+        /// </summary>
+        private void TickSerialInput()
+        {
+            if ((_interruptRequest & InterruptSerial) != 0)
+            {
+                return;
+            }
+
+            if (_serialBitsRemaining == 0)
+            {
+                if (_serialInputQueue.Count == 0)
+                {
+                    return;
+                }
+
+                _serialShiftByte = _serialInputQueue.Dequeue();
+                _serialBitsRemaining = 8;
+            }
+
+            _serialBitsRemaining--;
+            if (_serialBitsRemaining == 0)
+            {
+                _registers[RegisterSdr] = _serialShiftByte;
+                RequestInterrupt(InterruptSerial);
+            }
         }
 
         /// <summary>

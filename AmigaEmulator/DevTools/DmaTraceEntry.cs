@@ -51,6 +51,14 @@ namespace AmigaEmulator.Core.DevTools
         /// </summary>
         public int SpriteSlotPhase;
         /// <summary>
+        /// Stores the audio channel assigned to this DMA slot, or -1 when it is not an audio slot.
+        /// </summary>
+        public int AudioChannelIndex;
+        /// <summary>
+        /// Stores the sub-slot phase inside an audio channel slot pair.
+        /// </summary>
+        public int AudioSlotPhase;
+        /// <summary>
         /// Stores the CPU Can Use Chip Bus.
         /// </summary>
         public bool CpuCanUseChipBus;

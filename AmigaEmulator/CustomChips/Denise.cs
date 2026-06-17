@@ -42,6 +42,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private readonly SpriteUnit _sprites;
         /// <summary>
+        /// Tracks collision register state shared with CLXDAT/CLXCON.
+        /// </summary>
+        private readonly CollisionUnit _collisions;
+        /// <summary>
         /// Defines the Pal Lowres Display Start constant.
         /// </summary>
         private const int PalLowresDisplayStart = 0x38;
@@ -82,18 +86,27 @@ namespace AmigaEmulator.Core.CustomChips
         /// Initializes a new instance of the Denise class.
         /// </summary>
         public Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites)
-            : this(frameBuffer, bitplanes, sprites, true)
+            : this(frameBuffer, bitplanes, sprites, null)
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the Denise class.
         /// </summary>
-        private Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, bool useSharedSpriteState)
+        public Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions)
+            : this(frameBuffer, bitplanes, sprites, collisions, true)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the Denise class.
+        /// </summary>
+        private Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, bool useSharedSpriteState)
         {
             _frameBuffer = frameBuffer;
             _bitplanes = bitplanes;
             _sprites = sprites;
+            _collisions = collisions;
         }
 
         /// <summary>
@@ -111,6 +124,11 @@ namespace AmigaEmulator.Core.CustomChips
         {
             _bitplanes.Reset();
             _sprites.Reset();
+            if (_collisions != null)
+            {
+                _collisions.Reset();
+            }
+
             _frameBuffer.Clear(0xFF0C1020);
         }
 
@@ -146,6 +164,7 @@ namespace AmigaEmulator.Core.CustomChips
             bool spritesActive = _sprites.HasActiveSprites;
             uint[] pixels = _frameBuffer.Pixels;
             int row = y * _frameBuffer.Width;
+            uint previousArgb = screenPreviousColor(row, x);
             for (int pixel = 0; pixel < BitplaneUnit.HiresPixelsPerChipCycle; pixel++)
             {
                 int screenX = x + pixel;
@@ -158,8 +177,14 @@ namespace AmigaEmulator.Core.CustomChips
                     ? _bitplanes.RenderColorIndex(screenX, beam.BeamY)
                     : 0;
                 uint argb = bitplaneActive
-                    ? _bitplanes.ReadColorArgb(bitplaneColorIndex)
+                    ? _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb)
                     : _bitplanes.RenderFallbackPixel(screenX, y, beam.Frame);
+                int spriteMask = spritesActive ? _sprites.RenderSpriteMask(screenX, beam.BeamY) : 0;
+                if (_collisions != null)
+                {
+                    int bitplaneMask = bitplaneActive ? _bitplanes.RenderPlaneMask(screenX, beam.BeamY) : 0;
+                    _collisions.ObservePixel(bitplaneMask, spriteMask);
+                }
 
                 if (spritesActive &&
                     _sprites.TryRenderPixel(screenX, beam.BeamY, out uint spriteArgb, out int spriteGroup) &&
@@ -169,7 +194,22 @@ namespace AmigaEmulator.Core.CustomChips
                 }
 
                 pixels[row + screenX] = argb;
+                previousArgb = argb;
             }
+        }
+
+        /// <summary>
+        /// Reads the previous HAM base color for this chunk.
+        /// </summary>
+        private uint screenPreviousColor(int row, int x)
+        {
+            int previousX = x - 1;
+            if (previousX >= 0 && previousX < _frameBuffer.Width)
+            {
+                return _frameBuffer.Pixels[row + previousX];
+            }
+
+            return _bitplanes.ReadColorArgb(0);
         }
 
         /// <summary>

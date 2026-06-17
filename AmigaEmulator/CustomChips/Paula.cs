@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,10 +222,6 @@ namespace AmigaEmulator.Core.CustomChips
         /// Tracks the last Disk Block Words.
         /// </summary>
         private int _lastDiskBlockWords;
-        /// <summary>
-        /// Tracks the audio DMA Round Robin.
-        /// </summary>
-        private int _audioDmaRoundRobin;
         /// <summary>
         /// Tracks the audio Sample Accumulator.
         /// </summary>
@@ -471,7 +467,6 @@ namespace AmigaEmulator.Core.CustomChips
             _lastDiskBlockStart = 0;
             _lastDiskBlockEnd = 0;
             _lastDiskBlockWords = 0;
-            _audioDmaRoundRobin = 0;
             _audioSampleAccumulator = 0.0;
             _audioSamplesGenerated = 0;
             _audioDmaWordsFetched = 0;
@@ -490,7 +485,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Tick()
         {
-            Tick(false, false);
+            Tick(false, -1);
         }
 
         /// <summary>
@@ -498,16 +493,24 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Tick(bool diskDmaSlotAvailable)
         {
-            Tick(diskDmaSlotAvailable, false);
+            Tick(diskDmaSlotAvailable, -1);
+        }
+
+        /// <summary>
+        /// Advances this component by one emulator tick using the legacy audio-slot boolean.
+        /// </summary>
+        public void Tick(bool diskDmaSlotAvailable, bool audioDmaSlotAvailable)
+        {
+            Tick(diskDmaSlotAvailable, audioDmaSlotAvailable ? 0 : -1);
         }
 
         /// <summary>
         /// Advances this component by one emulator tick.
         /// </summary>
-        public void Tick(bool diskDmaSlotAvailable, bool audioDmaSlotAvailable)
+        public void Tick(bool diskDmaSlotAvailable, int audioDmaChannel)
         {
             AudioTicks++;
-            TickAudio(audioDmaSlotAvailable);
+            TickAudio(audioDmaChannel);
             TickDiskInputStream();
             if (diskDmaSlotAvailable)
             {
@@ -746,12 +749,12 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Advances the Audio state by one emulator tick.
         /// </summary>
-        private void TickAudio(bool dmaSlotAvailable)
+        private void TickAudio(int dmaSlotChannel)
         {
             UpdateAudioDmaEnableState();
-            if (dmaSlotAvailable)
+            if (dmaSlotChannel >= 0)
             {
-                TickAudioDmaSlot();
+                TickAudioDmaSlot(dmaSlotChannel);
             }
 
             for (int channel = 0; channel < _audioChannels.Length; channel++)
@@ -781,33 +784,26 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Advances the Audio DMA Slot state by one emulator tick.
         /// </summary>
-        private void TickAudioDmaSlot()
+        private void TickAudioDmaSlot(int channelIndex)
         {
-            if (_readChipWord == null)
+            if (_readChipWord == null || channelIndex < 0 || channelIndex >= _audioChannels.Length)
             {
                 return;
             }
 
-            for (int attempt = 0; attempt < _audioChannels.Length; attempt++)
+            AudioChannel channel = _audioChannels[channelIndex];
+            if (!IsAudioDmaEnabled(channelIndex) || !channel.NeedsDmaWord)
             {
-                int channelIndex = (_audioDmaRoundRobin + attempt) & 3;
-                AudioChannel channel = _audioChannels[channelIndex];
-                if (!IsAudioDmaEnabled(channelIndex) || !channel.NeedsDmaWord)
-                {
-                    continue;
-                }
-
-                ushort word = _readChipWord(channel.CurrentPointer);
-                channel.AcceptDmaWord(word);
-                _audioDmaWordsFetched++;
-                if (channel.BlockCompleted)
-                {
-                    RequestAudioInterrupt(channelIndex);
-                    channel.ReloadDmaBlock();
-                }
-
-                _audioDmaRoundRobin = (channelIndex + 1) & 3;
                 return;
+            }
+
+            ushort word = _readChipWord(channel.CurrentPointer);
+            channel.AcceptDmaWord(word);
+            _audioDmaWordsFetched++;
+            if (channel.BlockCompleted)
+            {
+                RequestAudioInterrupt(channelIndex);
+                channel.ReloadDmaBlock();
             }
         }
 

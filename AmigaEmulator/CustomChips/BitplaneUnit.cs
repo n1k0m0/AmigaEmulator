@@ -188,6 +188,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int _diwBottom;
         /// <summary>
+        /// Tracks the viewport-relative DIW left edge.
+        /// </summary>
+        private int _diwLeft;
+        /// <summary>
+        /// Tracks the viewport-relative DIW right edge.
+        /// </summary>
+        private int _diwRight;
+        /// <summary>
         /// Tracks the ddf Start.
         /// </summary>
         private int _ddfStart;
@@ -215,6 +223,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// Tracks the hires.
         /// </summary>
         private bool _hires;
+        /// <summary>
+        /// Tracks whether BPLCON0 selects HAM output.
+        /// </summary>
+        private bool _ham;
+        /// <summary>
+        /// Tracks whether six bitplanes select Extra Half-Brite output.
+        /// </summary>
+        private bool _ehb;
 
         /// <summary>
         /// Initializes a new instance of the BitplaneUnit class.
@@ -401,6 +417,8 @@ namespace AmigaEmulator.Core.CustomChips
 
             EnabledPlanes = Math.Min(6, (bplcon0 >> 12) & 0x07);
             _hires = (bplcon0 & 0x8000) != 0;
+            _ham = (bplcon0 & 0x0800) != 0;
+            _ehb = !_ham && EnabledPlanes == 6;
             _dmaActive = (dmacon & 0x0200) != 0 && (dmacon & 0x0100) != 0;
             _displayActive = EnabledPlanes > 0 && (_dmaActive || HasValidDataLatch());
 
@@ -427,6 +445,31 @@ namespace AmigaEmulator.Core.CustomChips
             _displayFetchWidth = _hires ? bitplaneBits : bitplaneBits * 2;
             _scrollEven = bplcon1 & 0x000F;
             _scrollOdd = (bplcon1 >> 4) & 0x000F;
+            RefreshHorizontalDisplayWindow(diwStart, diwStop);
+        }
+
+        /// <summary>
+        /// Refreshes the viewport-relative horizontal display-window clipping.
+        /// </summary>
+        private void RefreshHorizontalDisplayWindow(ushort diwStart, ushort diwStop)
+        {
+            int rawLeft = diwStart & 0x00FF;
+            int rawRight = diwStop & 0x00FF;
+            _diwLeft = 0;
+            if (diwStart == 0 && diwStop == 0)
+            {
+                _diwRight = int.MaxValue;
+                return;
+            }
+
+            if (rawRight <= rawLeft)
+            {
+                _diwRight = int.MaxValue;
+                return;
+            }
+
+            int registerWidth = (rawRight - rawLeft) * HiresPixelsPerChipCycle;
+            _diwRight = Math.Max(registerWidth, _displayFetchWidth);
         }
 
         /// <summary>
@@ -609,7 +652,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public int RenderColorIndex(int screenX, int beamY)
         {
-            if (!_displayActive || !IsInsideDiw(beamY))
+            if (!_displayActive || !IsInsideDiw(screenX, beamY))
             {
                 return 0;
             }
@@ -624,10 +667,73 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
+        /// Returns the six raw BPLx pixel bits for Denise collision and HAM/EHB logic.
+        /// </summary>
+        public int RenderPlaneMask(int screenX, int beamY)
+        {
+            if (!_displayActive || !IsInsideDiw(screenX, beamY))
+            {
+                return 0;
+            }
+
+            int displayX = GetDisplayX(screenX);
+            if (displayX < 0 || displayX >= _displayFetchWidth)
+            {
+                return 0;
+            }
+
+            int row = GetScreenY(beamY);
+            if (row < 0)
+            {
+                return 0;
+            }
+
+            int mask = 0;
+            for (int plane = 0; plane < EnabledPlanes; plane++)
+            {
+                mask |= ReadPlanePixelPair(plane, row, displayX) << plane;
+            }
+
+            return mask & 0x3F;
+        }
+
+        /// <summary>
         /// Returns a palette entry expanded to host ARGB format.
         /// </summary>
         public uint ReadColorArgb(int index)
         {
+            return ReadColor(index);
+        }
+
+        /// <summary>
+        /// Resolves a Denise color code, including HAM and EHB modes.
+        /// </summary>
+        public uint ResolveColorArgb(int index, uint previousArgb)
+        {
+            index &= 0x3F;
+            if (_ham)
+            {
+                int control = (index >> 4) & 0x03;
+                int data = index & 0x0F;
+                if (control == 0)
+                {
+                    return ReadColorRegister(data);
+                }
+
+                byte component = ExpandNibble(data);
+                if (control == 1)
+                {
+                    return (previousArgb & 0xFFFFFF00u) | component;
+                }
+
+                if (control == 2)
+                {
+                    return (previousArgb & 0xFF00FFFFu) | ((uint)component << 16);
+                }
+
+                return (previousArgb & 0xFFFF00FFu) | ((uint)component << 8);
+            }
+
             return ReadColor(index);
         }
 
@@ -645,6 +751,14 @@ namespace AmigaEmulator.Core.CustomChips
         public bool IsDualPlayfield
         {
             get { return (Read(Bplcon0) & 0x0400) != 0; }
+        }
+
+        /// <summary>
+        /// Returns whether HAM mode is selected.
+        /// </summary>
+        public bool IsHamMode
+        {
+            get { return _ham; }
         }
 
         /// <summary>
@@ -927,6 +1041,14 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
+        /// Returns whether a viewport pixel is inside the display window.
+        /// </summary>
+        private bool IsInsideDiw(int screenX, int beamY)
+        {
+            return IsInsideDiw(beamY) && screenX >= _diwLeft && screenX < _diwRight;
+        }
+
+        /// <summary>
         /// Returns whether Valid Data Latch is present.
         /// </summary>
         private bool HasValidDataLatch()
@@ -1027,7 +1149,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private uint ReadColor(int index)
         {
-            if ((index & 0x20) != 0)
+            if (_ehb && (index & 0x20) != 0)
             {
                 uint baseColor = ReadColorRegister(index & 0x1F);
                 uint red = ((baseColor >> 16) & 0xFF) >> 1;

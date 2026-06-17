@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,6 +102,14 @@ namespace AmigaEmulator.Core.Memory
         /// Defines the Chip RAM End constant.
         /// </summary>
         public const uint ChipRamEnd = 0x07FFFF;
+        /// <summary>
+        /// Defines the Zorro II Fast RAM Start constant.
+        /// </summary>
+        public const uint FastRamStart = 0x200000;
+        /// <summary>
+        /// Defines the Zorro II Fast RAM End constant.
+        /// </summary>
+        public const uint FastRamEnd = 0x9FFFFF;
         /// <summary>
         /// Defines the CIA B Start constant.
         /// </summary>

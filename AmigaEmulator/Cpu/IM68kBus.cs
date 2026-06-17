@@ -44,4 +44,20 @@ namespace AmigaEmulator.Core.Cpu
 
         uint PeekLong(uint address);
     }
+
+    /// <summary>
+    /// Allows the CPU to ask whether a pending bus operation is contended by custom-chip DMA.
+    /// </summary>
+    public interface IM68kBusArbitration
+    {
+        bool RequiresChipBus(uint address, int size);
+    }
+
+    /// <summary>
+    /// Allows a machine bus to provide reset vectors after board-level overlay and ROM decode handling.
+    /// </summary>
+    public interface IM68kResetVectorProvider
+    {
+        bool TryReadResetVectors(out uint initialStackPointer, out uint initialProgramCounter);
+    }
 }

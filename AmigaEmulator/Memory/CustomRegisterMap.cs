@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,7 @@
    limitations under the License.
 */
 using System;
+using AmigaEmulator.Core.CustomChips;
 
 namespace AmigaEmulator.Core.Memory
 {
@@ -124,6 +125,10 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public const uint Joy1dat = 0x00C;
         /// <summary>
+        /// Defines the CLXDAT custom register offset or bit mask.
+        /// </summary>
+        public const uint Clxdat = 0x00E;
+        /// <summary>
         /// Defines the ADKCONR custom register offset or bit mask.
         /// </summary>
         public const uint Adkconr = 0x010;
@@ -155,6 +160,10 @@ namespace AmigaEmulator.Core.Memory
         /// Defines the DMACON custom register offset or bit mask.
         /// </summary>
         public const uint Dmacon = 0x096;
+        /// <summary>
+        /// Defines the CLXCON custom register offset or bit mask.
+        /// </summary>
+        public const uint Clxcon = 0x098;
         /// <summary>
         /// Defines the INTENA custom register offset or bit mask.
         /// </summary>
@@ -200,6 +209,10 @@ namespace AmigaEmulator.Core.Memory
         /// Tracks the potgo.
         /// </summary>
         private ushort _potgo;
+        /// <summary>
+        /// Tracks the collision unit used for CLXCON/CLXDAT side effects.
+        /// </summary>
+        private CollisionUnit _collisionUnit;
         /// <summary>
         /// Tracks the is Blitter Busy.
         /// </summary>
@@ -325,6 +338,14 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
+        /// Attaches Denise collision state to CLXCON and CLXDAT.
+        /// </summary>
+        public void AttachCollisionUnit(CollisionUnit collisionUnit)
+        {
+            _collisionUnit = collisionUnit;
+        }
+
+        /// <summary>
         /// Reads a custom-chip register word, including readable mirrors and live input sources.
         /// </summary>
         public ushort ReadWord(uint address)
@@ -366,6 +387,11 @@ namespace AmigaEmulator.Core.Memory
                 return _readJoy1Dat != null ? _readJoy1Dat() : (ushort)0;
             }
 
+            if (offset == Clxdat)
+            {
+                return _collisionUnit != null ? _collisionUnit.ReadAndClear() : (ushort)0;
+            }
+
             if (offset == Pot0dat || offset == Pot1dat)
             {
                 return 0xFFFF;
@@ -395,6 +421,20 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
+        /// Reads a custom-chip register word without read-clear side effects.
+        /// </summary>
+        public ushort PeekWord(uint address)
+        {
+            uint offset = GetOffset(address);
+            if (offset == Clxdat)
+            {
+                return _collisionUnit != null ? _collisionUnit.CollisionFlags : (ushort)0;
+            }
+
+            return ReadWord(address);
+        }
+
+        /// <summary>
         /// Writes a custom-chip register word and applies Amiga set/clear side effects.
         /// </summary>
         public void WriteWord(uint address, ushort value)
@@ -417,6 +457,17 @@ namespace AmigaEmulator.Core.Memory
                 _dmacon = ApplySetClear(_dmacon, value, DmaControlBitMask);
                 _registers[GetIndex(address)] = _dmacon;
                 _registers[GetIndex(Dmaconr)] = _dmacon;
+                return;
+            }
+
+            if (offset == Clxcon)
+            {
+                if (_collisionUnit != null)
+                {
+                    _collisionUnit.Control = value;
+                }
+
+                _registers[GetIndex(address)] = value;
                 return;
             }
 
@@ -472,6 +523,15 @@ namespace AmigaEmulator.Core.Memory
         public byte ReadByte(uint address)
         {
             ushort word = ReadWord(address & 0xFFFFFE);
+            return (address & 1) == 0 ? (byte)(word >> 8) : (byte)(word & 0xFF);
+        }
+
+        /// <summary>
+        /// Reads one byte lane from a custom-chip register word without read-clear side effects.
+        /// </summary>
+        public byte PeekByte(uint address)
+        {
+            ushort word = PeekWord(address & 0xFFFFFE);
             return (address & 1) == 0 ? (byte)(word >> 8) : (byte)(word & 0xFF);
         }
 

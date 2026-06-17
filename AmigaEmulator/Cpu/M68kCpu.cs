@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,6 +89,10 @@ namespace AmigaEmulator.Core.Cpu
         /// Tracks the bus.
         /// </summary>
         private readonly IM68kBus _bus;
+        /// <summary>
+        /// Tracks optional bus arbitration supplied by the machine bus.
+        /// </summary>
+        private readonly IM68kBusArbitration _busArbitration;
         /// <summary>
         /// Tracks the state.
         /// </summary>
@@ -198,6 +202,7 @@ namespace AmigaEmulator.Core.Cpu
         public M68kCpu(IM68kBus bus)
         {
             _bus = bus ?? throw new ArgumentNullException(nameof(bus));
+            _busArbitration = bus as IM68kBusArbitration;
             _state = new M68kState();
             _pendingBusOperations = new Queue<PendingBusOperation>();
             _lastInstruction = string.Empty;
@@ -306,7 +311,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         public void SaveState(BinaryWriter writer)
         {
-            StateSerializer.WriteObjectFields(writer, this, "_bus");
+            StateSerializer.WriteObjectFields(writer, this, "_bus", "_busArbitration");
         }
 
         /// <summary>
@@ -314,7 +319,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
-            StateSerializer.ReadObjectFields(reader, this, "_bus");
+            StateSerializer.ReadObjectFields(reader, this, "_bus", "_busArbitration");
         }
 
         /// <summary>
@@ -328,12 +333,18 @@ namespace AmigaEmulator.Core.Cpu
                 _state.A[index] = 0;
             }
 
-            uint initialStackPointer = _bus.ReadLong(0) & AddressMask;
-            uint initialProgramCounter = _bus.ReadLong(4) & AddressMask;
-            ushort wordAtTwo = _bus.ReadWord(2);
-            if (wordAtTwo == 0x4EF9 && initialProgramCounter >= 0x00F80000 && initialProgramCounter <= 0x00FFFFFF)
+            uint initialStackPointer;
+            uint initialProgramCounter;
+            if (_bus is IM68kResetVectorProvider resetVectorProvider &&
+                resetVectorProvider.TryReadResetVectors(out initialStackPointer, out initialProgramCounter))
             {
-                initialStackPointer = 0x00080000;
+                initialStackPointer &= AddressMask;
+                initialProgramCounter &= AddressMask;
+            }
+            else
+            {
+                initialStackPointer = _bus.ReadLong(0) & AddressMask;
+                initialProgramCounter = _bus.ReadLong(4) & AddressMask;
             }
 
             _state.SR = 0x2700;
@@ -419,11 +430,11 @@ namespace AmigaEmulator.Core.Cpu
         /// <summary>
         /// Advances this component by one emulator tick.
         /// </summary>
-        public M68kTraceEntry Tick(bool busAvailable)
+        public M68kTraceEntry Tick(bool chipBusAvailable)
         {
             if (_pendingBusMicroOps > 0)
             {
-                if (!busAvailable)
+                if (!CanRetireNextPendingBusOperation(chipBusAvailable))
                 {
                     _state.Cycles += 2;
                     return TraceEnabled ? CreateTrace(_state.PC, _state.PC, 0, "bus-wait", _state.SR, _state.SR, M68kTraceAccessType.Internal) : null;
@@ -440,17 +451,14 @@ namespace AmigaEmulator.Core.Cpu
                 return TraceEnabled ? CreateTrace(_state.PC, _state.PC, 0, "internal", _state.SR, _state.SR, M68kTraceAccessType.Internal) : null;
             }
 
-            if (!busAvailable)
-            {
-                _state.Cycles += 2;
-                return TraceEnabled ? CreateTrace(_state.PC, _state.PC, 0, "bus-wait", _state.SR, _state.SR, M68kTraceAccessType.Internal) : null;
-            }
-
             _pendingBusOperations.Clear();
             _deferBusSideEffects = true;
             M68kTraceEntry trace = Step();
             _deferBusSideEffects = false;
-            RetireNextPendingBusOperation();
+            if (CanRetireNextPendingBusOperation(chipBusAvailable))
+            {
+                RetireNextPendingBusOperation();
+            }
             int busMicroOps = Math.Max(1, _currentInstructionBusMicroOps);
             _pendingBusMicroOps = _pendingBusOperations.Count;
             _remainingCpuCycles = Math.Max(0, _lastInstructionCycles - (busMicroOps * 2));
@@ -2932,6 +2940,25 @@ namespace AmigaEmulator.Core.Cpu
             }
 
             _bus.WriteWord(operation.Address, (ushort)operation.Value);
+        }
+
+        /// <summary>
+        /// Returns whether the next queued bus operation can retire in the current DMA slot.
+        /// </summary>
+        private bool CanRetireNextPendingBusOperation(bool chipBusAvailable)
+        {
+            if (_pendingBusOperations.Count == 0)
+            {
+                return true;
+            }
+
+            PendingBusOperation operation = _pendingBusOperations.Peek();
+            if (_busArbitration == null || !_busArbitration.RequiresChipBus(operation.Address, operation.Size))
+            {
+                return true;
+            }
+
+            return chipBusAvailable;
         }
 
         /// <summary>

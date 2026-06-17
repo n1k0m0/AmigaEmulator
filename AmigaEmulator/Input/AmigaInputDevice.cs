@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -327,7 +327,7 @@ namespace AmigaEmulator.Core.Input
                 return;
             }
 
-            _ciaA.LoadSerialInputByte(_keyboardQueue.Dequeue());
+            _ciaA.QueueSerialInputByte(_keyboardQueue.Dequeue());
             _keyboardDelay = KeyboardSendDelayEClocks;
         }
 

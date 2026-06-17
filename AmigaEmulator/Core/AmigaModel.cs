@@ -81,6 +81,23 @@ namespace AmigaEmulator.Core
             int linesPerFrame,
             int visibleWidth,
             int visibleHeight)
+            : this(name, cpuClockHz, chipRamBytes, slowRamBytes, 0, chipCyclesPerLine, linesPerFrame, visibleWidth, visibleHeight)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the AmigaModel class.
+        /// </summary>
+        public AmigaModel(
+            string name,
+            int cpuClockHz,
+            int chipRamBytes,
+            int slowRamBytes,
+            int fastRamBytes,
+            int chipCyclesPerLine,
+            int linesPerFrame,
+            int visibleWidth,
+            int visibleHeight)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -91,6 +108,7 @@ namespace AmigaEmulator.Core
             CpuClockHz = cpuClockHz;
             ChipRamBytes = chipRamBytes;
             SlowRamBytes = slowRamBytes;
+            FastRamBytes = fastRamBytes;
             ChipCyclesPerLine = chipCyclesPerLine;
             LinesPerFrame = linesPerFrame;
             VisibleWidth = visibleWidth;
@@ -132,6 +150,11 @@ namespace AmigaEmulator.Core
         /// Gets or updates the Slow RAM Bytes.
         /// </summary>
         public int SlowRamBytes { get; private set; }
+
+        /// <summary>
+        /// Gets the configured Zorro II style Fast RAM bytes.
+        /// </summary>
+        public int FastRamBytes { get; private set; }
 
         /// <summary>
         /// Gets or updates the Chip Cycles period Line.
