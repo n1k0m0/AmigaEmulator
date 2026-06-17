@@ -1,0 +1,110 @@
+﻿/*
+   Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+namespace AmigaEmulator.Core.Cpu
+{
+    /// <summary>
+    /// Lists the supported 68000 Execution State values.
+    /// </summary>
+    public enum M68kExecutionState
+    {
+        /// <summary>
+        /// Represents the R es et option.
+        /// </summary>
+        Reset,
+        /// <summary>
+        /// Represents the F et ch Op co de option.
+        /// </summary>
+        FetchOpcode,
+        /// <summary>
+        /// Represents the E xe cu te In st ru ct io n option.
+        /// </summary>
+        ExecuteInstruction,
+        /// <summary>
+        /// Represents the S to pp ed option.
+        /// </summary>
+        Stopped,
+        /// <summary>
+        /// Represents the I ll eg al In st ru ct io n option.
+        /// </summary>
+        IllegalInstruction
+    }
+
+    /// <summary>
+    /// Provides 68000 State behavior used by the emulator.
+    /// </summary>
+    public sealed class M68kState
+    {
+        /// <summary>
+        /// Stores the D.
+        /// </summary>
+        public readonly uint[] D = new uint[8];
+        /// <summary>
+        /// Stores the A.
+        /// </summary>
+        public readonly uint[] A = new uint[8];
+
+        /// <summary>
+        /// Stores the PC.
+        /// </summary>
+        public uint PC;
+        /// <summary>
+        /// Stores the SR.
+        /// </summary>
+        public ushort SR;
+        /// <summary>
+        /// Stores the USP.
+        /// </summary>
+        public uint USP;
+        /// <summary>
+        /// Stores the SSP.
+        /// </summary>
+        public uint SSP;
+        /// <summary>
+        /// Stores the Current Opcode.
+        /// </summary>
+        public ushort CurrentOpcode;
+        /// <summary>
+        /// Stores the Cycles.
+        /// </summary>
+        public long Cycles;
+        /// <summary>
+        /// Stores the Execution State.
+        /// </summary>
+        public M68kExecutionState ExecutionState;
+
+        /// <summary>
+        /// Executes the Clone logic.
+        /// </summary>
+        public M68kState Clone()
+        {
+            var clone = new M68kState();
+            for (int index = 0; index < 8; index++)
+            {
+                clone.D[index] = D[index];
+                clone.A[index] = A[index];
+            }
+
+            clone.PC = PC;
+            clone.SR = SR;
+            clone.USP = USP;
+            clone.SSP = SSP;
+            clone.CurrentOpcode = CurrentOpcode;
+            clone.Cycles = Cycles;
+            clone.ExecutionState = ExecutionState;
+            return clone;
+        }
+    }
+}

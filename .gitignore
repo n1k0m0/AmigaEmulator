@@ -427,3 +427,12 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Project-local diagnostics and generated artifacts
+tmp/
+coverage/
+*.coveragexml
+
+# Local IDE and environment state
+.idea/
+*.env

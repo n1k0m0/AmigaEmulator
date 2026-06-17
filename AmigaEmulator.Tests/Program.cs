@@ -1,0 +1,1778 @@
+/*
+   Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using AmigaEmulator.Core;
+using AmigaEmulator.Core.Cia;
+using AmigaEmulator.Core.Cpu;
+using AmigaEmulator.Core.CustomChips;
+using AmigaEmulator.Core.DevTools;
+using AmigaEmulator.Core.Input;
+using AmigaEmulator.Core.Media;
+using AmigaEmulator.Core.Memory;
+using AmigaEmulator.Core.SaveStates;
+using AmigaEmulator.Core.Video;
+
+namespace AmigaEmulator.Tests
+{
+    /// <summary>
+    /// Provides the command-line diagnostics, self-tests, and WinForms application entry point.
+    /// </summary>
+    internal static class Program
+    {
+        /// <summary>
+        /// Executes the Main logic.
+        /// </summary>
+        private static int Main(string[] args)
+        {
+            TestOptions options = TestOptions.Parse(args);
+            List<ChipTestCase> tests = BuildTests(options);
+
+            if (!string.IsNullOrWhiteSpace(options.Filter))
+            {
+                tests = tests
+                    .Where(test => test.Name.IndexOf(options.Filter, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        test.Category.IndexOf(options.Filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+            }
+
+            if (options.ListOnly)
+            {
+                foreach (ChipTestCase test in tests)
+                {
+                    Console.WriteLine(test.Category + " | " + test.Name + " | " + test.Source);
+                }
+
+                return 0;
+            }
+
+            int failures = 0;
+            foreach (ChipTestCase test in tests)
+            {
+                try
+                {
+                    test.Run();
+                    Console.WriteLine("OK   " + test.Category + " | " + test.Name);
+                }
+                catch (Exception ex)
+                {
+                    failures++;
+                    Console.WriteLine("FAIL " + test.Category + " | " + test.Name);
+                    Console.WriteLine("     " + ex.GetType().Name + ": " + ex.Message);
+                    Console.WriteLine("     Source: " + test.Source);
+                }
+            }
+
+            Console.WriteLine("Tests: " + tests.Count + "  Failed: " + failures);
+            return failures == 0 ? 0 : 1;
+        }
+
+        /// <summary>
+        /// Builds the Tests.
+        /// </summary>
+        private static List<ChipTestCase> BuildTests(TestOptions options)
+        {
+            var tests = new List<ChipTestCase>();
+            tests.AddRange(RegressionSelfTests.Build());
+            tests.AddRange(M68kOpcodeMatrixTests.Build());
+            tests.AddRange(AgnusTests.Build());
+            tests.AddRange(DeniseBitplaneTests.Build());
+            tests.AddRange(SpriteTests.Build());
+            tests.AddRange(PaulaTests.Build());
+            tests.AddRange(IntegrationTests.Build());
+            tests.AddRange(SaveStateTests.Build());
+            if (options.IncludeAdf)
+            {
+                tests.AddRange(GoldenAdfTests.Build(options));
+            }
+            if (options.IncludeVAmigaTs)
+            {
+                tests.AddRange(VAmigaTsTests.Build(options));
+            }
+
+            return tests;
+        }
+    }
+
+    /// <summary>
+    /// Provides Test Options behavior used by the emulator.
+    /// </summary>
+    internal sealed class TestOptions
+    {
+        /// <summary>
+        /// Gets or updates the Include ADF.
+        /// </summary>
+        public bool IncludeAdf { get; private set; }
+        /// <summary>
+        /// Gets or updates the Include V Amiga Ts.
+        /// </summary>
+        public bool IncludeVAmigaTs { get; private set; }
+        /// <summary>
+        /// Gets or updates the V Amiga Ts All.
+        /// </summary>
+        public bool VAmigaTsAll { get; private set; }
+        /// <summary>
+        /// Gets or updates the List Only.
+        /// </summary>
+        public bool ListOnly { get; private set; }
+        /// <summary>
+        /// Gets or updates the Filter.
+        /// </summary>
+        public string Filter { get; private set; }
+        /// <summary>
+        /// Gets or updates the V Amiga Ts Limit.
+        /// </summary>
+        public int VAmigaTsLimit { get; private set; }
+        /// <summary>
+        /// Gets or updates the V Amiga Ts Cycles.
+        /// </summary>
+        public int VAmigaTsCycles { get; private set; }
+
+        /// <summary>
+        /// Executes the Parse logic.
+        /// </summary>
+        public static TestOptions Parse(string[] args)
+        {
+            var options = new TestOptions
+            {
+                VAmigaTsCycles = 40_000_000
+            };
+            for (int index = 0; args != null && index < args.Length; index++)
+            {
+                string arg = args[index];
+                if (string.Equals(arg, "--include-adf", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.IncludeAdf = true;
+                }
+                else if (string.Equals(arg, "--include-vamigats", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.IncludeVAmigaTs = true;
+                }
+                else if (string.Equals(arg, "--vamigats-all", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.IncludeVAmigaTs = true;
+                    options.VAmigaTsAll = true;
+                }
+                else if (string.Equals(arg, "--list", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.ListOnly = true;
+                }
+                else if (string.Equals(arg, "--filter", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                {
+                    options.Filter = args[++index];
+                }
+                else if (string.Equals(arg, "--vamigats-limit", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                {
+                    int.TryParse(args[++index], out int limit);
+                    options.VAmigaTsLimit = Math.Max(0, limit);
+                }
+                else if (string.Equals(arg, "--vamigats-cycles", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                {
+                    int.TryParse(args[++index], out int cycles);
+                    options.VAmigaTsCycles = Math.Max(1_000_000, cycles);
+                }
+            }
+
+            return options;
+        }
+    }
+
+    /// <summary>
+    /// Provides Chip Test Case behavior used by the emulator.
+    /// </summary>
+    internal sealed class ChipTestCase
+    {
+        /// <summary>
+        /// Tracks the run.
+        /// </summary>
+        private readonly Action _run;
+
+        /// <summary>
+        /// Initializes a new instance of the ChipTestCase class.
+        /// </summary>
+        public ChipTestCase(string category, string name, string source, Action run)
+        {
+            Category = category;
+            Name = name;
+            Source = source;
+            _run = run;
+        }
+
+        /// <summary>
+        /// Gets or updates the Category.
+        /// </summary>
+        public string Category { get; private set; }
+        /// <summary>
+        /// Gets or updates the Name.
+        /// </summary>
+        public string Name { get; private set; }
+        /// <summary>
+        /// Gets or updates the Source.
+        /// </summary>
+        public string Source { get; private set; }
+
+        /// <summary>
+        /// Runs the value routine.
+        /// </summary>
+        public void Run()
+        {
+            _run();
+        }
+    }
+
+    /// <summary>
+    /// Provides Check behavior used by the emulator.
+    /// </summary>
+    internal static class Check
+    {
+        /// <summary>
+        /// Executes the True logic.
+        /// </summary>
+        public static void True(bool condition, string message)
+        {
+            if (!condition)
+            {
+                throw new InvalidOperationException(message);
+            }
+        }
+
+        /// <summary>
+        /// Executes the message logic.
+        /// </summary>
+        public static void Equal<T>(T expected, T actual, string message)
+        {
+            if (!EqualityComparer<T>.Default.Equals(expected, actual))
+            {
+                throw new InvalidOperationException(message + " Expected=" + expected + " Actual=" + actual);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Provides Regression Self Tests behavior used by the emulator.
+    /// </summary>
+    internal static class RegressionSelfTests
+    {
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return SelfTest("CPU", "existing M68K regression self-test", "M68000 PRM; existing emulator regression suite", M68kSelfTest.Run);
+            yield return SelfTest("Blitter", "existing blitter regression self-test", "Amiga HRM Blitter chapter; existing emulator regression suite", BlitterSelfTest.Run);
+            yield return SelfTest("Copper", "existing copper regression self-test", "Amiga HRM Copper chapter; existing emulator regression suite", CopperSelfTest.Run);
+            yield return SelfTest("CIA", "existing 8520 CIA regression self-test", "Amiga HRM Appendix F; existing emulator regression suite", CiaSelfTest.Run);
+            yield return SelfTest("Input", "existing keyboard/joystick/mouse regression self-test", "Amiga HRM input register descriptions; existing emulator regression suite", AmigaInputSelfTest.Run);
+        }
+
+        /// <summary>
+        /// Executes the Self Test logic.
+        /// </summary>
+        private static ChipTestCase SelfTest(string category, string name, string source, Func<StringBuilder, int> run)
+        {
+            return new ChipTestCase(category, name, source, delegate
+            {
+                var log = new StringBuilder();
+                int failures = run(log);
+                Check.Equal(0, failures, log.ToString());
+            });
+        }
+    }
+
+    /// <summary>
+    /// Provides Agnus Tests behavior used by the emulator.
+    /// </summary>
+    internal static class AgnusTests
+    {
+        /// <summary>
+        /// Defines the DMACON custom register offset or bit mask.
+        /// </summary>
+        private const uint Dmacon = 0x096;
+        /// <summary>
+        /// Defines the Diwstrt constant.
+        /// </summary>
+        private const uint Diwstrt = 0x08E;
+        /// <summary>
+        /// Defines the Diwstop constant.
+        /// </summary>
+        private const uint Diwstop = 0x090;
+        /// <summary>
+        /// Defines the Ddfstrt constant.
+        /// </summary>
+        private const uint Ddfstrt = 0x092;
+        /// <summary>
+        /// Defines the Ddfstop constant.
+        /// </summary>
+        private const uint Ddfstop = 0x094;
+        /// <summary>
+        /// Defines the BPLCON0 custom register offset or bit mask.
+        /// </summary>
+        private const uint Bplcon0 = 0x100;
+        /// <summary>
+        /// Defines the BPL1PTH custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl1pth = 0x0E0;
+        /// <summary>
+        /// Defines the BPL1PTL custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl1ptl = 0x0E2;
+        /// <summary>
+        /// Defines the BPL2PTH custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl2pth = 0x0E4;
+        /// <summary>
+        /// Defines the BPL2PTL custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl2ptl = 0x0E6;
+
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "Agnus",
+                "PAL beam advances from line 0 to line 1 after one 227-cycle scanline",
+                "Amiga HRM video timing; A500 PAL model constants",
+                TestBeamLineAdvance);
+            yield return new ChipTestCase(
+                "Agnus",
+                "production bitplane DMA fetches one plane word per chip cycle slot",
+                "Amiga HRM DMA slot diagrams and Denise bitplane prefetch grouping",
+                TestProductionBitplaneDmaSplitFetch);
+            yield return new ChipTestCase(
+                "Agnus",
+                "sprite DMA slots outrank copper and blitter slots",
+                "Amiga HRM OCS DMA slot priority around sprite fetch slots",
+                TestSpriteDmaPriority);
+            yield return new ChipTestCase(
+                "Agnus",
+                "OCS fixed DMA table assigns refresh, audio, disk, and sprite slots",
+                "Amiga HRM OCS DMA slot allocation",
+                TestFixedOcsSlotTable);
+            yield return new ChipTestCase(
+                "Agnus",
+                "BLTPRI lets the Blitter take otherwise CPU-available slots",
+                "Amiga HRM DMACON BLTPRI bus priority behavior",
+                TestBlitterPrioritySlot);
+        }
+
+        /// <summary>
+        /// Executes the Test Beam Line Advance logic.
+        /// </summary>
+        private static void TestBeamLineAdvance()
+        {
+            var agnus = new Agnus(AmigaModel.A500Pal);
+            for (int index = 0; index < AmigaModel.A500Pal.ChipCyclesPerLine + 1; index++)
+            {
+                agnus.Tick();
+            }
+
+            Check.Equal(0, agnus.Beam.BeamX, "Beam X should wrap at the PAL line length.");
+            Check.Equal(1, agnus.Beam.BeamY, "Beam Y should advance after one PAL line.");
+        }
+
+        /// <summary>
+        /// Executes the Test Production Bitplane DMA Split Fetch logic.
+        /// </summary>
+        private static void TestProductionBitplaneDmaSplitFetch()
+        {
+            var agnus = new Agnus(AmigaModel.A500Pal);
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x8000;
+            memory[1] = 0x8000;
+            agnus.AttachChipWordReader(address => memory[(address >> 1) & 3]);
+            agnus.CustomRegisters.WriteWord(Bplcon0, 0x2000);
+            agnus.CustomRegisters.WriteWord(Dmacon, 0x8300);
+            agnus.CustomRegisters.WriteWord(Diwstrt, 0x2C81);
+            agnus.CustomRegisters.WriteWord(Diwstop, 0x2D81);
+            agnus.CustomRegisters.WriteWord(Ddfstrt, 0x0038);
+            agnus.CustomRegisters.WriteWord(Ddfstop, 0x0038);
+            agnus.CustomRegisters.WriteWord(Bpl1pth, 0x0000);
+            agnus.CustomRegisters.WriteWord(Bpl1ptl, 0x0000);
+            agnus.CustomRegisters.WriteWord(Bpl2pth, 0x0000);
+            agnus.CustomRegisters.WriteWord(Bpl2ptl, 0x0002);
+
+            int cyclesToFirstFetch = (BitplaneUnit.PalVisibleTop * AmigaModel.A500Pal.ChipCyclesPerLine) + 0x38;
+            for (int index = 0; index < cyclesToFirstFetch; index++)
+            {
+                agnus.Tick();
+            }
+
+            agnus.Tick();
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "First DDF slot should belong to bitplane DMA.");
+            Check.Equal(0, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "First split slot must not expose an incomplete two-plane fetch group.");
+
+            agnus.Tick();
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "Second DDF slot should fetch the second enabled plane.");
+            Check.Equal(0, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "A split-fetched word should still respect the prefetch-to-shifter delay.");
+            Check.Equal(3, agnus.Bitplanes.RenderColorIndex(2 * BitplaneUnit.HiresPixelsPerChipCycle, BitplaneUnit.PalVisibleTop), "After both split slots and the prefetch delay the two-plane pixel should be visible.");
+        }
+
+        /// <summary>
+        /// Executes the Test Sprite DMA Priority logic.
+        /// </summary>
+        private static void TestSpriteDmaPriority()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(Dmacon, 0x82E0);
+            var scheduler = new DmaScheduler(registers);
+            scheduler.AttachBlitterStatus(() => true);
+            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 24, BitplaneUnit.PalVisibleTop).Owner, "Sprite slot should not be stolen by Copper or Blitter.");
+        }
+
+        /// <summary>
+        /// Executes the Test Fixed OCS Slot Table logic.
+        /// </summary>
+        private static void TestFixedOcsSlotTable()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(Dmacon, 0x823F);
+            var scheduler = new DmaScheduler(registers);
+            scheduler.AttachDiskDmaStatus(() => true);
+
+            Check.Equal(DmaOwner.Refresh, scheduler.GetSlot(0, 0, 0).Owner, "Slot 0 should be refresh.");
+            Check.Equal(DmaOwner.Audio, scheduler.GetSlot(0, 8, 0).Owner, "Slot 8 should be audio when audio DMA is enabled.");
+            Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, 16, 0).Owner, "Slot 16 should be disk when disk DMA is active.");
+            DmaSlotTraceEntry spriteSlot = scheduler.GetSlot(0, 20, 0);
+            Check.Equal(DmaOwner.Sprite, spriteSlot.Owner, "Slot 20 should be sprite DMA when sprite DMA is enabled.");
+            Check.Equal(0, spriteSlot.SpriteIndex, "Slot 20 should address sprite 0.");
+            Check.Equal(0, spriteSlot.SpriteSlotPhase, "Slot 20 should be the first word of sprite 0.");
+        }
+
+        /// <summary>
+        /// Executes the Test Blitter Priority Slot logic.
+        /// </summary>
+        private static void TestBlitterPrioritySlot()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(Dmacon, 0x8640);
+            var scheduler = new DmaScheduler(registers);
+            scheduler.AttachBlitterStatus(() => true);
+
+            Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 37, 0).Owner, "BLTPRI should let the Blitter take a CPU-available slot.");
+        }
+    }
+
+    /// <summary>
+    /// Provides Denise Bitplane Tests behavior used by the emulator.
+    /// </summary>
+    internal static class DeniseBitplaneTests
+    {
+        /// <summary>
+        /// Defines the DMACON custom register offset or bit mask.
+        /// </summary>
+        private const uint Dmacon = 0x096;
+        /// <summary>
+        /// Defines the Diwstrt constant.
+        /// </summary>
+        private const uint Diwstrt = 0x08E;
+        /// <summary>
+        /// Defines the Diwstop constant.
+        /// </summary>
+        private const uint Diwstop = 0x090;
+        /// <summary>
+        /// Defines the Ddfstrt constant.
+        /// </summary>
+        private const uint Ddfstrt = 0x092;
+        /// <summary>
+        /// Defines the Ddfstop constant.
+        /// </summary>
+        private const uint Ddfstop = 0x094;
+        /// <summary>
+        /// Defines the BPLCON0 custom register offset or bit mask.
+        /// </summary>
+        private const uint Bplcon0 = 0x100;
+        /// <summary>
+        /// Defines the BPLCON2 custom register offset or bit mask.
+        /// </summary>
+        private const uint Bplcon2 = 0x104;
+        /// <summary>
+        /// Defines the BPL1PTH custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl1pth = 0x0E0;
+        /// <summary>
+        /// Defines the BPL1PTL custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl1ptl = 0x0E2;
+        /// <summary>
+        /// Defines the BPL2PTH custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl2pth = 0x0E4;
+        /// <summary>
+        /// Defines the BPL2PTL custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl2ptl = 0x0E6;
+        /// <summary>
+        /// Defines the BPL1DAT custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl1dat = 0x110;
+        /// <summary>
+        /// Defines the BPL2DAT custom register offset or bit mask.
+        /// </summary>
+        private const uint Bpl2dat = 0x112;
+        /// <summary>
+        /// Defines the COLOR00 custom register offset.
+        /// </summary>
+        private const uint Color00 = 0x180;
+
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "BPLxDAT write feeds bitplane latch when bitplane DMA is off",
+                "Amiga HRM playfield hardware: BPLxDAT latches and Denise shift registers",
+                TestBplDatLatchWithoutDma);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "bitplane DMA fetch loads the visible bitplane word",
+                "Amiga HRM bitplane DMA, DDFSTRT/DDFSTOP, BPLxPT",
+                TestBitplaneDmaFetch);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "split bitplane DMA plane fetch commits only after all active planes arrive",
+                "Amiga HRM bitplane DMA slot order and Denise BPLxDAT prefetch-to-shifter pipeline",
+                TestSplitBitplanePrefetchGroup);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "dual-playfield nonzero odd plane maps to playfield 2 color bank",
+                "Amiga HRM dual playfield mode and BPLCON2 priority/color bank rules",
+                TestDualPlayfieldColorBank);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "border rows above a lowered DIW repaint with COLOR00",
+                "Amiga HRM display window timing and Denise border color output",
+                TestBorderRowsAboveLoweredDiw);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "bitplane frame start invalidates previous-frame fetched rows",
+                "Amiga HRM bitplane DMA reloads display data every frame",
+                TestFrameStartInvalidatesFetchedRows);
+        }
+
+        /// <summary>
+        /// Executes the Test bitplane data Latch Without DMA logic.
+        /// </summary>
+        private static void TestBplDatLatchWithoutDma()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x1000);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0x8000);
+            bitplanes.RefreshFromRegisters();
+            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "BPL1DAT bit 15 should render color index 1 at the first pixel.");
+        }
+
+        /// <summary>
+        /// Executes the Test Bitplane DMA Fetch logic.
+        /// </summary>
+        private static void TestBitplaneDmaFetch()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 3]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Fetched DMA word bit 15 should render color index 1.");
+        }
+
+        /// <summary>
+        /// Executes the Test Split Bitplane Prefetch Group logic.
+        /// </summary>
+        private static void TestSplitBitplanePrefetchGroup()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x8000;
+            memory[1] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 3]);
+            registers.WriteWord(Bplcon0, 0x2000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+            registers.WriteWord(Bpl2pth, 0x0000);
+            registers.WriteWord(Bpl2ptl, 0x0002);
+
+            bitplanes.FetchDmaPlaneWord(0x38, BitplaneUnit.PalVisibleTop);
+            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "A half-fetched split group must not become visible.");
+
+            bitplanes.FetchDmaPlaneWord(0x39, BitplaneUnit.PalVisibleTop);
+            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After commit, the split prefetch delay should still hide the first output pixels.");
+            Check.Equal(3, bitplanes.RenderColorIndex(2 * BitplaneUnit.HiresPixelsPerChipCycle, BitplaneUnit.PalVisibleTop), "After both plane words and the prefetch delay, the group should be visible.");
+        }
+
+        /// <summary>
+        /// Executes the Test Dual Playfield Color Bank logic.
+        /// </summary>
+        private static void TestDualPlayfieldColorBank()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x2400);
+            registers.WriteWord(Bplcon2, 0x0040);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0x0000);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl2dat, 0x8000);
+            bitplanes.RefreshFromRegisters();
+            Check.Equal(9, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Odd plane bit should select playfield 2 color bank 8+1.");
+        }
+
+        /// <summary>
+        /// Verifies that Denise repaints visible border lines even when the playfield DIW starts lower.
+        /// </summary>
+        private static void TestBorderRowsAboveLoweredDiw()
+        {
+            var registers = new CustomRegisterMap();
+            var frameBuffer = new AmigaFrameBuffer(640, 256);
+            var bitplanes = new BitplaneUnit(registers, null);
+            var sprites = new SpriteUnit(registers, null);
+            var denise = new Denise(frameBuffer, bitplanes, sprites);
+            frameBuffer.Clear(0xFFFF00FF);
+            registers.WriteWord(Color00, 0x000F);
+            registers.WriteWord(Diwstrt, 0x5081);
+            registers.WriteWord(Diwstop, 0x5181);
+            registers.WriteWord(Bplcon0, 0x0000);
+
+            denise.Tick(new BeamTraceEntry { BeamX = 0x38, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
+
+            Check.Equal(0xFF0000FFu, frameBuffer.Pixels[0], "Visible border pixels above DIW must be repainted from COLOR00 instead of preserving stale pixels.");
+        }
+
+        /// <summary>
+        /// Verifies that fetched bitplane words from a previous frame cannot leak into the next frame.
+        /// </summary>
+        private static void TestFrameStartInvalidatesFetchedRows()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 3]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "The first frame should render the fetched bit.");
+
+            memory[0] = 0x0000;
+            bitplanes.BeginFrame();
+            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Before the next frame fetches, previous-frame row data must be invalid.");
+
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After the next fetch, the new frame should render the updated word.");
+        }
+
+    }
+
+    /// <summary>
+    /// Provides Sprite Tests behavior used by the emulator.
+    /// </summary>
+    internal static class SpriteTests
+    {
+        /// <summary>
+        /// Defines the DMACON custom register offset or bit mask.
+        /// </summary>
+        private const uint Dmacon = 0x096;
+        /// <summary>
+        /// Defines the SPR0POS custom register offset or bit mask.
+        /// </summary>
+        private const uint Spr0pos = 0x140;
+        /// <summary>
+        /// Defines the SPR0CTL custom register offset or bit mask.
+        /// </summary>
+        private const uint Spr0ctl = 0x142;
+        /// <summary>
+        /// Defines the SPR0DATA custom register offset or bit mask.
+        /// </summary>
+        private const uint Spr0data = 0x144;
+        /// <summary>
+        /// Defines the SPR0DATB custom register offset or bit mask.
+        /// </summary>
+        private const uint Spr0datb = 0x146;
+
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "direct SPRxPOS/CTL/DATA register sprite renders without a sprite pointer list",
+                "Amiga HRM sprite registers and direct sprite data latches",
+                TestDirectSpriteRegisterRendering);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "direct sprite registers render without sprite DMA or chip-memory reader",
+                "Amiga HRM manual sprite data registers",
+                TestDirectSpriteWithoutDmaOrReader);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "single playfield sprite priority uses BPLCON2 PF2P bits",
+                "Amiga HRM BPLCON2 sprite/playfield priority rules",
+                TestSinglePlayfieldSpritePriority);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite DMA state machine fetches control and data through Agnus slots",
+                "Amiga HRM sprite DMA pointer, control, and data fetch sequence",
+                TestSpriteDmaStateMachine);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite DMA stops at a zero control-word terminator",
+                "Amiga HRM sprite DMA list termination",
+                TestSpriteDmaTerminatorStopsFetches);
+        }
+
+        /// <summary>
+        /// Executes the Test Direct Sprite Register Rendering logic.
+        /// </summary>
+        private static void TestDirectSpriteRegisterRendering()
+        {
+            var registers = new CustomRegisterMap();
+            var sprites = new SpriteUnit(registers, address => 0);
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(Spr0pos, 0x2C40);
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            registers.WriteWord(Spr0data, 0x8000);
+            registers.WriteWord(Spr0datb, 0x0000);
+            sprites.RefreshFromRegisters();
+
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int group), "Sprite pixel should render from direct SPR0DATA.");
+            Check.Equal(0, group, "SPR0 should be in priority group 0.");
+        }
+
+        /// <summary>
+        /// Executes the Test Direct Sprite Without DMA Or Reader logic.
+        /// </summary>
+        private static void TestDirectSpriteWithoutDmaOrReader()
+        {
+            var registers = new CustomRegisterMap();
+            var sprites = new SpriteUnit(registers, null);
+            registers.WriteWord(Spr0pos, 0x2C40);
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            registers.WriteWord(Spr0data, 0x8000);
+            registers.WriteWord(Spr0datb, 0x0000);
+            sprites.RefreshFromRegisters();
+
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int group), "Manual sprite should render without Sprite DMA or a Chip RAM reader.");
+            Check.Equal(0, group, "SPR0 should be in priority group 0.");
+        }
+
+        /// <summary>
+        /// Executes the Test Single Playfield Sprite Priority logic.
+        /// </summary>
+        private static void TestSinglePlayfieldSpritePriority()
+        {
+            /// <summary>
+            /// Defines the BPLCON0 custom register offset or bit mask.
+            /// </summary>
+            const uint bplcon0 = 0x100;
+            /// <summary>
+            /// Defines the BPLCON2 custom register offset or bit mask.
+            /// </summary>
+            const uint bplcon2 = 0x104;
+            /// <summary>
+            /// Defines the BPL1DAT custom register offset or bit mask.
+            /// </summary>
+            const uint bpl1dat = 0x110;
+            /// <summary>
+            /// Defines the color01 constant.
+            /// </summary>
+            const uint color01 = 0x182;
+            /// <summary>
+            /// Defines the color17 constant.
+            /// </summary>
+            const uint color17 = 0x1A2;
+
+            var registers = new CustomRegisterMap();
+            var frame = new AmigaFrameBuffer(640, 256);
+            var bitplanes = new BitplaneUnit(registers, null);
+            var denise = new Denise(frame, bitplanes, registers, null);
+            registers.WriteWord(bplcon0, 0x1000);
+            registers.WriteWord(bplcon2, 0x0020);
+            registers.WriteWord(color01, 0x0F0);
+            registers.WriteWord(color17, 0xF00);
+            bitplanes.NotifyCustomRegisterWordWrite(bpl1dat, 0x8000);
+            registers.WriteWord(Spr0pos, 0x2C40);
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            registers.WriteWord(Spr0data, 0x8000);
+            registers.WriteWord(Spr0datb, 0x0000);
+
+            denise.Tick(new BeamTraceEntry { BeamX = 0x38, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
+            Check.Equal(0xFFFF0000u, frame.Pixels[0], "PF2P priority bits should allow SPR0 to cover a nonzero single-playfield pixel.");
+        }
+
+        /// <summary>
+        /// Executes the Test Sprite DMA State Machine logic.
+        /// </summary>
+        private static void TestSpriteDmaStateMachine()
+        {
+            var registers = new CustomRegisterMap();
+            var sprites = new SpriteUnit(registers, address =>
+            {
+                switch (address)
+                {
+                    case 0x100: return 0x2C40;
+                    case 0x102: return 0x2E00;
+                    case 0x104: return 0x8000;
+                    case 0x106: return 0x0000;
+                    default: return 0;
+                }
+            });
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(0x120, 0x0000);
+            registers.WriteWord(0x122, 0x0100);
+            sprites.RefreshFromRegisters();
+
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop);
+            Check.True(!sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Control fetch alone should not render data.");
+
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop + 1);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop + 1);
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop + 1, out uint _, out int group), "Next scanline sprite slot pair should fetch visible data.");
+            Check.Equal(0, group, "Fetched sprite data should belong to sprite group 0.");
+        }
+
+        /// <summary>
+        /// Executes the Test Sprite DMA Terminator Stops Fetches logic.
+        /// </summary>
+        private static void TestSpriteDmaTerminatorStopsFetches()
+        {
+            var registers = new CustomRegisterMap();
+            var words = new Dictionary<uint, ushort>();
+            words[0x100] = 0x7060;
+            words[0x102] = 0x8000;
+            for (uint line = 0; line < 16; line++)
+            {
+                words[0x104 + (line * 4u)] = 0x8000;
+                words[0x106 + (line * 4u)] = 0x0000;
+            }
+
+            uint terminator = 0x104 + (16u * 4u);
+            words[terminator] = 0x0000;
+            words[terminator + 2u] = 0x0000;
+            words[terminator + 4u] = 0xFFFF;
+            words[terminator + 6u] = 0xFFFF;
+
+            var sprites = new SpriteUnit(registers, address => words.TryGetValue(address, out ushort value) ? value : (ushort)0);
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(0x120, 0x0000);
+            registers.WriteWord(0x122, 0x0100);
+            sprites.RefreshFromRegisters();
+
+            for (int beamY = 0; beamY <= 141; beamY++)
+            {
+                sprites.TickDmaSlot(0, 0, beamY);
+                sprites.TickDmaSlot(0, 1, beamY);
+            }
+
+            Check.True(!sprites.TryRenderPixel(0xC0, 141, out uint _, out int _), "Sprite DMA must not render words after a zero control-word terminator.");
+        }
+    }
+
+    /// <summary>
+    /// Provides Paula Tests behavior used by the emulator.
+    /// </summary>
+    internal static class PaulaTests
+    {
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "standard ADF MFM track starts with gap and contains paired sync words",
+                "Amiga HRM disk controller; AmigaDOS MFM sector layout",
+                TestGeneratedMfmTrackSync);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "disk write DMA transfers one chip-memory word per disk DMA slot",
+                "Amiga HRM DSKLEN write mode and Paula disk DMA timing",
+                TestDiskWriteDmaTiming);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "captured MFM write sectors decode back into ADF sectors",
+                "AmigaDOS MFM sector layout; Paula disk write path",
+                TestCapturedMfmWriteSectorDecodesToAdf);
+        }
+
+        /// <summary>
+        /// Executes the Test Generated MFM Track sync logic.
+        /// </summary>
+        private static void TestGeneratedMfmTrackSync()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_mfm_" + Guid.NewGuid().ToString("N") + ".adf");
+            byte[] bytes = new byte[AdfImage.StandardSize];
+            System.IO.File.WriteAllBytes(tempPath, bytes);
+            try
+            {
+                AdfImage image = AdfImage.Load(tempPath);
+                AdfTrackStream track = image.BuildTrackStream(0, 0);
+                Check.True(track.WordCount > AdfMfmEncoder.SectorWords, "Generated track should contain a full MFM stream.");
+                Check.Equal(AdfMfmEncoder.GapWord, track.ReadWord(0), "Track should begin with gap words.");
+
+                bool foundPairedSync = false;
+                for (int index = 1; index < track.WordCount; index++)
+                {
+                    if (track.ReadWord(index - 1) == AdfMfmEncoder.SyncWord &&
+                        track.ReadWord(index) == AdfMfmEncoder.SyncWord)
+                    {
+                        foundPairedSync = true;
+                        break;
+                    }
+                }
+
+                Check.True(foundPairedSync, "Generated MFM track should contain paired Amiga sync words.");
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes the Test Disk Write DMA Timing logic.
+        /// </summary>
+        private static void TestDiskWriteDmaTiming()
+        {
+            var controller = new FloppyController();
+            byte[] bytes = new byte[AdfImage.StandardSize];
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_write_dma_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(tempPath, bytes);
+            try
+            {
+                controller.InsertDrive0(AdfImage.Load(tempPath), false);
+                controller.Drive0.ApplySelection(true, true);
+                var chipWords = new ushort[] { 0x4489, 0xAAAA };
+                var paula = new Paula();
+                paula.AttachDisk(controller, null, address => chipWords[(address >> 1) & 1], delegate(CustomInterruptSource _) { }, () => 0x0210, () => 0);
+                paula.NotifyCustomRegisterWordWrite(0x020, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x022, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0xC002);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0xC002);
+
+                paula.Tick(true, false);
+                Check.Equal(1, paula.RemainingDiskWords, "First disk DMA slot should write one word.");
+                paula.Tick(true, false);
+                Check.Equal(0, paula.RemainingDiskWords, "Second disk DMA slot should finish the two-word write.");
+                Check.Equal(2, controller.Drive0.CapturedWriteWordCount, "Drive should capture both write-DMA MFM words.");
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes the captured MFM write-sector decode regression test.
+        /// </summary>
+        private static void TestCapturedMfmWriteSectorDecodesToAdf()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_mfm_write_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                byte[] sectorData = new byte[AdfImage.SectorSize];
+                for (int index = 0; index < sectorData.Length; index++)
+                {
+                    sectorData[index] = (byte)((index * 17) ^ 0x5A);
+                }
+
+                ushort[] words = AdfMfmEncoder.EncodeSectorWords(sectorData, 0, 3, 8);
+                Check.True(AdfMfmEncoder.TryDecodeSectorWords(words, 0, out AdfDecodedSector decoded), "Encoded sector should decode.");
+                Check.Equal(3, decoded.Sector, "Decoded sector number should match the MFM header.");
+                for (int index = 0; index < sectorData.Length; index++)
+                {
+                    Check.Equal(sectorData[index], decoded.Data[index], "Decoded sector payload should match at byte " + index + ".");
+                }
+
+                AdfImage image = AdfImage.Load(tempPath);
+                var drive = new FloppyDrive();
+                drive.Insert(image, false);
+                drive.ApplySelection(true, true);
+                for (int index = 0; index < words.Length; index++)
+                {
+                    Check.True(drive.TryCaptureWrittenMfmWord(words[index]), "Writable selected drive should capture MFM write word " + index + ".");
+                }
+
+                Check.Equal(1, drive.DecodedWriteSectorCount, "Drive should decode one captured write sector.");
+                byte[] readBack = new byte[AdfImage.SectorSize];
+                image.ReadSector(0, 0, 3, readBack, 0);
+                for (int index = 0; index < readBack.Length; index++)
+                {
+                    Check.Equal(sectorData[index], readBack[index], "Written ADF sector should match at byte " + index + ".");
+                }
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(tempPath);
+                }
+                catch
+                {
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Provides Integration Tests behavior used by the emulator.
+    /// </summary>
+    internal static class IntegrationTests
+    {
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "Integration",
+                "CPU custom-register write to BPL1DAT reaches Denise bitplane latch",
+                "Amiga bus custom register map plus Denise BPLxDAT latch side effect",
+                TestCpuBusBplDatSideEffect);
+            yield return new ChipTestCase(
+                "Integration",
+                "Kickstart overlay writes do not corrupt underlying chip RAM",
+                "A500 ROM overlay behavior at address zero",
+                TestKickstartOverlayWriteDoesNotTouchChipRam);
+        }
+
+        /// <summary>
+        /// Executes the Test CPU Bus bitplane data Side Effect logic.
+        /// </summary>
+        private static void TestCpuBusBplDatSideEffect()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.Bus.WriteWord(0x00DFF100, 0x1000);
+                system.Bus.WriteWord(0x00DFF110, 0x8000);
+                system.Agnus.Bitplanes.RefreshFromRegisters();
+                Check.Equal(1, system.Agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Bus write should update the BPL1DAT latch used by Denise.");
+            }
+        }
+
+        /// <summary>
+        /// Executes the Test Kickstart Overlay Write Does Not Touch Chip RAM logic.
+        /// </summary>
+        private static void TestKickstartOverlayWriteDoesNotTouchChipRam()
+        {
+            var bus = new AmigaBus(AmigaModel.A500Pal, new CustomRegisterMap(), null, null, null);
+            byte[] rom = new byte[512 * 1024];
+            rom[0] = 0xAA;
+            rom[1] = 0x55;
+            bus.LoadKickstart(rom);
+            bus.RomOverlayAtZero = true;
+            Check.Equal(0xAA55, bus.ReadWord(0), "Overlay should initially expose Kickstart at zero.");
+            bus.WriteWord(0, 0x1234);
+            bus.RomOverlayAtZero = false;
+            Check.Equal(0x0000, bus.ReadWord(0), "Writes while ROM overlay is active must not modify hidden Chip RAM.");
+        }
+    }
+
+    /// <summary>
+    /// Provides savestate roundtrip tests for the full Amiga machine state.
+    /// </summary>
+    internal static class SaveStateTests
+    {
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "SaveState",
+                "full machine state roundtrips through the Amiga savestate file format",
+                "Amiga SaveStateFile plus AmigaSystem component SaveState/LoadState",
+                TestFullMachineRoundtrip);
+        }
+
+        /// <summary>
+        /// Executes the Test Full Machine Roundtrip logic.
+        /// </summary>
+        private static void TestFullMachineRoundtrip()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-savestate-roundtrip-" + Guid.NewGuid().ToString("N") + ".amigasav");
+            try
+            {
+                using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                {
+                    system.Bus.RomOverlayAtZero = false;
+                    system.Bus.WriteWord(0x000010, 0xCAFE);
+                    system.Agnus.CustomRegisters.WriteWord(0x096, 0x8200);
+                    system.PresentedFrameBuffer.Pixels[0] = 0xFF123456;
+                    var screenshot = new uint[] { 0xFF010203, 0xFF040506 };
+
+                    SaveStateFile.Write(
+                        path,
+                        system,
+                        MountedMediaInfo.ForFloppy(0, "TestDisk.adf", "C:\\Temp\\TestDisk.adf", true),
+                        AmigaKickstart.Auto,
+                        AmigaRamProfile.Chip512K,
+                        AmigaAccuracyProfile.Fast,
+                        screenshot,
+                        2,
+                        1);
+
+                    system.Bus.WriteWord(0x000010, 0x0000);
+                    system.PresentedFrameBuffer.Pixels[0] = 0;
+                    system.Agnus.CustomRegisters.WriteWord(0x096, 0x0200);
+
+                    SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(path, 3);
+                    Check.Equal(SaveStateSlotStatus.Occupied, metadata.Status, "Savestate metadata should mark the slot occupied.");
+                    Check.Equal(2, metadata.ScreenshotWidth, "Savestate metadata should preserve screenshot width.");
+                    Check.Equal(1, metadata.ScreenshotHeight, "Savestate metadata should preserve screenshot height.");
+                    Check.Equal(0xFF010203u, metadata.ScreenshotPixels[0], "Savestate metadata should preserve screenshot pixels.");
+                    Check.Equal("TestDisk.adf", metadata.MountedMedia.DisplayName, "Savestate metadata should preserve mounted media display name.");
+
+                    SaveStateFile.Load(path, system);
+                    Check.Equal(0xCAFE, system.Bus.ReadWord(0x000010), "Chip RAM should be restored by savestate load.");
+                    Check.Equal(0xFF123456u, system.PresentedFrameBuffer.Pixels[0], "Presented framebuffer should be restored by savestate load.");
+                    Check.True((system.Agnus.CustomRegisters.DmaControl & 0x0200) != 0, "DMA master bit should be restored by savestate load.");
+                }
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(path);
+                }
+                catch
+                {
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Provides Golden ADF Tests behavior used by the emulator.
+    /// </summary>
+    internal static class GoldenAdfTests
+    {
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build(TestOptions options)
+        {
+            yield return new ChipTestCase(
+                "GoldenADF",
+                "Kickstart 1.3 plus Turrican III reaches a nonblank boot/trainer frame",
+                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\TURRI3-1.ADF",
+                /// <summary>
+                /// Executes the Test ADF Non Blank logic.
+                /// </summary>
+                delegate { TestAdfNonBlank("TURRI3-1.ADF", 90_000_000); });
+            yield return new ChipTestCase(
+                "GoldenADF",
+                "Kickstart 1.3 plus North & South reaches a stable intro/language frame without fetch stripes",
+                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\North & South.adf",
+                TestNorthSouthFrameQuality);
+            yield return new ChipTestCase(
+                "GoldenADF",
+                "Amiga Test Kit 1.21 boot disk reaches a nonblank diagnostic frame",
+                "keirf/amiga-stuff release testkit-v1.21 AmigaTestKit.adf",
+                TestAmigaTestKitBootFrame);
+        }
+
+        /// <summary>
+        /// Executes the Test ADF Non Blank logic.
+        /// </summary>
+        private static void TestAdfNonBlank(string fileName, int cycles)
+        {
+            WithAdfFrame(fileName, cycles, delegate(AmigaSystem system, KickstartRomInfo romInfo)
+            {
+                CheckNonBlank(system.PresentedFrameBuffer.Pixels, romInfo);
+            });
+        }
+
+        /// <summary>
+        /// Executes the Test North South Frame Quality logic.
+        /// </summary>
+        private static void TestNorthSouthFrameQuality()
+        {
+            WithAdfFrame("North & South.adf", 240_000_000, delegate(AmigaSystem system, KickstartRomInfo romInfo)
+            {
+                CheckNonBlank(system.PresentedFrameBuffer.Pixels, romInfo);
+                int darkColumns = CountMostlyDarkColumns(system.PresentedFrameBuffer.Pixels, system.PresentedFrameBuffer.Width, system.PresentedFrameBuffer.Height, 30, 180);
+                Check.True(darkColumns < 80, "North & South frame has too many mostly black vertical columns, likely a bitplane fetch/prefetch stripe regression. Columns=" + darkColumns);
+            });
+        }
+
+        /// <summary>
+        /// Executes the Test Amiga Test Kit Boot Frame logic.
+        /// </summary>
+        private static void TestAmigaTestKitBootFrame()
+        {
+            string adfPath = FindExternalAmigaTestKitAdf();
+            Check.True(System.IO.File.Exists(adfPath), "Amiga Test Kit ADF not found: " + adfPath);
+            Check.True(KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo romInfo), "Default Kickstart ROM not found.");
+
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.LoadKickstart(romBytes);
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                system.RunChipCycles(180_000_000);
+                uint[] pixels = system.PresentedFrameBuffer.Pixels;
+                CheckNonBlank(pixels, romInfo);
+                Check.True(CountUniqueColors(pixels, 32) >= 4, "Amiga Test Kit frame did not develop enough visible diagnostic colors.");
+            }
+        }
+
+        /// <summary>
+        /// Executes the With ADF Frame logic.
+        /// </summary>
+        private static void WithAdfFrame(string fileName, int cycles, Action<AmigaSystem, KickstartRomInfo> inspect)
+        {
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string adfPath = System.IO.Path.Combine(docs, "AmigaEmulator", fileName);
+            Check.True(System.IO.File.Exists(adfPath), "ADF not found: " + adfPath);
+            Check.True(KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo romInfo), "Default Kickstart ROM not found.");
+
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.LoadKickstart(romBytes);
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                system.RunChipCycles(cycles);
+                inspect(system, romInfo);
+            }
+        }
+
+        /// <summary>
+        /// Checks Non Blank for test validation.
+        /// </summary>
+        private static void CheckNonBlank(uint[] pixels, KickstartRomInfo romInfo)
+        {
+            uint first = pixels.Length > 0 ? pixels[0] : 0;
+            int different = 0;
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                if (pixels[index] != first)
+                {
+                    different++;
+                    if (different > 128)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            Check.True(different > 128, "Golden ADF frame stayed blank or uniform. ROM=" + (romInfo != null ? romInfo.Path : string.Empty));
+        }
+
+        /// <summary>
+        /// Executes the Count Mostly Dark Columns logic.
+        /// </summary>
+        private static int CountMostlyDarkColumns(uint[] pixels, int width, int height, int top, int bottom)
+        {
+            int clampedTop = Math.Max(0, top);
+            int clampedBottom = Math.Min(height, bottom);
+            int badColumns = 0;
+            int totalRows = Math.Max(1, clampedBottom - clampedTop);
+            for (int x = 0; x < width; x++)
+            {
+                int dark = 0;
+                for (int y = clampedTop; y < clampedBottom; y++)
+                {
+                    uint argb = pixels[(y * width) + x];
+                    int red = (int)((argb >> 16) & 0xFF);
+                    int green = (int)((argb >> 8) & 0xFF);
+                    int blue = (int)(argb & 0xFF);
+                    if (red + green + blue < 12)
+                    {
+                        dark++;
+                    }
+                }
+
+                if ((dark * 100) / totalRows > 85)
+                {
+                    badColumns++;
+                }
+            }
+
+            return badColumns;
+        }
+
+        /// <summary>
+        /// Executes the Count Unique Colors logic.
+        /// </summary>
+        private static int CountUniqueColors(uint[] pixels, int limit)
+        {
+            var colors = new HashSet<uint>();
+            for (int index = 0; index < pixels.Length && colors.Count < limit; index++)
+            {
+                colors.Add(pixels[index]);
+            }
+
+            return colors.Count;
+        }
+
+        /// <summary>
+        /// Finds External Amiga Test Kit ADF in the available emulator data.
+        /// </summary>
+        private static string FindExternalAmigaTestKitAdf()
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string current = baseDir;
+            for (int depth = 0; depth < 8 && !string.IsNullOrEmpty(current); depth++)
+            {
+                string candidate = System.IO.Path.Combine(
+                    current,
+                    "external-tests",
+                    "amiga-test-kit-1.21",
+                    "AmigaTestKit-1.21",
+                    "AmigaTestKit.adf");
+                if (System.IO.File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                current = System.IO.Directory.GetParent(current)?.FullName;
+            }
+
+            return System.IO.Path.Combine(
+                baseDir,
+                "external-tests",
+                "amiga-test-kit-1.21",
+                "AmigaTestKit-1.21",
+                "AmigaTestKit.adf");
+        }
+    }
+
+    /// <summary>
+    /// Provides V Amiga Ts Tests behavior used by the emulator.
+    /// </summary>
+    internal static class VAmigaTsTests
+    {
+        /// <summary>
+        /// Executes the Smoke Cases logic.
+        /// </summary>
+        private static readonly VAmigaTsCase[] SmokeCases =
+        {
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Agnus/Blitter", "line zero flag reference", @"Agnus\Blitter\line\zero1\zero1.adf", 3, 512),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Agnus/Copper", "COPWAIT timing reference", @"Agnus\Copper\Wait\copwait1\copwait1.adf", 3, 512),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Agnus/Beam", "VPOS register reference", @"Agnus\Registers\VPOS\vprobe4\vprobe4.adf", 3, 512),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Denise/Sprite", "manual sprite register reference", @"Denise\Sprites\manual\manual1\manual1.adf", 4, 512),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Denise/Bitplane", "BPLCON2 dual playfield reference", @"Denise\Registers\BPLCON2\dualpf1\dualpf1.adf", 3, 512),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Paula", "ADKCON register reference", @"Paula\Registers\ADKCON\adkcon1\adkcon1.adf", 2, 128),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("CIA", "TOD alarm reference", @"CIA\TOD\todvice\0alarm\0alarm.adf", 2, 128),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Memory", "Kickstart mirror reference", @"Memory\Rom\mirror\kickmirror\kickmirror1.adf", 2, 128),
+            /// <summary>
+            /// Executes the V Amiga Ts Case logic.
+            /// </summary>
+            new VAmigaTsCase("Mainboard/Input", "JOY0DAT port reference", @"Mainboard\Ports\JOYxDAT\joy0dat\joy0dat.adf", 2, 128)
+        };
+
+        /// <summary>
+        /// Builds the value.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build(TestOptions options)
+        {
+            VAmigaTsCase[] cases = options.VAmigaTsAll
+                ? DiscoverAllCases()
+                : SmokeCases;
+            int limit = options.VAmigaTsLimit > 0
+                ? Math.Min(options.VAmigaTsLimit, cases.Length)
+                : cases.Length;
+            for (int index = 0; index < limit; index++)
+            {
+                VAmigaTsCase testCase = cases[index];
+                yield return new ChipTestCase(
+                    "vAmigaTS/" + testCase.Category,
+                    testCase.Name,
+                    "dirkwhoffmann/vAmigaTS " + testCase.RelativeAdfPath,
+                    /// <summary>
+                    /// Runs the Smoke Case routine.
+                    /// </summary>
+                    delegate { RunSmokeCase(testCase, options.VAmigaTsCycles); });
+            }
+        }
+
+        /// <summary>
+        /// Executes the Discover All Cases logic.
+        /// </summary>
+        private static VAmigaTsCase[] DiscoverAllCases()
+        {
+            string suiteRoot = FindSuiteRoot();
+            if (!System.IO.Directory.Exists(suiteRoot))
+            {
+                return Array.Empty<VAmigaTsCase>();
+            }
+
+            string[] adfs = System.IO.Directory.GetFiles(suiteRoot, "*.adf", System.IO.SearchOption.AllDirectories);
+            Array.Sort(adfs, StringComparer.OrdinalIgnoreCase);
+            var cases = new List<VAmigaTsCase>();
+            for (int index = 0; index < adfs.Length; index++)
+            {
+                string adf = adfs[index];
+                string raw = FindReferenceRaw(adf);
+                string image = FindReferenceImage(adf);
+                if (!System.IO.File.Exists(raw) && !System.IO.File.Exists(image))
+                {
+                    continue;
+                }
+
+                string relative = GetRelativePath(suiteRoot, adf);
+                string[] parts = relative.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+                string category = parts.Length >= 2 ? parts[0] + "/" + parts[1] : "Misc";
+                string name = System.IO.Path.GetFileNameWithoutExtension(adf) + " reference";
+                cases.Add(new VAmigaTsCase(category, name, relative, 2, 128));
+            }
+
+            return cases.ToArray();
+        }
+
+        /// <summary>
+        /// Runs the Smoke Case routine.
+        /// </summary>
+        private static void RunSmokeCase(VAmigaTsCase testCase, int cycles)
+        {
+            string suiteRoot = FindSuiteRoot();
+            string adfPath = System.IO.Path.Combine(suiteRoot, testCase.RelativeAdfPath);
+            Check.True(System.IO.File.Exists(adfPath), "vAmigaTS ADF not found: " + adfPath);
+            string rawPath = FindReferenceRaw(adfPath);
+            if (System.IO.File.Exists(rawPath))
+            {
+                Check.Equal(716 * 285 * 3, (int)new System.IO.FileInfo(rawPath).Length, "Unexpected vAmigaTS RAW size.");
+            }
+            else
+            {
+                string imagePath = FindReferenceImage(adfPath);
+                Check.True(System.IO.File.Exists(imagePath), "vAmigaTS reference image not found: " + imagePath);
+            }
+
+            Check.True(KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo romInfo), "Default Kickstart ROM not found.");
+
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.LoadKickstart(romBytes);
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                system.RunChipCycles(cycles);
+                uint[] pixels = system.PresentedFrameBuffer.Pixels;
+                Check.True(system.FrameCounter > 10, "vAmigaTS case did not advance frames. ROM=" + romInfo.Path);
+                if (System.IO.File.Exists(rawPath) && TryReadUniformRawColor(rawPath, out uint expectedArgb))
+                {
+                    Check.True(
+                        DominantColorMatches(pixels, expectedArgb, 24, 60),
+                        "vAmigaTS uniform reference color mismatch. Expected=" + expectedArgb.ToString("X8") + " CPU=" + system.GetCpuDebugInfo());
+                }
+                else
+                {
+                    int different = CountPixelsDifferentFromFirst(pixels);
+                    int unique = CountUniqueColors(pixels, 64);
+                    Check.True(different >= testCase.MinDifferentPixels, "vAmigaTS frame stayed too uniform. Different=" + different + " CPU=" + system.GetCpuDebugInfo());
+                    Check.True(unique >= testCase.MinUniqueColors, "vAmigaTS frame has too few colors. Unique=" + unique + " CPU=" + system.GetCpuDebugInfo());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Finds Suite Root in the available emulator data.
+        /// </summary>
+        private static string FindSuiteRoot()
+        {
+            string current = AppDomain.CurrentDomain.BaseDirectory;
+            for (int depth = 0; depth < 10 && !string.IsNullOrEmpty(current); depth++)
+            {
+                string candidate = System.IO.Path.Combine(current, "external-tests", "vAmigaTS");
+                if (System.IO.Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                current = System.IO.Directory.GetParent(current)?.FullName;
+            }
+
+            return System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "external-tests", "vAmigaTS");
+        }
+
+        /// <summary>
+        /// Returns the Relative Path.
+        /// </summary>
+        private static string GetRelativePath(string root, string path)
+        {
+            string fullRoot = System.IO.Path.GetFullPath(root);
+            string fullPath = System.IO.Path.GetFullPath(path);
+            if (!fullRoot.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
+            {
+                fullRoot += System.IO.Path.DirectorySeparatorChar;
+            }
+
+            if (fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return fullPath.Substring(fullRoot.Length);
+            }
+
+            return path;
+        }
+
+        /// <summary>
+        /// Finds Reference Raw in the available emulator data.
+        /// </summary>
+        private static string FindReferenceRaw(string adfPath)
+        {
+            string directory = System.IO.Path.GetDirectoryName(adfPath) ?? string.Empty;
+            string name = System.IO.Path.GetFileNameWithoutExtension(adfPath);
+            string[] candidates =
+            {
+                System.IO.Path.Combine(directory, name + ".raw"),
+                System.IO.Path.Combine(directory, name + "_ocs.raw"),
+                System.IO.Path.Combine(directory, name + "_OCS.raw"),
+                System.IO.Path.Combine(directory, name + "_A500_OCS.raw"),
+                System.IO.Path.Combine(directory, name + "_ecs.raw"),
+                System.IO.Path.Combine(directory, name + "_ECS.raw")
+            };
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                if (System.IO.File.Exists(candidates[index]))
+                {
+                    return candidates[index];
+                }
+            }
+
+            string[] wildcard = System.IO.Directory.GetFiles(directory, name + "_*.raw");
+            if (wildcard.Length > 0)
+            {
+                Array.Sort(wildcard, StringComparer.OrdinalIgnoreCase);
+                return wildcard[0];
+            }
+
+            return candidates[0];
+        }
+
+        /// <summary>
+        /// Finds Reference Image in the available emulator data.
+        /// </summary>
+        private static string FindReferenceImage(string adfPath)
+        {
+            string directory = System.IO.Path.GetDirectoryName(adfPath) ?? string.Empty;
+            string name = System.IO.Path.GetFileNameWithoutExtension(adfPath);
+            string[] patterns =
+            {
+                name + ".JPG",
+                name + ".jpg",
+                name + "_*.JPG",
+                name + "_*.jpg",
+                name + "_*.jpeg",
+                name + "_*.png"
+            };
+            for (int patternIndex = 0; patternIndex < patterns.Length; patternIndex++)
+            {
+                string[] matches = System.IO.Directory.GetFiles(directory, patterns[patternIndex]);
+                if (matches.Length > 0)
+                {
+                    Array.Sort(matches, StringComparer.OrdinalIgnoreCase);
+                    return matches[0];
+                }
+            }
+
+            return System.IO.Path.Combine(directory, name + ".JPG");
+        }
+
+        /// <summary>
+        /// Executes the Count Pixels Different From First logic.
+        /// </summary>
+        private static int CountPixelsDifferentFromFirst(uint[] pixels)
+        {
+            uint first = pixels.Length > 0 ? pixels[0] : 0;
+            int different = 0;
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                if (pixels[index] != first)
+                {
+                    different++;
+                }
+            }
+
+            return different;
+        }
+
+        /// <summary>
+        /// Executes the Count Unique Colors logic.
+        /// </summary>
+        private static int CountUniqueColors(uint[] pixels, int limit)
+        {
+            var colors = new HashSet<uint>();
+            for (int index = 0; index < pixels.Length && colors.Count < limit; index++)
+            {
+                colors.Add(pixels[index]);
+            }
+
+            return colors.Count;
+        }
+
+        /// <summary>
+        /// Attempts to read a vAmigaTS RAW frame that intentionally contains one solid RGB color.
+        /// </summary>
+        private static bool TryReadUniformRawColor(string rawPath, out uint argb)
+        {
+            argb = 0;
+            byte[] raw = System.IO.File.ReadAllBytes(rawPath);
+            if (raw.Length < 3 || (raw.Length % 3) != 0)
+            {
+                return false;
+            }
+
+            byte red = raw[0];
+            byte green = raw[1];
+            byte blue = raw[2];
+            for (int index = 3; index < raw.Length; index += 3)
+            {
+                if (raw[index] != red || raw[index + 1] != green || raw[index + 2] != blue)
+                {
+                    return false;
+                }
+            }
+
+            argb = 0xFF000000u | ((uint)red << 16) | ((uint)green << 8) | blue;
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether the dominant emulator output color matches the expected reference color.
+        /// </summary>
+        private static bool DominantColorMatches(uint[] pixels, uint expectedArgb, int tolerance, int minimumPercent)
+        {
+            if (pixels.Length == 0)
+            {
+                return false;
+            }
+
+            int matches = 0;
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                if (ColorDistanceWithinTolerance(pixels[index], expectedArgb, tolerance))
+                {
+                    matches++;
+                }
+            }
+
+            return matches * 100 >= pixels.Length * minimumPercent;
+        }
+
+        /// <summary>
+        /// Returns whether two ARGB colors are close enough for 12-bit Amiga palette expansion comparisons.
+        /// </summary>
+        private static bool ColorDistanceWithinTolerance(uint actualArgb, uint expectedArgb, int tolerance)
+        {
+            int actualRed = (int)((actualArgb >> 16) & 0xFF);
+            int actualGreen = (int)((actualArgb >> 8) & 0xFF);
+            int actualBlue = (int)(actualArgb & 0xFF);
+            int expectedRed = (int)((expectedArgb >> 16) & 0xFF);
+            int expectedGreen = (int)((expectedArgb >> 8) & 0xFF);
+            int expectedBlue = (int)(expectedArgb & 0xFF);
+            return Math.Abs(actualRed - expectedRed) <= tolerance &&
+                Math.Abs(actualGreen - expectedGreen) <= tolerance &&
+                Math.Abs(actualBlue - expectedBlue) <= tolerance;
+        }
+
+        /// <summary>
+        /// Provides V Amiga Ts Case behavior used by the emulator.
+        /// </summary>
+        private sealed class VAmigaTsCase
+        {
+            /// <summary>
+            /// Initializes a new instance of the VAmigaTsCase class.
+            /// </summary>
+            public VAmigaTsCase(string category, string name, string relativeAdfPath, int minUniqueColors, int minDifferentPixels)
+            {
+                Category = category;
+                Name = name;
+                RelativeAdfPath = relativeAdfPath;
+                MinUniqueColors = minUniqueColors;
+                MinDifferentPixels = minDifferentPixels;
+            }
+
+            /// <summary>
+            /// Gets or updates the Category.
+            /// </summary>
+            public string Category { get; private set; }
+            /// <summary>
+            /// Gets or updates the Name.
+            /// </summary>
+            public string Name { get; private set; }
+            /// <summary>
+            /// Gets or updates the Relative ADF Path.
+            /// </summary>
+            public string RelativeAdfPath { get; private set; }
+            /// <summary>
+            /// Gets or updates the Min Unique Colors.
+            /// </summary>
+            public int MinUniqueColors { get; private set; }
+            /// <summary>
+            /// Gets or updates the Min Different Pixels.
+            /// </summary>
+            public int MinDifferentPixels { get; private set; }
+        }
+    }
+}

@@ -1,0 +1,37 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11822.322
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpPixels", "SharpPixels\SharpPixels.csproj", "{2B403734-9E8B-4F26-9D73-C61A3DAF727D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmigaEmulator", "AmigaEmulator\AmigaEmulator.csproj", "{414E464D-5773-4846-A0EF-6A0B51A796CC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmigaEmulator.Tests", "AmigaEmulator.Tests\AmigaEmulator.Tests.csproj", "{72996EDB-9696-43DB-B732-5D91C2250AAC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2B403734-9E8B-4F26-9D73-C61A3DAF727D}.Debug|x64.ActiveCfg = Debug|x64
+		{2B403734-9E8B-4F26-9D73-C61A3DAF727D}.Debug|x64.Build.0 = Debug|x64
+		{2B403734-9E8B-4F26-9D73-C61A3DAF727D}.Release|x64.ActiveCfg = Release|x64
+		{2B403734-9E8B-4F26-9D73-C61A3DAF727D}.Release|x64.Build.0 = Release|x64
+		{414E464D-5773-4846-A0EF-6A0B51A796CC}.Debug|x64.ActiveCfg = Debug|x64
+		{414E464D-5773-4846-A0EF-6A0B51A796CC}.Debug|x64.Build.0 = Debug|x64
+		{414E464D-5773-4846-A0EF-6A0B51A796CC}.Release|x64.ActiveCfg = Release|x64
+		{414E464D-5773-4846-A0EF-6A0B51A796CC}.Release|x64.Build.0 = Release|x64
+		{72996EDB-9696-43DB-B732-5D91C2250AAC}.Debug|x64.ActiveCfg = Debug|x64
+		{72996EDB-9696-43DB-B732-5D91C2250AAC}.Debug|x64.Build.0 = Debug|x64
+		{72996EDB-9696-43DB-B732-5D91C2250AAC}.Release|x64.ActiveCfg = Release|x64
+		{72996EDB-9696-43DB-B732-5D91C2250AAC}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7D05E3C6-0ED5-4B63-A263-99C86FA257C1}
+	EndGlobalSection
+EndGlobal
