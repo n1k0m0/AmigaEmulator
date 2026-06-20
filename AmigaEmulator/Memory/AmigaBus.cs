@@ -233,6 +233,14 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
+        /// Reapplies CIA-controlled floppy output and input lines after restoring CIA state.
+        /// </summary>
+        public void RefreshFloppyControlLines()
+        {
+            UpdateCiaAFloppyInputs();
+        }
+
+        /// <summary>
         /// Returns the Region.
         /// </summary>
         public AmigaAddressRegion GetRegion(uint address)

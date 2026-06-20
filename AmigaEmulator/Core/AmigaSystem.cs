@@ -35,7 +35,7 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Crops the stable PAL presentation window out of the wider internal Denise raster.
         /// </summary>
-        private const int PresentationCropLeft = 8;
+        private const int PresentationCropLeft = 0;
 
         /// <summary>
         /// Scans the top overscan rows for isolated transition artifacts before presentation.
@@ -413,6 +413,7 @@ namespace AmigaEmulator.Core
                 _paula.LoadState(reader);
                 _ciaA.LoadState(reader);
                 _ciaB.LoadState(reader);
+                _bus.RefreshFloppyControlLines();
                 _input.LoadState(reader);
                 _frameBuffer.LoadState(reader);
                 _presentedFrameBuffer.LoadState(reader);

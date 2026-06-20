@@ -15,6 +15,7 @@
 */
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -1448,6 +1449,11 @@ namespace AmigaEmulator.Tests
                 TestDiskWriteDmaTiming);
             yield return new ChipTestCase(
                 "Paula/Disk",
+                "WORDSYNC read DMA includes the matching sync word as the first transferred word",
+                "Paula disk WORDSYNC DMA start behavior used by custom trackloaders",
+                TestWordSyncReadDmaTransfersMatchingSyncWord);
+            yield return new ChipTestCase(
+                "Paula/Disk",
                 "captured MFM write sectors decode back into ADF sectors",
                 "AmigaDOS MFM sector layout; Paula disk write path",
                 TestCapturedMfmWriteSectorDecodesToAdf);
@@ -1566,6 +1572,47 @@ namespace AmigaEmulator.Tests
                 catch
                 {
                 }
+            }
+        }
+
+        /// <summary>
+        /// Verifies that WORDSYNC starts disk DMA on the matching sync word instead of dropping it.
+        /// </summary>
+        private static void TestWordSyncReadDmaTransfersMatchingSyncWord()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_wordsync_read_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(tempPath), true);
+                controller.Drive0.ApplySelection(true, true);
+
+                var captured = new List<ushort>();
+                var paula = new Paula();
+                paula.AttachDisk(
+                    controller,
+                    (address, word) => captured.Add(word),
+                    null,
+                    delegate(CustomInterruptSource _) { },
+                    () => 0x0210,
+                    () => 0x0400);
+                paula.NotifyCustomRegisterWordWrite(0x020, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x022, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
+
+                for (int cycle = 0; cycle < 150000 && captured.Count == 0; cycle++)
+                {
+                    paula.Tick(true, false);
+                }
+
+                Check.True(captured.Count > 0, "WORDSYNC read DMA should eventually transfer after the first track sync.");
+                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should include the matching sync word in memory.");
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
             }
         }
 
@@ -1840,6 +1887,11 @@ namespace AmigaEmulator.Tests
                 "future or unknown savestate profiles are marked incompatible",
                 "Amiga SaveStateFile metadata compatibility validation",
                 TestUnknownProfileMetadataIsIncompatible);
+            yield return new ChipTestCase(
+                "SaveState",
+                "floppy CIA control lines are re-applied after loading a savestate",
+                "A500 CIA-B floppy select, motor, side, and CIA-A ready restore ordering",
+                TestFloppyControlLinesRefreshAfterLoad);
         }
 
         /// <summary>
@@ -1929,6 +1981,60 @@ namespace AmigaEmulator.Tests
                 try
                 {
                     System.IO.File.Delete(path);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Verifies that restored CIA-B port state is applied back to DF0 after bus state is loaded.
+        /// </summary>
+        private static void TestFloppyControlLinesRefreshAfterLoad()
+        {
+            string adfPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-savestate-floppy-lines-" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(adfPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                byte[] stateBytes;
+                using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                {
+                    system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                    system.Bus.WriteByte(0x00BFD300, 0xFF);
+                    system.Bus.WriteByte(0x00BFD100, 0x73);
+
+                    Check.True(system.Bus.FloppyController.Drive0.Selected, "DF0 should be selected before saving.");
+                    Check.True(system.Bus.FloppyController.Drive0.MotorOn, "DF0 motor should be on before saving.");
+                    Check.Equal(1, system.Bus.FloppyController.Drive0.Side, "DF0 side should be restored from CIA-B side bit.");
+                    Check.True(system.Bus.FloppyController.Drive0.Ready, "DF0 should be ready before saving.");
+
+                    using (var stream = new MemoryStream())
+                    using (var writer = new BinaryWriter(stream))
+                    {
+                        system.SaveState(writer);
+                        writer.Flush();
+                        stateBytes = stream.ToArray();
+                    }
+                }
+
+                using (var restored = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                using (var stream = new MemoryStream(stateBytes))
+                using (var reader = new BinaryReader(stream))
+                {
+                    restored.LoadState(reader);
+
+                    Check.True(restored.Bus.FloppyController.Drive0.Selected, "LoadState should reselect DF0 from restored CIA-B PRB/DDRB.");
+                    Check.True(restored.Bus.FloppyController.Drive0.MotorOn, "LoadState should restore the selected DF0 motor line.");
+                    Check.Equal(1, restored.Bus.FloppyController.Drive0.Side, "LoadState should restore the DF0 side select line.");
+                    Check.True(restored.Bus.FloppyController.Drive0.Ready, "LoadState should rebuild CIA/drive ready state after restoring CIA-B.");
+                }
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(adfPath);
                 }
                 catch
                 {

@@ -14,6 +14,7 @@
    limitations under the License.
 */
 using System;
+using System.Collections.Generic;
 using System.IO;
 using AmigaEmulator.Core.Media;
 using AmigaEmulator.Core.Memory;
@@ -65,6 +66,9 @@ namespace AmigaEmulator.Core.CustomChips
         // PAL DD disks rotate once per ~709379 chip cycles. A standard ADF
         // track contains 0x1996 MFM words, so one word arrives every ~108 cycles.
         private const int DefaultDiskWordPeriodChipCycles = 108;
+        // The physical disk stream keeps rotating while Paula waits for DMA
+        // slots, so clustered disk slots may need to drain more than one word.
+        private const int DiskReadQueueCapacity = 8;
         /// <summary>
         /// Defines the AUDIO CHANNEL COUNT custom register offset or bit mask.
         /// </summary>
@@ -170,6 +174,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores word Equal.
         /// </summary>
         private bool _wordEqual;
+        /// <summary>
+        /// Queues read-mode MFM words that arrived before a disk DMA slot could consume them.
+        /// </summary>
+        private readonly Queue<ushort> _diskReadQueue = new Queue<ushort>();
         /// <summary>
         /// Stores disk Byte Ready.
         /// </summary>
@@ -475,6 +483,7 @@ namespace AmigaEmulator.Core.CustomChips
             _diskSyncMatchedForDma = false;
             _wordReady = false;
             _wordEqual = false;
+            _diskReadQueue.Clear();
             _diskByteReady = false;
             _nextDiskByteIsLow = false;
             _diskWordDivider = 0;
@@ -646,7 +655,7 @@ namespace AmigaEmulator.Core.CustomChips
         public string GetDiskDebugInfo()
         {
             return string.Format(
-                "active:{0} write:{1} ptr:${2:X6} len:${3:X4} remaining:{4} sync:${5:X4} word:${6:X4} ready:{7} equal:{8}",
+                "active:{0} write:{1} ptr:${2:X6} len:${3:X4} remaining:{4} sync:${5:X4} word:${6:X4} ready:{7} equal:{8} q:{9}",
                 _diskDmaActive,
                 _diskWriteMode,
                 _diskPointer,
@@ -655,7 +664,8 @@ namespace AmigaEmulator.Core.CustomChips
                 _diskSync,
                 _latestDiskWord,
                 _wordReady,
-                _wordEqual) +
+                _wordEqual,
+                _diskReadQueue.Count) +
             string.Format(
                 " starts:{0} done:{1} words:{2} written:{3} rejected:{4} syncs:{5}",
                 _diskDmaStarts,
@@ -672,14 +682,15 @@ namespace AmigaEmulator.Core.CustomChips
         public string GetDiskShortDebugInfo()
         {
             return string.Format(
-                "active:{0} remaining:{1} starts:{2} done:{3} words:{4} written:{5} syncs:{6}",
+                "active:{0} remaining:{1} starts:{2} done:{3} words:{4} written:{5} syncs:{6} q:{7}",
                 _diskDmaActive,
                 _remainingDiskWords,
                 _diskDmaStarts,
                 _diskDmaCompletedBlocks,
                 _diskWordsTransferred,
                 _diskWordsWritten,
-                _diskSyncMatches);
+                _diskSyncMatches,
+                _diskReadQueue.Count);
         }
 
         /// <summary>
@@ -733,6 +744,7 @@ namespace AmigaEmulator.Core.CustomChips
                 _diskSyncMatchedForDma = false;
                 _remainingDiskWords = 0;
                 _wordReady = false;
+                _diskReadQueue.Clear();
                 return;
             }
 
@@ -753,6 +765,7 @@ namespace AmigaEmulator.Core.CustomChips
             _lastDiskBlockWords = 0;
             _wordReady = false;
             _wordEqual = false;
+            _diskReadQueue.Clear();
         }
 
         /// <summary>
@@ -973,10 +986,11 @@ namespace AmigaEmulator.Core.CustomChips
                 _diskWordDivider = 0;
                 _diskByteReady = false;
                 _nextDiskByteIsLow = false;
+                _diskReadQueue.Clear();
                 return;
             }
 
-            if (_wordReady && _diskDmaActive && !_diskWriteMode)
+            if (_diskDmaActive && !_diskWriteMode && _diskReadQueue.Count >= DiskReadQueueCapacity)
             {
                 return;
             }
@@ -1007,34 +1021,31 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            if (!_wordReady)
+            if (_diskReadQueue.Count == 0)
             {
                 return;
             }
 
-            ushort word = _latestDiskWord;
+            ushort word = _diskReadQueue.Dequeue();
+            _latestDiskWord = word;
+            _wordEqual = word == _diskSync;
+            _wordReady = _diskReadQueue.Count > 0;
 
             if (_waitingForDiskSync)
             {
                 if (_wordEqual)
                 {
-                    _diskSyncMatchedForDma = true;
-                    _wordReady = false;
-                    return;
+                    _waitingForDiskSync = false;
+                    _diskSyncMatchedForDma = false;
                 }
-
-                if (!_diskSyncMatchedForDma)
+                else if (!_diskSyncMatchedForDma)
                 {
-                    _wordReady = false;
                     return;
                 }
-
-                _waitingForDiskSync = false;
-                _diskSyncMatchedForDma = false;
             }
 
-            _wordReady = false;
             TransferDiskWord(word);
+            _wordReady = _diskDmaActive && _diskReadQueue.Count > 0;
         }
 
         /// <summary>
@@ -1057,6 +1068,11 @@ namespace AmigaEmulator.Core.CustomChips
             _wordEqual = _latestDiskWord == _diskSync;
             _diskByteReady = true;
             _nextDiskByteIsLow = false;
+            if (_diskDmaActive && !_diskWriteMode && _diskReadQueue.Count < DiskReadQueueCapacity)
+            {
+                _diskReadQueue.Enqueue(_latestDiskWord);
+            }
+
             if (_wordEqual && _requestInterrupt != null)
             {
                 _diskSyncMatches++;
@@ -1123,6 +1139,7 @@ namespace AmigaEmulator.Core.CustomChips
             _waitingForDiskSync = false;
             _diskSyncMatchedForDma = false;
             _remainingDiskWords = 0;
+            _diskReadQueue.Clear();
             _diskDmaCompletedBlocks++;
             _lastDiskBlockStart = _currentDiskBlockStart;
             _lastDiskBlockEnd = _diskPointer;
