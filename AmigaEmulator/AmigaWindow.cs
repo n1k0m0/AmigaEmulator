@@ -305,12 +305,37 @@ namespace AmigaEmulator
         /// <summary>
         /// Hides the measured right overscan border so the active North & South image reaches the window edge.
         /// </summary>
-        private const int PresentationCropPixelsRight = 8;
+        private const int PresentationCropPixelsRight = 0;
 
         /// <summary>
-        /// Hides the bottom border below the active North & South PAL playfield presentation area.
+        /// Hides uniform bottom overscan, but can be relaxed when software draws text or prompts there.
         /// </summary>
         private const int PresentationCropPixelsBottom = 56;
+
+        /// <summary>
+        /// Treats sparse colored pixels in the bottom overscan as real content rather than a border fill.
+        /// </summary>
+        private const double BottomOverscanContentMinimumPercent = 0.2;
+
+        /// <summary>
+        /// Treats dense colored bottom overscan as a border band that should stay hidden.
+        /// </summary>
+        private const double BottomOverscanContentMaximumPercent = 45.0;
+
+        /// <summary>
+        /// Keeps sparse bottom-overscan prompts visible while their text blinks.
+        /// </summary>
+        private const int BottomOverscanContentHoldFrames = 60;
+
+        /// <summary>
+        /// Tracks the bottom crop currently applied to the host presentation.
+        /// </summary>
+        private int _presentationCropBottom = PresentationCropPixelsBottom;
+
+        /// <summary>
+        /// Counts down while previously detected sparse bottom content may be blinking off.
+        /// </summary>
+        private int _bottomOverscanContentHoldFrames;
 
         /// <summary>
         /// Stores system.
@@ -337,9 +362,9 @@ namespace AmigaEmulator
         /// </summary>
         private readonly string[] _mainMenuItems = { "SETTINGS", "MEDIA", "MACHINE", "INPUT", "RESET", "DISPLAY" };
         /// <summary>
-        /// Stores save Slots.
+        /// Number of savestate rows visible in the browser overlay.
         /// </summary>
-        private readonly SaveStateSlotMetadata[] _saveSlots = new SaveStateSlotMetadata[10];
+        private const int SaveOverlayVisibleRows = 12;
         /// <summary>
         /// Stores settings.
         /// </summary>
@@ -452,6 +477,34 @@ namespace AmigaEmulator
         /// Stores save Selection.
         /// </summary>
         private int _saveSelection;
+        /// <summary>
+        /// Stores save Overlay Scroll.
+        /// </summary>
+        private int _saveOverlayScroll;
+        /// <summary>
+        /// Stores save Delete Confirm Visible.
+        /// </summary>
+        private bool _saveDeleteConfirmVisible;
+        /// <summary>
+        /// Stores save Delete Confirm Yes Selected.
+        /// </summary>
+        private bool _saveDeleteConfirmYesSelected = true;
+        /// <summary>
+        /// Stores pending Delete Save Path.
+        /// </summary>
+        private string _pendingDeleteSavePath;
+        /// <summary>
+        /// Stores save Overlay Current Directory.
+        /// </summary>
+        private string _saveOverlayCurrentDirectory;
+        /// <summary>
+        /// Stores last Loaded Save State Path.
+        /// </summary>
+        private string _lastLoadedSaveStatePath;
+        /// <summary>
+        /// Stores save Overlay Entries.
+        /// </summary>
+        private List<SaveOverlayEntry> _saveOverlayEntries = new List<SaveOverlayEntry>();
         /// <summary>
         /// Stores debug Overlay Visible.
         /// </summary>
@@ -613,7 +666,7 @@ namespace AmigaEmulator
             _accuracyProfile = _settings.AccuracyProfile;
             _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, GetRamProfileForModel(model));
             _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), _settings.CreateAccuracyOptions());
-            SetPresentationSourceCrop(PresentationCropPixelsLeft, 0, PresentationCropPixelsRight, PresentationCropPixelsBottom);
+            ApplyPresentationSourceCrop();
             SetPresentationStretchToClient(true);
             ApplyFloppyTiming();
             AttachAudioToSystem();
@@ -625,8 +678,8 @@ namespace AmigaEmulator
             ScheduleConfiguredMediaRemount();
             RefreshMediaEntries();
             RefreshRomEntries();
+            _saveOverlayCurrentDirectory = GetSaveDirectory();
             RefreshSaveStateSlots();
-            _saveSelection = Math.Max(0, Math.Min(_saveSlots.Length - 1, _settings.SelectedSaveStateSlot));
             ApplyVideoPresentation();
             UpdateFrequency = GetRenderUpdateFrequency(_renderLimitMode);
             ApplyStartupFullscreen();
@@ -650,6 +703,7 @@ namespace AmigaEmulator
             if (_system.FrameCounter != _lastFrame)
             {
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
+                UpdateAdaptivePresentationCrop();
                 _lastFrame = _system.FrameCounter;
             }
 
@@ -683,7 +737,6 @@ namespace AmigaEmulator
 
             if (key == Keys.F12)
             {
-                RefreshSaveStateSlots();
                 ToggleOverlay(OverlayMode.SaveStates);
                 return true;
             }
@@ -1124,6 +1177,11 @@ namespace AmigaEmulator
         /// </summary>
         private bool HandleOverlayKey(Keys key)
         {
+            if (_overlayMode == OverlayMode.SaveStates)
+            {
+                return HandleSaveOverlayKey(key);
+            }
+
             if (key == Keys.Escape)
             {
                 CloseOrBackOverlay();
@@ -1189,18 +1247,6 @@ namespace AmigaEmulator
                 return true;
             }
 
-            if (key == Keys.Delete && _overlayMode == OverlayMode.SaveStates)
-            {
-                DeleteCurrentSaveSlot();
-                return true;
-            }
-
-            if (key == Keys.S && _overlayMode == OverlayMode.SaveStates)
-            {
-                SaveCurrentSlot();
-                return true;
-            }
-
             return false;
         }
 
@@ -1211,6 +1257,12 @@ namespace AmigaEmulator
         {
             if (_overlayMode == mode)
             {
+                if (_overlayMode == OverlayMode.SaveStates)
+                {
+                    _saveDeleteConfirmVisible = false;
+                    _pendingDeleteSavePath = null;
+                }
+
                 _previousOverlayMode = OverlayMode.None;
                 _overlayMode = OverlayMode.None;
                 UpdateHostMouseCapture();
@@ -1227,6 +1279,11 @@ namespace AmigaEmulator
         {
             _previousOverlayMode = _overlayMode == OverlayMode.None ? OverlayMode.None : _overlayMode;
             _overlayMode = mode;
+            if (mode == OverlayMode.SaveStates)
+            {
+                OpenSaveOverlay();
+            }
+
             UpdateHostMouseCapture();
         }
 
@@ -1235,6 +1292,12 @@ namespace AmigaEmulator
         /// </summary>
         private void CloseOrBackOverlay()
         {
+            if (_overlayMode == OverlayMode.SaveStates)
+            {
+                CloseSaveOverlay();
+                return;
+            }
+
             if (_overlayMode == OverlayMode.Media ||
                 _overlayMode == OverlayMode.Machine ||
                 _overlayMode == OverlayMode.Roms ||
@@ -1284,7 +1347,7 @@ namespace AmigaEmulator
                 case OverlayMode.Roms: return Math.Max(1, _romEntries.Count + 3);
                 case OverlayMode.Input: return 5;
                 case OverlayMode.Reset: return 4;
-                case OverlayMode.SaveStates: return _saveSlots.Length;
+                case OverlayMode.SaveStates: return Math.Max(1, _saveOverlayEntries.Count);
                 default: return 0;
             }
         }
@@ -1324,7 +1387,7 @@ namespace AmigaEmulator
                 case OverlayMode.Roms: _romSelection = value; break;
                 case OverlayMode.Input: _inputSelection = value; break;
                 case OverlayMode.Reset: _resetSelection = value; break;
-                case OverlayMode.SaveStates: _saveSelection = value; break;
+                case OverlayMode.SaveStates: _saveSelection = value; ClampSaveOverlayScroll(); break;
             }
         }
 
@@ -1385,7 +1448,7 @@ namespace AmigaEmulator
                     ActivateResetItem();
                     break;
                 case OverlayMode.SaveStates:
-                    LoadOrCreateSaveSlot();
+                    ActivateSelectedSaveOverlayEntry();
                     break;
             }
         }
@@ -1651,20 +1714,165 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Loads Or Create Save Slot into emulator state.
+        /// Opens the savestate overlay in browser mode.
         /// </summary>
-        private void LoadOrCreateSaveSlot()
+        private void OpenSaveOverlay()
         {
-            SaveStateSlotMetadata slot = _saveSlots[_saveSelection];
-            if (slot != null && slot.Status == SaveStateSlotStatus.Incompatible)
+            _saveDeleteConfirmVisible = false;
+            _pendingDeleteSavePath = null;
+            if (string.IsNullOrWhiteSpace(_saveOverlayCurrentDirectory))
             {
-                _statusText = "SAVE SLOT INCOMPATIBLE";
+                _saveOverlayCurrentDirectory = GetSaveDirectory();
+            }
+
+            RefreshSaveStateSlots();
+            if (!string.IsNullOrWhiteSpace(_lastLoadedSaveStatePath) && File.Exists(_lastLoadedSaveStatePath))
+            {
+                SelectSaveStatePath(_lastLoadedSaveStatePath);
+            }
+        }
+
+        /// <summary>
+        /// Closes the savestate overlay and clears pending popup state.
+        /// </summary>
+        private void CloseSaveOverlay()
+        {
+            _overlayMode = OverlayMode.None;
+            _previousOverlayMode = OverlayMode.None;
+            _saveDeleteConfirmVisible = false;
+            _pendingDeleteSavePath = null;
+            UpdateHostMouseCapture();
+        }
+
+        /// <summary>
+        /// Handles savestate browser key input.
+        /// </summary>
+        private bool HandleSaveOverlayKey(Keys key)
+        {
+            if (_saveDeleteConfirmVisible)
+            {
+                return HandleSaveDeleteConfirmKey(key);
+            }
+
+            switch (key)
+            {
+                case Keys.Up:
+                    MoveSaveOverlaySelection(-1);
+                    return true;
+                case Keys.Down:
+                    MoveSaveOverlaySelection(1);
+                    return true;
+                case Keys.PageUp:
+                    MoveSaveOverlaySelection(-SaveOverlayVisibleRows);
+                    return true;
+                case Keys.PageDown:
+                    MoveSaveOverlaySelection(SaveOverlayVisibleRows);
+                    return true;
+                case Keys.Home:
+                    _saveSelection = 0;
+                    ClampSaveOverlayScroll();
+                    return true;
+                case Keys.End:
+                    _saveSelection = Math.Max(0, _saveOverlayEntries.Count - 1);
+                    ClampSaveOverlayScroll();
+                    return true;
+                case Keys.F5:
+                case Keys.S:
+                    SaveCurrentState();
+                    return true;
+                case Keys.Enter:
+                case Keys.Space:
+                case Keys.L:
+                    ActivateSelectedSaveOverlayEntry();
+                    return true;
+                case Keys.Delete:
+                    OpenSaveDeleteConfirmation();
+                    return true;
+                case Keys.Escape:
+                    CloseSaveOverlay();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        /// <summary>
+        /// Saves the current machine state into the mounted-media subdirectory.
+        /// </summary>
+        private void SaveCurrentState()
+        {
+            try
+            {
+                string saveDirectory = SaveStateFile.GetSaveDirectoryForMedia(GetSaveDirectory(), _mountedMedia);
+                string savePath = SaveStateFile.CreateSavePath(saveDirectory);
+                uint[] screenshotPixels = new uint[Pixels.Length];
+                Array.Copy(Pixels, screenshotPixels, screenshotPixels.Length);
+                SaveStateFile.Write(
+                    savePath,
+                    _system,
+                    _mountedMedia,
+                    GetCurrentKickstartProfile(),
+                    GetSettingsRamProfile(_ramProfile),
+                    _accuracyProfile,
+                    screenshotPixels,
+                    _system.Model.VisibleWidth,
+                    _system.Model.VisibleHeight);
+                RefreshSaveStateSlots();
+                SelectSaveStatePath(savePath);
+                _statusText = "SAVED " + Path.GetFileName(savePath).ToUpperInvariant();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                _statusText = "SAVE FAILED";
+            }
+        }
+
+        /// <summary>
+        /// Opens a directory or loads the selected savestate.
+        /// </summary>
+        private void ActivateSelectedSaveOverlayEntry()
+        {
+            if (_saveOverlayEntries.Count == 0)
+            {
+                _statusText = "NO SAVE SELECTED";
                 return;
             }
 
-            if (slot == null || !slot.HasState)
+            SaveOverlayEntry selectedEntry = _saveOverlayEntries[_saveSelection];
+            if (selectedEntry.IsDirectory)
             {
-                SaveCurrentSlot();
+                _saveOverlayCurrentDirectory = selectedEntry.Path;
+                _saveSelection = 0;
+                _saveOverlayScroll = 0;
+                RefreshSaveStateSlots();
+                _statusText = selectedEntry.IsParent ? "UP" : "OPEN " + TrimText(selectedEntry.DisplayName, 32);
+                return;
+            }
+
+            LoadSelectedSaveState(selectedEntry.Metadata);
+        }
+
+        /// <summary>
+        /// Loads the given savestate metadata entry.
+        /// </summary>
+        private void LoadSelectedSaveState(SaveStateSlotMetadata slot)
+        {
+            if (slot == null)
+            {
+                _statusText = "NO SAVE SELECTED";
+                return;
+            }
+
+            if (slot.Status == SaveStateSlotStatus.Incompatible)
+            {
+                _statusText = "SAVE INCOMPATIBLE";
+                return;
+            }
+
+            if (slot.Status == SaveStateSlotStatus.Corrupt)
+            {
+                _statusText = "SAVE CORRUPT";
                 return;
             }
 
@@ -1677,7 +1885,6 @@ namespace AmigaEmulator
                 _accuracyProfile = slot.AccuracyProfile;
                 _settings.RamProfile = GetSettingsRamProfile(_ramProfile);
                 _settings.AccuracyProfile = _accuracyProfile;
-                _settings.SelectedSaveStateSlot = _saveSelection;
                 AmigaEmulatorSettingsStore.Save(_settings);
                 if (needsRecreate)
                 {
@@ -1691,12 +1898,14 @@ namespace AmigaEmulator
                 SaveStateFile.Load(slot.Path, _system);
                 ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
+                UpdateAdaptivePresentationCrop();
                 _mountedMedia = slot.MountedMedia ?? MountedMediaInfo.None;
+                _lastLoadedSaveStatePath = slot.Path;
                 SaveMountedMediaSettings();
                 ResetAudioOutput();
                 ResetEmulationClock();
-                _statusText = "SAVE SLOT " + (_saveSelection + 1) + " LOADED";
-                _overlayMode = OverlayMode.None;
+                _statusText = "SAVE LOADED";
+                CloseSaveOverlay();
             }
             catch (Exception ex)
             {
@@ -1707,58 +1916,104 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Saves Current Slot from emulator state.
+        /// Opens a yes/no confirmation before deleting a savestate.
         /// </summary>
-        private void SaveCurrentSlot()
+        private void OpenSaveDeleteConfirmation()
         {
-            try
+            if (_saveOverlayEntries.Count == 0)
             {
-                string savePath = SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), _saveSelection);
-                uint[] screenshotPixels = new uint[Pixels.Length];
-                Array.Copy(Pixels, screenshotPixels, screenshotPixels.Length);
-                SaveStateFile.Write(
-                    savePath,
-                    _system,
-                    _mountedMedia,
-                    GetCurrentKickstartProfile(),
-                    GetSettingsRamProfile(_ramProfile),
-                    _accuracyProfile,
-                    screenshotPixels,
-                    _system.Model.VisibleWidth,
-                    _system.Model.VisibleHeight);
-                _settings.SelectedSaveStateSlot = _saveSelection;
-                AmigaEmulatorSettingsStore.Save(_settings);
-                RefreshSaveStateSlots();
-                _statusText = "SAVE SLOT " + (_saveSelection + 1) + " WRITTEN";
+                _statusText = "NO SAVE SELECTED";
+                return;
             }
-            catch (Exception ex)
+
+            SaveOverlayEntry selectedEntry = _saveOverlayEntries[_saveSelection];
+            if (selectedEntry.IsDirectory || selectedEntry.Metadata == null)
             {
-                Debug.WriteLine(ex);
-                _statusText = "SAVE FAILED";
+                _statusText = "SELECT A SAVE";
+                return;
+            }
+
+            _pendingDeleteSavePath = selectedEntry.Metadata.Path;
+            _saveDeleteConfirmYesSelected = false;
+            _saveDeleteConfirmVisible = true;
+            _statusText = "CONFIRM DELETE";
+        }
+
+        /// <summary>
+        /// Handles keys in the savestate delete confirmation popup.
+        /// </summary>
+        private bool HandleSaveDeleteConfirmKey(Keys key)
+        {
+            switch (key)
+            {
+                case Keys.Left:
+                case Keys.Right:
+                case Keys.Up:
+                case Keys.Down:
+                    _saveDeleteConfirmYesSelected = !_saveDeleteConfirmYesSelected;
+                    return true;
+                case Keys.Enter:
+                    if (_saveDeleteConfirmYesSelected)
+                    {
+                        DeleteSelectedSaveStateConfirmed();
+                    }
+                    else
+                    {
+                        CancelSaveDeleteConfirmation();
+                    }
+
+                    return true;
+                case Keys.Escape:
+                    CancelSaveDeleteConfirmation();
+                    return true;
+                default:
+                    return true;
             }
         }
 
         /// <summary>
-        /// Deletes the selected savestate slot file.
+        /// Cancels the pending savestate delete operation.
         /// </summary>
-        private void DeleteCurrentSaveSlot()
+        private void CancelSaveDeleteConfirmation()
         {
-            SaveStateSlotMetadata slot = _saveSlots[_saveSelection];
-            if (slot == null || string.IsNullOrWhiteSpace(slot.Path) || !File.Exists(slot.Path))
+            _saveDeleteConfirmVisible = false;
+            _pendingDeleteSavePath = null;
+            _statusText = "DELETE CANCELED";
+        }
+
+        /// <summary>
+        /// Deletes the currently selected savestate file.
+        /// </summary>
+        private void DeleteSelectedSaveStateConfirmed()
+        {
+            if (string.IsNullOrWhiteSpace(_pendingDeleteSavePath))
             {
-                _statusText = "SAVE SLOT EMPTY";
+                _saveDeleteConfirmVisible = false;
+                _statusText = "NO SAVE SELECTED";
                 return;
             }
 
             try
             {
-                File.Delete(slot.Path);
+                string path = _pendingDeleteSavePath;
+                string deletedSaveDirectory = Path.GetDirectoryName(path);
+                File.Delete(path);
+                if (string.Equals(_lastLoadedSaveStatePath, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastLoadedSaveStatePath = null;
+                }
+
+                bool deletedDirectory = TryDeleteEmptySaveSubdirectory(deletedSaveDirectory);
+                _saveDeleteConfirmVisible = false;
+                _pendingDeleteSavePath = null;
+                _statusText = deletedDirectory ? "SAVE DIR DELETED" : "SAVE DELETED";
                 RefreshSaveStateSlots();
-                _statusText = "SAVE SLOT CLEARED";
             }
             catch (Exception ex)
             {
                 Debug.WriteLine(ex);
+                _saveDeleteConfirmVisible = false;
+                _pendingDeleteSavePath = null;
                 _statusText = "SAVE DELETE FAILED";
             }
         }
@@ -2398,37 +2653,239 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Reloads savestate slot metadata from the per-user save directory.
+        /// Reloads savestate metadata from the per-user save directory.
         /// </summary>
         private void RefreshSaveStateSlots()
         {
-            string saveDirectory = UserDataPaths.GetSaveDirectory();
-            Directory.CreateDirectory(saveDirectory);
-            for (int index = 0; index < _saveSlots.Length; index++)
+            var entries = new List<SaveStateSlotMetadata>();
+            var overlayEntries = new List<SaveOverlayEntry>();
+            try
             {
-                string path = SaveStateFile.GetSlotPath(saveDirectory, index);
-                if (!File.Exists(path))
+                string saveDirectory = GetSaveDirectory();
+                SaveStateMigration.MigrateFlatSaves(saveDirectory, TextWriter.Null);
+                if (string.IsNullOrWhiteSpace(_saveOverlayCurrentDirectory) || !Directory.Exists(_saveOverlayCurrentDirectory))
                 {
-                    _saveSlots[index] = SaveStateSlotMetadata.Empty(index, path);
-                    continue;
+                    _saveOverlayCurrentDirectory = saveDirectory;
                 }
 
-                try
+                string currentDirectory = Path.GetFullPath(_saveOverlayCurrentDirectory);
+                string rootDirectory = Path.GetFullPath(saveDirectory);
+                if (!IsPathInsideOrEqual(currentDirectory, rootDirectory))
                 {
-                    _saveSlots[index] = SaveStateFile.ReadMetadata(path, index);
+                    currentDirectory = rootDirectory;
+                    _saveOverlayCurrentDirectory = rootDirectory;
                 }
-                catch (Exception ex)
+
+                DirectoryInfo parent = Directory.GetParent(currentDirectory);
+                if (parent != null && !string.Equals(
+                    currentDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    rootDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase))
                 {
-                    Debug.WriteLine(ex);
-                    _saveSlots[index] = new SaveStateSlotMetadata
+                    overlayEntries.Add(new SaveOverlayEntry(parent.FullName, "UP", true, true, null));
+                }
+
+                string[] directories = Directory.GetDirectories(currentDirectory, "*", SearchOption.TopDirectoryOnly);
+                Array.Sort(directories, StringComparer.OrdinalIgnoreCase);
+                foreach (string directory in directories)
+                {
+                    overlayEntries.Add(new SaveOverlayEntry(directory, "DIR " + Path.GetFileName(directory).ToUpperInvariant(), true, false, null));
+                }
+
+                string[] files = Directory.GetFiles(currentDirectory, SaveStateFile.SearchPattern, SearchOption.TopDirectoryOnly);
+                foreach (string file in files)
+                {
+                    try
                     {
-                        SlotIndex = index,
-                        Status = SaveStateSlotStatus.Corrupt,
-                        Path = path,
-                        DisplayName = "CORRUPT"
-                    };
+                        entries.Add(SaveStateFile.ReadMetadata(file));
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex);
+                        entries.Add(new SaveStateSlotMetadata
+                        {
+                            SlotIndex = -1,
+                            Status = SaveStateSlotStatus.Corrupt,
+                            Path = file,
+                            DisplayName = "CORRUPT"
+                        });
+                    }
+                }
+
+                entries.Sort((left, right) => right.CreatedLocalTime.CompareTo(left.CreatedLocalTime));
+                foreach (SaveStateSlotMetadata entry in entries)
+                {
+                    overlayEntries.Add(new SaveOverlayEntry(entry.Path, FormatSaveListEntry(entry, 80), false, false, entry));
                 }
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                _statusText = "SAVE DIR FAILED";
+            }
+
+            _saveOverlayEntries = overlayEntries;
+            if (_saveSelection >= _saveOverlayEntries.Count)
+            {
+                _saveSelection = Math.Max(0, _saveOverlayEntries.Count - 1);
+            }
+
+            if (_saveSelection < 0)
+            {
+                _saveSelection = 0;
+            }
+
+            ClampSaveOverlayScroll();
+        }
+
+        /// <summary>
+        /// Selects a savestate path in the overlay list.
+        /// </summary>
+        private void SelectSaveStatePath(string path)
+        {
+            string directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+            {
+                _saveOverlayCurrentDirectory = directory;
+                RefreshSaveStateSlots();
+            }
+
+            for (int index = 0; index < _saveOverlayEntries.Count; index++)
+            {
+                if (!_saveOverlayEntries[index].IsDirectory &&
+                    string.Equals(_saveOverlayEntries[index].Path, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    _saveSelection = index;
+                    ClampSaveOverlayScroll();
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves the savestate overlay list selection.
+        /// </summary>
+        private void MoveSaveOverlaySelection(int delta)
+        {
+            if (_saveOverlayEntries.Count == 0)
+            {
+                return;
+            }
+
+            _saveSelection += delta;
+            if (_saveSelection < 0)
+            {
+                _saveSelection = 0;
+            }
+
+            if (_saveSelection >= _saveOverlayEntries.Count)
+            {
+                _saveSelection = _saveOverlayEntries.Count - 1;
+            }
+
+            ClampSaveOverlayScroll();
+        }
+
+        /// <summary>
+        /// Keeps the savestate overlay scroll position around the current selection.
+        /// </summary>
+        private void ClampSaveOverlayScroll()
+        {
+            if (_saveSelection < _saveOverlayScroll)
+            {
+                _saveOverlayScroll = _saveSelection;
+            }
+
+            int maxVisibleStart = Math.Max(0, _saveOverlayEntries.Count - SaveOverlayVisibleRows);
+            int visibleEnd = _saveOverlayScroll + SaveOverlayVisibleRows - 1;
+            if (_saveSelection > visibleEnd)
+            {
+                _saveOverlayScroll = _saveSelection - (SaveOverlayVisibleRows - 1);
+            }
+
+            if (_saveOverlayScroll > maxVisibleStart)
+            {
+                _saveOverlayScroll = maxVisibleStart;
+            }
+
+            if (_saveOverlayScroll < 0)
+            {
+                _saveOverlayScroll = 0;
+            }
+        }
+
+        /// <summary>
+        /// Gets the per-user savestate directory.
+        /// </summary>
+        private static string GetSaveDirectory()
+        {
+            string saveDirectory = UserDataPaths.GetSaveDirectory();
+            Directory.CreateDirectory(saveDirectory);
+            return saveDirectory;
+        }
+
+        /// <summary>
+        /// Deletes an empty savestate subdirectory while preserving the savestate root.
+        /// </summary>
+        private bool TryDeleteEmptySaveSubdirectory(string directory)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+                {
+                    return false;
+                }
+
+                string rootDirectory = Path.GetFullPath(GetSaveDirectory()).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                string candidateDirectory = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (string.Equals(candidateDirectory, rootDirectory, StringComparison.OrdinalIgnoreCase) ||
+                    !IsPathInsideDirectory(candidateDirectory, rootDirectory) ||
+                    Directory.GetFileSystemEntries(candidateDirectory).Length != 0)
+                {
+                    return false;
+                }
+
+                string parentDirectory = Path.GetDirectoryName(candidateDirectory);
+                Directory.Delete(candidateDirectory);
+                string currentDirectory = string.IsNullOrWhiteSpace(_saveOverlayCurrentDirectory)
+                    ? string.Empty
+                    : Path.GetFullPath(_saveOverlayCurrentDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (string.Equals(currentDirectory, candidateDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    _saveOverlayCurrentDirectory = !string.IsNullOrWhiteSpace(parentDirectory) && IsPathInsideOrEqual(parentDirectory, rootDirectory)
+                        ? parentDirectory
+                        : rootDirectory;
+                    _saveSelection = 0;
+                    _saveOverlayScroll = 0;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Checks whether a path is strictly inside a root directory.
+        /// </summary>
+        private static bool IsPathInsideDirectory(string path, string rootDirectory)
+        {
+            return path.StartsWith(rootDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(rootDirectory + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Checks whether a path is the root directory or inside it.
+        /// </summary>
+        private static bool IsPathInsideOrEqual(string path, string rootDirectory)
+        {
+            string normalizedPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string normalizedRoot = Path.GetFullPath(rootDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(normalizedPath, normalizedRoot, StringComparison.OrdinalIgnoreCase) ||
+                IsPathInsideDirectory(normalizedPath, normalizedRoot);
         }
 
         /// <summary>
@@ -2658,24 +3115,209 @@ namespace AmigaEmulator
         /// </summary>
         private void DrawSaveStatesOverlay(Graphics graphics)
         {
-            var lines = new string[_saveSlots.Length];
-            for (int index = 0; index < _saveSlots.Length; index++)
+            int width = Math.Min(760, Math.Max(520, ClientSize.Width - 32));
+            int height = Math.Min(ClientSize.Height - 32, 388);
+            int x = (ClientSize.Width - width) / 2;
+            int y = Math.Max(18, (ClientSize.Height - height) / 2);
+            int listX = x + 20;
+            int listY = y + 82;
+            int thumbnailWidth = 184;
+            int thumbnailHeight = 112;
+            int thumbnailX = x + width - thumbnailWidth - 24;
+            int thumbnailY = listY;
+            int listWidth = Math.Max(190, thumbnailX - listX - 22);
+            int rowHeight = 20;
+
+            using (var brush = new SolidBrush(Color.FromArgb(224, 10, 13, 24)))
+            using (var border = new Pen(Color.FromArgb(255, 255, 220, 130)))
+            using (var dimBorder = new Pen(Color.FromArgb(255, 94, 126, 168)))
+            using (var titleBrush = new SolidBrush(Color.FromArgb(255, 255, 230, 150)))
+            using (var helpBrush = new SolidBrush(Color.FromArgb(255, 176, 198, 218)))
+            using (var textBrush = new SolidBrush(Color.FromArgb(255, 235, 242, 250)))
+            using (var valueBrush = new SolidBrush(Color.FromArgb(255, 182, 214, 108)))
+            using (var selectedBrush = new SolidBrush(Color.FromArgb(255, 255, 243, 168)))
+            using (var rowBrush = new SolidBrush(Color.FromArgb(95, 75, 96, 128)))
+            using (var panelBrush = new SolidBrush(Color.FromArgb(210, 20, 24, 38)))
             {
-                SaveStateSlotMetadata slot = _saveSlots[index];
-                string value = slot == null ? "EMPTY" : slot.DisplayName;
-                if (slot != null && slot.Status == SaveStateSlotStatus.Corrupt)
+                graphics.FillRectangle(brush, x, y, width, height);
+                graphics.DrawRectangle(border, x, y, width, height);
+                graphics.DrawLine(dimBorder, x + 14, y + 52, x + width - 14, y + 52);
+                graphics.DrawString("SAVE STATES", _titleFont, titleBrush, x + 18, y + 14);
+                graphics.DrawString("ENTER OPEN/LOAD  BACK UP  S/F5 SAVE  DEL DELETE  ESC CLOSE", _smallFont, helpBrush, x + 20, y + 54);
+                graphics.DrawString("STATUS " + TrimText(_statusText, 58), _smallFont, valueBrush, x + 20, y + height - 30);
+
+                graphics.FillRectangle(panelBrush, listX - 4, listY - 4, listWidth + 8, (SaveOverlayVisibleRows * rowHeight) + 8);
+                if (_saveOverlayEntries.Count == 0)
                 {
-                    value = "CORRUPT";
+                    graphics.DrawString("NO SAVES HERE", _titleFont, selectedBrush, listX, listY + 24);
+                    graphics.DrawString("PRESS S TO CREATE ONE", _smallFont, textBrush, listX, listY + 56);
                 }
-                else if (slot != null && slot.Status == SaveStateSlotStatus.Incompatible)
+                else
                 {
-                    value = "INCOMPATIBLE";
+                    for (int row = 0; row < SaveOverlayVisibleRows; row++)
+                    {
+                        int index = _saveOverlayScroll + row;
+                        if (index >= _saveOverlayEntries.Count)
+                        {
+                            break;
+                        }
+
+                        SaveOverlayEntry entry = _saveOverlayEntries[index];
+                        bool selected = index == _saveSelection;
+                        int rowY = listY + (row * rowHeight);
+                        if (selected)
+                        {
+                            graphics.FillRectangle(rowBrush, listX - 2, rowY - 1, listWidth + 4, rowHeight);
+                        }
+
+                        graphics.DrawString(
+                            (selected ? "> " : "  ") + TrimText(entry.DisplayName, Math.Max(10, listWidth / 8)),
+                            _smallFont,
+                            selected ? selectedBrush : textBrush,
+                            listX,
+                            rowY);
+                    }
                 }
 
-                lines[index] = MenuLine("SLOT " + (index + 1), string.IsNullOrWhiteSpace(value) ? "EMPTY" : value);
+                graphics.DrawRectangle(dimBorder, thumbnailX - 1, thumbnailY - 1, thumbnailWidth + 1, thumbnailHeight + 1);
+                SaveOverlayEntry selectedEntry = _saveOverlayEntries.Count > 0 ? _saveOverlayEntries[_saveSelection] : null;
+                if (selectedEntry != null && !selectedEntry.IsDirectory && selectedEntry.Metadata != null)
+                {
+                    SaveStateSlotMetadata metadata = selectedEntry.Metadata;
+                    DrawSavePreview(graphics, metadata, thumbnailX, thumbnailY, thumbnailWidth, thumbnailHeight);
+                    graphics.DrawString(metadata.CreatedLocalTime.ToString("yyyy-MM-dd"), _smallFont, textBrush, thumbnailX, thumbnailY + thumbnailHeight + 10);
+                    graphics.DrawString(metadata.CreatedLocalTime.ToString("HH:mm:ss"), _smallFont, textBrush, thumbnailX, thumbnailY + thumbnailHeight + 28);
+                    graphics.DrawString(TrimText(GetSaveStateDisplayMediaName(metadata), 22), _smallFont, valueBrush, thumbnailX, thumbnailY + thumbnailHeight + 46);
+                }
+                else
+                {
+                    graphics.FillRectangle(panelBrush, thumbnailX, thumbnailY, thumbnailWidth, thumbnailHeight);
+                    graphics.DrawString(selectedEntry != null && selectedEntry.IsDirectory ? "FOLDER" : "NO IMAGE", _smallFont, dimBorder.Brush, thumbnailX + 54, thumbnailY + 45);
+                }
+
+                if (_saveDeleteConfirmVisible)
+                {
+                    DrawSaveDeleteConfirmOverlay(graphics, x + 120, y + 130, Math.Min(360, width - 240), 120);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draws the savestate delete confirmation popup.
+        /// </summary>
+        private void DrawSaveDeleteConfirmOverlay(Graphics graphics, int x, int y, int width, int height)
+        {
+            using (var brush = new SolidBrush(Color.FromArgb(244, 20, 24, 38)))
+            using (var border = new Pen(Color.FromArgb(255, 255, 243, 168)))
+            using (var titleBrush = new SolidBrush(Color.FromArgb(255, 255, 243, 168)))
+            using (var textBrush = new SolidBrush(Color.FromArgb(255, 232, 238, 244)))
+            {
+                graphics.FillRectangle(brush, x, y, width, height);
+                graphics.DrawRectangle(border, x, y, width, height);
+                graphics.DrawString("DELETE SAVE?", _titleFont, titleBrush, x + 16, y + 12);
+                graphics.DrawString(TrimText(Path.GetFileName(_pendingDeleteSavePath), 34), _smallFont, textBrush, x + 18, y + 48);
+                graphics.DrawString(_saveDeleteConfirmYesSelected ? "> YES     NO" : "  YES   > NO", _titleFont, titleBrush, x + 18, y + 70);
+                graphics.DrawString("ENTER ACCEPT  ESC CANCEL", _smallFont, textBrush, x + 18, y + 100);
+            }
+        }
+
+        /// <summary>
+        /// Draws a savestate preview thumbnail.
+        /// </summary>
+        private static void DrawSavePreview(Graphics graphics, SaveStateSlotMetadata metadata, int x, int y, int width, int height)
+        {
+            if (metadata == null ||
+                !metadata.HasScreenshot ||
+                metadata.ScreenshotPixels.Length < metadata.ScreenshotWidth * metadata.ScreenshotHeight)
+            {
+                using (var brush = new SolidBrush(Color.FromArgb(255, 24, 24, 32)))
+                {
+                    graphics.FillRectangle(brush, x, y, width, height);
+                }
+
+                return;
             }
 
-            DrawMenu(graphics, "SAVE STATES", "ENTER LOAD/CREATE  S SAVE  DEL CLEAR  ESC CLOSE", lines, _saveSelection);
+            GetPreviewCropRectangle(metadata.ScreenshotPixels, metadata.ScreenshotWidth, metadata.ScreenshotHeight, out int cropX, out int cropY, out int cropWidth, out int cropHeight);
+            using (var bitmap = new Bitmap(metadata.ScreenshotWidth, metadata.ScreenshotHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+            {
+                for (int py = 0; py < metadata.ScreenshotHeight; py++)
+                {
+                    int row = py * metadata.ScreenshotWidth;
+                    for (int px = 0; px < metadata.ScreenshotWidth; px++)
+                    {
+                        bitmap.SetPixel(px, py, Color.FromArgb(unchecked((int)metadata.ScreenshotPixels[row + px])));
+                    }
+                }
+
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                graphics.DrawImage(bitmap, new Rectangle(x, y, width, height), new Rectangle(cropX, cropY, cropWidth, cropHeight), GraphicsUnit.Pixel);
+            }
+        }
+
+        /// <summary>
+        /// Finds the non-border area of a savestate preview frame.
+        /// </summary>
+        private static void GetPreviewCropRectangle(uint[] sourcePixels, int sourceWidth, int sourceHeight, out int cropX, out int cropY, out int cropWidth, out int cropHeight)
+        {
+            uint borderColor = sourcePixels[0];
+            int left = sourceWidth;
+            int top = sourceHeight;
+            int right = -1;
+            int bottom = -1;
+
+            for (int y = 0; y < sourceHeight; y++)
+            {
+                int row = y * sourceWidth;
+                for (int x = 0; x < sourceWidth; x++)
+                {
+                    if (IsPreviewContentPixel(sourcePixels[row + x], borderColor))
+                    {
+                        left = Math.Min(left, x);
+                        right = Math.Max(right, x);
+                        top = Math.Min(top, y);
+                        bottom = Math.Max(bottom, y);
+                    }
+                }
+            }
+
+            if (right < left || bottom < top)
+            {
+                cropX = 0;
+                cropY = 0;
+                cropWidth = sourceWidth;
+                cropHeight = sourceHeight;
+                return;
+            }
+
+            int detectedWidth = right - left + 1;
+            int detectedHeight = bottom - top + 1;
+            int minimumUsefulArea = (sourceWidth * sourceHeight) / 4;
+            if (detectedWidth * detectedHeight < minimumUsefulArea)
+            {
+                cropX = 0;
+                cropY = 0;
+                cropWidth = sourceWidth;
+                cropHeight = sourceHeight;
+                return;
+            }
+
+            cropX = left;
+            cropY = top;
+            cropWidth = detectedWidth;
+            cropHeight = detectedHeight;
+        }
+
+        /// <summary>
+        /// Returns whether the pixel differs from the surrounding border color.
+        /// </summary>
+        private static bool IsPreviewContentPixel(uint argb, uint borderColor)
+        {
+            int redDifference = Math.Abs((int)((argb >> 16) & 0xFF) - (int)((borderColor >> 16) & 0xFF));
+            int greenDifference = Math.Abs((int)((argb >> 8) & 0xFF) - (int)((borderColor >> 8) & 0xFF));
+            int blueDifference = Math.Abs((int)(argb & 0xFF) - (int)(borderColor & 0xFF));
+            return redDifference > 2 || greenDifference > 2 || blueDifference > 2;
         }
 
         /// <summary>
@@ -2959,6 +3601,92 @@ namespace AmigaEmulator
             AmigaEmulatorSettingsStore.Save(_settings);
             ApplyVideoPresentation();
             _statusText = "VIDEO UPSCALE " + FormatVideoUpscale(mode);
+        }
+
+        /// <summary>
+        /// Applies the current source crop to the host presentation.
+        /// </summary>
+        private void ApplyPresentationSourceCrop()
+        {
+            SetPresentationSourceCrop(PresentationCropPixelsLeft, 0, PresentationCropPixelsRight, _presentationCropBottom);
+        }
+
+        /// <summary>
+        /// Reveals sparse bottom-overscan content such as disk prompts while still hiding solid border bands.
+        /// </summary>
+        private void UpdateAdaptivePresentationCrop()
+        {
+            int targetBottomCrop = CalculateAdaptivePresentationBottomCrop();
+            if (targetBottomCrop == _presentationCropBottom)
+            {
+                return;
+            }
+
+            _presentationCropBottom = targetBottomCrop;
+            ApplyPresentationSourceCrop();
+        }
+
+        /// <summary>
+        /// Returns the bottom crop that best fits the current frame.
+        /// </summary>
+        private int CalculateAdaptivePresentationBottomCrop()
+        {
+            uint[] pixels = _system.PresentedFrameBuffer.Pixels;
+            int width = _system.PresentedFrameBuffer.Width;
+            int height = _system.PresentedFrameBuffer.Height;
+            int cropRows = Math.Min(PresentationCropPixelsBottom, height);
+            if (pixels == null || pixels.Length < width * height || width <= 0 || cropRows <= 0)
+            {
+                return PresentationCropPixelsBottom;
+            }
+
+            int startY = height - cropRows;
+            int sampledPixels = width * cropRows;
+            int visiblePixels = 0;
+            for (int y = startY; y < height; y++)
+            {
+                int rowOffset = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    if (IsPresentationVisiblePixel(pixels[rowOffset + x]))
+                    {
+                        visiblePixels++;
+                    }
+                }
+            }
+
+            double visiblePercent = sampledPixels > 0 ? (visiblePixels * 100.0) / sampledPixels : 0.0;
+            if (visiblePercent >= BottomOverscanContentMinimumPercent &&
+                visiblePercent <= BottomOverscanContentMaximumPercent)
+            {
+                _bottomOverscanContentHoldFrames = BottomOverscanContentHoldFrames;
+                return 0;
+            }
+
+            if (visiblePercent > BottomOverscanContentMaximumPercent)
+            {
+                _bottomOverscanContentHoldFrames = 0;
+                return PresentationCropPixelsBottom;
+            }
+
+            if (_bottomOverscanContentHoldFrames > 0)
+            {
+                _bottomOverscanContentHoldFrames--;
+                return 0;
+            }
+
+            return PresentationCropPixelsBottom;
+        }
+
+        /// <summary>
+        /// Returns true when a source pixel is bright enough to count as visible overscan content.
+        /// </summary>
+        private static bool IsPresentationVisiblePixel(uint color)
+        {
+            int red = (int)((color >> 16) & 0xFFu);
+            int green = (int)((color >> 8) & 0xFFu);
+            int blue = (int)(color & 0xFFu);
+            return red > 24 || green > 24 || blue > 24;
         }
 
         /// <summary>
@@ -3938,6 +4666,54 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Formats a savestate row for the overlay list.
+        /// </summary>
+        private static string FormatSaveListEntry(SaveStateSlotMetadata entry, int maxLength)
+        {
+            string mediaName = GetSaveStateDisplayMediaName(entry);
+            string text = entry.CreatedLocalTime.ToString("MM-dd HH:mm") + " " + mediaName;
+            return TrimText(text, maxLength);
+        }
+
+        /// <summary>
+        /// Gets the best available media name for a savestate row.
+        /// </summary>
+        private static string GetSaveStateDisplayMediaName(SaveStateSlotMetadata entry)
+        {
+            if (entry == null)
+            {
+                return "UNKNOWN";
+            }
+
+            MountedMediaInfo media = entry.MountedMedia;
+            if (media != null && !string.IsNullOrWhiteSpace(media.HostPath))
+            {
+                return Path.GetFileNameWithoutExtension(media.HostPath).ToUpperInvariant();
+            }
+
+            if (media != null && !string.IsNullOrWhiteSpace(media.DisplayName))
+            {
+                return media.DisplayName.ToUpperInvariant();
+            }
+
+            try
+            {
+                string directoryName = Path.GetFileName(Path.GetDirectoryName(entry.Path));
+                if (!string.IsNullOrWhiteSpace(directoryName) &&
+                    !string.Equals(directoryName, "saves", StringComparison.OrdinalIgnoreCase))
+                {
+                    return directoryName.ToUpperInvariant();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+
+            return Path.GetFileNameWithoutExtension(entry.Path).ToUpperInvariant();
+        }
+
+        /// <summary>
         /// Runs Trim Text.
         /// </summary>
         private static string TrimText(string text, int maxLength)
@@ -3989,6 +4765,49 @@ namespace AmigaEmulator
             public int Top;
             public int Right;
             public int Bottom;
+        }
+
+        /// <summary>
+        /// Represents a savestate browser entry component.
+        /// </summary>
+        private sealed class SaveOverlayEntry
+        {
+            /// <summary>
+            /// Initializes a new instance of the SaveOverlayEntry class.
+            /// </summary>
+            public SaveOverlayEntry(string path, string displayName, bool isDirectory, bool isParent, SaveStateSlotMetadata metadata)
+            {
+                Path = path;
+                DisplayName = displayName ?? string.Empty;
+                IsDirectory = isDirectory;
+                IsParent = isParent;
+                Metadata = metadata;
+            }
+
+            /// <summary>
+            /// Gets host filesystem path.
+            /// </summary>
+            public string Path { get; private set; }
+
+            /// <summary>
+            /// Gets user-facing display name.
+            /// </summary>
+            public string DisplayName { get; private set; }
+
+            /// <summary>
+            /// Gets whether this entry represents a directory.
+            /// </summary>
+            public bool IsDirectory { get; private set; }
+
+            /// <summary>
+            /// Gets whether this entry navigates to the parent directory.
+            /// </summary>
+            public bool IsParent { get; private set; }
+
+            /// <summary>
+            /// Gets savestate metadata when this entry represents a save.
+            /// </summary>
+            public SaveStateSlotMetadata Metadata { get; private set; }
         }
     }
 }

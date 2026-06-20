@@ -145,6 +145,57 @@ namespace AmigaEmulator.Core.Video
         }
 
         /// <summary>
+        /// Copies a source window into this framebuffer, scaling it to the destination size.
+        /// </summary>
+        public void CopyScaledWindowFrom(AmigaFrameBuffer source, int sourceX, int sourceY, int sourceWidth, int sourceHeight)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            Clear(0xFF000000);
+            if (sourceWidth <= 0 || sourceHeight <= 0)
+            {
+                return;
+            }
+
+            int startX = Math.Max(0, sourceX);
+            int startY = Math.Max(0, sourceY);
+            int width = Math.Min(sourceWidth, source.Width - startX);
+            int height = Math.Min(sourceHeight, source.Height - startY);
+            if (width <= 0 || height <= 0)
+            {
+                return;
+            }
+
+            for (int y = 0; y < Height; y++)
+            {
+                int sourceRow = startY + ScaleCoordinate(y, Height, height);
+                int targetRow = y * Width;
+                int sourceRowOffset = sourceRow * source.Width;
+                for (int x = 0; x < Width; x++)
+                {
+                    int sourceColumn = startX + ScaleCoordinate(x, Width, width);
+                    _pixels[targetRow + x] = source._pixels[sourceRowOffset + sourceColumn];
+                }
+            }
+        }
+
+        /// <summary>
+        /// Maps a destination coordinate to a source coordinate while preserving both endpoints.
+        /// </summary>
+        private static int ScaleCoordinate(int destination, int destinationSize, int sourceSize)
+        {
+            if (destinationSize <= 1 || sourceSize <= 1)
+            {
+                return 0;
+            }
+
+            return Math.Min(sourceSize - 1, (destination * (sourceSize - 1)) / (destinationSize - 1));
+        }
+
+        /// <summary>
         /// Removes sparse non-border pixels from the top overscan rows without cropping real top-edge artwork.
         /// </summary>
         public void ClearSparseTopBorderArtifacts(int rows, int maxNonBorderPixels)

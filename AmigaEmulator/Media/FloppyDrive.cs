@@ -170,26 +170,18 @@ namespace AmigaEmulator.Core.Media
         public bool IndexPulsePending { get; private set; }
 
         /// <summary>
-        /// Runs Insert.
+        /// Inserts media without changing the physical drive mechanics.
         /// </summary>
         public void Insert(AdfImage image)
         {
             Image = image;
-            Track = 0;
-            Side = 0;
             DiskChanged = true;
-            _stepLineHigh = true;
-            _selected = false;
-            _motorOn = false;
-            _motorOffReadyGraceCycles = 0;
             _writeProtected = true;
             _trackStream = null;
             _streamTrack = -1;
             _streamSide = -1;
-            _streamWordPosition = 0;
             _capturedWriteWords.Clear();
             _decodedWriteSectors = 0;
-            _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
             IndexPulsePending = false;
         }
 
@@ -203,27 +195,19 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Runs Eject.
+        /// Ejects media while leaving the drive head and control lines unchanged.
         /// </summary>
         public void Eject()
         {
             FlushImage();
             Image = null;
-            Track = 0;
-            Side = 0;
             DiskChanged = true;
-            _stepLineHigh = true;
-            _selected = false;
-            _motorOn = false;
-            _motorOffReadyGraceCycles = 0;
             _writeProtected = true;
             _trackStream = null;
             _streamTrack = -1;
             _streamSide = -1;
-            _streamWordPosition = 0;
             _capturedWriteWords.Clear();
             _decodedWriteSectors = 0;
-            _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
             IndexPulsePending = false;
         }
 
@@ -253,10 +237,10 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void SetStepLine(bool high, bool directionIn)
         {
-            if (_stepLineHigh && !high)
+            if (_stepLineHigh && !high && Selected)
             {
                 Step(directionIn ? 1 : -1);
-                if (Selected && HasDisk)
+                if (HasDisk)
                 {
                     DiskChanged = false;
                 }

@@ -153,6 +153,14 @@ namespace AmigaEmulator.Core.SaveStates
         }
 
         /// <summary>
+        /// Reads only metadata for browser-style savestate lists.
+        /// </summary>
+        public static SaveStateSlotMetadata ReadMetadata(string path)
+        {
+            return ReadMetadata(path, -1);
+        }
+
+        /// <summary>
         /// Loads a complete savestate into an existing Amiga system.
         /// </summary>
         public static void Load(string path, AmigaSystem system)
@@ -293,7 +301,18 @@ namespace AmigaEmulator.Core.SaveStates
                 builder.Append(invalid || char.IsControl(value) ? '_' : value);
             }
 
-            string sanitized = builder.ToString().Trim();
+            string sanitized = builder.ToString().Trim().Trim('.');
+            if (string.IsNullOrWhiteSpace(sanitized))
+            {
+                return UnknownMediaDirectory;
+            }
+
+            const int maximumLength = 80;
+            if (sanitized.Length > maximumLength)
+            {
+                sanitized = sanitized.Substring(0, maximumLength).Trim().Trim('.');
+            }
+
             return string.IsNullOrWhiteSpace(sanitized) ? UnknownMediaDirectory : sanitized;
         }
     }

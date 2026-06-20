@@ -38,6 +38,11 @@ namespace AmigaEmulator.Core
         private const int PresentationCropLeft = 0;
 
         /// <summary>
+        /// Gives Denise enough horizontal room to render wide OCS overscan fetches before presentation.
+        /// </summary>
+        private const int HorizontalOverscanPixels = 128;
+
+        /// <summary>
         /// Scans the top overscan rows for isolated transition artifacts before presentation.
         /// </summary>
         private const int TopOverscanArtifactRows = 10;
@@ -151,7 +156,7 @@ namespace AmigaEmulator.Core
         {
             _model = model ?? AmigaModel.A500Pal;
             _accuracyOptions = (accuracyOptions ?? AmigaAccuracyOptions.Compatible).Clone();
-            _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft, _model.VisibleHeight);
+            _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft + HorizontalOverscanPixels, _model.VisibleHeight);
             _presentedFrameBuffer = new AmigaFrameBuffer(_model.VisibleWidth, _model.VisibleHeight);
             _paula = new Paula(_model.ChipRamBytes);
             _ciaA = new Cia8520("CIA-A");
@@ -659,7 +664,17 @@ namespace AmigaEmulator.Core
             _denise.Tick(_agnus.Beam);
             if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
             {
-                _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, PresentationCropLeft, 0);
+                int sourceWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
+                sourceWidth = Math.Min(sourceWidth, _frameBuffer.Width - PresentationCropLeft);
+                if (sourceWidth > _model.VisibleWidth)
+                {
+                    _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, PresentationCropLeft, 0, sourceWidth, _model.VisibleHeight);
+                }
+                else
+                {
+                    _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, PresentationCropLeft, 0);
+                }
+
                 _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
             }
 

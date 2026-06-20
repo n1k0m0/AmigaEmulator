@@ -1006,8 +1006,15 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetDisplayX(int screenX)
         {
-            int left = (_ddfStart - 0x38) * HiresPixelsPerChipCycle;
-            return screenX - left;
+            return screenX - GetDisplayLeft();
+        }
+
+        /// <summary>
+        /// Returns the viewport-relative X coordinate where the fetched display data begins.
+        /// </summary>
+        private int GetDisplayLeft()
+        {
+            return (_ddfStart - 0x38) * HiresPixelsPerChipCycle;
         }
 
         /// <summary>
@@ -1162,6 +1169,20 @@ namespace AmigaEmulator.Core.CustomChips
         private int DisplayFetchWidth
         {
             get { return _displayFetchWidth; }
+        }
+
+        /// <summary>
+        /// Gets the host presentation source width needed for wide horizontal overscan fetches.
+        /// </summary>
+        public int PresentationSourceWidth
+        {
+            get
+            {
+                RefreshFromRegisters();
+                int left = GetDisplayLeft();
+                int activeRight = _displayFetchWidth + Math.Min(0, left);
+                return Math.Max(0, activeRight);
+            }
         }
 
         /// <summary>

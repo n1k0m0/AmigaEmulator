@@ -714,6 +714,11 @@ namespace AmigaEmulator.Tests
                 TestDdfStartBeforeVisibleEdgeSkipsPrefetchedPixels);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "wide DDF overscan reports the full presentation source width",
+                "Amiga HRM DDFSTRT/DDFSTOP can fetch wider-than-standard PAL overscan lines",
+                TestWideDdfOverscanReportsPresentationSourceWidth);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
                 "Amiga HRM bitplane DMA reloads display data every frame",
                 TestFrameStartInvalidatesFetchedRows);
@@ -727,6 +732,11 @@ namespace AmigaEmulator.Tests
                 "dense top-edge artwork is preserved in the presented frame",
                 "PAL monitor presentation cleanup must not crop real title or HUD artwork",
                 TestDenseTopArtworkIsPreserved);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "wide horizontal overscan scales into the presented frame",
+                "PAL monitor presentation should preserve right-edge overscan content",
+                TestWideOverscanFrameScalesIntoPresentation);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "six-plane EHB halves color bank 0 through plane 6",
@@ -935,6 +945,23 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that wide DDF fetches ask presentation to include the right overscan content.
+        /// </summary>
+        private static void TestWideDdfOverscanReportsPresentationSourceWidth()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x4000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x5821);
+            registers.WriteWord(Diwstop, 0x3FF1);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x00D8);
+
+            Check.Equal(672, bitplanes.PresentationSourceWidth, "A $30..$D8 lowres fetch should preserve the right overscan pixels beyond the 640-pixel viewport.");
+        }
+
+        /// <summary>
         /// Verifies that fetched bitplane words from a previous frame cannot leak into the next frame.
         /// </summary>
         private static void TestFrameStartInvalidatesFetchedRows()
@@ -1013,6 +1040,21 @@ namespace AmigaEmulator.Tests
             frame.ClearSparseTopBorderArtifacts(10, 512);
 
             Check.Equal(0xFF4422EEu, frame.Pixels[(5 * frame.Width) + 320], "Dense top-edge artwork should survive sparse overscan cleanup.");
+        }
+
+        /// <summary>
+        /// Verifies that wide internal overscan can be mapped into the stable presentation frame.
+        /// </summary>
+        private static void TestWideOverscanFrameScalesIntoPresentation()
+        {
+            var source = new AmigaFrameBuffer(672, 1);
+            var target = new AmigaFrameBuffer(640, 1);
+            source.Clear(0xFF000000);
+            source.SetPixel(671, 0, 0xFFFFFFFF);
+
+            target.CopyScaledWindowFrom(source, 0, 0, 672, 1);
+
+            Check.Equal(0xFFFFFFFFu, target.Pixels[639], "Scaled presentation must keep the rightmost overscan source pixel visible.");
         }
 
         /// <summary>
@@ -1468,6 +1510,16 @@ namespace AmigaEmulator.Tests
                 "Amiga CIA-B floppy select and motor control lines",
                 TestSelectedDriveFollowsMotorLine);
             yield return new ChipTestCase(
+                "Paula/Disk",
+                "DF0 steps only while selected and follows CIA-B direction polarity",
+                "Amiga CIA-B floppy STEP and DIR control lines",
+                TestSelectedDriveStepDirection);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "DF0 media swaps preserve the physical head and CIA control-line state",
+                "Amiga floppy media change mechanics for multi-disk trackloaders",
+                TestMediaSwapPreservesDriveMechanics);
+            yield return new ChipTestCase(
                 "Paula/Serial",
                 "SERDATR idle read does not expose stale custom-register shadow data",
                 "Amiga Paula SERDATR transmit-ready status during Kickstart reset",
@@ -1554,6 +1606,75 @@ namespace AmigaEmulator.Tests
             controller.ApplyCiaBPort(0x7F, 0xFF);
             Check.True(!controller.Drive0.Selected, "DF0 should stay deselected while only MOTOR changes.");
             Check.True(controller.Drive0.MotorOn, "A deselected drive should not latch MOTOR changes.");
+        }
+
+        /// <summary>
+        /// Verifies that STEP pulses affect only selected DF0 and that CIAB DIR low moves inward.
+        /// </summary>
+        private static void TestSelectedDriveStepDirection()
+        {
+            var controller = new FloppyController();
+
+            controller.ApplyCiaBPort(0xFF, 0xFF);
+            controller.ApplyCiaBPort(0xFE, 0xFF);
+            controller.ApplyCiaBPort(0xFF, 0xFF);
+            Check.Equal(0, controller.Drive0.Track, "Unselected DF0 must ignore shared STEP pulses.");
+
+            controller.ApplyCiaBPort(0x75, 0xFF);
+            controller.ApplyCiaBPort(0x74, 0xFF);
+            controller.ApplyCiaBPort(0x75, 0xFF);
+            Check.Equal(1, controller.Drive0.Track, "DIR low should move DF0 one track inward.");
+
+            controller.ApplyCiaBPort(0x77, 0xFF);
+            controller.ApplyCiaBPort(0x76, 0xFF);
+            controller.ApplyCiaBPort(0x77, 0xFF);
+            Check.Equal(0, controller.Drive0.Track, "DIR high should move DF0 one track outward.");
+        }
+
+        /// <summary>
+        /// Verifies that replacing a disk does not reset the physical drive head or CIA lines.
+        /// </summary>
+        private static void TestMediaSwapPreservesDriveMechanics()
+        {
+            string firstPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_swap_a_" + Guid.NewGuid().ToString("N") + ".adf");
+            string secondPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_swap_b_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(firstPath, new byte[AdfImage.StandardSize]);
+            System.IO.File.WriteAllBytes(secondPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(firstPath), true);
+                controller.ApplyCiaBPort(0x73, 0xFF);
+                controller.Drive0.Step(36);
+
+                Check.True(controller.Drive0.Selected, "DF0 should be selected before media replacement.");
+                Check.True(controller.Drive0.MotorOn, "DF0 motor should be on before media replacement.");
+                Check.Equal(36, controller.Drive0.Track, "DF0 should be positioned away from track zero before media replacement.");
+                Check.Equal(1, controller.Drive0.Side, "DF0 side should follow CIA-B before media replacement.");
+
+                controller.InsertDrive0(AdfImage.Load(secondPath), true);
+
+                Check.True(controller.Drive0.HasDisk, "DF0 should contain the replacement media.");
+                Check.True(controller.Drive0.DiskChanged, "DF0 should assert disk-change after media replacement.");
+                Check.True(controller.Drive0.Selected, "DF0 selection should survive media replacement.");
+                Check.True(controller.Drive0.MotorOn, "DF0 motor state should survive media replacement.");
+                Check.Equal(36, controller.Drive0.Track, "DF0 head position should survive media replacement.");
+                Check.Equal(1, controller.Drive0.Side, "DF0 side select should survive media replacement.");
+
+                controller.EjectDrive0();
+
+                Check.True(!controller.Drive0.HasDisk, "DF0 should be empty after eject.");
+                Check.True(controller.Drive0.DiskChanged, "DF0 should assert disk-change after eject.");
+                Check.True(controller.Drive0.Selected, "DF0 selection should survive eject.");
+                Check.True(controller.Drive0.MotorOn, "DF0 motor state should survive eject.");
+                Check.Equal(36, controller.Drive0.Track, "DF0 head position should survive eject.");
+                Check.Equal(1, controller.Drive0.Side, "DF0 side select should survive eject.");
+            }
+            finally
+            {
+                TryDeleteFile(firstPath);
+                TryDeleteFile(secondPath);
+            }
         }
 
         /// <summary>
@@ -1927,6 +2048,11 @@ namespace AmigaEmulator.Tests
                 "floppy CIA control lines are re-applied after loading a savestate",
                 "A500 CIA-B floppy select, motor, side, and CIA-A ready restore ordering",
                 TestFloppyControlLinesRefreshAfterLoad);
+            yield return new ChipTestCase(
+                "SaveState",
+                "flat savestates migrate into mounted-media subdirectories",
+                "C64-style savestate browser groups timestamped saves by mounted media",
+                TestFlatSaveMigrationUsesMountedMediaDirectory);
         }
 
         /// <summary>
@@ -2016,6 +2142,54 @@ namespace AmigaEmulator.Tests
                 try
                 {
                     System.IO.File.Delete(path);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Verifies that flat savestates migrate into per-media directories without losing metadata.
+        /// </summary>
+        private static void TestFlatSaveMigrationUsesMountedMediaDirectory()
+        {
+            string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-save-migration-" + Guid.NewGuid().ToString("N"));
+            string flatPath = System.IO.Path.Combine(directory, "save-20260620-120000.amigasav");
+            try
+            {
+                System.IO.Directory.CreateDirectory(directory);
+                using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                {
+                    SaveStateFile.Write(
+                        flatPath,
+                        system,
+                        MountedMediaInfo.ForFloppy(0, "North & South.adf", "C:\\Games\\North & South.adf", true),
+                        AmigaKickstart.Auto,
+                        AmigaRamProfile.Chip512K,
+                        AmigaAccuracyProfile.Fast,
+                        Array.Empty<uint>(),
+                        0,
+                        0);
+                }
+
+                int moved = SaveStateMigration.MigrateFlatSaves(directory, TextWriter.Null);
+                string migratedPath = System.IO.Path.Combine(directory, "North & South", System.IO.Path.GetFileName(flatPath));
+
+                Check.Equal(1, moved, "Migration should move the flat savestate into the mounted-media directory.");
+                Check.True(!System.IO.File.Exists(flatPath), "The original flat savestate should be moved away.");
+                Check.True(System.IO.File.Exists(migratedPath), "The migrated savestate should exist under the media directory.");
+                SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(migratedPath);
+                Check.Equal("North & South.adf", metadata.MountedMedia.DisplayName, "Migration must not damage mounted media metadata.");
+            }
+            finally
+            {
+                try
+                {
+                    if (System.IO.Directory.Exists(directory))
+                    {
+                        System.IO.Directory.Delete(directory, true);
+                    }
                 }
                 catch
                 {

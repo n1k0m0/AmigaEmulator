@@ -1493,6 +1493,15 @@ namespace AmigaEmulator
                 }
 
                 var stepController = new AmigaEmulator.Core.Media.FloppyController();
+                stepController.ApplyCiaBPort(0xFF, 0xFF);
+                stepController.ApplyCiaBPort(0xFE, 0xFF);
+                stepController.ApplyCiaBPort(0xFF, 0xFF);
+                if (stepController.Drive0.Track != 0)
+                {
+                    failures++;
+                    Console.WriteLine("FAIL unselected disk responded to step pulse. Track=" + stepController.Drive0.Track);
+                }
+
                 stepController.ApplyCiaBPort(0x75, 0xFF);
                 stepController.ApplyCiaBPort(0x74, 0xFF);
                 stepController.ApplyCiaBPort(0x75, 0xFF);
@@ -6472,6 +6481,9 @@ namespace AmigaEmulator
                     DumpCpuRegisters(system);
                     DumpWords(system, system.Cpu.CurrentInstructionAddress >= 16 ? system.Cpu.CurrentInstructionAddress - 16u : system.Cpu.CurrentInstructionAddress, 24, "PCCTX");
                     DumpWords(system, 0x00000400, 32, "LOW0400");
+                    DumpRegisterMemory(system, 24, 96);
+                    Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                    Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
                     DumpVideoRegisterSummary(system);
                     return;
                 }
@@ -7565,6 +7577,53 @@ namespace AmigaEmulator
             {
                 Console.WriteLine("D" + index + "=$" + system.Cpu.GetD(index).ToString("X8") +
                     " A" + index + "=$" + system.Cpu.GetA(index).ToString("X8"));
+            }
+        }
+
+        /// <summary>
+        /// Dumps small memory windows around the address registers that usually hold loader buffers and strings.
+        /// </summary>
+        private static void DumpRegisterMemory(AmigaSystem system, int words, int bytes)
+        {
+            for (int index = 0; index < 4; index++)
+            {
+                uint address = system.Cpu.GetA(index);
+                if (address >= 0x00C00000u)
+                {
+                    continue;
+                }
+
+                uint wordAddress = address >= 16 ? (address - 16u) & 0x00FFFFFEu : address & 0x00FFFFFEu;
+                DumpWords(system, wordAddress, words, "A" + index + "MEM");
+                DumpBytesAscii(system, address, bytes, "A" + index + "TXT");
+            }
+        }
+
+        /// <summary>
+        /// Dumps bytes as hex plus printable ASCII for compact loader data inspection.
+        /// </summary>
+        private static void DumpBytesAscii(AmigaSystem system, uint address, int bytes, string label)
+        {
+            uint current = address;
+            for (int offset = 0; offset < bytes; offset += 16)
+            {
+                var hex = new StringBuilder();
+                var text = new StringBuilder();
+                int count = Math.Min(16, bytes - offset);
+                for (int index = 0; index < count; index++)
+                {
+                    byte value = system.Bus.ReadByte(current + (uint)index);
+                    if (index > 0)
+                    {
+                        hex.Append(' ');
+                    }
+
+                    hex.Append(value.ToString("X2"));
+                    text.Append(value >= 32 && value <= 126 ? (char)value : '.');
+                }
+
+                Console.WriteLine(label + "+$" + offset.ToString("X2") + " $" + current.ToString("X8") + ": " + hex + "  " + text);
+                current += (uint)count;
             }
         }
 
