@@ -102,6 +102,18 @@ namespace AmigaEmulator.Core.CustomChips
         /// Constant for Max Fetched Words.
         /// </summary>
         private const int MaxFetchedWords = 128;
+        /// <summary>
+        /// OCS low-resolution bitplane DMA slot order inside one 8-cycle fetch unit.
+        /// </summary>
+        private static readonly int[] s_lowresFetchSequence = { 8, 4, 6, 2, 7, 3, 5, 1 };
+        /// <summary>
+        /// OCS high-resolution bitplane DMA slot order inside one 4-cycle fetch unit.
+        /// </summary>
+        private static readonly int[] s_hiresFetchSequence = { 4, 2, 3, 1 };
+        /// <summary>
+        /// OCS two-plane bitplane DMA slot order inside one fetch unit.
+        /// </summary>
+        private static readonly int[] s_twoPlaneFetchSequence = { 2, 1 };
 
         /// <summary>
         /// Stores registers.
@@ -520,7 +532,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            int row = GetScreenY(beamY);
+            int row = GetFetchRowKey(beamY);
             if (row < 0)
             {
                 return;
@@ -571,8 +583,8 @@ namespace AmigaEmulator.Core.CustomChips
                 return false;
             }
 
-            int planeSlot = fetchOffset % fetchStep;
-            return planeSlot < EnabledPlanes;
+            int plane = GetFetchPlaneForSlot(fetchOffset % fetchStep);
+            return plane >= 0 && plane < EnabledPlanes;
         }
 
         /// <summary>
@@ -585,7 +597,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            int row = GetScreenY(beamY);
+            int row = GetFetchRowKey(beamY);
             if (row < 0)
             {
                 return;
@@ -594,7 +606,7 @@ namespace AmigaEmulator.Core.CustomChips
             int fetchStep = GetFetchStep();
             int fetchOffset = beamX - _ddfStart;
             int wordIndex = fetchOffset / fetchStep;
-            int plane = fetchOffset % fetchStep;
+            int plane = GetFetchPlaneForSlot(fetchOffset % fetchStep);
             if (wordIndex < 0 || wordIndex >= MaxFetchedWords || plane < 0 || plane >= EnabledPlanes)
             {
                 return;
@@ -643,6 +655,14 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
+        /// Uses the physical beam line as the bitplane DMA row key.
+        /// </summary>
+        private static int GetFetchRowKey(int beamY)
+        {
+            return beamY;
+        }
+
+        /// <summary>
         /// Renders Lowres Pixel into the current frame buffer.
         /// </summary>
         public uint RenderLowresPixel(int screenX, int beamX, int beamY)
@@ -685,7 +705,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return 0;
             }
 
-            int row = GetScreenY(beamY);
+            int row = GetFetchRowKey(beamY);
             if (row < 0)
             {
                 return 0;
@@ -777,7 +797,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int ReadColorIndex(int displayX, int beamY)
         {
-            int row = GetScreenY(beamY);
+            int row = GetFetchRowKey(beamY);
             if (row < 0)
             {
                 return 0;
@@ -1023,8 +1043,8 @@ namespace AmigaEmulator.Core.CustomChips
         private int GetPlaneScroll(int plane)
         {
             return (plane & 1) == 0
-                ? _scrollEven
-                : _scrollOdd;
+                ? _scrollOdd
+                : _scrollEven;
         }
 
         /// <summary>
@@ -1041,6 +1061,38 @@ namespace AmigaEmulator.Core.CustomChips
         private int GetFetchStep()
         {
             return _hires ? 4 : 8;
+        }
+
+        /// <summary>
+        /// Maps an OCS DMA cycle inside the fetch unit to a bitplane index.
+        /// </summary>
+        private int GetFetchPlaneForSlot(int slot)
+        {
+            int[] sequence = GetFetchSequence();
+            if (slot < 0 || slot >= sequence.Length)
+            {
+                return -1;
+            }
+
+            return sequence[slot] - 1;
+        }
+
+        /// <summary>
+        /// Returns the active OCS bitplane DMA sequence for the current resolution and plane count.
+        /// </summary>
+        private int[] GetFetchSequence()
+        {
+            if (EnabledPlanes <= 2)
+            {
+                return s_twoPlaneFetchSequence;
+            }
+
+            if (_hires || EnabledPlanes <= 4)
+            {
+                return s_hiresFetchSequence;
+            }
+
+            return s_lowresFetchSequence;
         }
 
         /// <summary>

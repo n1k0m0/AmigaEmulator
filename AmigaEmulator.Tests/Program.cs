@@ -520,11 +520,12 @@ namespace AmigaEmulator.Tests
             }
 
             agnus.Tick();
-            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "First DDF slot should belong to bitplane DMA.");
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $38 should fetch BPL2 in a two-plane display.");
             Check.Equal(0, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "First split slot must not expose an incomplete two-plane fetch group.");
 
             agnus.Tick();
-            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "Second DDF slot should fetch the second enabled plane.");
+
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $39 should fetch BPL1 and complete the group.");
             Check.Equal(3, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After both split slots commit, the first fetched pixel should remain visible at the left edge.");
         }
 
@@ -622,6 +623,10 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Bplcon0 = 0x100;
         /// <summary>
+        /// Defines the BPLCON1 custom register offset or bit mask.
+        /// </summary>
+        private const uint Bplcon1 = 0x102;
+        /// <summary>
         /// Defines the BPLCON2 custom register offset or bit mask.
         /// </summary>
         private const uint Bplcon2 = 0x104;
@@ -684,6 +689,16 @@ namespace AmigaEmulator.Tests
                 TestSplitBitplanePrefetchGroup);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "OCS lowres six-plane DMA follows hardware fetch slot order",
+                "WinUAE/HRM OCS lowres bitplane DMA sequence 8,4,6,2,7,3,5,1",
+                TestOcsLowresSixPlaneFetchSequence);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "BPLCON1 applies odd and even scroll nibbles to the matching planes",
+                "Amiga HRM BPLCON1 lower nibble scrolls even planes and upper nibble scrolls odd planes",
+                TestBplcon1OddEvenScrollNibbles);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "dual-playfield nonzero odd plane maps to playfield 2 color bank",
                 "Amiga HRM dual playfield mode and BPLCON2 priority/color bank rules",
                 TestDualPlayfieldColorBank);
@@ -707,6 +722,11 @@ namespace AmigaEmulator.Tests
                 "delayed bitplane DMA starts at BPLxPT instead of skipped DIW rows",
                 "Amiga HRM bitplane DMA pointer advancement only happens on fetched display lines",
                 TestDelayedBitplaneDmaStartsAtPointerRegister);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "Copper DIW changes do not rewind bitplane DMA row tracking",
+                "Amiga OCS bitplane DMA pointers advance by fetched beam line, independent of mid-frame DIWSTRT changes",
+                TestDiwTopChangeKeepsBitplaneDmaLineProgress);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "DDF fetches before the visible edge are skipped at screen X zero",
@@ -809,6 +829,52 @@ namespace AmigaEmulator.Tests
 
             bitplanes.FetchDmaPlaneWord(0x39, BitplaneUnit.PalVisibleTop);
             Check.Equal(3, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After both plane words commit, the group should be visible at the left edge without shrinking the right edge.");
+        }
+
+        /// <summary>
+        /// Verifies the OCS low-resolution bitplane DMA slot sequence used by six-plane/EHB screens.
+        /// </summary>
+        private static void TestOcsLowresSixPlaneFetchSequence()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[8];
+            memory[3] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 7]);
+            registers.WriteWord(Bplcon0, 0x6000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            for (int plane = 0; plane < 6; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 2));
+            }
+
+            int[] fetchSlots = { 0x39, 0x3A, 0x3B, 0x3D, 0x3E, 0x3F };
+            foreach (int slot in fetchSlots)
+            {
+                bitplanes.FetchDmaPlaneWord(slot, BitplaneUnit.PalVisibleTop);
+            }
+
+            Check.Equal(8, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Slot $39 must feed BPL4, selecting color bit 3 on a six-plane OCS line.");
+        }
+
+        /// <summary>
+        /// Verifies BPLCON1 fine-scroll nibble assignment for odd and even planes.
+        /// </summary>
+        private static void TestBplcon1OddEvenScrollNibbles()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x2000);
+            registers.WriteWord(Bplcon1, 0x0010);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0x8000);
+            bitplanes.NotifyCustomRegisterWordWrite(Bpl2dat, 0x8000);
+            bitplanes.RefreshFromRegisters();
+
+            Check.Equal(2, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Upper BPLCON1 nibble should delay odd BPL1 while even BPL2 remains at the left edge.");
         }
 
         /// <summary>
@@ -917,6 +983,36 @@ namespace AmigaEmulator.Tests
             bitplanes.FetchDmaWords(0x38, 0xBD);
 
             Check.Equal(1, bitplanes.RenderColorIndex(0, 0xBD), "The first active DMA line must fetch from BPL1PT, not from an offset for skipped DIW rows.");
+        }
+
+        /// <summary>
+        /// Verifies that Copper DIWSTRT changes between display bands do not reset the bitplane DMA line stream.
+        /// </summary>
+        private static void TestDiwTopChangeKeepsBitplaneDmaLineProgress()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x8000;
+            memory[1] = 0x4000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 3]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x1881);
+            registers.WriteWord(Diwstop, 0x5081);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            bitplanes.FetchDmaPlaneWord(0x39, 0x30);
+            Check.Equal(1, bitplanes.RenderColorIndex(0, 0x30), "The first fetched line should render the first memory word.");
+
+            registers.WriteWord(Diwstrt, 0x2081);
+            registers.WriteWord(Diwstop, 0x5081);
+            bitplanes.FetchDmaPlaneWord(0x39, 0x31);
+
+            Check.Equal(0, bitplanes.RenderColorIndex(0, 0x31), "The second physical beam line must not refetch the first word after DIWSTRT changes.");
+            Check.Equal(1, bitplanes.RenderColorIndex(2, 0x31), "The second physical beam line should continue to the next DMA word.");
         }
 
         /// <summary>

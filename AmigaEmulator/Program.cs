@@ -1039,6 +1039,29 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-click-before-pc", StringComparison.OrdinalIgnoreCase))
+            {
+                if (args.Length < 6)
+                {
+                    Console.WriteLine("Usage: --trace-savestate-click-before-pc <save> <dx> <dy> <cycles> <pcHex> [samples] [hit]");
+                    return;
+                }
+
+                string savePath = args[1];
+                int mouseDx = int.Parse(args[2]);
+                int mouseDy = int.Parse(args[3]);
+                int cycles = int.Parse(args[4]);
+                uint pc = Convert.ToUInt32(args[5].Replace("$", string.Empty), 16);
+                int samples = args.Length >= 7 && int.TryParse(args[6], out int parsedSamples) && parsedSamples > 0
+                    ? parsedSamples
+                    : 48;
+                int hit = args.Length >= 8 && int.TryParse(args[7], out int parsedHit) && parsedHit > 0
+                    ? parsedHit
+                    : 1;
+                TraceSavestateClickBeforePc(savePath, mouseDx, mouseDy, cycles, pc, samples, hit, ParseModelArgument(args, 8));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-copper", StringComparison.OrdinalIgnoreCase))
             {
                 int cycles = args.Length >= 2 && int.TryParse(args[1], out int parsedCopperCycles) && parsedCopperCycles > 0
@@ -1913,11 +1936,9 @@ namespace AmigaEmulator
                 MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
                 system.RunChipCycles(200000);
                 system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
-                system.Input.SetJoystickButton(AmigaControlPort.Port1, AmigaJoystickButtons.Fire, true);
                 Console.WriteLine("MouseDown JOY0DAT=$" + system.Bus.ReadWord(0x00DFF00A).ToString("X4") + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
                 system.RunChipCycles(2000000);
                 system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
-                system.Input.SetJoystickButton(AmigaControlPort.Port1, AmigaJoystickButtons.Fire, false);
                 int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
                 for (int frame = 0; frame < framesToRun; frame++)
                 {
@@ -1945,11 +1966,9 @@ namespace AmigaEmulator
                 MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
                 system.RunChipCycles(200000);
                 system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
-                system.Input.SetJoystickButton(AmigaControlPort.Port1, AmigaJoystickButtons.Fire, true);
                 Console.WriteLine("MouseDown JOY0DAT=$" + system.Bus.ReadWord(0x00DFF00A).ToString("X4") + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
                 system.RunChipCycles(2000000);
                 system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
-                system.Input.SetJoystickButton(AmigaControlPort.Port1, AmigaJoystickButtons.Fire, false);
                 RunFrames(system, framesToRun);
                 WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500);
                 Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy + " Frames=" + framesToRun);
@@ -6489,6 +6508,85 @@ namespace AmigaEmulator
                 }
 
                 Console.WriteLine("PC=$" + pc.ToString("X6") + " hit=" + requestedHit + " not reached within " + cycles + " cycles after mouse input. Hits=" + hits);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Traces recent CPU opcode fetches before a PC hit after restoring a savestate and clicking the mouse.
+        /// </summary>
+        private static void TraceSavestateClickBeforePc(string savePath, int mouseDx, int mouseDy, int cycles, uint pc, int samplesToKeep, int requestedHit, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                system.RunChipCycles(200000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
+
+                var samples = new Queue<string>();
+                int hits = 0;
+                uint lastInstructionAddress = 0xFFFFFFFFu;
+                for (int cycle = 0; cycle < cycles; cycle++)
+                {
+                    system.TickChipCycle();
+                    if (cycle == 2000000)
+                    {
+                        system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
+                    }
+
+                    if (system.Cpu.CurrentInstructionAddress == lastInstructionAddress)
+                    {
+                        continue;
+                    }
+
+                    lastInstructionAddress = system.Cpu.CurrentInstructionAddress;
+                    if (samples.Count == samplesToKeep)
+                    {
+                        samples.Dequeue();
+                    }
+
+                    samples.Enqueue(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        "{0,9} F{1,4} {2,3},{3,3} IP ${4:X6} OP ${5:X4} PC ${6:X6} {7}",
+                        system.Agnus.Beam.GlobalChipCycle,
+                        system.Agnus.Beam.Frame,
+                        system.Agnus.Beam.BeamX,
+                        system.Agnus.Beam.BeamY,
+                        system.Cpu.CurrentInstructionAddress,
+                        system.Cpu.CurrentOpcode,
+                        system.Cpu.PC,
+                        system.Cpu.LastInstruction ?? string.Empty));
+                    if (system.Cpu.CurrentInstructionAddress != pc)
+                    {
+                        continue;
+                    }
+
+                    hits++;
+                    if (hits < requestedHit)
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine("Trace before click PC=$" + pc.ToString("X6") + " hit=" + requestedHit + " at cycle=" + system.Agnus.Beam.GlobalChipCycle);
+                    foreach (string entry in samples)
+                    {
+                        Console.WriteLine(entry);
+                    }
+
+                    Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy);
+                    Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                    Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                    Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                    Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                    DumpCpuRegisters(system);
+                    DumpWords(system, system.Cpu.CurrentInstructionAddress >= 16 ? system.Cpu.CurrentInstructionAddress - 16u : system.Cpu.CurrentInstructionAddress, 24, "PCCTX");
+                    DumpRegisterMemory(system, 24, 96);
+                    DumpVideoRegisterSummary(system);
+                    return;
+                }
+
+                Console.WriteLine("PC=$" + pc.ToString("X6") + " hit=" + requestedHit + " not reached within " + cycles + " cycles after click. Hits=" + hits);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
             }
         }
