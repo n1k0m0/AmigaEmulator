@@ -16,52 +16,52 @@
 namespace AmigaEmulator.Core
 {
     /// <summary>
-    /// Provides Kickstart ROM Info behavior used by the emulator.
+    /// Provides Kickstart ROM Info functionality.
     /// </summary>
     public sealed class KickstartRomInfo
     {
         /// <summary>
-        /// Gets or updates the Path.
+        /// Gets or sets Path.
         /// </summary>
         public string Path { get; set; }
 
         /// <summary>
-        /// Gets or updates the Exists.
+        /// Gets or sets Exists.
         /// </summary>
         public bool Exists { get; set; }
 
         /// <summary>
-        /// Gets or updates the Is Usable.
+        /// Gets or sets Is Usable.
         /// </summary>
         public bool IsUsable { get; set; }
 
         /// <summary>
-        /// Gets or updates the Kind.
+        /// Gets or sets Kind.
         /// </summary>
         public string Kind { get; set; }
 
         /// <summary>
-        /// Gets or updates the Size.
+        /// Gets or sets Size.
         /// </summary>
         public int Size { get; set; }
 
         /// <summary>
-        /// Gets or updates the Sha1.
+        /// Gets or sets Sha 1.
         /// </summary>
         public string Sha1 { get; set; }
 
         /// <summary>
-        /// Gets or updates the Initial Stack Pointer.
+        /// Gets or sets Initial Stack Pointer.
         /// </summary>
         public uint InitialStackPointer { get; set; }
 
         /// <summary>
-        /// Gets or updates the Initial Program Counter.
+        /// Gets or sets Initial Program Counter.
         /// </summary>
         public uint InitialProgramCounter { get; set; }
 
         /// <summary>
-        /// Gets or updates the Error.
+        /// Gets or sets Error.
         /// </summary>
         public string Error { get; set; }
     }

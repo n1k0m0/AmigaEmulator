@@ -26,63 +26,63 @@ namespace AmigaEmulator.Core.Cia
     public sealed class Cia8520
     {
         /// <summary>
-        /// Defines the Register PRA constant.
+        /// Constant for Register PRA.
         /// </summary>
         private const int RegisterPra = 0;
         /// <summary>
-        /// Defines the Register PRB constant.
+        /// Constant for Register PRB.
         /// </summary>
         private const int RegisterPrb = 1;
         /// <summary>
-        /// Defines the Register DDRA constant.
+        /// Constant for Register DDRA.
         /// </summary>
         private const int RegisterDdra = 2;
         /// <summary>
-        /// Defines the Register DDRB constant.
+        /// Constant for Register DDRB.
         /// </summary>
         private const int RegisterDdrb = 3;
         /// <summary>
-        /// Defines the Register Timer A Low constant.
+        /// Constant for Register Timer A Low.
         /// </summary>
         private const int RegisterTimerALow = 4;
         /// <summary>
-        /// Defines the Register Timer A High constant.
+        /// Constant for Register Timer A High.
         /// </summary>
         private const int RegisterTimerAHigh = 5;
         /// <summary>
-        /// Defines the Register Timer B Low constant.
+        /// Constant for Register Timer B Low.
         /// </summary>
         private const int RegisterTimerBLow = 6;
         /// <summary>
-        /// Defines the Register Timer B High constant.
+        /// Constant for Register Timer B High.
         /// </summary>
         private const int RegisterTimerBHigh = 7;
         /// <summary>
-        /// Defines the Register TOD Low constant.
+        /// Constant for Register TOD Low.
         /// </summary>
         private const int RegisterTodLow = 8;
         /// <summary>
-        /// Defines the Register TOD Mid constant.
+        /// Constant for Register TOD Mid.
         /// </summary>
         private const int RegisterTodMid = 9;
         /// <summary>
-        /// Defines the Register TOD High constant.
+        /// Constant for Register TOD High.
         /// </summary>
         private const int RegisterTodHigh = 10;
         /// <summary>
-        /// Defines the Register Sdr constant.
+        /// Constant for Register Sdr.
         /// </summary>
         private const int RegisterSdr = 12;
         /// <summary>
-        /// Defines the Register Icr constant.
+        /// Constant for Register Icr.
         /// </summary>
         private const int RegisterIcr = 13;
         /// <summary>
-        /// Defines the Register Cra constant.
+        /// Constant for Register Cra.
         /// </summary>
         private const int RegisterCra = 14;
         /// <summary>
-        /// Defines the Register Crb constant.
+        /// Constant for Register Crb.
         /// </summary>
         private const int RegisterCrb = 15;
 
@@ -112,75 +112,75 @@ namespace AmigaEmulator.Core.Cia
         private const byte InterruptMaster = 0x80;
 
         /// <summary>
-        /// Tracks the name.
+        /// Stores name.
         /// </summary>
         private readonly string _name;
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private readonly byte[] _registers = new byte[16];
         /// <summary>
-        /// Tracks the port A Input Mask.
+        /// Stores port A Input Mask.
         /// </summary>
         private byte _portAInputMask;
         /// <summary>
-        /// Tracks the port A Input Value.
+        /// Stores port A Input Value.
         /// </summary>
         private byte _portAInputValue;
         /// <summary>
-        /// Tracks the port B Input Mask.
+        /// Stores port B Input Mask.
         /// </summary>
         private byte _portBInputMask;
         /// <summary>
-        /// Tracks the port B Input Value.
+        /// Stores port B Input Value.
         /// </summary>
         private byte _portBInputValue;
         /// <summary>
-        /// Tracks the timer A Counter.
+        /// Stores timer A Counter.
         /// </summary>
         private ushort _timerACounter;
         /// <summary>
-        /// Tracks the timer B Counter.
+        /// Stores timer B Counter.
         /// </summary>
         private ushort _timerBCounter;
         /// <summary>
-        /// Tracks the timer A Latch.
+        /// Stores timer A Latch.
         /// </summary>
         private ushort _timerALatch;
         /// <summary>
-        /// Tracks the timer B Latch.
+        /// Stores timer B Latch.
         /// </summary>
         private ushort _timerBLatch;
         /// <summary>
-        /// Tracks the TOD Alarm.
+        /// Stores TOD Alarm.
         /// </summary>
         private int _todAlarm;
         /// <summary>
-        /// Tracks the TOD Read Latch.
+        /// Stores TOD Read Latch.
         /// </summary>
         private int _todReadLatch;
         /// <summary>
-        /// Tracks the TOD Read Latched.
+        /// Stores TOD Read Latched.
         /// </summary>
         private bool _todReadLatched;
         /// <summary>
-        /// Tracks the TOD Stopped.
+        /// Stores TOD Stopped.
         /// </summary>
         private bool _todStopped;
         /// <summary>
-        /// Tracks the TOD Alarm Write Mask.
+        /// Stores TOD Alarm Write Mask.
         /// </summary>
         private byte _todAlarmWriteMask;
         /// <summary>
-        /// Tracks the interrupt Mask.
+        /// Stores interrupt Mask.
         /// </summary>
         private byte _interruptMask;
         /// <summary>
-        /// Tracks the interrupt Request.
+        /// Stores interrupt Request.
         /// </summary>
         private byte _interruptRequest;
         /// <summary>
-        /// Tracks the last Overlay At Zero.
+        /// Stores last Overlay At Zero.
         /// </summary>
         private bool _lastOverlayAtZero;
         /// <summary>
@@ -188,7 +188,7 @@ namespace AmigaEmulator.Core.Cia
         /// </summary>
         private readonly Queue<byte> _serialInputQueue = new Queue<byte>();
         /// <summary>
-        /// Tracks the byte currently shifting into SDR.
+        /// Stores serial Shift Byte.
         /// </summary>
         private byte _serialShiftByte;
         /// <summary>
@@ -216,7 +216,7 @@ namespace AmigaEmulator.Core.Cia
         public event Action<Cia8520> InterruptChanged;
 
         /// <summary>
-        /// Executes the Name logic.
+        /// Gets Name.
         /// </summary>
         public string Name
         {
@@ -240,7 +240,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the PRA logic.
+        /// Gets PRA.
         /// </summary>
         public byte Pra
         {
@@ -248,7 +248,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the PRB logic.
+        /// Gets PRB.
         /// </summary>
         public byte Prb
         {
@@ -256,7 +256,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the DDRA logic.
+        /// Gets DDRA.
         /// </summary>
         public byte Ddra
         {
@@ -264,7 +264,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the DDRB logic.
+        /// Gets DDRB.
         /// </summary>
         public byte Ddrb
         {
@@ -272,7 +272,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer A logic.
+        /// Gets Timer A.
         /// </summary>
         public ushort TimerA
         {
@@ -280,7 +280,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer B logic.
+        /// Gets Timer B.
         /// </summary>
         public ushort TimerB
         {
@@ -288,7 +288,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer A Latch logic.
+        /// Gets Timer A Latch.
         /// </summary>
         public ushort TimerALatch
         {
@@ -296,7 +296,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer B Latch logic.
+        /// Gets Timer B Latch.
         /// </summary>
         public ushort TimerBLatch
         {
@@ -304,7 +304,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Interrupt Control logic.
+        /// Gets Interrupt Control.
         /// </summary>
         public byte InterruptControl
         {
@@ -312,7 +312,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Interrupt Mask logic.
+        /// Gets Interrupt Mask.
         /// </summary>
         public byte InterruptMask
         {
@@ -320,7 +320,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Interrupt Request logic.
+        /// Gets Interrupt Request.
         /// </summary>
         public byte InterruptRequest
         {
@@ -328,7 +328,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Interrupt Pending logic.
+        /// Gets Interrupt Pending.
         /// </summary>
         public bool InterruptPending
         {
@@ -336,7 +336,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Serial Data logic.
+        /// Gets Serial Data.
         /// </summary>
         public byte SerialData
         {
@@ -378,7 +378,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Overlay At Zero logic.
+        /// Gets Overlay At Zero.
         /// </summary>
         public bool OverlayAtZero
         {
@@ -470,7 +470,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Request Interrupt logic.
+        /// Runs Request Interrupt.
         /// </summary>
         public void RequestInterrupt(byte mask)
         {
@@ -507,7 +507,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Pulse Flag logic.
+        /// Runs Pulse Flag.
         /// </summary>
         public void PulseFlag()
         {
@@ -793,7 +793,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer Started logic.
+        /// Runs Timer Started.
         /// </summary>
         private bool TimerStarted(int controlRegister)
         {
@@ -809,7 +809,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Start One Shot Timer On High Byte Write logic.
+        /// Runs Start One Shot Timer On High Byte Write.
         /// </summary>
         private void StartOneShotTimerOnHighByteWrite(int controlRegister)
         {
@@ -820,7 +820,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer B Counts E Clock logic.
+        /// Runs Timer B Counts E Clock.
         /// </summary>
         private bool TimerBCountsEClock()
         {
@@ -828,7 +828,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Timer B Counts Timer A Underflow logic.
+        /// Runs Timer B Counts Timer A Underflow.
         /// </summary>
         private bool TimerBCountsTimerAUnderflow()
         {
@@ -917,7 +917,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Increment TOD logic.
+        /// Runs Increment Tod.
         /// </summary>
         private void IncrementTod()
         {
@@ -999,7 +999,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Reload Value logic.
+        /// Runs Reload Value.
         /// </summary>
         private static ushort ReloadValue(ushort latch)
         {
@@ -1029,7 +1029,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the TOD Alarm Write Selected logic.
+        /// Runs Tod Alarm Write Selected.
         /// </summary>
         private bool TodAlarmWriteSelected()
         {

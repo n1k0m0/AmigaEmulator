@@ -26,44 +26,44 @@ namespace AmigaEmulator.Core.CustomChips
     public sealed class Agnus
     {
         /// <summary>
-        /// Defines the Vposr constant.
+        /// Constant for Vposr.
         /// </summary>
         private const uint Vposr = 0x004;
         /// <summary>
-        /// Defines the Vhposr constant.
+        /// Constant for Vhposr.
         /// </summary>
         private const uint Vhposr = 0x006;
         /// <summary>
-        /// Defines the Pal V Blank End constant.
+        /// Constant for Pal V Blank End.
         /// </summary>
         private const int PalVBlankEnd = 25;
 
         /// <summary>
-        /// Tracks the model.
+        /// Stores model.
         /// </summary>
         private readonly AmigaModel _model;
         /// <summary>
-        /// Tracks the DMA Scheduler.
+        /// Stores DMA Scheduler.
         /// </summary>
         private readonly DmaScheduler _dmaScheduler;
         /// <summary>
-        /// Tracks the global Cycle.
+        /// Stores global Cycle.
         /// </summary>
         private long _globalCycle;
         /// <summary>
-        /// Tracks the frame.
+        /// Stores frame.
         /// </summary>
         private long _frame;
         /// <summary>
-        /// Tracks the beam X.
+        /// Stores beam X.
         /// </summary>
         private int _beamX;
         /// <summary>
-        /// Tracks the beam Y.
+        /// Stores beam Y.
         /// </summary>
         private int _beamY;
         /// <summary>
-        /// Tracks the last Is V Blank.
+        /// Stores last Is V Blank.
         /// </summary>
         private bool _lastIsVBlank;
 
@@ -81,6 +81,7 @@ namespace AmigaEmulator.Core.CustomChips
             Copper = new Copper(CustomRegisters, _model.ChipRamBytes);
             Blitter = new Blitter(CustomRegisters, _model.ChipRamBytes);
             _dmaScheduler.AttachBlitterStatus(() => Blitter.DmaPending);
+            _dmaScheduler.AttachCopperBusDemand(() => Copper.NeedsDmaBus);
             Copper.AttachBlitterStatus(() => Blitter.DmaPending);
             Copper.CustomRegisterWritten += Blitter.NotifyCustomRegisterWrite;
             CustomRegisters.CopperJumpRequested += Copper.StrobeJump;
@@ -91,12 +92,12 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Gets or updates the Custom Registers.
+        /// Gets or sets Custom Registers.
         /// </summary>
         public CustomRegisterMap CustomRegisters { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Bitplanes.
+        /// Gets or sets Bitplanes.
         /// </summary>
         public BitplaneUnit Bitplanes { get; private set; }
 
@@ -111,22 +112,22 @@ namespace AmigaEmulator.Core.CustomChips
         public CollisionUnit Collisions { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Copper.
+        /// Gets or sets Copper.
         /// </summary>
         public Copper Copper { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Blitter.
+        /// Gets or sets Blitter.
         /// </summary>
         public Blitter Blitter { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Beam.
+        /// Gets or sets Beam.
         /// </summary>
         public BeamTraceEntry Beam { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Last DMA Slot.
+        /// Gets or sets Last DMA Slot.
         /// </summary>
         public DmaSlotTraceEntry LastDmaSlot { get; private set; }
 
@@ -419,7 +420,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Advance Beam logic.
+        /// Runs Advance Beam.
         /// </summary>
         private void AdvanceBeam()
         {
@@ -430,6 +431,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             _beamX = 0;
+            CustomRegisters.TickPotCounters();
             _beamY++;
             if (_beamY < _model.LinesPerFrame)
             {

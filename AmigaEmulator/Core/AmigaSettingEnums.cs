@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,15 @@ namespace AmigaEmulator.Core
     public enum AmigaVideoFilter
     {
         /// <summary>
-        /// Represents the S ha rp option.
+        /// Uses crisp nearest-neighbor style presentation.
         /// </summary>
         Sharp,
         /// <summary>
-        /// Represents the C rt option.
+        /// Applies a CRT-style presentation filter.
         /// </summary>
         Crt,
         /// <summary>
-        /// Represents the T v option.
+        /// Applies a softer television-style presentation filter.
         /// </summary>
         Tv
     }
@@ -40,35 +40,35 @@ namespace AmigaEmulator.Core
     public enum AmigaUpscaleMode
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Leaves the source framebuffer at its native size.
         /// </summary>
         None,
         /// <summary>
-        /// Represents the S ca le2 x option.
+        /// Uses a sharp 2x integer upscale.
         /// </summary>
         Scale2x,
         /// <summary>
-        /// Represents the S ca le3 x option.
+        /// Uses a sharp 3x integer upscale.
         /// </summary>
         Scale3x,
         /// <summary>
-        /// Represents the H q2 x option.
+        /// Uses a smooth 2x upscale path.
         /// </summary>
         Hq2x,
         /// <summary>
-        /// Represents the H q3 x option.
+        /// Uses a smooth 3x upscale path.
         /// </summary>
         Hq3x,
         /// <summary>
-        /// Represents the H q4 x option.
+        /// Uses a smooth 4x upscale path.
         /// </summary>
         Hq4x,
         /// <summary>
-        /// Represents the X br z option.
+        /// Uses the legacy xBRZ-compatible smooth 4x setting.
         /// </summary>
         Xbrz,
         /// <summary>
-        /// Represents the C le an4 option.
+        /// Uses a sharp 4x integer upscale.
         /// </summary>
         Clean4
     }
@@ -79,27 +79,27 @@ namespace AmigaEmulator.Core
     public enum AmigaRenderFps
     {
         /// <summary>
-        /// Represents the N at iv e option.
+        /// Uses the emulated video standard's native frame cadence.
         /// </summary>
         Native,
         /// <summary>
-        /// Represents the H z50 option.
+        /// Caps frontend presentation at 50 Hz.
         /// </summary>
         Hz50,
         /// <summary>
-        /// Represents the H z60 option.
+        /// Caps frontend presentation at 60 Hz.
         /// </summary>
         Hz60,
         /// <summary>
-        /// Represents the H z100 option.
+        /// Caps frontend presentation at 100 Hz.
         /// </summary>
         Hz100,
         /// <summary>
-        /// Represents the H z120 option.
+        /// Caps frontend presentation at 120 Hz.
         /// </summary>
         Hz120,
         /// <summary>
-        /// Represents the U nl im it ed option.
+        /// Lets the frontend render loop run uncapped.
         /// </summary>
         Unlimited
     }
@@ -110,23 +110,23 @@ namespace AmigaEmulator.Core
     public enum AmigaRamProfile
     {
         /// <summary>
-        /// Represents the C hi p512 K option.
+        /// Maps 512 KB of Chip RAM with no Slow or Fast RAM.
         /// </summary>
         Chip512K,
         /// <summary>
-        /// Represents the C hi p512 KS lo w512 K option.
+        /// Maps 512 KB Chip RAM plus 512 KB trapdoor Slow RAM.
         /// </summary>
         Chip512KSlow512K,
         /// <summary>
-        /// Represents the C hi p1 Mb option.
+        /// Maps 1 MB of Chip RAM.
         /// </summary>
         Chip1Mb,
         /// <summary>
-        /// Represents the C hi p2 Mb option.
+        /// Maps 2 MB of Chip RAM.
         /// </summary>
         Chip2Mb,
         /// <summary>
-        /// Represents the C hi p2 Mb Fa st8 Mb option.
+        /// Maps 2 MB Chip RAM plus 8 MB Zorro II Fast RAM.
         /// </summary>
         Chip2MbFast8Mb
     }
@@ -137,35 +137,35 @@ namespace AmigaEmulator.Core
     public enum AmigaKickstart
     {
         /// <summary>
-        /// Represents the A ut o option.
+        /// Selects the best available Kickstart ROM automatically.
         /// </summary>
         Auto,
         /// <summary>
-        /// Represents the K ic ks ta rt11 option.
+        /// Requests Kickstart 1.1 when available.
         /// </summary>
         Kickstart11,
         /// <summary>
-        /// Represents the K ic ks ta rt12 option.
+        /// Requests Kickstart 1.2 when available.
         /// </summary>
         Kickstart12,
         /// <summary>
-        /// Represents the K ic ks ta rt13 option.
+        /// Requests Kickstart 1.3 when available.
         /// </summary>
         Kickstart13,
         /// <summary>
-        /// Represents the K ic ks ta rt20 option.
+        /// Requests Kickstart 2.0 when available.
         /// </summary>
         Kickstart20,
         /// <summary>
-        /// Represents the K ic ks ta rt30 option.
+        /// Requests Kickstart 3.0 when available.
         /// </summary>
         Kickstart30,
         /// <summary>
-        /// Represents the K ic ks ta rt31 option.
+        /// Requests Kickstart 3.1 when available.
         /// </summary>
         Kickstart31,
         /// <summary>
-        /// Represents the C us to m option.
+        /// Uses the configured custom Kickstart path.
         /// </summary>
         Custom
     }
@@ -176,19 +176,19 @@ namespace AmigaEmulator.Core
     public enum AmigaFloppySpeed
     {
         /// <summary>
-        /// Represents the A cc ur at e option.
+        /// Uses hardware-like disk word timing.
         /// </summary>
         Accurate,
         /// <summary>
-        /// Represents the F as t option.
+        /// Uses reduced disk wait timing for faster loading.
         /// </summary>
         Fast,
         /// <summary>
-        /// Represents the T ur bo option.
+        /// Uses aggressive disk timing for turbo loading.
         /// </summary>
         Turbo,
         /// <summary>
-        /// Represents the I ns ta nt option.
+        /// Reserves the instant-load setting for compatible fast paths.
         /// </summary>
         Instant
     }
@@ -199,19 +199,19 @@ namespace AmigaEmulator.Core
     public enum AmigaPaulaFilter
     {
         /// <summary>
-        /// Represents the O ff option.
+        /// Disables the Paula output filter.
         /// </summary>
         Off,
         /// <summary>
-        /// Represents the A500 option.
+        /// Uses an A500-style low-pass filter.
         /// </summary>
         A500,
         /// <summary>
-        /// Represents the A1200 option.
+        /// Uses an A1200-style output filter.
         /// </summary>
         A1200,
         /// <summary>
-        /// Represents the L ed option.
+        /// Uses the A500 low-pass filter with LED filter behavior.
         /// </summary>
         Led
     }
@@ -222,23 +222,23 @@ namespace AmigaEmulator.Core
     public enum AmigaInputPortMode
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Leaves the DB9 port unmapped.
         /// </summary>
         None,
         /// <summary>
-        /// Represents the M ou se option.
+        /// Maps host mouse input to the DB9 port.
         /// </summary>
         Mouse,
         /// <summary>
-        /// Represents the J oy st ic k option.
+        /// Maps host joystick input to the DB9 port.
         /// </summary>
         Joystick,
         /// <summary>
-        /// Represents the G am ep ad option.
+        /// Maps host gamepad input to the DB9 port.
         /// </summary>
         Gamepad,
         /// <summary>
-        /// Represents the K ey bo ar dJ oy st ic k option.
+        /// Maps keyboard controls to joystick input.
         /// </summary>
         KeyboardJoystick
     }
@@ -249,15 +249,15 @@ namespace AmigaEmulator.Core
     public enum AmigaResetMode
     {
         /// <summary>
-        /// Represents the W ar m option.
+        /// Performs a warm reset without remounting media.
         /// </summary>
         Warm,
         /// <summary>
-        /// Represents the R el oa d option.
+        /// Resets and remounts the configured media.
         /// </summary>
         Reload,
         /// <summary>
-        /// Represents the P ow er option.
+        /// Performs a power-cycle style reset.
         /// </summary>
         Power
     }
@@ -268,15 +268,15 @@ namespace AmigaEmulator.Core
     public enum AmigaAccuracyProfile
     {
         /// <summary>
-        /// Represents the F as t option.
+        /// Uses lower-overhead core timing.
         /// </summary>
         Fast,
         /// <summary>
-        /// Represents the C om pa ti bl e option.
+        /// Balances compatibility with runtime cost.
         /// </summary>
         Compatible,
         /// <summary>
-        /// Represents the S tr ic t option.
+        /// Enables the strictest implemented timing behavior.
         /// </summary>
         Strict
     }

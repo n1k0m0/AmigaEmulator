@@ -183,7 +183,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Immediate logic.
+        /// Runs Immediate.
         /// </summary>
         private static M68kInstruction Immediate(M68kInstructionKind kind, string name, ushort opcode)
         {
@@ -193,7 +193,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Estimate Size Bytes logic.
+        /// Runs Estimate Size Bytes.
         /// </summary>
         private static int EstimateSizeBytes(ushort opcode, int size)
         {
@@ -221,7 +221,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Simple logic.
+        /// Runs Simple.
         /// </summary>
         private static M68kInstruction Simple(M68kInstructionKind kind, string name, int sizeBytes, int cycles)
         {

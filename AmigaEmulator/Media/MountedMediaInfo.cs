@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,23 +21,23 @@ namespace AmigaEmulator.Core.Media
     public enum MountedMediaKind
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Represents None.
         /// </summary>
         None,
         /// <summary>
-        /// Represents the A df option.
+        /// Represents ADF.
         /// </summary>
         Adf,
         /// <summary>
-        /// Represents the H df option.
+        /// Represents Hdf.
         /// </summary>
         Hdf,
         /// <summary>
-        /// Represents the D ir ec to ry option.
+        /// Represents Directory.
         /// </summary>
         Directory,
         /// <summary>
-        /// Represents the K ic ks ta rt Ro m option.
+        /// Represents Kickstart ROM.
         /// </summary>
         KickstartRom
     }
@@ -48,27 +48,27 @@ namespace AmigaEmulator.Core.Media
     public enum MountedMediaStatus
     {
         /// <summary>
-        /// Represents the E mp ty option.
+        /// Represents Empty.
         /// </summary>
         Empty,
         /// <summary>
-        /// Represents the M ou nt ed option.
+        /// Represents Mounted.
         /// </summary>
         Mounted,
         /// <summary>
-        /// Represents the L oa di ng option.
+        /// Represents Loading.
         /// </summary>
         Loading,
         /// <summary>
-        /// Represents the E je ct ed option.
+        /// Represents Ejected.
         /// </summary>
         Ejected,
         /// <summary>
-        /// Represents the M is si ng option.
+        /// Represents Missing.
         /// </summary>
         Missing,
         /// <summary>
-        /// Represents the E rr or option.
+        /// Represents Error.
         /// </summary>
         Error
     }
@@ -123,42 +123,42 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Gets or updates the Kind.
+        /// Gets or sets Kind.
         /// </summary>
         public MountedMediaKind Kind { get; set; }
 
         /// <summary>
-        /// Gets or updates the Status.
+        /// Gets or sets Status.
         /// </summary>
         public MountedMediaStatus Status { get; set; }
 
         /// <summary>
-        /// Gets or updates the Short Label.
+        /// Gets or sets Short Label.
         /// </summary>
         public string ShortLabel { get; set; }
 
         /// <summary>
-        /// Gets or updates the Display Name.
+        /// Gets or sets Display Name.
         /// </summary>
         public string DisplayName { get; set; }
 
         /// <summary>
-        /// Gets or updates the Host Path.
+        /// Gets or sets Host Path.
         /// </summary>
         public string HostPath { get; set; }
 
         /// <summary>
-        /// Gets or updates the Drive Index.
+        /// Gets or sets Drive Index.
         /// </summary>
         public int DriveIndex { get; set; }
 
         /// <summary>
-        /// Gets or updates the Is Write Protected.
+        /// Gets or sets Is Write Protected.
         /// </summary>
         public bool IsWriteProtected { get; set; }
 
         /// <summary>
-        /// Gets or updates the Error.
+        /// Gets or sets Error.
         /// </summary>
         public string Error { get; set; }
 
@@ -179,7 +179,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the For Floppy logic.
+        /// Runs For Floppy.
         /// </summary>
         public static MountedMediaInfo ForFloppy(
             int driveIndex,
@@ -199,7 +199,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the With Status logic.
+        /// Runs With Status.
         /// </summary>
         public MountedMediaInfo WithStatus(MountedMediaStatus status, string error)
         {

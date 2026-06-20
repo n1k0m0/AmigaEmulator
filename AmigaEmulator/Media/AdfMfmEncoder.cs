@@ -24,22 +24,22 @@ namespace AmigaEmulator.Core.Media
     public sealed class AdfDecodedSector
     {
         /// <summary>
-        /// Gets or updates the logical AmigaDOS track encoded in the sector header.
+        /// Gets or sets Logical Track.
         /// </summary>
         public int LogicalTrack { get; set; }
 
         /// <summary>
-        /// Gets or updates the sector number encoded in the sector header.
+        /// Gets or sets Sector.
         /// </summary>
         public int Sector { get; set; }
 
         /// <summary>
-        /// Gets or updates the sectors-until-gap value encoded in the sector header.
+        /// Gets or sets Sectors Until Gap.
         /// </summary>
         public int SectorsUntilGap { get; set; }
 
         /// <summary>
-        /// Gets or updates the decoded 512-byte sector payload.
+        /// Gets or sets Data.
         /// </summary>
         public byte[] Data { get; set; }
     }
@@ -50,40 +50,40 @@ namespace AmigaEmulator.Core.Media
     public static class AdfMfmEncoder
     {
         /// <summary>
-        /// Defines the sync Word constant.
+        /// Constant for sync Word.
         /// </summary>
         public const ushort SyncWord = 0x4489;
         /// <summary>
-        /// Defines the Gap Word constant.
+        /// Constant for Gap Word.
         /// </summary>
         public const ushort GapWord = 0xAAAA;
         /// <summary>
-        /// Defines the Standard Track Bytes constant.
+        /// Constant for Standard Track Bytes.
         /// </summary>
         public const int StandardTrackBytes = 0x332C;
         /// <summary>
-        /// Defines the Standard Track Words constant.
+        /// Constant for Standard Track Words.
         /// </summary>
         public const int StandardTrackWords = StandardTrackBytes / 2;
         /// <summary>
-        /// Defines the Sector Words constant.
+        /// Constant for Sector Words.
         /// </summary>
         public const int SectorWords = 544;
         /// <summary>
-        /// Defines the Track Gap Words constant.
+        /// Constant for Track Gap Words.
         /// </summary>
         public const int TrackGapWords = StandardTrackWords - (AdfImage.SectorsPerTrack * SectorWords);
 
         /// <summary>
-        /// Defines the MFM Data Mask constant.
+        /// Constant for MFM Data Mask.
         /// </summary>
         private const uint MfmDataMask = 0x55555555u;
         /// <summary>
-        /// Defines the MFM Clock Mask constant.
+        /// Constant for MFM Clock Mask.
         /// </summary>
         private const uint MfmClockMask = 0xAAAAAAAAu;
         /// <summary>
-        /// Defines the Amiga Dos Format Byte constant.
+        /// Constant for Amiga Dos Format Byte.
         /// </summary>
         private const byte AmigaDosFormatByte = 0xFF;
 
@@ -280,7 +280,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Validate Track Side logic.
+        /// Runs Validate Track Side.
         /// </summary>
         private static void ValidateTrackSide(int cylinder, int side)
         {
@@ -296,7 +296,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Append Odd Even Block logic.
+        /// Runs Append Odd Even Block.
         /// </summary>
         private static void AppendOddEvenBlock(List<ushort> destination, byte[] bytes, ref uint checksum)
         {
@@ -323,7 +323,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Append Odd Even Long logic.
+        /// Runs Append Odd Even Long.
         /// </summary>
         private static void AppendOddEvenLong(List<ushort> destination, uint value, ref uint checksum)
         {
@@ -332,7 +332,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Append Encoded Masked Long logic.
+        /// Runs Append Encoded Masked Long.
         /// </summary>
         private static void AppendEncodedMaskedLong(List<ushort> destination, uint dataBits, ref uint checksum)
         {

@@ -64,7 +64,7 @@ namespace AmigaEmulator.Core.CustomChips
         private const uint Aud3End = 0x0DE;
         // PAL DD disks rotate once per ~709379 chip cycles. A standard ADF
         // track contains 0x1996 MFM words, so one word arrives every ~108 cycles.
-        private const int DiskWordPeriodChipCycles = 108;
+        private const int DefaultDiskWordPeriodChipCycles = 108;
         /// <summary>
         /// Defines the AUDIO CHANNEL COUNT custom register offset or bit mask.
         /// </summary>
@@ -74,128 +74,132 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const int AudioOutputRate = 48000;
         /// <summary>
-        /// Defines the Paula Clock Hz constant.
+        /// Constant for Paula Clock Hz.
         /// </summary>
         private const double PaulaClockHz = 3546895.0;
 
         /// <summary>
-        /// Tracks the floppy Controller.
+        /// Stores floppy Controller.
         /// </summary>
         private FloppyController _floppyController;
         /// <summary>
-        /// Tracks the write Chip Word.
+        /// Stores write Chip Word.
         /// </summary>
         private Action<uint, ushort> _writeChipWord;
         /// <summary>
-        /// Tracks the read Chip Word.
+        /// Stores read Chip Word.
         /// </summary>
         private Func<uint, ushort> _readChipWord;
         /// <summary>
-        /// Tracks the request Interrupt.
+        /// Stores request Interrupt.
         /// </summary>
         private Action<CustomInterruptSource> _requestInterrupt;
         /// <summary>
-        /// Tracks the read DMA Control.
+        /// Stores read DMA Control.
         /// </summary>
         private Func<ushort> _readDmaControl;
         /// <summary>
-        /// Tracks the read Adk Control.
+        /// Stores read Adk Control.
         /// </summary>
         private Func<ushort> _readAdkControl;
         /// <summary>
-        /// Tracks the DMA Address.
+        /// Stores DMA Address.
         /// </summary>
         private readonly ChipDmaAddress _dmaAddress;
         /// <summary>
-        /// Tracks the audio Channels.
+        /// Stores audio Channels.
         /// </summary>
         private readonly AudioChannel[] _audioChannels;
         /// <summary>
-        /// Tracks the disk Pointer.
+        /// Stores disk Pointer.
         /// </summary>
         private uint _diskPointer;
         /// <summary>
-        /// Tracks the disk Length Register.
+        /// Stores disk Length Register.
         /// </summary>
         private ushort _diskLengthRegister;
         /// <summary>
-        /// Tracks the armed Disk Length Register.
+        /// Stores armed Disk Length Register.
         /// </summary>
         private ushort _armedDiskLengthRegister;
         /// <summary>
-        /// Tracks the disk sync.
+        /// Stores disk Sync.
         /// </summary>
         private ushort _diskSync = 0x4489;
         /// <summary>
-        /// Tracks the latest Disk Word.
+        /// Stores latest Disk Word.
         /// </summary>
         private ushort _latestDiskWord = 0xAAAA;
         /// <summary>
-        /// Tracks the pending Disk Word.
+        /// Stores pending Disk Word.
         /// </summary>
         private ushort _pendingDiskWord = 0xAAAA;
         /// <summary>
-        /// Tracks the latest Disk Byte.
+        /// Stores latest Disk Byte.
         /// </summary>
         private byte _latestDiskByte = 0xAA;
         /// <summary>
-        /// Tracks the remaining Disk Words.
+        /// Stores remaining Disk Words.
         /// </summary>
         private int _remainingDiskWords;
         /// <summary>
-        /// Tracks the disk DMA Active.
+        /// Stores disk DMA Active.
         /// </summary>
         private bool _diskDmaActive;
         /// <summary>
-        /// Tracks the disk DMA Armed.
+        /// Stores disk DMA Armed.
         /// </summary>
         private bool _diskDmaArmed;
         /// <summary>
-        /// Tracks the disk Write Mode.
+        /// Stores disk Write Mode.
         /// </summary>
         private bool _diskWriteMode;
         /// <summary>
-        /// Tracks the waiting For Disk sync.
+        /// Stores waiting For Disk Sync.
         /// </summary>
         private bool _waitingForDiskSync;
         /// <summary>
-        /// Tracks the disk sync Matched For DMA.
+        /// Stores disk Sync Matched For DMA.
         /// </summary>
         private bool _diskSyncMatchedForDma;
         /// <summary>
-        /// Tracks the word Ready.
+        /// Stores word Ready.
         /// </summary>
         private bool _wordReady;
         /// <summary>
-        /// Tracks the word Equal.
+        /// Stores word Equal.
         /// </summary>
         private bool _wordEqual;
         /// <summary>
-        /// Tracks the disk Byte Ready.
+        /// Stores disk Byte Ready.
         /// </summary>
         private bool _diskByteReady;
         /// <summary>
-        /// Tracks the next Disk Byte Is Low.
+        /// Stores next Disk Byte Is Low.
         /// </summary>
         private bool _nextDiskByteIsLow;
         /// <summary>
-        /// Tracks the disk Word Divider.
+        /// Stores disk Word Divider.
         /// </summary>
         private int _diskWordDivider;
         /// <summary>
-        /// Tracks the disk DMA Starts.
+        /// Stores disk Word Period Chip Cycles.
+        /// </summary>
+        private int _diskWordPeriodChipCycles = DefaultDiskWordPeriodChipCycles;
+        /// <summary>
+        /// Stores disk DMA Starts.
         /// </summary>
         private long _diskDmaStarts;
         /// <summary>
-        /// Tracks the disk DMA Completed Blocks.
+        /// Stores disk DMA Completed Blocks.
         /// </summary>
         private long _diskDmaCompletedBlocks;
         /// <summary>
-        /// Tracks the disk Words Transferred.
+        /// Stores disk Words Transferred.
         /// </summary>
         private long _diskWordsTransferred;
         /// <summary>
-        /// Tracks the disk words written through Paula write DMA.
+        /// Stores disk Words Written.
         /// </summary>
         private long _diskWordsWritten;
         /// <summary>
@@ -203,23 +207,23 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private long _diskWriteRejectedWords;
         /// <summary>
-        /// Tracks the disk sync Matches.
+        /// Stores disk Sync Matches.
         /// </summary>
         private long _diskSyncMatches;
         /// <summary>
-        /// Tracks the current Disk Block Start.
+        /// Stores current Disk Block Start.
         /// </summary>
         private uint _currentDiskBlockStart;
         /// <summary>
-        /// Tracks the last Disk Block Start.
+        /// Stores last Disk Block Start.
         /// </summary>
         private uint _lastDiskBlockStart;
         /// <summary>
-        /// Tracks the last Disk Block End.
+        /// Stores last Disk Block End.
         /// </summary>
         private uint _lastDiskBlockEnd;
         /// <summary>
-        /// Tracks the last Disk Block Words.
+        /// Stores last Disk Block Words.
         /// </summary>
         private int _lastDiskBlockWords;
         /// <summary>
@@ -229,31 +233,31 @@ namespace AmigaEmulator.Core.CustomChips
         private int _audioDmaRoundRobin;
 #pragma warning restore 0414
         /// <summary>
-        /// Tracks the audio Sample Accumulator.
+        /// Stores audio Sample Accumulator.
         /// </summary>
         private double _audioSampleAccumulator;
         /// <summary>
-        /// Tracks the audio Samples Generated.
+        /// Stores audio Samples Generated.
         /// </summary>
         private long _audioSamplesGenerated;
         /// <summary>
-        /// Tracks the audio DMA Words Fetched.
+        /// Stores audio DMA Words Fetched.
         /// </summary>
         private long _audioDmaWordsFetched;
         /// <summary>
-        /// Tracks the audio Interrupts.
+        /// Stores audio Interrupts.
         /// </summary>
         private long _audioInterrupts;
         /// <summary>
-        /// Tracks the audio Non Zero Samples.
+        /// Stores audio Non Zero Samples.
         /// </summary>
         private long _audioNonZeroSamples;
         /// <summary>
-        /// Tracks the audio Peak Left.
+        /// Stores audio Peak Left.
         /// </summary>
         private float _audioPeakLeft;
         /// <summary>
-        /// Tracks the audio Peak Right.
+        /// Stores audio Peak Right.
         /// </summary>
         private float _audioPeakRight;
 
@@ -263,7 +267,7 @@ namespace AmigaEmulator.Core.CustomChips
         public event Action<float, float> AudioSampleGenerated;
 
         /// <summary>
-        /// Gets or updates the Audio Ticks.
+        /// Gets or sets Audio Ticks.
         /// </summary>
         public long AudioTicks { get; private set; }
 
@@ -289,17 +293,17 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Gets or updates the Last Custom Write Address.
+        /// Gets or sets Last Custom Write Address.
         /// </summary>
         public uint LastCustomWriteAddress { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Last Custom Write Value.
+        /// Gets or sets Last Custom Write Value.
         /// </summary>
         public byte LastCustomWriteValue { get; private set; }
 
         /// <summary>
-        /// Executes the Disk DMA Active logic.
+        /// Gets Disk DMA Active.
         /// </summary>
         public bool DiskDmaActive
         {
@@ -307,7 +311,16 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Remaining Disk Words logic.
+        /// Gets or sets disk DMA word period in chip cycles.
+        /// </summary>
+        public int DiskWordPeriodChipCycles
+        {
+            get { return _diskWordPeriodChipCycles; }
+            set { _diskWordPeriodChipCycles = Math.Max(1, value); }
+        }
+
+        /// <summary>
+        /// Gets Remaining Disk Words.
         /// </summary>
         public int RemainingDiskWords
         {
@@ -315,7 +328,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Disk DMA Starts logic.
+        /// Gets Disk DMA Starts.
         /// </summary>
         public long DiskDmaStarts
         {
@@ -323,7 +336,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Disk DMA Completed Blocks logic.
+        /// Gets Disk DMA Completed Blocks.
         /// </summary>
         public long DiskDmaCompletedBlocks
         {
@@ -331,7 +344,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Disk Words Transferred logic.
+        /// Gets Disk Words Transferred.
         /// </summary>
         public long DiskWordsTransferred
         {
@@ -339,7 +352,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Disk Pointer logic.
+        /// Gets Disk Pointer.
         /// </summary>
         public uint DiskPointer
         {
@@ -347,7 +360,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Current Disk Block Start logic.
+        /// Gets Current Disk Block Start.
         /// </summary>
         public uint CurrentDiskBlockStart
         {
@@ -355,7 +368,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Last Disk Block Start logic.
+        /// Gets Last Disk Block Start.
         /// </summary>
         public uint LastDiskBlockStart
         {
@@ -363,7 +376,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Last Disk Block End logic.
+        /// Gets Last Disk Block End.
         /// </summary>
         public uint LastDiskBlockEnd
         {
@@ -371,7 +384,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Last Disk Block Words logic.
+        /// Gets Last Disk Block Words.
         /// </summary>
         public int LastDiskBlockWords
         {
@@ -418,7 +431,8 @@ namespace AmigaEmulator.Core.CustomChips
                 "_readChipWord",
                 "_requestInterrupt",
                 "_readDmaControl",
-                "_readAdkControl");
+                "_readAdkControl",
+                "_diskWordPeriodChipCycles");
         }
 
         /// <summary>
@@ -434,7 +448,8 @@ namespace AmigaEmulator.Core.CustomChips
                 "_readChipWord",
                 "_requestInterrupt",
                 "_readDmaControl",
-                "_readAdkControl");
+                "_readAdkControl",
+                "_diskWordPeriodChipCycles");
         }
 
         /// <summary>
@@ -463,6 +478,7 @@ namespace AmigaEmulator.Core.CustomChips
             _diskByteReady = false;
             _nextDiskByteIsLow = false;
             _diskWordDivider = 0;
+            _diskWordPeriodChipCycles = DefaultDiskWordPeriodChipCycles;
             _diskDmaStarts = 0;
             _diskDmaCompletedBlocks = 0;
             _diskWordsTransferred = 0;
@@ -686,7 +702,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Audio Samples Generated logic.
+        /// Gets Audio Samples Generated.
         /// </summary>
         public long AudioSamplesGenerated
         {
@@ -694,7 +710,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Audio DMA Words Fetched logic.
+        /// Gets Audio DMA Words Fetched.
         /// </summary>
         public long AudioDmaWordsFetched
         {
@@ -815,7 +831,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Emit Audio Samples logic.
+        /// Runs Emit Audio Samples.
         /// </summary>
         private void EmitAudioSamples()
         {
@@ -852,7 +868,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Request Audio Interrupt logic.
+        /// Runs Request Audio Interrupt.
         /// </summary>
         private void RequestAudioInterrupt(int channel)
         {
@@ -966,7 +982,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             _diskWordDivider++;
-            if (_diskWordDivider < DiskWordPeriodChipCycles / 2)
+            if (_diskWordDivider < _diskWordPeriodChipCycles / 2)
             {
                 return;
             }
@@ -1022,7 +1038,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Advance Disk Input Byte logic.
+        /// Runs Advance Disk Input Byte.
         /// </summary>
         private void AdvanceDiskInputByte(FloppyDrive drive)
         {
@@ -1049,7 +1065,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Transfer Disk Word logic.
+        /// Runs Transfer Disk Word.
         /// </summary>
         private void TransferDiskWord(ushort word)
         {
@@ -1099,7 +1115,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Complete Disk DMA logic.
+        /// Runs Complete Disk Dma.
         /// </summary>
         private void CompleteDiskDma()
         {
@@ -1164,40 +1180,40 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Provides Audio Channel behavior used by the emulator.
+        /// Provides Audio Channel functionality.
         /// </summary>
         private sealed class AudioChannel
         {
             /// <summary>
-            /// Tracks the index.
+            /// Stores index.
             /// </summary>
             private readonly int _index;
             /// <summary>
-            /// Tracks the DMA Enabled.
+            /// Stores DMA Enabled.
             /// </summary>
             private bool _dmaEnabled;
             /// <summary>
-            /// Tracks the DMA Was Enabled.
+            /// Stores DMA Was Enabled.
             /// </summary>
             private bool _dmaWasEnabled;
             /// <summary>
-            /// Tracks the has Current Word.
+            /// Stores has Current Word.
             /// </summary>
             private bool _hasCurrentWord;
             /// <summary>
-            /// Tracks the has Pending Word.
+            /// Stores has Pending Word.
             /// </summary>
             private bool _hasPendingWord;
             /// <summary>
-            /// Tracks the next Byte High.
+            /// Stores next Byte High.
             /// </summary>
             private bool _nextByteHigh;
             /// <summary>
-            /// Tracks the period Counter.
+            /// Stores period Counter.
             /// </summary>
             private int _periodCounter;
             /// <summary>
-            /// Tracks the current Sample.
+            /// Stores current Sample.
             /// </summary>
             private int _currentSample;
 
@@ -1211,42 +1227,42 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Gets or updates the Location.
+            /// Gets or sets Location.
             /// </summary>
             public uint Location { get; set; }
 
             /// <summary>
-            /// Gets or updates the Current Pointer.
+            /// Gets or sets Current Pointer.
             /// </summary>
             public uint CurrentPointer { get; private set; }
 
             /// <summary>
-            /// Gets or updates the Length.
+            /// Gets or sets Length.
             /// </summary>
             public ushort Length { get; set; }
 
             /// <summary>
-            /// Gets or updates the Period.
+            /// Gets or sets Period.
             /// </summary>
             public ushort Period { get; set; }
 
             /// <summary>
-            /// Gets or updates the Volume.
+            /// Gets or sets Volume.
             /// </summary>
             public ushort Volume { get; set; }
 
             /// <summary>
-            /// Gets or updates the Data.
+            /// Gets or sets Data.
             /// </summary>
             public ushort Data { get; private set; }
 
             /// <summary>
-            /// Gets or updates the Block Completed.
+            /// Gets or sets Block Completed.
             /// </summary>
             public bool BlockCompleted { get; private set; }
 
             /// <summary>
-            /// Executes the Output logic.
+            /// Gets Output.
             /// </summary>
             public int Output
             {
@@ -1254,7 +1270,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Needs DMA Word logic.
+            /// Gets Needs DMA Word.
             /// </summary>
             public bool NeedsDmaWord
             {
@@ -1262,7 +1278,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Gets or updates the Remaining Words.
+            /// Gets or sets Remaining Words.
             /// </summary>
             public int RemainingWords { get; private set; }
 
@@ -1304,7 +1320,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Ensure DMA Started logic.
+            /// Runs Ensure Dma Started.
             /// </summary>
             public void EnsureDmaStarted()
             {
@@ -1321,7 +1337,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Reload DMA Block logic.
+            /// Runs Reload Dma Block.
             /// </summary>
             public void ReloadDmaBlock()
             {
@@ -1331,7 +1347,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Accept DMA Word logic.
+            /// Runs Accept Dma Word.
             /// </summary>
             public void AcceptDmaWord(ushort word)
             {
@@ -1391,7 +1407,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Effective Volume logic.
+            /// Gets Effective Volume.
             /// </summary>
             private int EffectiveVolume
             {
@@ -1403,7 +1419,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Advance Sample logic.
+            /// Runs Advance Sample.
             /// </summary>
             private void AdvanceSample()
             {

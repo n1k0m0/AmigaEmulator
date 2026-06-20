@@ -16,12 +16,12 @@
 namespace AmigaEmulator.Core.CustomChips
 {
     /// <summary>
-    /// Provides Chip DMA Address behavior used by the emulator.
+    /// Provides Chip DMA Address functionality.
     /// </summary>
     internal sealed class ChipDmaAddress
     {
         /// <summary>
-        /// Tracks the mask.
+        /// Stores mask.
         /// </summary>
         private readonly uint _mask;
 
@@ -41,7 +41,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Normalize logic.
+        /// Runs Normalize.
         /// </summary>
         public uint Normalize(uint address)
         {
@@ -49,7 +49,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the From Registers logic.
+        /// Runs From Registers.
         /// </summary>
         public uint FromRegisters(ushort high, ushort low)
         {
@@ -57,7 +57,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Add logic.
+        /// Runs Add.
         /// </summary>
         public uint Add(uint address, int bytes)
         {
@@ -65,7 +65,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Add logic.
+        /// Runs Add.
         /// </summary>
         public uint Add(uint address, uint bytes)
         {

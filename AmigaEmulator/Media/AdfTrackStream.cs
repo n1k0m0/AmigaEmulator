@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,12 +22,12 @@ namespace AmigaEmulator.Core.Media
     public sealed class AdfTrackStream
     {
         /// <summary>
-        /// Defines the sync Word constant.
+        /// Constant for sync Word.
         /// </summary>
         public const ushort SyncWord = AdfMfmEncoder.SyncWord;
 
         /// <summary>
-        /// Tracks the words.
+        /// Stores words.
         /// </summary>
         private readonly ushort[] _words;
 
@@ -40,7 +40,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Word Count logic.
+        /// Gets Word Count.
         /// </summary>
         public int WordCount
         {
@@ -67,7 +67,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static AdfTrackStream Build(AdfImage image, int track, int side)
         {

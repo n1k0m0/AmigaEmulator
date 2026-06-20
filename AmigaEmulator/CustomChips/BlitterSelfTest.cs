@@ -19,72 +19,72 @@ using AmigaEmulator.Core.Memory;
 namespace AmigaEmulator.Core.CustomChips
 {
     /// <summary>
-    /// Provides Blitter Self Test behavior used by the emulator.
+    /// Provides Blitter Self Test functionality.
     /// </summary>
     public static class BlitterSelfTest
     {
         /// <summary>
-        /// Defines the Bltcon0 constant.
+        /// Constant for Bltcon 0.
         /// </summary>
         private const uint Bltcon0 = 0x040;
         /// <summary>
-        /// Defines the Bltcon1 constant.
+        /// Constant for Bltcon 1.
         /// </summary>
         private const uint Bltcon1 = 0x042;
         /// <summary>
-        /// Defines the Bltafwm constant.
+        /// Constant for Bltafwm.
         /// </summary>
         private const uint Bltafwm = 0x044;
         /// <summary>
-        /// Defines the Bltalwm constant.
+        /// Constant for Bltalwm.
         /// </summary>
         private const uint Bltalwm = 0x046;
         /// <summary>
-        /// Defines the Bltcpt constant.
+        /// Constant for Bltcpt.
         /// </summary>
         private const uint Bltcpt = 0x048;
         /// <summary>
-        /// Defines the Bltbpt constant.
+        /// Constant for Bltbpt.
         /// </summary>
         private const uint Bltbpt = 0x04C;
         /// <summary>
-        /// Defines the Bltapt constant.
+        /// Constant for Bltapt.
         /// </summary>
         private const uint Bltapt = 0x050;
         /// <summary>
-        /// Defines the Bltdpt constant.
+        /// Constant for Bltdpt.
         /// </summary>
         private const uint Bltdpt = 0x054;
         /// <summary>
-        /// Defines the Bltsize constant.
+        /// Constant for Bltsize.
         /// </summary>
         private const uint Bltsize = 0x058;
         /// <summary>
-        /// Defines the Bltcmod constant.
+        /// Constant for Bltcmod.
         /// </summary>
         private const uint Bltcmod = 0x060;
         /// <summary>
-        /// Defines the Bltbmod constant.
+        /// Constant for Bltbmod.
         /// </summary>
         private const uint Bltbmod = 0x062;
         /// <summary>
-        /// Defines the Bltamod constant.
+        /// Constant for Bltamod.
         /// </summary>
         private const uint Bltamod = 0x064;
         /// <summary>
-        /// Defines the Bltdmod constant.
+        /// Constant for Bltdmod.
         /// </summary>
         private const uint Bltdmod = 0x066;
         /// <summary>
-        /// Defines the Bltcdat constant.
+        /// Constant for Bltcdat.
         /// </summary>
         private const uint Bltcdat = 0x070;
         /// <summary>
-        /// Defines the Bltbdat constant.
+        /// Constant for Bltbdat.
         /// </summary>
         private const uint Bltbdat = 0x072;
         /// <summary>
-        /// Defines the Bltadat constant.
+        /// Constant for Bltadat.
         /// </summary>
         private const uint Bltadat = 0x074;
 
@@ -96,17 +96,22 @@ namespace AmigaEmulator.Core.CustomChips
             int failures = 0;
             failures += RunCase(log, "disabled source constants feed minterm", TestDisabledSourceConstants);
             failures += RunCase(log, "disabled source mask does not corrupt constant latch", TestDisabledSourceMaskKeepsLatch);
+            failures += RunCase(log, "disabled B source uses stable hold latch", TestDisabledBUsesHoldLatch);
             failures += RunCase(log, "inclusive fill scans right-to-left", TestInclusiveFill);
             failures += RunCase(log, "exclusive fill scans right-to-left", TestExclusiveFill);
-            failures += RunCase(log, "descending blit adds signed modulo unchanged", TestDescendingModuloUsesRegisterValue);
+            failures += RunCase(log, "descending blit subtracts line modulo", TestDescendingModuloSubtractsLineStride);
             failures += RunCase(log, "descending blit applies edge masks by screen word", TestDescendingMasks);
             failures += RunCase(log, "descending blit shift carries from previous fetch", TestDescendingShiftCarry);
             failures += RunCase(log, "blitter busy is visible immediately after BLTSIZE", TestBusyVisibleImmediatelyAfterStart);
             failures += RunCase(log, "block blit performs A/B/C reads before D write", TestBlockMicroPipelineWritesOnDSlot);
+            failures += RunCase(log, "block blit delays D writes until after following source reads", TestPendingDWriteDelaysOverlappingCRead);
+            failures += RunCase(log, "block blit skips inactive B/C phases in A-to-D copies", TestAdCopyUsesOnlyActiveChannels);
+            failures += RunCase(log, "block blit skips disabled channel DMA cycles", TestDisabledChannelsCompleteWithoutDma);
             failures += RunCase(log, "line mode draws advancing mask bits", TestLineModeHorizontal);
-            failures += RunCase(log, "line mode writes when D enabled without C", TestLineModeDWithoutC);
-            failures += RunCase(log, "line mode does not write when D disabled", TestLineModeCWithoutD);
-            failures += RunCase(log, "line mode zero flag follows result when D disabled", TestLineModeZeroFlagWithoutD);
+            failures += RunCase(log, "line mode pixel occupies four DMA phases", TestLineModePixelUsesFourDmaPhases);
+            failures += RunCase(log, "line mode does not draw without C channel", TestLineModeWithoutCDoesNotDraw);
+            failures += RunCase(log, "line mode draws through C channel even when D is disabled", TestLineModeCWithoutD);
+            failures += RunCase(log, "line mode zero flag follows C-channel result when D disabled", TestLineModeZeroFlagWithoutD);
             failures += RunCase(log, "line mode destination follows C pointer", TestLineModeDestinationFollowsC);
             log.AppendLine(failures == 0 ? "Blitter self-test OK" : "Blitter self-test FAILED: " + failures);
             return failures;
@@ -133,7 +138,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Disabled Source Constants logic.
+        /// Runs Test Disabled Source Constants.
         /// </summary>
         private static bool TestDisabledSourceConstants()
         {
@@ -143,6 +148,7 @@ namespace AmigaEmulator.Core.CustomChips
             harness.WritePointer(Bltdpt, 0x0300);
             harness.Registers.WriteWord(Bltadat, 0xFFFF);
             harness.Registers.WriteWord(Bltbdat, 0xFFFF);
+            harness.Blitter.NotifyCustomRegisterWrite(Bltbdat, 2);
             harness.Registers.WriteWord(Bltcdat, 0x0000);
             harness.Registers.WriteWord(Bltafwm, 0xFFFF);
             harness.Registers.WriteWord(Bltalwm, 0xFFFF);
@@ -153,7 +159,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Disabled Source Mask Keeps Latch logic.
+        /// Runs Test Disabled Source Mask Keeps Latch.
         /// </summary>
         private static bool TestDisabledSourceMaskKeepsLatch()
         {
@@ -171,7 +177,25 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Inclusive Fill logic.
+        /// Runs Test Disabled B Uses Hold Latch.
+        /// </summary>
+        private static bool TestDisabledBUsesHoldLatch()
+        {
+            var harness = new Harness();
+            harness.WritePointer(Bltdpt, 0x0300);
+            harness.Registers.WriteWord(Bltafwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltalwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltcon0, 0x01CC);
+            harness.Registers.WriteWord(Bltcon1, 0x4000);
+            harness.Registers.WriteWord(Bltbdat, 0x000F);
+            harness.Blitter.NotifyCustomRegisterWrite(Bltbdat, 2);
+            harness.StartAndRun(Size(2, 1));
+            return harness.ReadWord(0x0300) == 0x0000 &&
+                harness.ReadWord(0x0302) == 0x0000;
+        }
+
+        /// <summary>
+        /// Runs Test Inclusive Fill.
         /// </summary>
         private static bool TestInclusiveFill()
         {
@@ -190,7 +214,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Exclusive Fill logic.
+        /// Runs Test Exclusive Fill.
         /// </summary>
         private static bool TestExclusiveFill()
         {
@@ -209,9 +233,9 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Descending Modulo Uses Register Value logic.
+        /// Runs Test Descending Modulo Subtracts Line Stride.
         /// </summary>
-        private static bool TestDescendingModuloUsesRegisterValue()
+        private static bool TestDescendingModuloSubtractsLineStride()
         {
             var harness = new Harness();
             harness.WriteWord(0x0200, 0x1111);
@@ -222,8 +246,8 @@ namespace AmigaEmulator.Core.CustomChips
             harness.WritePointer(Bltdpt, 0x0312);
             harness.Registers.WriteWord(Bltafwm, 0xFFFF);
             harness.Registers.WriteWord(Bltalwm, 0xFFFF);
-            harness.Registers.WriteWord(Bltamod, 0xFFF4);
-            harness.Registers.WriteWord(Bltdmod, 0xFFF4);
+            harness.Registers.WriteWord(Bltamod, 0x000C);
+            harness.Registers.WriteWord(Bltdmod, 0x000C);
             harness.Registers.WriteWord(Bltcon0, 0x09F0);
             harness.Registers.WriteWord(Bltcon1, 0x0002);
             harness.StartAndRun(Size(2, 2));
@@ -234,7 +258,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Descending Masks logic.
+        /// Runs Test Descending Masks.
         /// </summary>
         private static bool TestDescendingMasks()
         {
@@ -251,13 +275,13 @@ namespace AmigaEmulator.Core.CustomChips
             harness.Registers.WriteWord(Bltcon0, 0x09F0);
             harness.Registers.WriteWord(Bltcon1, 0x0002);
             harness.StartAndRun(Size(3, 1));
-            return harness.ReadWord(0x0300) == 0x0FFF &&
+            return harness.ReadWord(0x0300) == 0xFFF0 &&
                 harness.ReadWord(0x0302) == 0xFFFF &&
-                harness.ReadWord(0x0304) == 0xFFF0;
+                harness.ReadWord(0x0304) == 0x0FFF;
         }
 
         /// <summary>
-        /// Executes the Test Descending Shift Carry logic.
+        /// Runs Test Descending Shift Carry.
         /// </summary>
         private static bool TestDescendingShiftCarry()
         {
@@ -297,7 +321,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the block micro-pipeline phase-order regression test.
+        /// Verifies the blitter block micro-pipeline phase order.
         /// </summary>
         private static bool TestBlockMicroPipelineWritesOnDSlot()
         {
@@ -332,7 +356,70 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Line Mode Horizontal logic.
+        /// Verifies that a pending D write is delayed until after the next word has read overlapping sources.
+        /// </summary>
+        private static bool TestPendingDWriteDelaysOverlappingCRead()
+        {
+            var harness = new Harness();
+            harness.WriteWord(0x0200, 0x0001);
+            harness.WriteWord(0x0202, 0x0002);
+            harness.WriteWord(0x0300, 0x0000);
+            harness.WritePointer(Bltapt, 0x0200);
+            harness.WritePointer(Bltcpt, 0x0300);
+            harness.WritePointer(Bltdpt, 0x0300);
+            harness.Registers.WriteWord(Bltafwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltalwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltamod, 0x0000);
+            harness.Registers.WriteWord(Bltcmod, 0xFFFE);
+            harness.Registers.WriteWord(Bltdmod, 0xFFFE);
+            harness.Registers.WriteWord(Bltcon0, 0x0BFA);
+            harness.Registers.WriteWord(Bltcon1, 0x0000);
+            harness.StartAndRun(Size(1, 2));
+
+            return harness.ReadWord(0x0300) == 0x0002;
+        }
+
+        /// <summary>
+        /// Verifies that an A-to-D block copy runs only the enabled A and D memory cycles.
+        /// </summary>
+        private static bool TestAdCopyUsesOnlyActiveChannels()
+        {
+            var harness = new Harness();
+            harness.WriteWord(0x0200, 0xCAFE);
+            harness.WriteWord(0x0300, 0x0000);
+            harness.WritePointer(Bltapt, 0x0200);
+            harness.WritePointer(Bltdpt, 0x0300);
+            harness.Registers.WriteWord(Bltafwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltalwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltcon0, 0x09F0);
+            harness.Registers.WriteWord(Bltcon1, 0x0000);
+            harness.Registers.WriteWord(Bltsize, Size(1, 1));
+            harness.Blitter.NotifyCustomRegisterWrite(Bltsize, 2);
+
+            harness.Blitter.Tick(true);
+            bool unchangedAfterA = harness.ReadWord(0x0300) == 0x0000 && harness.Blitter.DmaPending;
+            harness.Blitter.Tick(true);
+            bool writtenAfterD = harness.ReadWord(0x0300) == 0xCAFE && !harness.Blitter.DmaPending;
+
+            return unchangedAfterA && writtenAfterD;
+        }
+
+        /// <summary>
+        /// Verifies that disabled block-blitter channels do not consume memory cycles.
+        /// </summary>
+        private static bool TestDisabledChannelsCompleteWithoutDma()
+        {
+            var harness = new Harness();
+            harness.Registers.WriteWord(Bltcon0, 0x0000);
+            harness.Registers.WriteWord(Bltcon1, 0x0000);
+            harness.Registers.WriteWord(Bltsize, Size(1, 1));
+            harness.Blitter.NotifyCustomRegisterWrite(Bltsize, 2);
+
+            return !harness.Blitter.DmaPending && !harness.Blitter.Busy;
+        }
+
+        /// <summary>
+        /// Runs Test Line Mode Horizontal.
         /// </summary>
         private static bool TestLineModeHorizontal()
         {
@@ -356,9 +443,44 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Line Mode D Without C logic.
+        /// Verifies that line mode consumes the fixed four-phase blitter pipeline per pixel.
         /// </summary>
-        private static bool TestLineModeDWithoutC()
+        private static bool TestLineModePixelUsesFourDmaPhases()
+        {
+            var harness = new Harness();
+            harness.WriteWord(0x0200, 0x0000);
+            harness.WritePointer(Bltapt, 0x8000);
+            harness.WritePointer(Bltcpt, 0x0200);
+            harness.WritePointer(Bltdpt, 0x0200);
+            harness.Registers.WriteWord(Bltadat, 0x8000);
+            harness.Registers.WriteWord(Bltbdat, 0xFFFF);
+            harness.Registers.WriteWord(Bltcdat, 0x0000);
+            harness.Registers.WriteWord(Bltafwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltalwm, 0xFFFF);
+            harness.Registers.WriteWord(Bltcon0, 0x0BEA);
+            harness.Registers.WriteWord(Bltcon1, 0x0051);
+            harness.Registers.WriteWord(Bltsize, Size(2, 1));
+            harness.Blitter.NotifyCustomRegisterWrite(Bltsize, 2);
+
+            harness.Blitter.Tick(true);
+            bool pendingAfterFirst = harness.Blitter.DmaPending && harness.ReadWord(0x0200) == 0x0000;
+            harness.Blitter.Tick(true);
+            bool pendingAfterSecond = harness.Blitter.DmaPending && harness.ReadWord(0x0200) == 0x0000;
+            harness.Blitter.Tick(true);
+            bool pendingAfterThird = harness.Blitter.DmaPending && harness.ReadWord(0x0200) == 0x0000;
+            harness.Blitter.Tick(true);
+
+            return pendingAfterFirst &&
+                pendingAfterSecond &&
+                pendingAfterThird &&
+                !harness.Blitter.DmaPending &&
+                harness.ReadWord(0x0200) == 0x8000;
+        }
+
+        /// <summary>
+        /// Verifies that line mode needs the C channel to reach chip memory.
+        /// </summary>
+        private static bool TestLineModeWithoutCDoesNotDraw()
         {
             var harness = new Harness();
             harness.WriteWord(0x0200, 0x0000);
@@ -375,16 +497,16 @@ namespace AmigaEmulator.Core.CustomChips
             harness.Registers.WriteWord(Bltcon0, 0x09EA);
             harness.Registers.WriteWord(Bltcon1, 0x0051);
             harness.StartAndRun(Size(1, 3));
-            return harness.ReadWord(0x0200) == 0x2000;
+            return harness.ReadWord(0x0200) == 0x0000;
         }
 
         /// <summary>
-        /// Executes the Test Line Mode C Without D logic.
+        /// Verifies that line mode writes through the C-channel address even when D is disabled.
         /// </summary>
         private static bool TestLineModeCWithoutD()
         {
             var harness = new Harness();
-            harness.WriteWord(0x0200, 0x1234);
+            harness.WriteWord(0x0200, 0x0000);
             harness.WritePointer(Bltapt, 0x8000);
             harness.WritePointer(Bltcpt, 0x0200);
             harness.WritePointer(Bltdpt, 0x0200);
@@ -398,11 +520,11 @@ namespace AmigaEmulator.Core.CustomChips
             harness.Registers.WriteWord(Bltcon0, 0x0AEA);
             harness.Registers.WriteWord(Bltcon1, 0x0051);
             harness.StartAndRun(Size(1, 3));
-            return harness.ReadWord(0x0200) == 0x1234;
+            return harness.ReadWord(0x0200) == 0xE000;
         }
 
         /// <summary>
-        /// Executes the Test Line Mode Zero Flag Without D logic.
+        /// Runs Test Line Mode Zero Flag Without D.
         /// </summary>
         private static bool TestLineModeZeroFlagWithoutD()
         {
@@ -421,11 +543,11 @@ namespace AmigaEmulator.Core.CustomChips
             harness.Registers.WriteWord(Bltcon0, 0x0AEA);
             harness.Registers.WriteWord(Bltcon1, 0x0051);
             harness.StartAndRun(Size(1, 1));
-            return harness.ReadWord(0x0200) == 0x0000 && !harness.Blitter.ZeroFlag;
+            return harness.ReadWord(0x0200) == 0x8000 && !harness.Blitter.ZeroFlag;
         }
 
         /// <summary>
-        /// Executes the Test Line Mode Destination Follows C logic.
+        /// Runs Test Line Mode Destination Follows C.
         /// </summary>
         private static bool TestLineModeDestinationFollowsC()
         {
@@ -451,7 +573,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Size logic.
+        /// Runs Size.
         /// </summary>
         private static ushort Size(int widthWords, int heightLines)
         {
@@ -459,12 +581,12 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Provides Harness behavior used by the emulator.
+        /// Provides Harness functionality.
         /// </summary>
         private sealed class Harness
         {
             /// <summary>
-            /// Tracks the memory.
+            /// Stores memory.
             /// </summary>
             private readonly ushort[] _memory = new ushort[0x80000 / 2];
 
@@ -479,12 +601,12 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Gets or updates the Registers.
+            /// Gets or sets Registers.
             /// </summary>
             public CustomRegisterMap Registers { get; private set; }
 
             /// <summary>
-            /// Gets or updates the Blitter.
+            /// Gets or sets Blitter.
             /// </summary>
             public Blitter Blitter { get; private set; }
 
@@ -514,7 +636,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             /// <summary>
-            /// Executes the Start And Run logic.
+            /// Runs Start And Run.
             /// </summary>
             public void StartAndRun(ushort size)
             {

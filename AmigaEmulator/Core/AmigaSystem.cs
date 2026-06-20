@@ -33,73 +33,100 @@ namespace AmigaEmulator.Core
     public sealed class AmigaSystem : IDisposable
     {
         /// <summary>
-        /// Executes the object logic.
+        /// Crops the stable PAL presentation window out of the wider internal Denise raster.
+        /// </summary>
+        private const int PresentationCropLeft = 8;
+
+        /// <summary>
+        /// Scans the top overscan rows for isolated transition artifacts before presentation.
+        /// </summary>
+        private const int TopOverscanArtifactRows = 10;
+
+        /// <summary>
+        /// Keeps the cleanup narrow enough that real top-edge artwork is preserved.
+        /// </summary>
+        private const int MaxTopOverscanArtifactPixels = 512;
+
+        /// <summary>
+        /// Runs object.
         /// </summary>
         private readonly object _syncRoot = new object();
         /// <summary>
-        /// Tracks the model.
+        /// Stores model.
         /// </summary>
         private readonly AmigaModel _model;
         /// <summary>
-        /// Tracks the accuracy Options.
+        /// Stores accuracy Options.
         /// </summary>
         private readonly AmigaAccuracyOptions _accuracyOptions;
         /// <summary>
-        /// Tracks the frame Buffer.
+        /// Stores frame Buffer.
         /// </summary>
         private readonly AmigaFrameBuffer _frameBuffer;
         /// <summary>
-        /// Tracks the presented Frame Buffer.
+        /// Stores presented Frame Buffer.
         /// </summary>
         private readonly AmigaFrameBuffer _presentedFrameBuffer;
         /// <summary>
-        /// Tracks the bus.
+        /// Stores bus.
         /// </summary>
         private readonly AmigaBus _bus;
         /// <summary>
-        /// Tracks the agnus.
+        /// Stores agnus.
         /// </summary>
         private readonly Agnus _agnus;
         /// <summary>
-        /// Tracks the denise.
+        /// Stores denise.
         /// </summary>
         private readonly Denise _denise;
         /// <summary>
-        /// Tracks the paula.
+        /// Stores paula.
         /// </summary>
         private readonly Paula _paula;
         /// <summary>
-        /// Tracks the CIA A.
+        /// Stores CIA A.
         /// </summary>
         private readonly Cia8520 _ciaA;
         /// <summary>
-        /// Tracks the CIA B.
+        /// Stores CIA B.
         /// </summary>
         private readonly Cia8520 _ciaB;
         /// <summary>
-        /// Tracks the input.
+        /// Stores input.
         /// </summary>
         private readonly AmigaInputDevice _input;
         /// <summary>
-        /// Tracks the CPU.
+        /// Stores CPU.
         /// </summary>
         private readonly M68kCpu _cpu;
         /// <summary>
-        /// Tracks the last Trace Sample.
+        /// Stores last Trace Sample.
         /// </summary>
         private MachineTraceSample _lastTraceSample;
         /// <summary>
-        /// Tracks the CIA Clock Divider.
+        /// Stores CIA Clock Divider.
         /// </summary>
         private int _ciaClockDivider;
         /// <summary>
-        /// Tracks the CIA A IRQ Last.
+        /// Stores CIA A Irq Last.
         /// </summary>
         private bool _ciaAIrqLast;
         /// <summary>
-        /// Tracks the CIA B IRQ Last.
+        /// Stores CIA B Irq Last.
         /// </summary>
         private bool _ciaBIrqLast;
+        /// <summary>
+        /// Stores the interrupt level currently visible on the CPU IPL pins.
+        /// </summary>
+        private int _cpuVisibleInterruptLevel;
+        /// <summary>
+        /// Stores the most recent custom/CIA interrupt level waiting to reach the CPU pins.
+        /// </summary>
+        private int _cpuPendingInterruptLevel;
+        /// <summary>
+        /// Counts down the chip-cycle delay before the sampled interrupt level reaches IPL pins.
+        /// </summary>
+        private int _cpuInterruptDelayCycles;
 
         /// <summary>
         /// Initializes a new instance of the AmigaSystem class.
@@ -124,7 +151,7 @@ namespace AmigaEmulator.Core
         {
             _model = model ?? AmigaModel.A500Pal;
             _accuracyOptions = (accuracyOptions ?? AmigaAccuracyOptions.Compatible).Clone();
-            _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth, _model.VisibleHeight);
+            _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft, _model.VisibleHeight);
             _presentedFrameBuffer = new AmigaFrameBuffer(_model.VisibleWidth, _model.VisibleHeight);
             _paula = new Paula(_model.ChipRamBytes);
             _ciaA = new Cia8520("CIA-A");
@@ -163,7 +190,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Model logic.
+        /// Gets Model.
         /// </summary>
         public AmigaModel Model
         {
@@ -171,7 +198,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Accuracy Options logic.
+        /// Gets Accuracy Options.
         /// </summary>
         public AmigaAccuracyOptions AccuracyOptions
         {
@@ -195,7 +222,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Bus logic.
+        /// Gets Bus.
         /// </summary>
         public AmigaBus Bus
         {
@@ -203,7 +230,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the CPU logic.
+        /// Gets CPU.
         /// </summary>
         public M68kCpu Cpu
         {
@@ -211,7 +238,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Agnus logic.
+        /// Gets Agnus.
         /// </summary>
         public Agnus Agnus
         {
@@ -219,7 +246,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Denise logic.
+        /// Gets Denise.
         /// </summary>
         public Denise Denise
         {
@@ -227,7 +254,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Paula logic.
+        /// Gets Paula.
         /// </summary>
         public Paula Paula
         {
@@ -235,7 +262,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the CIA A logic.
+        /// Gets CIA A.
         /// </summary>
         public Cia8520 CiaA
         {
@@ -243,7 +270,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the CIA B logic.
+        /// Gets CIA B.
         /// </summary>
         public Cia8520 CiaB
         {
@@ -251,7 +278,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Input logic.
+        /// Gets Input.
         /// </summary>
         public AmigaInputDevice Input
         {
@@ -259,7 +286,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Frame Buffer logic.
+        /// Gets Frame Buffer.
         /// </summary>
         public AmigaFrameBuffer FrameBuffer
         {
@@ -267,7 +294,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Presented Frame Buffer logic.
+        /// Gets Presented Frame Buffer.
         /// </summary>
         public AmigaFrameBuffer PresentedFrameBuffer
         {
@@ -275,7 +302,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Last Trace Sample logic.
+        /// Gets Last Trace Sample.
         /// </summary>
         public MachineTraceSample LastTraceSample
         {
@@ -323,6 +350,9 @@ namespace AmigaEmulator.Core
                 _ciaClockDivider = 0;
                 _ciaAIrqLast = false;
                 _ciaBIrqLast = false;
+                _cpuVisibleInterruptLevel = 0;
+                _cpuPendingInterruptLevel = 0;
+                _cpuInterruptDelayCycles = 0;
                 _cpu.Reset();
                 _lastTraceSample = CreateTraceSample(null);
             }
@@ -340,7 +370,7 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(1);
+                writer.Write(2);
                 _bus.SaveState(writer);
                 _cpu.SaveState(writer);
                 _agnus.SaveState(writer);
@@ -353,6 +383,9 @@ namespace AmigaEmulator.Core
                 writer.Write(_ciaClockDivider);
                 writer.Write(_ciaAIrqLast);
                 writer.Write(_ciaBIrqLast);
+                writer.Write(_cpuVisibleInterruptLevel);
+                writer.Write(_cpuPendingInterruptLevel);
+                writer.Write(_cpuInterruptDelayCycles);
             }
         }
 
@@ -369,7 +402,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version != 1)
+                if (version != 1 && version != 2)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
@@ -386,6 +419,20 @@ namespace AmigaEmulator.Core
                 _ciaClockDivider = reader.ReadInt32();
                 _ciaAIrqLast = reader.ReadBoolean();
                 _ciaBIrqLast = reader.ReadBoolean();
+                if (version >= 2)
+                {
+                    _cpuVisibleInterruptLevel = reader.ReadInt32();
+                    _cpuPendingInterruptLevel = reader.ReadInt32();
+                    _cpuInterruptDelayCycles = reader.ReadInt32();
+                }
+                else
+                {
+                    _cpuVisibleInterruptLevel = _agnus.CustomRegisters.ActiveInterruptLevel;
+                    _cpuPendingInterruptLevel = _cpuVisibleInterruptLevel;
+                    _cpuInterruptDelayCycles = 0;
+                }
+
+                _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
                 _lastTraceSample = CreateTraceSample(null);
             }
         }
@@ -429,7 +476,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Profile Chip Cycles logic.
+        /// Runs Profile Chip Cycles.
         /// </summary>
         public AmigaSystemComponentProfile ProfileChipCycles(int cycles)
         {
@@ -496,7 +543,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Frame Counter logic.
+        /// Gets Frame Counter.
         /// </summary>
         public long FrameCounter
         {
@@ -510,7 +557,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Dispose logic.
+        /// Runs Dispose.
         /// </summary>
         public void Dispose()
         {
@@ -611,7 +658,8 @@ namespace AmigaEmulator.Core
             _denise.Tick(_agnus.Beam);
             if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
             {
-                _presentedFrameBuffer.CopyFrom(_frameBuffer);
+                _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, PresentationCropLeft, 0);
+                _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
             }
 
             if (_accuracyOptions.EnableCpuTrace || _accuracyOptions.EnableDmaSlotTrace)
@@ -682,6 +730,8 @@ namespace AmigaEmulator.Core
         /// </summary>
         private void ApplyPendingInterrupts()
         {
+            _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
+
             bool ciaAIrq = _ciaA.InterruptPending;
             if (ciaAIrq)
             {
@@ -699,7 +749,27 @@ namespace AmigaEmulator.Core
             _ciaBIrqLast = ciaBIrq;
 
             int level = _agnus.CustomRegisters.ActiveInterruptLevel;
-            _cpu.SetInterruptLevel(level);
+            SampleCpuInterruptPins(level);
+        }
+
+        /// <summary>
+        /// Samples the current interrupt level and applies it to the CPU IPL pins after a short hardware delay.
+        /// </summary>
+        private void SampleCpuInterruptPins(int level)
+        {
+            if (level != _cpuPendingInterruptLevel)
+            {
+                _cpuPendingInterruptLevel = level;
+                _cpuInterruptDelayCycles = 8;
+            }
+
+            if (_cpuInterruptDelayCycles > 0)
+            {
+                _cpuInterruptDelayCycles--;
+                return;
+            }
+
+            _cpuVisibleInterruptLevel = _cpuPendingInterruptLevel;
         }
 
         /// <summary>
@@ -744,52 +814,52 @@ namespace AmigaEmulator.Core
     }
 
     /// <summary>
-    /// Provides Amiga System Component Profile behavior used by the emulator.
+    /// Provides Amiga System Component Profile functionality.
     /// </summary>
     public sealed class AmigaSystemComponentProfile
     {
         /// <summary>
-        /// Gets or updates the Cycles.
+        /// Gets or sets Cycles.
         /// </summary>
         public int Cycles { get; set; }
 
         /// <summary>
-        /// Gets or updates the Stopwatch Frequency.
+        /// Gets or sets Stopwatch Frequency.
         /// </summary>
         public long StopwatchFrequency { get; set; }
 
         /// <summary>
-        /// Gets or updates the Total Ticks.
+        /// Gets or sets Total Ticks.
         /// </summary>
         public long TotalTicks { get; set; }
 
         /// <summary>
-        /// Gets or updates the Agnus Ticks.
+        /// Gets or sets Agnus Ticks.
         /// </summary>
         public long AgnusTicks { get; set; }
 
         /// <summary>
-        /// Gets or updates the Paula Ticks.
+        /// Gets or sets Paula Ticks.
         /// </summary>
         public long PaulaTicks { get; set; }
 
         /// <summary>
-        /// Gets or updates the CIA Ticks.
+        /// Gets or sets CIA Ticks.
         /// </summary>
         public long CiaTicks { get; set; }
 
         /// <summary>
-        /// Gets or updates the CPU Ticks.
+        /// Gets or sets CPU Ticks.
         /// </summary>
         public long CpuTicks { get; set; }
 
         /// <summary>
-        /// Gets or updates the Denise Ticks.
+        /// Gets or sets Denise Ticks.
         /// </summary>
         public long DeniseTicks { get; set; }
 
         /// <summary>
-        /// Gets or updates the Trace Ticks.
+        /// Gets or sets Trace Ticks.
         /// </summary>
         public long TraceTicks { get; set; }
     }

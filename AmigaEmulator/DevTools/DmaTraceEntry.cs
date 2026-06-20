@@ -23,43 +23,43 @@ namespace AmigaEmulator.Core.DevTools
     public struct DmaSlotTraceEntry
     {
         /// <summary>
-        /// Stores the Global Chip Cycle.
+        /// Stores Global Chip Cycle.
         /// </summary>
         public long GlobalChipCycle;
         /// <summary>
-        /// Stores the Slot Index.
+        /// Stores Slot Index.
         /// </summary>
         public int SlotIndex;
         /// <summary>
-        /// Stores the Beam Y.
+        /// Stores Beam Y.
         /// </summary>
         public int BeamY;
         /// <summary>
-        /// Stores the Owner.
+        /// Stores Owner.
         /// </summary>
         public DmaOwner Owner;
         /// <summary>
-        /// Stores the owner assigned by the fixed OCS slot table before dynamic display and Blitter arbitration.
+        /// Stores owner assigned by the fixed OCS slot table before dynamic display and Blitter arbitration.
         /// </summary>
         public DmaOwner BaseOwner;
         /// <summary>
-        /// Stores the sprite number for sprite DMA slots, or -1 when the slot is not a sprite slot.
+        /// Stores sprite number for sprite DMA slots, or -1 when the slot is not a sprite slot.
         /// </summary>
         public int SpriteIndex;
         /// <summary>
-        /// Stores the sprite DMA sub-slot inside a sprite pair.
+        /// Stores sprite DMA sub-slot inside a sprite pair.
         /// </summary>
         public int SpriteSlotPhase;
         /// <summary>
-        /// Stores the audio channel assigned to this DMA slot, or -1 when it is not an audio slot.
+        /// Stores audio channel assigned to this DMA slot, or -1 when it is not an audio slot.
         /// </summary>
         public int AudioChannelIndex;
         /// <summary>
-        /// Stores the sub-slot phase inside an audio channel slot pair.
+        /// Stores sub-slot phase inside an audio channel slot pair.
         /// </summary>
         public int AudioSlotPhase;
         /// <summary>
-        /// Stores the CPU Can Use Chip Bus.
+        /// Stores CPU Can Use Chip Bus.
         /// </summary>
         public bool CpuCanUseChipBus;
     }

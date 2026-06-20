@@ -21,7 +21,7 @@ namespace AmigaEmulator.Core
     public sealed class AmigaAccuracyOptions
     {
         /// <summary>
-        /// Executes the Fast logic.
+        /// Stores Fast.
         /// </summary>
         public static readonly AmigaAccuracyOptions Fast = new AmigaAccuracyOptions
         {
@@ -32,7 +32,7 @@ namespace AmigaEmulator.Core
         };
 
         /// <summary>
-        /// Executes the Compatible logic.
+        /// Stores Compatible.
         /// </summary>
         public static readonly AmigaAccuracyOptions Compatible = new AmigaAccuracyOptions
         {
@@ -43,7 +43,7 @@ namespace AmigaEmulator.Core
         };
 
         /// <summary>
-        /// Executes the Strict logic.
+        /// Stores Strict.
         /// </summary>
         public static readonly AmigaAccuracyOptions Strict = new AmigaAccuracyOptions
         {
@@ -54,27 +54,27 @@ namespace AmigaEmulator.Core
         };
 
         /// <summary>
-        /// Gets or updates the Name.
+        /// Gets or sets Name.
         /// </summary>
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or updates the Enable DMA Slot Trace.
+        /// Gets or sets Enable DMA Slot Trace.
         /// </summary>
         public bool EnableDmaSlotTrace { get; set; }
 
         /// <summary>
-        /// Gets or updates the Enable CPU Trace.
+        /// Gets or sets Enable CPU Trace.
         /// </summary>
         public bool EnableCpuTrace { get; set; }
 
         /// <summary>
-        /// Gets or updates the Strict Chip Bus Arbitration.
+        /// Gets or sets Strict Chip Bus Arbitration.
         /// </summary>
         public bool StrictChipBusArbitration { get; set; }
 
         /// <summary>
-        /// Executes the Clone logic.
+        /// Runs Clone.
         /// </summary>
         public AmigaAccuracyOptions Clone()
         {

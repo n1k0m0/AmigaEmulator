@@ -25,20 +25,20 @@ namespace AmigaEmulator.Core.CustomChips
     public sealed class Denise
     {
         /// <summary>
-        /// Stores the s registers.
+        /// Stores s registers.
         /// </summary>
         private static CustomRegisterMap s_registers;
 
         /// <summary>
-        /// Tracks the frame Buffer.
+        /// Stores frame Buffer.
         /// </summary>
         private readonly AmigaFrameBuffer _frameBuffer;
         /// <summary>
-        /// Tracks the bitplanes.
+        /// Stores bitplanes.
         /// </summary>
         private readonly BitplaneUnit _bitplanes;
         /// <summary>
-        /// Tracks the sprites.
+        /// Stores sprites.
         /// </summary>
         private readonly SpriteUnit _sprites;
         /// <summary>
@@ -46,9 +46,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private readonly CollisionUnit _collisions;
         /// <summary>
-        /// Defines the Pal Lowres Display Start constant.
+        /// Constant for Pal Lowres Display Start.
         /// </summary>
-        private const int PalLowresDisplayStart = 0x38;
+        private const int PalLowresDisplayStart = 0x3E;
 
         /// <summary>
         /// Initializes a new instance of the Denise class.
@@ -213,7 +213,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Should Sprite Cover Playfield logic.
+        /// Runs Should Sprite Cover Playfield.
         /// </summary>
         private bool ShouldSpriteCoverPlayfield(int spriteGroup, int playfieldColorIndex)
         {

@@ -30,59 +30,59 @@ namespace AmigaEmulator.Core.Memory
     public sealed class AmigaBus : IM68kPeekableBus, IM68kBusArbitration, IM68kResetVectorProvider
     {
         /// <summary>
-        /// Tracks the chip RAM.
+        /// Stores chip RAM.
         /// </summary>
         private readonly ChipRam _chipRam;
         /// <summary>
-        /// Tracks the slow RAM.
+        /// Stores slow RAM.
         /// </summary>
         private readonly SlowRam _slowRam;
         /// <summary>
-        /// Tracks the fast RAM.
+        /// Stores fast RAM.
         /// </summary>
         private readonly FastRam _fastRam;
         /// <summary>
-        /// Tracks the chip RAM End.
+        /// Stores chip RAM End.
         /// </summary>
         private readonly uint _chipRamEnd;
         /// <summary>
-        /// Tracks the custom Registers.
+        /// Stores custom Registers.
         /// </summary>
         private readonly CustomRegisterMap _customRegisters;
         /// <summary>
-        /// Tracks the paula.
+        /// Stores paula.
         /// </summary>
         private readonly Paula _paula;
         /// <summary>
-        /// Tracks the CIA A.
+        /// Stores CIA A.
         /// </summary>
         private readonly Cia8520 _ciaA;
         /// <summary>
-        /// Tracks the CIA B.
+        /// Stores CIA B.
         /// </summary>
         private readonly Cia8520 _ciaB;
         /// <summary>
-        /// Tracks the floppy Controller.
+        /// Stores floppy Controller.
         /// </summary>
         private readonly FloppyController _floppyController;
         /// <summary>
-        /// Tracks the blitter.
+        /// Stores blitter.
         /// </summary>
         private Blitter _blitter;
         /// <summary>
-        /// Tracks the kickstart.
+        /// Stores kickstart.
         /// </summary>
         private KickstartRom _kickstart;
         /// <summary>
-        /// Tracks the last Bus Value.
+        /// Stores last Bus Value.
         /// </summary>
         private byte _lastBusValue;
         /// <summary>
-        /// Tracks the CIA A Port A Input Mask Provider.
+        /// Stores CIA A Port A Input Mask Provider.
         /// </summary>
         private Func<byte> _ciaAPortAInputMaskProvider;
         /// <summary>
-        /// Tracks the CIA A Port A Input Value Provider.
+        /// Stores CIA A Port A Input Value Provider.
         /// </summary>
         private Func<byte> _ciaAPortAInputValueProvider;
 
@@ -123,12 +123,12 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Gets or updates the ROM Overlay At Zero.
+        /// Gets or sets ROM Overlay At Zero.
         /// </summary>
         public bool RomOverlayAtZero { get; set; }
 
         /// <summary>
-        /// Executes the Kickstart logic.
+        /// Gets Kickstart.
         /// </summary>
         public KickstartRom Kickstart
         {
@@ -136,7 +136,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Chip RAM logic.
+        /// Gets Chip RAM.
         /// </summary>
         public ChipRam ChipRam
         {
@@ -144,7 +144,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Slow RAM logic.
+        /// Gets Slow RAM.
         /// </summary>
         public SlowRam SlowRam
         {
@@ -152,7 +152,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Last Bus Value logic.
+        /// Gets Last Bus Value.
         /// </summary>
         public byte LastBusValue
         {
@@ -160,7 +160,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Floppy Controller logic.
+        /// Gets Floppy Controller.
         /// </summary>
         public FloppyController FloppyController
         {
@@ -193,7 +193,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Clear Writable Memory logic.
+        /// Runs Clear Writable Memory.
         /// </summary>
         public void ClearWritableMemory()
         {
@@ -356,6 +356,12 @@ namespace AmigaEmulator.Core.Memory
                     value = _fastRam.Read(address - MemoryMap.FastRamStart);
                     break;
                 case AmigaAddressRegion.CustomRegisters:
+                    if (IsBplconWriteOnlyRead(address))
+                    {
+                        value = _lastBusValue;
+                        break;
+                    }
+
                     if (_paula != null && _paula.TryReadCustomRegisterWord(address & 0xFFFFFEu, out ushort paulaWord))
                     {
                         value = (address & 1) == 0 ? (byte)(paulaWord >> 8) : (byte)(paulaWord & 0xFF);
@@ -659,7 +665,18 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         private static bool RegionRequiresChipBus(AmigaAddressRegion region)
         {
-            return region == AmigaAddressRegion.ChipRam || region == AmigaAddressRegion.CustomRegisters;
+            return region == AmigaAddressRegion.ChipRam ||
+                region == AmigaAddressRegion.SlowRam ||
+                region == AmigaAddressRegion.CustomRegisters;
+        }
+
+        /// <summary>
+        /// Returns whether a CPU bus read targets write-only BPLCON display-control registers.
+        /// </summary>
+        private static bool IsBplconWriteOnlyRead(uint address)
+        {
+            uint offset = address & 0x01FEu;
+            return offset == 0x0100u || offset == 0x0102u || offset == 0x0104u;
         }
 
         /// <summary>

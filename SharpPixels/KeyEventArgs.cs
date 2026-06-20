@@ -35,32 +35,32 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Gets or updates the Key.
+        /// Gets or sets Key.
         /// </summary>
         public Key Key { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Key Char.
+        /// Gets or sets Key Char.
         /// </summary>
         public char KeyChar { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Alt.
+        /// Gets or sets Alt.
         /// </summary>
         public bool Alt { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Control.
+        /// Gets or sets Control.
         /// </summary>
         public bool Control { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Shift.
+        /// Gets or sets Shift.
         /// </summary>
         public bool Shift { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Handled.
+        /// Gets or sets Handled.
         /// </summary>
         public bool Handled { get; set; }
     }

@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,72 +21,72 @@ namespace AmigaEmulator.Core.Cpu
     public enum M68kExecutionState
     {
         /// <summary>
-        /// Represents the R es et option.
+        /// Represents Reset.
         /// </summary>
         Reset,
         /// <summary>
-        /// Represents the F et ch Op co de option.
+        /// Represents Fetch Opcode.
         /// </summary>
         FetchOpcode,
         /// <summary>
-        /// Represents the E xe cu te In st ru ct io n option.
+        /// Represents Execute Instruction.
         /// </summary>
         ExecuteInstruction,
         /// <summary>
-        /// Represents the S to pp ed option.
+        /// Represents Stopped.
         /// </summary>
         Stopped,
         /// <summary>
-        /// Represents the I ll eg al In st ru ct io n option.
+        /// Represents Illegal Instruction.
         /// </summary>
         IllegalInstruction
     }
 
     /// <summary>
-    /// Provides 68000 State behavior used by the emulator.
+    /// Provides 68000 State functionality.
     /// </summary>
     public sealed class M68kState
     {
         /// <summary>
-        /// Stores the D.
+        /// Stores D.
         /// </summary>
         public readonly uint[] D = new uint[8];
         /// <summary>
-        /// Stores the A.
+        /// Stores A.
         /// </summary>
         public readonly uint[] A = new uint[8];
 
         /// <summary>
-        /// Stores the PC.
+        /// Stores PC.
         /// </summary>
         public uint PC;
         /// <summary>
-        /// Stores the SR.
+        /// Stores SR.
         /// </summary>
         public ushort SR;
         /// <summary>
-        /// Stores the USP.
+        /// Stores USP.
         /// </summary>
         public uint USP;
         /// <summary>
-        /// Stores the SSP.
+        /// Stores SSP.
         /// </summary>
         public uint SSP;
         /// <summary>
-        /// Stores the Current Opcode.
+        /// Stores Current Opcode.
         /// </summary>
         public ushort CurrentOpcode;
         /// <summary>
-        /// Stores the Cycles.
+        /// Stores Cycles.
         /// </summary>
         public long Cycles;
         /// <summary>
-        /// Stores the Execution State.
+        /// Stores Execution State.
         /// </summary>
         public M68kExecutionState ExecutionState;
 
         /// <summary>
-        /// Executes the Clone logic.
+        /// Runs Clone.
         /// </summary>
         public M68kState Clone()
         {

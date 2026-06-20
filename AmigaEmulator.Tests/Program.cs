@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using AmigaEmulator.Core;
 using AmigaEmulator.Core.Cia;
@@ -36,7 +37,7 @@ namespace AmigaEmulator.Tests
     internal static class Program
     {
         /// <summary>
-        /// Executes the Main logic.
+        /// Runs Main.
         /// </summary>
         private static int Main(string[] args)
         {
@@ -62,12 +63,20 @@ namespace AmigaEmulator.Tests
             }
 
             int failures = 0;
+            int skipped = 0;
             foreach (ChipTestCase test in tests)
             {
                 try
                 {
                     test.Run();
                     Console.WriteLine("OK   " + test.Category + " | " + test.Name);
+                }
+                catch (SkippedTestException ex)
+                {
+                    skipped++;
+                    Console.WriteLine("SKIP " + test.Category + " | " + test.Name);
+                    Console.WriteLine("     " + ex.Message);
+                    Console.WriteLine("     Source: " + test.Source);
                 }
                 catch (Exception ex)
                 {
@@ -78,7 +87,7 @@ namespace AmigaEmulator.Tests
                 }
             }
 
-            Console.WriteLine("Tests: " + tests.Count + "  Failed: " + failures);
+            Console.WriteLine("Tests: " + tests.Count + "  Failed: " + failures + "  Skipped: " + skipped);
             return failures == 0 ? 0 : 1;
         }
 
@@ -89,6 +98,7 @@ namespace AmigaEmulator.Tests
         {
             var tests = new List<ChipTestCase>();
             tests.AddRange(RegressionSelfTests.Build());
+            tests.AddRange(CpuTimingTests.Build());
             tests.AddRange(M68kOpcodeMatrixTests.Build());
             tests.AddRange(AgnusTests.Build());
             tests.AddRange(DeniseBitplaneTests.Build());
@@ -104,53 +114,70 @@ namespace AmigaEmulator.Tests
             {
                 tests.AddRange(VAmigaTsTests.Build(options));
             }
+            if (options.IncludeAmigaDevtest)
+            {
+                tests.AddRange(AmigaDevtestTests.Build(options));
+            }
 
             return tests;
         }
     }
 
     /// <summary>
-    /// Provides Test Options behavior used by the emulator.
+    /// Provides Test Options functionality.
     /// </summary>
     internal sealed class TestOptions
     {
         /// <summary>
-        /// Gets or updates the Include ADF.
+        /// Gets or sets Include ADF.
         /// </summary>
         public bool IncludeAdf { get; private set; }
         /// <summary>
-        /// Gets or updates the Include V Amiga Ts.
+        /// Gets or sets Include V Amiga Ts.
         /// </summary>
         public bool IncludeVAmigaTs { get; private set; }
         /// <summary>
-        /// Gets or updates the V Amiga Ts All.
+        /// Gets or sets Include Amiga Devtest.
+        /// </summary>
+        public bool IncludeAmigaDevtest { get; private set; }
+        /// <summary>
+        /// Gets or sets Amiga Devtest ADF path.
+        /// </summary>
+        public string AmigaDevtestAdfPath { get; private set; }
+        /// <summary>
+        /// Gets or sets Amiga Devtest Cycles.
+        /// </summary>
+        public int AmigaDevtestCycles { get; private set; }
+        /// <summary>
+        /// Gets or sets V Amiga Ts All.
         /// </summary>
         public bool VAmigaTsAll { get; private set; }
         /// <summary>
-        /// Gets or updates the List Only.
+        /// Gets or sets List Only.
         /// </summary>
         public bool ListOnly { get; private set; }
         /// <summary>
-        /// Gets or updates the Filter.
+        /// Gets or sets Filter.
         /// </summary>
         public string Filter { get; private set; }
         /// <summary>
-        /// Gets or updates the V Amiga Ts Limit.
+        /// Gets or sets V Amiga Ts Limit.
         /// </summary>
         public int VAmigaTsLimit { get; private set; }
         /// <summary>
-        /// Gets or updates the V Amiga Ts Cycles.
+        /// Gets or sets V Amiga Ts Cycles.
         /// </summary>
         public int VAmigaTsCycles { get; private set; }
 
         /// <summary>
-        /// Executes the Parse logic.
+        /// Runs Parse.
         /// </summary>
         public static TestOptions Parse(string[] args)
         {
             var options = new TestOptions
             {
-                VAmigaTsCycles = 40_000_000
+                VAmigaTsCycles = 40_000_000,
+                AmigaDevtestCycles = 180_000_000
             };
             for (int index = 0; args != null && index < args.Length; index++)
             {
@@ -162,6 +189,10 @@ namespace AmigaEmulator.Tests
                 else if (string.Equals(arg, "--include-vamigats", StringComparison.OrdinalIgnoreCase))
                 {
                     options.IncludeVAmigaTs = true;
+                }
+                else if (string.Equals(arg, "--include-amiga-devtest", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.IncludeAmigaDevtest = true;
                 }
                 else if (string.Equals(arg, "--vamigats-all", StringComparison.OrdinalIgnoreCase))
                 {
@@ -186,6 +217,16 @@ namespace AmigaEmulator.Tests
                     int.TryParse(args[++index], out int cycles);
                     options.VAmigaTsCycles = Math.Max(40_000_000, cycles);
                 }
+                else if (string.Equals(arg, "--amiga-devtest-adf", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                {
+                    options.AmigaDevtestAdfPath = args[++index];
+                    options.IncludeAmigaDevtest = true;
+                }
+                else if (string.Equals(arg, "--amiga-devtest-cycles", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                {
+                    int.TryParse(args[++index], out int cycles);
+                    options.AmigaDevtestCycles = Math.Max(40_000_000, cycles);
+                }
             }
 
             return options;
@@ -193,12 +234,12 @@ namespace AmigaEmulator.Tests
     }
 
     /// <summary>
-    /// Provides Chip Test Case behavior used by the emulator.
+    /// Provides Chip Test Case functionality.
     /// </summary>
     internal sealed class ChipTestCase
     {
         /// <summary>
-        /// Tracks the run.
+        /// Stores run.
         /// </summary>
         private readonly Action _run;
 
@@ -214,15 +255,15 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Gets or updates the Category.
+        /// Gets or sets Category.
         /// </summary>
         public string Category { get; private set; }
         /// <summary>
-        /// Gets or updates the Name.
+        /// Gets or sets Name.
         /// </summary>
         public string Name { get; private set; }
         /// <summary>
-        /// Gets or updates the Source.
+        /// Gets or sets Source.
         /// </summary>
         public string Source { get; private set; }
 
@@ -236,12 +277,12 @@ namespace AmigaEmulator.Tests
     }
 
     /// <summary>
-    /// Provides Check behavior used by the emulator.
+    /// Provides Check functionality.
     /// </summary>
     internal static class Check
     {
         /// <summary>
-        /// Executes the True logic.
+        /// Runs True.
         /// </summary>
         public static void True(bool condition, string message)
         {
@@ -252,7 +293,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the message logic.
+        /// Gets message.
         /// </summary>
         public static void Equal<T>(T expected, T actual, string message)
         {
@@ -261,15 +302,37 @@ namespace AmigaEmulator.Tests
                 throw new InvalidOperationException(message + " Expected=" + expected + " Actual=" + actual);
             }
         }
+
+        /// <summary>
+        /// Skips an optional test when a required external artifact is unavailable.
+        /// </summary>
+        public static void Skip(string message)
+        {
+            throw new SkippedTestException(message);
+        }
     }
 
     /// <summary>
-    /// Provides Regression Self Tests behavior used by the emulator.
+    /// Signals that an optional external test was intentionally not run.
+    /// </summary>
+    internal sealed class SkippedTestException : Exception
+    {
+        /// <summary>
+        /// Initializes a new instance of the SkippedTestException class.
+        /// </summary>
+        public SkippedTestException(string message)
+            : base(message)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Provides Regression Self Tests functionality.
     /// </summary>
     internal static class RegressionSelfTests
     {
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -281,7 +344,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Self Test logic.
+        /// Runs Self Test.
         /// </summary>
         private static ChipTestCase SelfTest(string category, string name, string source, Func<StringBuilder, int> run)
         {
@@ -295,7 +358,43 @@ namespace AmigaEmulator.Tests
     }
 
     /// <summary>
-    /// Provides Agnus Tests behavior used by the emulator.
+    /// Provides focused CPU timing regression tests.
+    /// </summary>
+    internal static class CpuTimingTests
+    {
+        /// <summary>
+        /// Builds the Build result.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build()
+        {
+            yield return new ChipTestCase(
+                "CPU",
+                "bit manipulation opcodes are not estimated as branch instructions",
+                "M68000 PRM bit manipulation and branch timing",
+                TestBitManipulationTimingEstimate);
+        }
+
+        /// <summary>
+        /// Verifies that BTST/BCHG/BCLR/BSET do not fall through the generic Bcc timing path.
+        /// </summary>
+        private static void TestBitManipulationTimingEstimate()
+        {
+            var method = typeof(M68kCpu).GetMethod(
+                "EstimateInstructionCycles",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Check.True(method != null, "CPU timing estimator should exist.");
+
+            int btst = (int)method.Invoke(null, new object[] { (ushort)0x0800, "BTST #0,D0", 0x1000u, 0x1004u });
+            int bne = (int)method.Invoke(null, new object[] { (ushort)0x6600, "BNE.S $1004", 0x1000u, 0x1004u });
+
+            Check.Equal(6, btst, "BTST #imm,Dn should use immediate bit-op timing.");
+            Check.Equal(10, bne, "Bcc should still use branch timing.");
+            Check.True(btst != bne, "Bit operations must not be classified as branch mnemonics.");
+        }
+    }
+
+    /// <summary>
+    /// Provides Agnus Tests functionality.
     /// </summary>
     internal static class AgnusTests
     {
@@ -304,19 +403,19 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Dmacon = 0x096;
         /// <summary>
-        /// Defines the Diwstrt constant.
+        /// Constant for Diwstrt.
         /// </summary>
         private const uint Diwstrt = 0x08E;
         /// <summary>
-        /// Defines the Diwstop constant.
+        /// Constant for Diwstop.
         /// </summary>
         private const uint Diwstop = 0x090;
         /// <summary>
-        /// Defines the Ddfstrt constant.
+        /// Constant for Ddfstrt.
         /// </summary>
         private const uint Ddfstrt = 0x092;
         /// <summary>
-        /// Defines the Ddfstop constant.
+        /// Constant for Ddfstop.
         /// </summary>
         private const uint Ddfstop = 0x094;
         /// <summary>
@@ -341,7 +440,7 @@ namespace AmigaEmulator.Tests
         private const uint Bpl2ptl = 0x0E6;
 
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -370,10 +469,15 @@ namespace AmigaEmulator.Tests
                 "BLTPRI lets the Blitter take otherwise CPU-available slots",
                 "Amiga HRM DMACON BLTPRI bus priority behavior",
                 TestBlitterPrioritySlot);
+            yield return new ChipTestCase(
+                "Agnus",
+                "waiting Copper releases fetch slots to the Blitter",
+                "Amiga HRM Copper WAIT bus behavior and Agnus DMA arbitration",
+                TestWaitingCopperReleasesBlitterSlots);
         }
 
         /// <summary>
-        /// Executes the Test Beam Line Advance logic.
+        /// Runs Test Beam Line Advance.
         /// </summary>
         private static void TestBeamLineAdvance()
         {
@@ -388,7 +492,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Production Bitplane DMA Split Fetch logic.
+        /// Runs Test Production Bitplane Dma Split Fetch.
         /// </summary>
         private static void TestProductionBitplaneDmaSplitFetch()
         {
@@ -420,12 +524,11 @@ namespace AmigaEmulator.Tests
 
             agnus.Tick();
             Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "Second DDF slot should fetch the second enabled plane.");
-            Check.Equal(0, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "A split-fetched word should still respect the prefetch-to-shifter delay.");
-            Check.Equal(3, agnus.Bitplanes.RenderColorIndex(2 * BitplaneUnit.HiresPixelsPerChipCycle, BitplaneUnit.PalVisibleTop), "After both split slots and the prefetch delay the two-plane pixel should be visible.");
+            Check.Equal(3, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After both split slots commit, the first fetched pixel should remain visible at the left edge.");
         }
 
         /// <summary>
-        /// Executes the Test Sprite DMA Priority logic.
+        /// Runs Test Sprite Dma Priority.
         /// </summary>
         private static void TestSpriteDmaPriority()
         {
@@ -437,7 +540,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Fixed OCS Slot Table logic.
+        /// Runs Test Fixed Ocs Slot Table.
         /// </summary>
         private static void TestFixedOcsSlotTable()
         {
@@ -458,7 +561,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Blitter Priority Slot logic.
+        /// Runs Test Blitter Priority Slot.
         /// </summary>
         private static void TestBlitterPrioritySlot()
         {
@@ -469,10 +572,27 @@ namespace AmigaEmulator.Tests
 
             Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 37, 0).Owner, "BLTPRI should let the Blitter take a CPU-available slot.");
         }
+
+        /// <summary>
+        /// Runs Test Waiting Copper Releases Blitter Slots.
+        /// </summary>
+        private static void TestWaitingCopperReleasesBlitterSlots()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(Dmacon, 0x82C0);
+            var scheduler = new DmaScheduler(registers);
+            scheduler.AttachBlitterStatus(() => true);
+
+            scheduler.AttachCopperBusDemand(() => true);
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 40, 0).Owner, "A Copper that needs an instruction word should own a Copper fetch slot.");
+
+            scheduler.AttachCopperBusDemand(() => false);
+            Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 40, 0).Owner, "A waiting Copper should not reserve its fetch slot while the Blitter is pending.");
+        }
     }
 
     /// <summary>
-    /// Provides Denise Bitplane Tests behavior used by the emulator.
+    /// Provides Denise Bitplane Tests functionality.
     /// </summary>
     internal static class DeniseBitplaneTests
     {
@@ -481,19 +601,19 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Dmacon = 0x096;
         /// <summary>
-        /// Defines the Diwstrt constant.
+        /// Constant for Diwstrt.
         /// </summary>
         private const uint Diwstrt = 0x08E;
         /// <summary>
-        /// Defines the Diwstop constant.
+        /// Constant for Diwstop.
         /// </summary>
         private const uint Diwstop = 0x090;
         /// <summary>
-        /// Defines the Ddfstrt constant.
+        /// Constant for Ddfstrt.
         /// </summary>
         private const uint Ddfstrt = 0x092;
         /// <summary>
-        /// Defines the Ddfstop constant.
+        /// Constant for Ddfstop.
         /// </summary>
         private const uint Ddfstop = 0x094;
         /// <summary>
@@ -542,7 +662,7 @@ namespace AmigaEmulator.Tests
         private const uint Color01 = 0x182;
 
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -578,6 +698,11 @@ namespace AmigaEmulator.Tests
                 TestStandardDiwDoesNotClipRightHalf);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "standard DDF renders the final fetched lowres word at the right edge",
+                "Amiga HRM DDFSTRT/DDFSTOP inclusive fetch range and bitplane shifter output width",
+                TestStandardDdfRendersFinalWordAtRightEdge);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "delayed bitplane DMA starts at BPLxPT instead of skipped DIW rows",
                 "Amiga HRM bitplane DMA pointer advancement only happens on fetched display lines",
                 TestDelayedBitplaneDmaStartsAtPointerRegister);
@@ -593,6 +718,16 @@ namespace AmigaEmulator.Tests
                 TestFrameStartInvalidatesFetchedRows);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "sparse top overscan artifacts are cleared from the presented frame",
+                "PAL monitor presentation should suppress isolated top-border transition noise",
+                TestSparseTopOverscanArtifactsAreCleared);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "dense top-edge artwork is preserved in the presented frame",
+                "PAL monitor presentation cleanup must not crop real title or HUD artwork",
+                TestDenseTopArtworkIsPreserved);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "six-plane EHB halves color bank 0 through plane 6",
                 "Amiga HRM Extra Half-Brite output mode",
                 TestExtraHalfBriteColor);
@@ -604,7 +739,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test bitplane data Latch Without DMA logic.
+        /// Runs Test Bpl Dat Latch Without Dma.
         /// </summary>
         private static void TestBplDatLatchWithoutDma()
         {
@@ -617,7 +752,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Bitplane DMA Fetch logic.
+        /// Runs Test Bitplane Dma Fetch.
         /// </summary>
         private static void TestBitplaneDmaFetch()
         {
@@ -638,7 +773,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Split Bitplane Prefetch Group logic.
+        /// Runs Test Split Bitplane Prefetch Group.
         /// </summary>
         private static void TestSplitBitplanePrefetchGroup()
         {
@@ -662,12 +797,11 @@ namespace AmigaEmulator.Tests
             Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "A half-fetched split group must not become visible.");
 
             bitplanes.FetchDmaPlaneWord(0x39, BitplaneUnit.PalVisibleTop);
-            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After commit, the split prefetch delay should still hide the first output pixels.");
-            Check.Equal(3, bitplanes.RenderColorIndex(2 * BitplaneUnit.HiresPixelsPerChipCycle, BitplaneUnit.PalVisibleTop), "After both plane words and the prefetch delay, the group should be visible.");
+            Check.Equal(3, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After both plane words commit, the group should be visible at the left edge without shrinking the right edge.");
         }
 
         /// <summary>
-        /// Executes the Test Dual Playfield Color Bank logic.
+        /// Runs Test Dual Playfield Color Bank.
         /// </summary>
         private static void TestDualPlayfieldColorBank()
         {
@@ -697,7 +831,7 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Diwstop, 0x5181);
             registers.WriteWord(Bplcon0, 0x0000);
 
-            denise.Tick(new BeamTraceEntry { BeamX = 0x38, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
+            denise.Tick(new BeamTraceEntry { BeamX = 0x3E, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
 
             Check.Equal(0xFF0000FFu, frameBuffer.Pixels[0], "Visible border pixels above DIW must be repainted from COLOR00 instead of preserving stale pixels.");
         }
@@ -718,6 +852,36 @@ namespace AmigaEmulator.Tests
             bitplanes.RefreshFromRegisters();
 
             Check.Equal(1, bitplanes.RenderColorIndex(500, BitplaneUnit.PalVisibleTop), "Standard DIW should not clip the right half of a 640-pixel fetched playfield.");
+        }
+
+        /// <summary>
+        /// Verifies that the last DDF word reaches the final visible lowres pixel pair.
+        /// </summary>
+        private static void TestStandardDdfRendersFinalWordAtRightEdge()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[32];
+            memory[19] = 0x0001;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 31]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2DCA);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x00D0);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            for (int beamX = 0x38; beamX < 0xD8; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, BitplaneUnit.PalVisibleTop))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop);
+                }
+            }
+
+            Check.Equal(1, bitplanes.RenderColorIndex(638, BitplaneUnit.PalVisibleTop), "The final fetched DDF word must reach the rightmost lowres pixel pair.");
+            Check.Equal(1, bitplanes.RenderColorIndex(639, BitplaneUnit.PalVisibleTop), "The duplicated lowres pixel must also reach the final hires pixel.");
         }
 
         /// <summary>
@@ -799,6 +963,58 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that isolated top-border transition pixels are hidden before presentation.
+        /// </summary>
+        private static void TestSparseTopOverscanArtifactsAreCleared()
+        {
+            var frame = new AmigaFrameBuffer(640, 256);
+            frame.Clear(0xFF002288);
+            for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 16; x++)
+                {
+                    frame.SetPixel(x, y, 0xFF000000);
+                }
+
+                for (int x = 184; x < 192; x++)
+                {
+                    frame.SetPixel(x, y, 0xFF00CCEE);
+                }
+            }
+
+            frame.ClearSparseTopBorderArtifacts(10, 512);
+
+            for (int y = 0; y < 10; y++)
+            {
+                Check.Equal(0xFF002288u, frame.Pixels[y * frame.Width], "Sparse top-border cleanup should use the dominant border color, not the left gutter pixel.");
+                for (int x = 184; x < 192; x++)
+                {
+                    Check.Equal(0xFF002288u, frame.Pixels[(y * frame.Width) + x], "Sparse top-border artifact pixel should be restored to COLOR00.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Verifies that real top-edge artwork is not mistaken for sparse overscan noise.
+        /// </summary>
+        private static void TestDenseTopArtworkIsPreserved()
+        {
+            var frame = new AmigaFrameBuffer(640, 256);
+            frame.Clear(0xFFEE8800);
+            for (int y = 0; y < 10; y++)
+            {
+                for (int x = 16; x < 640; x++)
+                {
+                    frame.SetPixel(x, y, 0xFF4422EE);
+                }
+            }
+
+            frame.ClearSparseTopBorderArtifacts(10, 512);
+
+            Check.Equal(0xFF4422EEu, frame.Pixels[(5 * frame.Width) + 320], "Dense top-edge artwork should survive sparse overscan cleanup.");
+        }
+
+        /// <summary>
         /// Verifies Extra Half-Brite color bank behavior.
         /// </summary>
         private static void TestExtraHalfBriteColor()
@@ -830,7 +1046,7 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Bplcon0, 0x2000);
             bitplanes.NotifyCustomRegisterWordWrite(Bpl1dat, 0x8000);
             bitplanes.NotifyCustomRegisterWordWrite(Bpl2dat, 0x8000);
-            denise.Tick(new BeamTraceEntry { BeamX = 0x38, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
+            denise.Tick(new BeamTraceEntry { BeamX = 0x3E, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
 
             Check.Equal(0x0001, registers.ReadWord(CustomRegisterMap.Clxdat), "PF1/PF2 collision should set CLXDAT bit 0.");
             Check.Equal(0x0000, registers.ReadWord(CustomRegisterMap.Clxdat), "Reading CLXDAT should clear collision bits.");
@@ -839,7 +1055,7 @@ namespace AmigaEmulator.Tests
     }
 
     /// <summary>
-    /// Provides Sprite Tests behavior used by the emulator.
+    /// Provides Sprite Tests functionality.
     /// </summary>
     internal static class SpriteTests
     {
@@ -865,7 +1081,7 @@ namespace AmigaEmulator.Tests
         private const uint Spr0datb = 0x146;
 
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -874,6 +1090,11 @@ namespace AmigaEmulator.Tests
                 "direct SPRxPOS/CTL/DATA register sprite renders without a sprite pointer list",
                 "Amiga HRM sprite registers and direct sprite data latches",
                 TestDirectSpriteRegisterRendering);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite horizontal position is relative to the emulator framebuffer start",
+                "Amiga HRM SPRxPOS horizontal start and standard PAL fetch start",
+                TestSpriteHorizontalPositionRelativeToFramebuffer);
             yield return new ChipTestCase(
                 "Denise/Sprite",
                 "direct sprite registers render without sprite DMA or chip-memory reader",
@@ -891,13 +1112,33 @@ namespace AmigaEmulator.Tests
                 TestSpriteDmaStateMachine);
             yield return new ChipTestCase(
                 "Denise/Sprite",
+                "sprite DMA renders the VSTART line",
+                "Amiga HRM SPRxPOS vertical start semantics",
+                TestSpriteDmaRendersVStartLine);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite pointer write reloads control before bitmap data",
+                "Amiga HRM sprite pointer registers and DMA control-word fetch sequence",
+                TestSpritePointerWriteReloadsControlWords);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
                 "sprite DMA stops at a zero control-word terminator",
                 "Amiga HRM sprite DMA list termination",
                 TestSpriteDmaTerminatorStopsFetches);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite DMA stops rendering on the VSTOP line",
+                "Amiga HRM SPRxCTL vertical stop semantics",
+                TestSpriteDmaStopsOnVStopLine);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite POS write does not move stale line data",
+                "Amiga HRM sprite data latch and position register timing",
+                TestSpritePositionWriteDoesNotMoveStaleLineData);
         }
 
         /// <summary>
-        /// Executes the Test Direct Sprite Register Rendering logic.
+        /// Runs Test Direct Sprite Register Rendering.
         /// </summary>
         private static void TestDirectSpriteRegisterRendering()
         {
@@ -915,7 +1156,25 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Direct Sprite Without DMA Or Reader logic.
+        /// Runs Test Sprite Horizontal Position Relative To Framebuffer.
+        /// </summary>
+        private static void TestSpriteHorizontalPositionRelativeToFramebuffer()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(Spr0pos, 0x2C46);
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            registers.WriteWord(Spr0data, 0x8000);
+            registers.WriteWord(Spr0datb, 0x0000);
+
+            var sprites = new SpriteUnit(registers, null);
+            sprites.RefreshFromRegisters();
+
+            Check.True(!sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "SPRxPOS HPOS=$46 should not be rendered at framebuffer X zero.");
+            Check.True(sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "SPRxPOS HPOS=$46 should render 24 hires pixels after the framebuffer's viewport edge.");
+        }
+
+        /// <summary>
+        /// Runs Test Direct Sprite Without Dma Or Reader.
         /// </summary>
         private static void TestDirectSpriteWithoutDmaOrReader()
         {
@@ -932,7 +1191,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Single Playfield Sprite Priority logic.
+        /// Runs Test Single Playfield Sprite Priority.
         /// </summary>
         private static void TestSinglePlayfieldSpritePriority()
         {
@@ -949,11 +1208,11 @@ namespace AmigaEmulator.Tests
             /// </summary>
             const uint bpl1dat = 0x110;
             /// <summary>
-            /// Defines the color01 constant.
+            /// Constant for color 01.
             /// </summary>
             const uint color01 = 0x182;
             /// <summary>
-            /// Defines the color17 constant.
+            /// Constant for color 17.
             /// </summary>
             const uint color17 = 0x1A2;
 
@@ -971,12 +1230,12 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Spr0data, 0x8000);
             registers.WriteWord(Spr0datb, 0x0000);
 
-            denise.Tick(new BeamTraceEntry { BeamX = 0x38, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
+            denise.Tick(new BeamTraceEntry { BeamX = 0x3E, BeamY = BitplaneUnit.PalVisibleTop, Frame = 0 });
             Check.Equal(0xFFFF0000u, frame.Pixels[0], "PF2P priority bits should allow SPR0 to cover a nonzero single-playfield pixel.");
         }
 
         /// <summary>
-        /// Executes the Test Sprite DMA State Machine logic.
+        /// Runs Test Sprite Dma State Machine.
         /// </summary>
         private static void TestSpriteDmaStateMachine()
         {
@@ -989,6 +1248,8 @@ namespace AmigaEmulator.Tests
                     case 0x102: return 0x2E00;
                     case 0x104: return 0x8000;
                     case 0x106: return 0x0000;
+                    case 0x108: return 0x8000;
+                    case 0x10A: return 0x0000;
                     default: return 0;
                 }
             });
@@ -997,9 +1258,14 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(0x122, 0x0100);
             sprites.RefreshFromRegisters();
 
+            sprites.TickDmaSlot(0, 0, 0);
+            sprites.TickDmaSlot(0, 1, 0);
+            Check.True(!sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Control fetch alone should not render data.");
+
             sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop);
             sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop);
-            Check.True(!sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Control fetch alone should not render data.");
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int groupAtStart), "Sprite DMA should render the VSTART scanline after the first data fetch.");
+            Check.Equal(0, groupAtStart, "Fetched sprite data should belong to sprite group 0.");
 
             sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop + 1);
             sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop + 1);
@@ -1008,7 +1274,70 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Sprite DMA Terminator Stops Fetches logic.
+        /// Runs Test Sprite Dma Renders V Start Line.
+        /// </summary>
+        private static void TestSpriteDmaRendersVStartLine()
+        {
+            var registers = new CustomRegisterMap();
+            var words = new Dictionary<uint, ushort>();
+            words[0x100] = 0x2C40;
+            words[0x102] = 0x2D00;
+            words[0x104] = 0x8000;
+            words[0x106] = 0x0000;
+            words[0x108] = 0x0000;
+            words[0x10A] = 0x0000;
+
+            var sprites = new SpriteUnit(registers, address => words.TryGetValue(address, out ushort value) ? value : (ushort)0);
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(0x120, 0x0000);
+            registers.WriteWord(0x122, 0x0100);
+            sprites.RefreshFromRegisters();
+
+            sprites.TickDmaSlot(0, 0, 0);
+            sprites.TickDmaSlot(0, 1, 0);
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop);
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "The first sprite bitmap word should be visible on VSTART, not one line later.");
+        }
+
+        /// <summary>
+        /// Runs Test Sprite Pointer Write Reloads Control Words.
+        /// </summary>
+        private static void TestSpritePointerWriteReloadsControlWords()
+        {
+            var registers = new CustomRegisterMap();
+            var words = new Dictionary<uint, ushort>();
+            words[0x080] = 0x1040;
+            words[0x082] = 0x1200;
+            words[0x100] = 0x2C40;
+            words[0x102] = 0x2E00;
+            words[0x104] = 0x8000;
+            words[0x106] = 0x0000;
+
+            var sprites = new SpriteUnit(registers, address => words.TryGetValue(address, out ushort value) ? value : (ushort)0);
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(0x120, 0x0000);
+            registers.WriteWord(0x122, 0x0080);
+            sprites.RefreshFromRegisters();
+
+            sprites.TickDmaSlot(0, 0, 0);
+            sprites.TickDmaSlot(0, 1, 0);
+
+            registers.WriteWord(0x120, 0x0000);
+            sprites.NotifyCustomRegisterWordWrite(0x120, 0x0000, 1);
+            registers.WriteWord(0x122, 0x0100);
+            sprites.NotifyCustomRegisterWordWrite(0x122, 0x0100, 1);
+
+            sprites.TickDmaSlot(0, 0, 1);
+            sprites.TickDmaSlot(0, 1, 1);
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop);
+
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "SPRxPT writes must force a fresh control fetch before the first bitmap data fetch.");
+        }
+
+        /// <summary>
+        /// Runs Test Sprite Dma Terminator Stops Fetches.
         /// </summary>
         private static void TestSpriteDmaTerminatorStopsFetches()
         {
@@ -1042,15 +1371,68 @@ namespace AmigaEmulator.Tests
 
             Check.True(!sprites.TryRenderPixel(0xC0, 141, out uint _, out int _), "Sprite DMA must not render words after a zero control-word terminator.");
         }
+
+        /// <summary>
+        /// Runs Test Sprite Dma Stops On V Stop Line.
+        /// </summary>
+        private static void TestSpriteDmaStopsOnVStopLine()
+        {
+            var registers = new CustomRegisterMap();
+            var words = new Dictionary<uint, ushort>();
+            words[0x100] = 0x2C40;
+            words[0x102] = 0x2E00;
+            words[0x104] = 0x8000;
+            words[0x106] = 0x0000;
+            words[0x108] = 0x8000;
+            words[0x10A] = 0x0000;
+            words[0x10C] = 0x0000;
+            words[0x10E] = 0x0000;
+
+            var sprites = new SpriteUnit(registers, address => words.TryGetValue(address, out ushort value) ? value : (ushort)0);
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(0x120, 0x0000);
+            registers.WriteWord(0x122, 0x0100);
+            sprites.RefreshFromRegisters();
+
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop);
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop + 1);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop + 1);
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop + 1, out uint _, out int _), "Sprite should render before VSTOP.");
+
+            sprites.TickDmaSlot(0, 0, BitplaneUnit.PalVisibleTop + 2);
+            sprites.TickDmaSlot(0, 1, BitplaneUnit.PalVisibleTop + 2);
+            Check.True(!sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop + 2, out uint _, out int _), "Sprite must not render stale data on the VSTOP line.");
+        }
+
+        /// <summary>
+        /// Runs Test Sprite Position Write Does Not Move Stale Line Data.
+        /// </summary>
+        private static void TestSpritePositionWriteDoesNotMoveStaleLineData()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(Spr0pos, 0x2C40);
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            registers.WriteWord(Spr0data, 0x8000);
+            registers.WriteWord(Spr0datb, 0x0000);
+
+            var sprites = new SpriteUnit(registers, null);
+            sprites.RefreshFromRegisters();
+            Check.True(sprites.TryRenderPixel(0, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Initial direct sprite data should render at the original X position.");
+
+            registers.WriteWord(Spr0pos, 0x2C46);
+            sprites.NotifyCustomRegisterWordWrite(Spr0pos, 0x2C46, BitplaneUnit.PalVisibleTop);
+            Check.True(!sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Moving SPRxPOS must not drag the previous line's data to the new X position before SPRxDATA is refreshed.");
+        }
     }
 
     /// <summary>
-    /// Provides Paula Tests behavior used by the emulator.
+    /// Provides Paula Tests functionality.
     /// </summary>
     internal static class PaulaTests
     {
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -1069,10 +1451,20 @@ namespace AmigaEmulator.Tests
                 "captured MFM write sectors decode back into ADF sectors",
                 "AmigaDOS MFM sector layout; Paula disk write path",
                 TestCapturedMfmWriteSectorDecodesToAdf);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "writable ADF sector changes persist only after an explicit flush",
+                "ADF host-file persistence for floppy writeback",
+                TestAdfSectorWritesFlushToHostFile);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "selected DF0 follows CIA-B motor line changes without requiring reselection",
+                "Amiga CIA-B floppy select and motor control lines",
+                TestSelectedDriveFollowsMotorLine);
         }
 
         /// <summary>
-        /// Executes the Test Generated MFM Track sync logic.
+        /// Runs Test Generated Mfm Track Sync.
         /// </summary>
         private static void TestGeneratedMfmTrackSync()
         {
@@ -1112,7 +1504,34 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Disk Write DMA Timing logic.
+        /// Verifies that the selected drive tracks live motor-line changes.
+        /// </summary>
+        private static void TestSelectedDriveFollowsMotorLine()
+        {
+            var controller = new FloppyController();
+
+            controller.ApplyCiaBPort(0x77, 0xFF);
+            Check.True(controller.Drive0.Selected, "DF0 should be selected when CIA-B SEL0 is low.");
+            Check.True(controller.Drive0.MotorOn, "DF0 motor should turn on when selected and MOTOR is low.");
+
+            controller.ApplyCiaBPort(0xF7, 0xFF);
+            Check.True(controller.Drive0.Selected, "DF0 should remain selected while only MOTOR changes.");
+            Check.True(!controller.Drive0.MotorOn, "DF0 motor should turn off while selected when MOTOR returns high.");
+
+            controller.ApplyCiaBPort(0x77, 0xFF);
+            Check.True(controller.Drive0.MotorOn, "DF0 motor should turn back on while the drive remains selected.");
+
+            controller.ApplyCiaBPort(0xFF, 0xFF);
+            Check.True(!controller.Drive0.Selected, "DF0 should deselect when CIA-B SEL0 is high.");
+            Check.True(controller.Drive0.MotorOn, "A deselected drive should keep its latched motor state.");
+
+            controller.ApplyCiaBPort(0x7F, 0xFF);
+            Check.True(!controller.Drive0.Selected, "DF0 should stay deselected while only MOTOR changes.");
+            Check.True(controller.Drive0.MotorOn, "A deselected drive should not latch MOTOR changes.");
+        }
+
+        /// <summary>
+        /// Runs Test Disk Write Dma Timing.
         /// </summary>
         private static void TestDiskWriteDmaTiming()
         {
@@ -1151,7 +1570,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the captured MFM write-sector decode regression test.
+        /// Verifies that captured MFM write data decodes back into the expected ADF sector.
         /// </summary>
         private static void TestCapturedMfmWriteSectorDecodesToAdf()
         {
@@ -1201,15 +1620,71 @@ namespace AmigaEmulator.Tests
                 }
             }
         }
+
+        /// <summary>
+        /// Verifies that dirty ADF sectors are persisted back to the host file by Flush.
+        /// </summary>
+        private static void TestAdfSectorWritesFlushToHostFile()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_adf_flush_" + Guid.NewGuid().ToString("N") + ".adf");
+            string backupPath = tempPath + ".bak";
+            string tempWritePath = tempPath + ".tmp";
+            System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                byte[] sectorData = new byte[AdfImage.SectorSize];
+                for (int index = 0; index < sectorData.Length; index++)
+                {
+                    sectorData[index] = (byte)(0xA5 ^ index);
+                }
+
+                AdfImage image = AdfImage.Load(tempPath);
+                Check.True(image.WriteSector(0, 0, 0, sectorData, 0), "Sector write should succeed for a standard ADF.");
+                Check.True(image.IsDirty, "ADF should become dirty after a sector write.");
+                byte[] fileBytesBeforeFlush = System.IO.File.ReadAllBytes(tempPath);
+                Check.Equal(0, fileBytesBeforeFlush[0], "Host ADF file should not change before Flush.");
+
+                image.Flush();
+                Check.True(!image.IsDirty, "Flush should clear the dirty flag.");
+                byte[] fileBytesAfterFlush = System.IO.File.ReadAllBytes(tempPath);
+                for (int index = 0; index < sectorData.Length; index++)
+                {
+                    Check.Equal(sectorData[index], fileBytesAfterFlush[index], "Flushed ADF sector should match at byte " + index + ".");
+                }
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
+                TryDeleteFile(backupPath);
+                TryDeleteFile(tempWritePath);
+            }
+        }
+
+        /// <summary>
+        /// Deletes a test file while ignoring cleanup failures.
+        /// </summary>
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    System.IO.File.Delete(path);
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 
     /// <summary>
-    /// Provides Integration Tests behavior used by the emulator.
+    /// Provides Integration Tests functionality.
     /// </summary>
     internal static class IntegrationTests
     {
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -1225,13 +1700,23 @@ namespace AmigaEmulator.Tests
                 TestKickstartOverlayWriteDoesNotTouchChipRam);
             yield return new ChipTestCase(
                 "Integration",
-                "bus arbitration only contends Chip RAM and custom registers",
-                "A500 Gary bus arbitration for CPU accesses during custom-chip DMA",
+                "bus arbitration contends Chip RAM, Slow RAM, and custom registers",
+                "A500 Gary bus arbitration for CPU accesses during custom-chip and Slow RAM DMA windows",
                 TestBusArbitrationRegions);
+            yield return new ChipTestCase(
+                "Integration",
+                "2MB Chip RAM plus 8MB Fast RAM profile maps both writable regions",
+                "A500 memory expansion profiles and Zorro II Fast RAM map",
+                TestTwoMbChipEightMbFastRamProfile);
+            yield return new ChipTestCase(
+                "Integration",
+                "INTREQ is readable before the delayed CPU IPL pin observes it",
+                "OCS INTREQ register visibility versus delayed 68000 IPL sampling",
+                TestInterruptRequestPrecedesCpuIplPins);
         }
 
         /// <summary>
-        /// Executes the Test CPU Bus bitplane data Side Effect logic.
+        /// Runs Test Cpu Bus Bpl Dat Side Effect.
         /// </summary>
         private static void TestCpuBusBplDatSideEffect()
         {
@@ -1245,7 +1730,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Kickstart Overlay Write Does Not Touch Chip RAM logic.
+        /// Runs Test Kickstart Overlay Write Does Not Touch Chip Ram.
         /// </summary>
         private static void TestKickstartOverlayWriteDoesNotTouchChipRam()
         {
@@ -1278,6 +1763,60 @@ namespace AmigaEmulator.Tests
             Check.True(bus.RequiresChipBus(0x00DFF180, 2), "Custom registers should be on the custom-chip bus.");
             Check.True(!bus.RequiresChipBus(0x00BFE001, 1), "CIA-A access should not wait for Agnus DMA slots.");
             Check.True(!bus.RequiresChipBus(0x00F80000, 2), "Kickstart ROM access should not wait for Agnus DMA slots.");
+
+            var slowBus = new AmigaBus(AmigaModel.A500Pal512Slow512, new CustomRegisterMap(), null, null, null);
+            Check.True(slowBus.RequiresChipBus(MemoryMap.SlowRamStart, 2), "Trapdoor Slow RAM should use chip-bus timing even though chipset DMA cannot target it directly.");
+        }
+
+        /// <summary>
+        /// Verifies that the expanded machine profile exposes 2MB Chip RAM and 8MB Fast RAM.
+        /// </summary>
+        private static void TestTwoMbChipEightMbFastRamProfile()
+        {
+            var bus = new AmigaBus(AmigaModel.A500Pal2MbChipFast8Mb, new CustomRegisterMap(), null, null, null);
+
+            Check.Equal(AmigaAddressRegion.ChipRam, bus.GetRegion(0x001FFFFF), "2MB profile should map the final Chip RAM byte.");
+            Check.Equal(AmigaAddressRegion.FastRam, bus.GetRegion(MemoryMap.FastRamStart), "Fast RAM should start at the Zorro II Fast RAM base.");
+            Check.Equal(AmigaAddressRegion.FastRam, bus.GetRegion(MemoryMap.FastRamEnd), "8MB Fast RAM should extend through the supported Zorro II range.");
+
+            bus.RomOverlayAtZero = false;
+            bus.WriteByte(0x001FFFFF, 0x5A);
+            Check.Equal(0x5A, bus.ReadByte(0x001FFFFF), "Final 2MB Chip RAM byte should be writable.");
+
+            bus.WriteWord(MemoryMap.FastRamStart, 0xCAFE);
+            bus.WriteByte(MemoryMap.FastRamEnd, 0x7B);
+            Check.Equal(0xCAFE, bus.ReadWord(MemoryMap.FastRamStart), "Fast RAM base should be writable.");
+            Check.Equal(0x7B, bus.ReadByte(MemoryMap.FastRamEnd), "Final 8MB Fast RAM byte should be writable.");
+            Check.True(!bus.RequiresChipBus(MemoryMap.FastRamStart, 2), "Fast RAM should not be contended by custom-chip DMA.");
+        }
+
+        /// <summary>
+        /// Verifies that custom interrupt requests become readable before the CPU-visible IPL pins change.
+        /// </summary>
+        private static void TestInterruptRequestPrecedesCpuIplPins()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.Bus.WriteWord(0x00DFF09A, 0xC020);
+                system.Agnus.CustomRegisters.RequestInterrupt(CustomInterruptSource.VerticalBlank);
+                Check.True((system.Bus.ReadWord(0x00DFF01E) & 0x0020) != 0, "INTREQR should expose VERTB immediately.");
+
+                system.RunChipCycles(1);
+                Check.Equal(0, ReadPrivateInt(system, "_cpuVisibleInterruptLevel"), "CPU IPL pins should not update in the same chipcycle as INTREQ.");
+
+                system.RunChipCycles(8);
+                Check.Equal(3, ReadPrivateInt(system, "_cpuVisibleInterruptLevel"), "Delayed CPU IPL pins should observe the level 3 request.");
+            }
+        }
+
+        /// <summary>
+        /// Reads one private integer field from AmigaSystem for timing pipeline regression tests.
+        /// </summary>
+        private static int ReadPrivateInt(AmigaSystem system, string fieldName)
+        {
+            FieldInfo field = typeof(AmigaSystem).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Check.True(field != null, "Missing private field " + fieldName + ".");
+            return (int)field.GetValue(system);
         }
     }
 
@@ -1287,7 +1826,7 @@ namespace AmigaEmulator.Tests
     internal static class SaveStateTests
     {
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -1296,10 +1835,15 @@ namespace AmigaEmulator.Tests
                 "full machine state roundtrips through the Amiga savestate file format",
                 "Amiga SaveStateFile plus AmigaSystem component SaveState/LoadState",
                 TestFullMachineRoundtrip);
+            yield return new ChipTestCase(
+                "SaveState",
+                "future or unknown savestate profiles are marked incompatible",
+                "Amiga SaveStateFile metadata compatibility validation",
+                TestUnknownProfileMetadataIsIncompatible);
         }
 
         /// <summary>
-        /// Executes the Test Full Machine Roundtrip logic.
+        /// Runs Test Full Machine Roundtrip.
         /// </summary>
         private static void TestFullMachineRoundtrip()
         {
@@ -1353,15 +1897,205 @@ namespace AmigaEmulator.Tests
                 }
             }
         }
+
+        /// <summary>
+        /// Verifies that unknown metadata enum values are not advertised as loadable slots.
+        /// </summary>
+        private static void TestUnknownProfileMetadataIsIncompatible()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-savestate-incompatible-" + Guid.NewGuid().ToString("N") + ".amigasav");
+            try
+            {
+                using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                {
+                    SaveStateFile.Write(
+                        path,
+                        system,
+                        MountedMediaInfo.None,
+                        AmigaKickstart.Auto,
+                        (AmigaRamProfile)999,
+                        AmigaAccuracyProfile.Fast,
+                        Array.Empty<uint>(),
+                        0,
+                        0);
+                }
+
+                SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(path, 0);
+                Check.Equal(SaveStateSlotStatus.Incompatible, metadata.Status, "Unknown RAM profiles should be marked incompatible.");
+                Check.True(!metadata.HasState, "Incompatible slots should not be treated as loadable states.");
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(path);
+                }
+                catch
+                {
+                }
+            }
+        }
     }
 
     /// <summary>
-    /// Provides Golden ADF Tests behavior used by the emulator.
+    /// Provides optional cdhooper/amiga_devtest boot-ADF integration checks.
+    /// </summary>
+    internal static class AmigaDevtestTests
+    {
+        /// <summary>
+        /// Builds the Amiga devtest integration tests.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build(TestOptions options)
+        {
+            yield return new ChipTestCase(
+                "AmigaDevtest",
+                "bootable devtest ADF reaches a visible trackdisk.device run",
+                "cdhooper/amiga_devtest optional AmigaOS block-device integration",
+                delegate { TestBootableDevtestAdf(options); });
+        }
+
+        /// <summary>
+        /// Boots a prepared AmigaDOS ADF that runs devtest from S:startup-sequence.
+        /// </summary>
+        private static void TestBootableDevtestAdf(TestOptions options)
+        {
+            string adfPath = FindDevtestAdf(options);
+            if (string.IsNullOrWhiteSpace(adfPath))
+            {
+                Check.Skip(
+                    "No bootable amiga_devtest ADF found. Expected external-tests\\amiga_devtest\\amiga_devtest_trackdisk.adf, " +
+                    "external-tests\\amiga_devtest\\devtest_trackdisk.adf, external-tests\\amiga_devtest\\devtest.adf, " +
+                    "or pass --amiga-devtest-adf <path>.");
+            }
+
+            if (!KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo romInfo))
+            {
+                Check.Skip("Default Kickstart ROM not found.");
+            }
+
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.LoadKickstart(romBytes);
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                long startsBefore = system.Paula.DiskDmaStarts;
+                long doneBefore = system.Paula.DiskDmaCompletedBlocks;
+
+                system.RunChipCycles(options.AmigaDevtestCycles);
+
+                long starts = system.Paula.DiskDmaStarts - startsBefore;
+                long completed = system.Paula.DiskDmaCompletedBlocks - doneBefore;
+                uint[] pixels = system.PresentedFrameBuffer.Pixels;
+                int uniqueColors = CountUniqueColors(pixels, 16);
+                int differentPixels = CountDifferentPixels(pixels);
+
+                Check.True(system.FrameCounter > 10, "devtest ADF did not advance enough frames. ROM=" + romInfo.Path);
+                Check.True(starts > 0, "devtest ADF did not start disk DMA. DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Check.True(completed > 0, "devtest ADF did not complete disk DMA. Paula=" + system.Paula.GetDiskDebugInfo());
+                Check.True(uniqueColors >= 2 && differentPixels > 128, "devtest ADF frame stayed blank or uniform. Colors=" + uniqueColors);
+            }
+        }
+
+        /// <summary>
+        /// Locates the optional bootable amiga_devtest ADF artifact.
+        /// </summary>
+        private static string FindDevtestAdf(TestOptions options)
+        {
+            if (!string.IsNullOrWhiteSpace(options.AmigaDevtestAdfPath))
+            {
+                string explicitPath = System.IO.Path.GetFullPath(options.AmigaDevtestAdfPath);
+                return System.IO.File.Exists(explicitPath) ? explicitPath : null;
+            }
+
+            string root = FindRepositoryRoot();
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                return null;
+            }
+
+            string[] candidates = new string[]
+            {
+                System.IO.Path.Combine(root, "external-tests", "amiga_devtest", "amiga_devtest_trackdisk.adf"),
+                System.IO.Path.Combine(root, "external-tests", "amiga_devtest", "devtest_trackdisk.adf"),
+                System.IO.Path.Combine(root, "external-tests", "amiga_devtest", "devtest.adf")
+            };
+            for (int index = 0; index < candidates.Length; index++)
+            {
+                if (System.IO.File.Exists(candidates[index]))
+                {
+                    return candidates[index];
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Finds the repository root from the current test assembly location.
+        /// </summary>
+        private static string FindRepositoryRoot()
+        {
+            string current = AppDomain.CurrentDomain.BaseDirectory;
+            for (int depth = 0; depth < 8 && !string.IsNullOrWhiteSpace(current); depth++)
+            {
+                if (System.IO.Directory.Exists(System.IO.Path.Combine(current, "external-tests")) &&
+                    System.IO.File.Exists(System.IO.Path.Combine(current, "AmigaEmulator.sln")))
+                {
+                    return current;
+                }
+
+                current = System.IO.Directory.GetParent(current) != null
+                    ? System.IO.Directory.GetParent(current).FullName
+                    : null;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Counts visible color diversity in a frame with an upper bound.
+        /// </summary>
+        private static int CountUniqueColors(uint[] pixels, int limit)
+        {
+            var colors = new HashSet<uint>();
+            for (int index = 0; index < pixels.Length && colors.Count < limit; index++)
+            {
+                colors.Add(pixels[index]);
+            }
+
+            return colors.Count;
+        }
+
+        /// <summary>
+        /// Counts pixels that differ from the first frame color.
+        /// </summary>
+        private static int CountDifferentPixels(uint[] pixels)
+        {
+            if (pixels.Length == 0)
+            {
+                return 0;
+            }
+
+            uint first = pixels[0];
+            int different = 0;
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                if (pixels[index] != first)
+                {
+                    different++;
+                }
+            }
+
+            return different;
+        }
+    }
+
+    /// <summary>
+    /// Provides Golden ADF Tests functionality.
     /// </summary>
     internal static class GoldenAdfTests
     {
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build(TestOptions options)
         {
@@ -1370,7 +2104,7 @@ namespace AmigaEmulator.Tests
                 "Kickstart 1.3 plus Turrican III reaches a nonblank boot/trainer frame",
                 "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\TURRI3-1.ADF",
                 /// <summary>
-                /// Executes the Test ADF Non Blank logic.
+                /// Runs Test Adf Non Blank.
                 /// </summary>
                 delegate { TestAdfNonBlank("TURRI3-1.ADF", 90_000_000); });
             yield return new ChipTestCase(
@@ -1380,13 +2114,18 @@ namespace AmigaEmulator.Tests
                 TestNorthSouthFrameQuality);
             yield return new ChipTestCase(
                 "GoldenADF",
+                "North & South accepts mouse language selection and reaches the main menu",
+                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\North & South.adf",
+                TestNorthSouthLanguageSelectionToMainMenu);
+            yield return new ChipTestCase(
+                "GoldenADF",
                 "Amiga Test Kit 1.21 boot disk reaches a nonblank diagnostic frame",
                 "keirf/amiga-stuff release testkit-v1.21 AmigaTestKit.adf",
                 TestAmigaTestKitBootFrame);
         }
 
         /// <summary>
-        /// Executes the Test ADF Non Blank logic.
+        /// Runs Test Adf Non Blank.
         /// </summary>
         private static void TestAdfNonBlank(string fileName, int cycles)
         {
@@ -1397,7 +2136,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test North South Frame Quality logic.
+        /// Runs Test North South Frame Quality.
         /// </summary>
         private static void TestNorthSouthFrameQuality()
         {
@@ -1410,7 +2149,52 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Amiga Test Kit Boot Frame logic.
+        /// Runs Test North South Language Selection To Main Menu.
+        /// </summary>
+        private static void TestNorthSouthLanguageSelectionToMainMenu()
+        {
+            WithAdfFrame("North & South.adf", 260_000_000, delegate(AmigaSystem system, KickstartRomInfo romInfo)
+            {
+                long startsBeforeClick = system.Paula.DiskDmaStarts;
+                MoveMouseGradually(system, AmigaControlPort.Port0, 100, 180, 120_000);
+                system.RunChipCycles(200_000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
+                system.RunChipCycles(2_000_000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
+                system.RunChipCycles(160_000_000);
+
+                Check.True(system.Paula.DiskDmaStarts > startsBeforeClick + 20, "North & South language click did not trigger main-menu disk loading. Paula=" + system.Paula.GetDiskDebugInfo());
+                Check.True(system.Bus.FloppyController.Drive0.Track >= 30, "North & South main-menu load did not reach the expected later disk tracks. DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Check.True(CountUniqueColors(system.PresentedFrameBuffer.Pixels, 32) >= 12, "North & South main menu frame did not develop enough colors. ROM=" + (romInfo != null ? romInfo.Path : string.Empty));
+            });
+        }
+
+        /// <summary>
+        /// Feeds relative mouse motion in small timed deltas so games polling JOYxDAT see real motion.
+        /// </summary>
+        private static void MoveMouseGradually(AmigaSystem system, AmigaControlPort port, int dx, int dy, int cyclesPerStep)
+        {
+            int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+            if (steps == 0)
+            {
+                return;
+            }
+
+            int lastX = 0;
+            int lastY = 0;
+            for (int step = 1; step <= steps; step++)
+            {
+                int nextX = (dx * step) / steps;
+                int nextY = (dy * step) / steps;
+                system.Input.MoveMouse(port, nextX - lastX, nextY - lastY);
+                system.RunChipCycles(cyclesPerStep);
+                lastX = nextX;
+                lastY = nextY;
+            }
+        }
+
+        /// <summary>
+        /// Runs Test Amiga Test Kit Boot Frame.
         /// </summary>
         private static void TestAmigaTestKitBootFrame()
         {
@@ -1420,8 +2204,8 @@ namespace AmigaEmulator.Tests
 
             using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
             {
-                system.LoadKickstart(romBytes);
                 system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                system.LoadKickstart(romBytes);
                 system.RunChipCycles(180_000_000);
                 uint[] pixels = system.PresentedFrameBuffer.Pixels;
                 CheckNonBlank(pixels, romInfo);
@@ -1430,7 +2214,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the With ADF Frame logic.
+        /// Runs With Adf Frame.
         /// </summary>
         private static void WithAdfFrame(string fileName, int cycles, Action<AmigaSystem, KickstartRomInfo> inspect)
         {
@@ -1441,8 +2225,8 @@ namespace AmigaEmulator.Tests
 
             using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
             {
-                system.LoadKickstart(romBytes);
                 system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                system.LoadKickstart(romBytes);
                 system.RunChipCycles(cycles);
                 inspect(system, romInfo);
             }
@@ -1471,7 +2255,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Count Mostly Dark Columns logic.
+        /// Runs Count Mostly Dark Columns.
         /// </summary>
         private static int CountMostlyDarkColumns(uint[] pixels, int width, int height, int top, int bottom)
         {
@@ -1504,7 +2288,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Count Unique Colors logic.
+        /// Runs Count Unique Colors.
         /// </summary>
         private static int CountUniqueColors(uint[] pixels, int limit)
         {
@@ -1550,55 +2334,55 @@ namespace AmigaEmulator.Tests
     }
 
     /// <summary>
-    /// Provides V Amiga Ts Tests behavior used by the emulator.
+    /// Provides V Amiga Ts Tests functionality.
     /// </summary>
     internal static class VAmigaTsTests
     {
         /// <summary>
-        /// Executes the Smoke Cases logic.
+        /// Stores Smoke Cases.
         /// </summary>
         private static readonly VAmigaTsCase[] SmokeCases =
         {
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Agnus/Blitter", "line zero flag reference", @"Agnus\Blitter\line\zero1\zero1.adf", 3, 512),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Agnus/Copper", "COPWAIT timing reference", @"Agnus\Copper\Wait\copwait1\copwait1.adf", 3, 512),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Agnus/Beam", "VPOS register reference", @"Agnus\Registers\VPOS\vprobe4\vprobe4.adf", 3, 512),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Denise/Sprite", "manual sprite register reference", @"Denise\Sprites\manual\manual1\manual1.adf", 4, 512),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Denise/Bitplane", "BPLCON2 dual playfield reference", @"Denise\Registers\BPLCON2\dualpf1\dualpf1.adf", 3, 512),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Paula", "ADKCON register reference", @"Paula\Registers\ADKCON\adkcon1\adkcon1.adf", 2, 128),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("CIA", "TOD alarm reference", @"CIA\TOD\todvice\0alarm\0alarm.adf", 2, 128),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Memory", "Kickstart mirror reference", @"Memory\Rom\mirror\kickmirror\kickmirror1.adf", 2, 128),
             /// <summary>
-            /// Executes the V Amiga Ts Case logic.
+            /// Runs V Amiga Ts Case.
             /// </summary>
             new VAmigaTsCase("Mainboard/Input", "JOY0DAT port reference", @"Mainboard\Ports\JOYxDAT\joy0dat\joy0dat.adf", 2, 128)
         };
 
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build(TestOptions options)
         {
@@ -1623,7 +2407,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Discover All Cases logic.
+        /// Runs Discover All Cases.
         /// </summary>
         private static VAmigaTsCase[] DiscoverAllCases()
         {
@@ -1804,7 +2588,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Count Pixels Different From First logic.
+        /// Runs Count Pixels Different From First.
         /// </summary>
         private static int CountPixelsDifferentFromFirst(uint[] pixels)
         {
@@ -1822,7 +2606,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Count Unique Colors logic.
+        /// Runs Count Unique Colors.
         /// </summary>
         private static int CountUniqueColors(uint[] pixels, int limit)
         {
@@ -1901,7 +2685,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Provides V Amiga Ts Case behavior used by the emulator.
+        /// Provides V Amiga Ts Case functionality.
         /// </summary>
         private sealed class VAmigaTsCase
         {
@@ -1918,23 +2702,23 @@ namespace AmigaEmulator.Tests
             }
 
             /// <summary>
-            /// Gets or updates the Category.
+            /// Gets or sets Category.
             /// </summary>
             public string Category { get; private set; }
             /// <summary>
-            /// Gets or updates the Name.
+            /// Gets or sets Name.
             /// </summary>
             public string Name { get; private set; }
             /// <summary>
-            /// Gets or updates the Relative ADF Path.
+            /// Gets or sets Relative ADF Path.
             /// </summary>
             public string RelativeAdfPath { get; private set; }
             /// <summary>
-            /// Gets or updates the Min Unique Colors.
+            /// Gets or sets Min Unique Colors.
             /// </summary>
             public int MinUniqueColors { get; private set; }
             /// <summary>
-            /// Gets or updates the Min Different Pixels.
+            /// Gets or sets Min Different Pixels.
             /// </summary>
             public int MinDifferentPixels { get; private set; }
         }

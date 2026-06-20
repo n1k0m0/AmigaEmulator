@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,15 +21,15 @@ namespace SharpPixels
     public enum SharpPixelsGpuFilterMode
     {
         /// <summary>
-        /// Represents the S ha rp option.
+        /// Uses crisp nearest-neighbor style presentation.
         /// </summary>
         Sharp,
         /// <summary>
-        /// Represents the C rt option.
+        /// Applies a CRT-style presentation filter.
         /// </summary>
         Crt,
         /// <summary>
-        /// Represents the T v option.
+        /// Applies a softer television-style presentation filter.
         /// </summary>
         Tv
     }
@@ -40,35 +40,35 @@ namespace SharpPixels
     public enum SharpPixelsGpuUpscaleMode
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Leaves the source image at native size.
         /// </summary>
         None,
         /// <summary>
-        /// Represents the S ca le2 x option.
+        /// Uses a sharp 2x integer upscale.
         /// </summary>
         Scale2x,
         /// <summary>
-        /// Represents the S ca le3 x option.
+        /// Uses a sharp 3x integer upscale.
         /// </summary>
         Scale3x,
         /// <summary>
-        /// Represents the H q2 x option.
+        /// Uses a smooth 2x upscale path.
         /// </summary>
         Hq2x,
         /// <summary>
-        /// Represents the H q3 x option.
+        /// Uses a smooth 3x upscale path.
         /// </summary>
         Hq3x,
         /// <summary>
-        /// Represents the H q4 x option.
+        /// Uses a smooth 4x upscale path.
         /// </summary>
         Hq4x,
         /// <summary>
-        /// Represents the X br z option.
+        /// Uses the legacy xBRZ-compatible smooth 4x setting.
         /// </summary>
         Xbrz,
         /// <summary>
-        /// Represents the C le an4 option.
+        /// Uses a sharp 4x integer upscale.
         /// </summary>
         Clean4
     }

@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,84 +23,84 @@ namespace AmigaEmulator.Core.Cpu
     public enum M68kTraceAccessType
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Represents None.
         /// </summary>
         None,
         /// <summary>
-        /// Represents the O pc od eF et ch option.
+        /// Represents Opcode Fetch.
         /// </summary>
         OpcodeFetch,
         /// <summary>
-        /// Represents the R ea d option.
+        /// Represents Read.
         /// </summary>
         Read,
         /// <summary>
-        /// Represents the W ri te option.
+        /// Represents Write.
         /// </summary>
         Write,
         /// <summary>
-        /// Represents the I nt er na l option.
+        /// Represents Internal.
         /// </summary>
         Internal
     }
 
     /// <summary>
-    /// Provides 68000 Trace Entry behavior used by the emulator.
+    /// Provides 68000 Trace Entry functionality.
     /// </summary>
     public sealed class M68kTraceEntry
     {
         /// <summary>
-        /// Gets or updates the CPU Cycle.
+        /// Gets or sets CPU Cycle.
         /// </summary>
         public long CpuCycle { get; set; }
 
         /// <summary>
-        /// Gets or updates the PC Before.
+        /// Gets or sets PC Before.
         /// </summary>
         public uint PcBefore { get; set; }
 
         /// <summary>
-        /// Gets or updates the PC After.
+        /// Gets or sets PC After.
         /// </summary>
         public uint PcAfter { get; set; }
 
         /// <summary>
-        /// Gets or updates the Opcode.
+        /// Gets or sets Opcode.
         /// </summary>
         public ushort Opcode { get; set; }
 
         /// <summary>
-        /// Gets or updates the Instruction.
+        /// Gets or sets Instruction.
         /// </summary>
         public string Instruction { get; set; }
 
         /// <summary>
-        /// Gets or updates the SR Before.
+        /// Gets or sets SR Before.
         /// </summary>
         public ushort SrBefore { get; set; }
 
         /// <summary>
-        /// Gets or updates the SR After.
+        /// Gets or sets SR After.
         /// </summary>
         public ushort SrAfter { get; set; }
 
         /// <summary>
-        /// Gets or updates the Access Type.
+        /// Gets or sets Access Type.
         /// </summary>
         public M68kTraceAccessType AccessType { get; set; }
 
         /// <summary>
-        /// Gets or updates the Address.
+        /// Gets or sets Address.
         /// </summary>
         public uint Address { get; set; }
 
         /// <summary>
-        /// Gets or updates the Value.
+        /// Gets or sets Value.
         /// </summary>
         public uint Value { get; set; }
 
         /// <summary>
-        /// Executes the To String logic.
+        /// Runs To String.
         /// </summary>
         public override string ToString()
         {

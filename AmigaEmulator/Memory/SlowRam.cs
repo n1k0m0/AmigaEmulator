@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +18,12 @@ using System;
 namespace AmigaEmulator.Core.Memory
 {
     /// <summary>
-    /// Provides Slow RAM behavior used by the emulator.
+    /// Provides Slow RAM functionality.
     /// </summary>
     public sealed class SlowRam
     {
         /// <summary>
-        /// Tracks the bytes.
+        /// Stores bytes.
         /// </summary>
         private readonly byte[] _bytes;
 
@@ -36,7 +36,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Size logic.
+        /// Gets Size.
         /// </summary>
         public int Size
         {
@@ -44,7 +44,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Enabled logic.
+        /// Gets Enabled.
         /// </summary>
         public bool Enabled
         {
@@ -76,7 +76,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Clear logic.
+        /// Runs Clear.
         /// </summary>
         public void Clear()
         {

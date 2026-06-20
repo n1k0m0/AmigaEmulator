@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,12 +129,17 @@ namespace AmigaEmulator.Core.SaveStates
                 int screenshotHeight = reader.ReadInt32();
                 uint[] pixels = StateSerializer.ReadUIntArray(reader);
 
+                bool compatible =
+                    Enum.IsDefined(typeof(AmigaKickstart), kickstart) &&
+                    Enum.IsDefined(typeof(AmigaRamProfile), ramProfile) &&
+                    Enum.IsDefined(typeof(AmigaAccuracyProfile), accuracyProfile);
+
                 return new SaveStateSlotMetadata
                 {
                     SlotIndex = slotIndex,
-                    Status = SaveStateSlotStatus.Occupied,
+                    Status = compatible ? SaveStateSlotStatus.Occupied : SaveStateSlotStatus.Incompatible,
                     Path = path,
-                    DisplayName = BuildDisplayName(ticksUtc, mediaInfo),
+                    DisplayName = compatible ? BuildDisplayName(ticksUtc, mediaInfo) : "INCOMPATIBLE",
                     CreatedLocalTime = new DateTime(ticksUtc, DateTimeKind.Utc).ToLocalTime(),
                     MountedMedia = mediaInfo,
                     Kickstart = kickstart,

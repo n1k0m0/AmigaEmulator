@@ -22,44 +22,44 @@ using AmigaEmulator.Core.SaveStates;
 namespace AmigaEmulator.Core.Input
 {
     /// <summary>
-    /// Provides Amiga Input Device behavior used by the emulator.
+    /// Provides Amiga Input Device functionality.
     /// </summary>
     public sealed class AmigaInputDevice
     {
         /// <summary>
-        /// Defines the Keyboard Send Delay E Clocks constant.
+        /// Constant for Keyboard Send Delay E Clocks.
         /// </summary>
         private const int KeyboardSendDelayEClocks = 8;
 
         /// <summary>
-        /// Executes the keyboard Queue logic.
+        /// Stores keyboard Queue.
         /// </summary>
         private readonly Queue<byte> _keyboardQueue = new Queue<byte>();
         /// <summary>
-        /// Executes the pressed Raw Keys logic.
+        /// Stores pressed Raw Keys.
         /// </summary>
         private readonly HashSet<byte> _pressedRawKeys = new HashSet<byte>();
         /// <summary>
-        /// Executes the ports logic.
+        /// Stores ports.
         /// </summary>
         private readonly PortState[] _ports =
         {
             /// <summary>
-            /// Executes the Port State logic.
+            /// Runs Port State.
             /// </summary>
             new PortState(),
             /// <summary>
-            /// Executes the Port State logic.
+            /// Runs Port State.
             /// </summary>
             new PortState()
         };
 
         /// <summary>
-        /// Tracks the CIA A.
+        /// Stores CIA A.
         /// </summary>
         private Cia8520 _ciaA;
         /// <summary>
-        /// Tracks the keyboard Delay.
+        /// Stores keyboard Delay.
         /// </summary>
         private int _keyboardDelay;
 
@@ -73,17 +73,17 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Gets or updates the Port0 Mode.
+        /// Gets or sets Port 0 Mode.
         /// </summary>
         public AmigaInputPortMode Port0Mode { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Port1 Mode.
+        /// Gets or sets Port 1 Mode.
         /// </summary>
         public AmigaInputPortMode Port1Mode { get; private set; }
 
         /// <summary>
-        /// Executes the Queued Keyboard Events logic.
+        /// Gets Queued Keyboard Events.
         /// </summary>
         public int QueuedKeyboardEvents
         {
@@ -131,6 +131,23 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
+        /// Releases all held host-driven keys, joystick directions, and mouse buttons.
+        /// </summary>
+        public void ReleaseAll()
+        {
+            foreach (byte rawKey in _pressedRawKeys)
+            {
+                EnqueueKeyboardEvent(rawKey, true);
+            }
+
+            _pressedRawKeys.Clear();
+            for (int index = 0; index < _ports.Length; index++)
+            {
+                _ports[index].JoystickButtons = AmigaJoystickButtons.None;
+            }
+        }
+
+        /// <summary>
         /// Updates the Port Modes.
         /// </summary>
         public void SetPortModes(AmigaInputPortMode port0Mode, AmigaInputPortMode port1Mode)
@@ -140,7 +157,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Keyboard Key Down logic.
+        /// Runs Keyboard Key Down.
         /// </summary>
         public void KeyboardKeyDown(byte rawKeyCode)
         {
@@ -154,7 +171,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Keyboard Key Up logic.
+        /// Runs Keyboard Key Up.
         /// </summary>
         public void KeyboardKeyUp(byte rawKeyCode)
         {
@@ -192,7 +209,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Move Mouse logic.
+        /// Runs Move Mouse.
         /// </summary>
         public void MoveMouse(AmigaControlPort port, int deltaX, int deltaY)
         {
@@ -368,7 +385,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Enqueue Keyboard Event logic.
+        /// Runs Enqueue Keyboard Event.
         /// </summary>
         private void EnqueueKeyboardEvent(byte rawKeyCode, bool released)
         {
@@ -376,7 +393,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Enqueue Keyboard Special Code logic.
+        /// Runs Enqueue Keyboard Special Code.
         /// </summary>
         private void EnqueueKeyboardSpecialCode(byte code)
         {
@@ -384,7 +401,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Uses Fire Button logic.
+        /// Runs Uses Fire Button.
         /// </summary>
         private bool UsesFireButton(AmigaControlPort port)
         {
@@ -404,7 +421,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Normalize Raw Key logic.
+        /// Runs Normalize Raw Key.
         /// </summary>
         private static byte NormalizeRawKey(byte rawKeyCode)
         {
@@ -412,20 +429,20 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Provides Port State behavior used by the emulator.
+        /// Provides Port State functionality.
         /// </summary>
         private sealed class PortState
         {
             /// <summary>
-            /// Stores the Mouse X.
+            /// Stores Mouse X.
             /// </summary>
             public byte MouseX;
             /// <summary>
-            /// Stores the Mouse Y.
+            /// Stores Mouse Y.
             /// </summary>
             public byte MouseY;
             /// <summary>
-            /// Stores the Joystick Buttons.
+            /// Stores Joystick Buttons.
             /// </summary>
             public AmigaJoystickButtons JoystickButtons;
 

@@ -21,52 +21,52 @@ namespace AmigaEmulator.Core
     public struct AmigaClock
     {
         /// <summary>
-        /// Defines the Pal CPU Clock Hz constant.
+        /// Constant for Pal CPU Clock Hz.
         /// </summary>
         public const double PalCpuClockHz = 7093790.0;
 
         /// <summary>
-        /// Defines the Pal Chip Clock Hz constant.
+        /// Constant for Pal Chip Clock Hz.
         /// </summary>
         public const double PalChipClockHz = PalCpuClockHz / 2.0;
 
         /// <summary>
-        /// Defines the Pal Chip Cycles period Line constant.
+        /// Constant for Pal Chip Cycles Per Line.
         /// </summary>
         public const int PalChipCyclesPerLine = 227;
 
         /// <summary>
-        /// Defines the Pal Lines period Frame constant.
+        /// Constant for Pal Lines Per Frame.
         /// </summary>
         public const int PalLinesPerFrame = 312;
 
         /// <summary>
-        /// Defines the Pal Frame Rate Hz constant.
+        /// Constant for Pal Frame Rate Hz.
         /// </summary>
         public const double PalFrameRateHz = PalChipClockHz / (PalChipCyclesPerLine * PalLinesPerFrame);
 
         /// <summary>
-        /// Stores the Chip Cycle.
+        /// Stores Chip Cycle.
         /// </summary>
         public long ChipCycle;
 
         /// <summary>
-        /// Stores the Frame.
+        /// Stores Frame.
         /// </summary>
         public long Frame;
 
         /// <summary>
-        /// Stores the Beam X.
+        /// Stores Beam X.
         /// </summary>
         public int BeamX;
 
         /// <summary>
-        /// Stores the Beam Y.
+        /// Stores Beam Y.
         /// </summary>
         public int BeamY;
 
         /// <summary>
-        /// Executes the Advance logic.
+        /// Runs Advance.
         /// </summary>
         public void Advance(int chipCyclesPerLine, int linesPerFrame)
         {

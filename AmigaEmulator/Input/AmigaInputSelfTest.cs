@@ -20,7 +20,7 @@ using AmigaEmulator.Core.Memory;
 namespace AmigaEmulator.Core.Input
 {
     /// <summary>
-    /// Provides Amiga Input Self Test behavior used by the emulator.
+    /// Provides Amiga Input Self Test functionality.
     /// </summary>
     public static class AmigaInputSelfTest
     {
@@ -33,6 +33,7 @@ namespace AmigaEmulator.Core.Input
             failures += RunCase(log, "keyboard serial encoding and CIA interrupt", TestKeyboardSerial);
             failures += RunCase(log, "joystick directions encode into JOYDAT bits", TestJoystickDirections);
             failures += RunCase(log, "mouse counters and buttons feed custom/CIA registers", TestMouseAndButtons);
+            failures += RunCase(log, "POTGO start resets and runs POTDAT counters", TestPotCounters);
             log.AppendLine(failures == 0 ? "Input self-test OK" : "Input self-test FAILED: " + failures);
             return failures;
         }
@@ -58,7 +59,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Test Keyboard Serial logic.
+        /// Runs Test Keyboard Serial.
         /// </summary>
         private static bool TestKeyboardSerial()
         {
@@ -96,7 +97,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Test Joystick Directions logic.
+        /// Runs Test Joystick Directions.
         /// </summary>
         private static bool TestJoystickDirections()
         {
@@ -111,7 +112,7 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>
-        /// Executes the Test Mouse And Buttons logic.
+        /// Runs Test Mouse And Buttons.
         /// </summary>
         private static bool TestMouseAndButtons()
         {
@@ -130,6 +131,23 @@ namespace AmigaEmulator.Core.Input
                 (joy1 & 0x0002) != 0 &&
                 (ciaA & 0xC0) == 0x00 &&
                 (potinp & 0x0400) == 0;
+        }
+
+        /// <summary>
+        /// Verifies the live potentiometer counters driven by POTGO start.
+        /// </summary>
+        private static bool TestPotCounters()
+        {
+            var system = new AmigaSystem(AmigaModel.PalA500, AmigaAccuracyOptions.Fast.Clone());
+            system.Bus.WriteWord(0x00DFF034, 0x0001);
+            ushort initial = system.Bus.ReadWord(0x00DFF012);
+            system.RunCycles(AmigaModel.PalA500.ChipCyclesPerLine * 2);
+            ushort afterTwoLines = system.Bus.ReadWord(0x00DFF012);
+            system.Bus.WriteWord(0x00DFF034, 0x0001);
+            ushort reset = system.Bus.ReadWord(0x00DFF012);
+            return initial == 0x0000 &&
+                afterTwoLines == 0x0202 &&
+                reset == 0x0000;
         }
     }
 }

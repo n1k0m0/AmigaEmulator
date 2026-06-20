@@ -21,52 +21,52 @@ namespace AmigaEmulator.Core.Media
     public sealed class FloppyDrive
     {
         /// <summary>
-        /// Defines the Motor Off Ready Grace Chip Cycles constant.
+        /// Constant for Motor Off Ready Grace Chip Cycles.
         /// </summary>
         private const int MotorOffReadyGraceChipCycles = 2_000_000;
         /// <summary>
-        /// Defines the Pal Index Pulse Period Chip Cycles constant.
+        /// Constant for Pal Index Pulse Period Chip Cycles.
         /// </summary>
         private const int PalIndexPulsePeriodChipCycles = 709_379;
 
         /// <summary>
-        /// Tracks the step Line High.
+        /// Stores step Line High.
         /// </summary>
         private bool _stepLineHigh = true;
         /// <summary>
-        /// Tracks the selected.
+        /// Stores selected.
         /// </summary>
         private bool _selected;
         /// <summary>
-        /// Tracks the write Protected.
+        /// Stores write Protected.
         /// </summary>
         private bool _writeProtected = true;
         /// <summary>
-        /// Tracks the motor On.
+        /// Stores motor On.
         /// </summary>
         private bool _motorOn;
         /// <summary>
-        /// Tracks the motor Off Ready Grace Cycles.
+        /// Stores motor Off Ready Grace Cycles.
         /// </summary>
         private int _motorOffReadyGraceCycles;
         /// <summary>
-        /// Tracks the index Pulse Countdown.
+        /// Stores index Pulse Countdown.
         /// </summary>
         private int _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
         /// <summary>
-        /// Tracks the track Stream.
+        /// Stores track Stream.
         /// </summary>
         private AdfTrackStream _trackStream;
         /// <summary>
-        /// Tracks the stream Track.
+        /// Stores stream Track.
         /// </summary>
         private int _streamTrack = -1;
         /// <summary>
-        /// Tracks the stream Side.
+        /// Stores stream Side.
         /// </summary>
         private int _streamSide = -1;
         /// <summary>
-        /// Tracks the stream Word Position.
+        /// Stores stream Word Position.
         /// </summary>
         private int _streamWordPosition;
         /// <summary>
@@ -74,27 +74,27 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         private readonly System.Collections.Generic.List<ushort> _capturedWriteWords = new System.Collections.Generic.List<ushort>();
         /// <summary>
-        /// Tracks the number of captured write sectors decoded back into the ADF image.
+        /// Stores decoded Write Sectors.
         /// </summary>
         private int _decodedWriteSectors;
 
         /// <summary>
-        /// Gets or updates the Image.
+        /// Gets or sets Image.
         /// </summary>
         public AdfImage Image { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Track.
+        /// Gets or sets Track.
         /// </summary>
         public int Track { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Side.
+        /// Gets or sets Side.
         /// </summary>
         public int Side { get; private set; }
 
         /// <summary>
-        /// Executes the Selected logic.
+        /// Gets Selected.
         /// </summary>
         public bool Selected
         {
@@ -102,7 +102,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Motor On logic.
+        /// Gets Motor On.
         /// </summary>
         public bool MotorOn
         {
@@ -120,7 +120,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Gets or updates the Disk Changed.
+        /// Gets or sets Disk Changed.
         /// </summary>
         public bool DiskChanged { get; private set; }
 
@@ -133,7 +133,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Track0 logic.
+        /// Gets Track0.
         /// </summary>
         public bool Track0
         {
@@ -165,12 +165,12 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Gets or updates the Index Pulse Pending.
+        /// Gets or sets Index Pulse Pending.
         /// </summary>
         public bool IndexPulsePending { get; private set; }
 
         /// <summary>
-        /// Executes the Insert logic.
+        /// Runs Insert.
         /// </summary>
         public void Insert(AdfImage image)
         {
@@ -194,7 +194,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Insert logic.
+        /// Runs Insert.
         /// </summary>
         public void Insert(AdfImage image, bool writeProtected)
         {
@@ -203,10 +203,11 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Eject logic.
+        /// Runs Eject.
         /// </summary>
         public void Eject()
         {
+            FlushImage();
             Image = null;
             Track = 0;
             Side = 0;
@@ -239,7 +240,7 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void ApplySelection(bool selected, bool motorLineLow)
         {
-            if (!_selected && selected)
+            if (selected)
             {
                 MotorOn = motorLineLow;
             }
@@ -265,7 +266,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Step logic.
+        /// Runs Step.
         /// </summary>
         public void Step(int delta)
         {
@@ -346,6 +347,17 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
+        /// Flushes dirty inserted media to its host file.
+        /// </summary>
+        public void FlushImage()
+        {
+            if (Image != null && Image.IsDirty)
+            {
+                Image.Flush();
+            }
+        }
+
+        /// <summary>
         /// Gets the number of MFM words captured from disk-write DMA.
         /// </summary>
         public int CapturedWriteWordCount
@@ -407,7 +419,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Ensure Track Stream logic.
+        /// Runs Ensure Track Stream.
         /// </summary>
         private void EnsureTrackStream()
         {

@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,16 +18,16 @@ using System;
 namespace AmigaEmulator.Core.Media
 {
     /// <summary>
-    /// Provides ADF MFM Word Stream behavior used by the emulator.
+    /// Provides ADF MFM Word Stream functionality.
     /// </summary>
     public sealed class AdfMfmWordStream
     {
         /// <summary>
-        /// Tracks the track.
+        /// Stores track.
         /// </summary>
         private AdfMfmTrack _track;
         /// <summary>
-        /// Tracks the position.
+        /// Stores position.
         /// </summary>
         private int _position;
 
@@ -47,7 +47,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Track logic.
+        /// Gets Track.
         /// </summary>
         public AdfMfmTrack Track
         {
@@ -63,7 +63,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Position logic.
+        /// Gets Position.
         /// </summary>
         public int Position
         {
@@ -85,7 +85,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Clear logic.
+        /// Runs Clear.
         /// </summary>
         public void Clear()
         {
@@ -94,7 +94,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Seek Word logic.
+        /// Runs Seek Word.
         /// </summary>
         public void SeekWord(int position)
         {
@@ -108,7 +108,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Peek Word logic.
+        /// Runs Peek Word.
         /// </summary>
         public ushort PeekWord()
         {
@@ -141,7 +141,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Wrap logic.
+        /// Runs Wrap.
         /// </summary>
         private static int Wrap(int position, int length)
         {

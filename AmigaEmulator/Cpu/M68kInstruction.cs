@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,139 +21,139 @@ namespace AmigaEmulator.Core.Cpu
     public enum M68kInstructionKind
     {
         /// <summary>
-        /// Represents the I ll eg al option.
+        /// Represents Illegal.
         /// </summary>
         Illegal,
         /// <summary>
-        /// Represents the N op option.
+        /// Represents Nop.
         /// </summary>
         Nop,
         /// <summary>
-        /// Represents the R es et option.
+        /// Represents Reset.
         /// </summary>
         Reset,
         /// <summary>
-        /// Represents the S to p option.
+        /// Represents Stop.
         /// </summary>
         Stop,
         /// <summary>
-        /// Represents the R te option.
+        /// Represents Rte.
         /// </summary>
         Rte,
         /// <summary>
-        /// Represents the R ts option.
+        /// Represents Rts.
         /// </summary>
         Rts,
         /// <summary>
-        /// Represents the M ov eq option.
+        /// Represents Moveq.
         /// </summary>
         Moveq,
         /// <summary>
-        /// Represents the M ov e option.
+        /// Represents Move.
         /// </summary>
         Move,
         /// <summary>
-        /// Represents the M ov ea option.
+        /// Represents Movea.
         /// </summary>
         Movea,
         /// <summary>
-        /// Represents the L ea option.
+        /// Represents Lea.
         /// </summary>
         Lea,
         /// <summary>
-        /// Represents the P ea option.
+        /// Represents Pea.
         /// </summary>
         Pea,
         /// <summary>
-        /// Represents the C lr option.
+        /// Represents Clr.
         /// </summary>
         Clr,
         /// <summary>
-        /// Represents the T st option.
+        /// Represents Tst.
         /// </summary>
         Tst,
         /// <summary>
-        /// Represents the O ri option.
+        /// Represents Ori.
         /// </summary>
         Ori,
         /// <summary>
-        /// Represents the A nd i option.
+        /// Represents Andi.
         /// </summary>
         Andi,
         /// <summary>
-        /// Represents the E or i option.
+        /// Represents Eori.
         /// </summary>
         Eori,
         /// <summary>
-        /// Represents the C mp i option.
+        /// Represents Cmpi.
         /// </summary>
         Cmpi,
         /// <summary>
-        /// Represents the C mp option.
+        /// Represents Cmp.
         /// </summary>
         Cmp,
         /// <summary>
-        /// Represents the A dd option.
+        /// Represents Add.
         /// </summary>
         Add,
         /// <summary>
-        /// Represents the S ub option.
+        /// Represents Sub.
         /// </summary>
         Sub,
         /// <summary>
-        /// Represents the A dd q option.
+        /// Represents Addq.
         /// </summary>
         Addq,
         /// <summary>
-        /// Represents the S ub q option.
+        /// Represents Subq.
         /// </summary>
         Subq,
         /// <summary>
-        /// Represents the B ra option.
+        /// Represents Bra.
         /// </summary>
         Bra,
         /// <summary>
-        /// Represents the B sr option.
+        /// Represents Bsr.
         /// </summary>
         Bsr,
         /// <summary>
-        /// Represents the B cc option.
+        /// Represents Bcc.
         /// </summary>
         Bcc,
         /// <summary>
-        /// Represents the J mp option.
+        /// Represents Jmp.
         /// </summary>
         Jmp,
         /// <summary>
-        /// Represents the J sr option.
+        /// Represents Jsr.
         /// </summary>
         Jsr,
         /// <summary>
-        /// Represents the L in k option.
+        /// Represents Link.
         /// </summary>
         Link,
         /// <summary>
-        /// Represents the U nl k option.
+        /// Represents Unlk.
         /// </summary>
         Unlk,
         /// <summary>
-        /// Represents the M ov em option.
+        /// Represents Movem.
         /// </summary>
         Movem,
         /// <summary>
-        /// Represents the M ov eS r option.
+        /// Represents Move SR.
         /// </summary>
         MoveSr,
         /// <summary>
-        /// Represents the M ov eC cr option.
+        /// Represents Move Ccr.
         /// </summary>
         MoveCcr,
         /// <summary>
-        /// Represents the M ov eU sp option.
+        /// Represents Move Usp.
         /// </summary>
         MoveUsp,
         /// <summary>
-        /// Represents the T ra p option.
+        /// Represents Trap.
         /// </summary>
         Trap
     }
@@ -164,23 +164,23 @@ namespace AmigaEmulator.Core.Cpu
     public struct M68kInstruction
     {
         /// <summary>
-        /// Stores the Kind.
+        /// Stores Kind.
         /// </summary>
         public M68kInstructionKind Kind;
         /// <summary>
-        /// Stores the Name.
+        /// Stores Name.
         /// </summary>
         public string Name;
         /// <summary>
-        /// Stores the Register.
+        /// Stores Register.
         /// </summary>
         public int Register;
         /// <summary>
-        /// Stores the Size Bytes.
+        /// Stores Size Bytes.
         /// </summary>
         public int SizeBytes;
         /// <summary>
-        /// Stores the Cycles.
+        /// Stores Cycles.
         /// </summary>
         public int Cycles;
     }

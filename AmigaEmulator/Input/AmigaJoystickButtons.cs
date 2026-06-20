@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,35 +24,35 @@ namespace AmigaEmulator.Core.Input
     public enum AmigaJoystickButtons
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Represents None.
         /// </summary>
         None = 0,
         /// <summary>
-        /// Represents the U p option.
+        /// Represents Up.
         /// </summary>
         Up = 1,
         /// <summary>
-        /// Represents the D ow n option.
+        /// Represents Down.
         /// </summary>
         Down = 2,
         /// <summary>
-        /// Represents the L ef t option.
+        /// Represents Left.
         /// </summary>
         Left = 4,
         /// <summary>
-        /// Represents the R ig ht option.
+        /// Represents Right.
         /// </summary>
         Right = 8,
         /// <summary>
-        /// Represents the F ir e option.
+        /// Represents Fire.
         /// </summary>
         Fire = 16,
         /// <summary>
-        /// Represents the S ec on d option.
+        /// Represents Second.
         /// </summary>
         Second = 32,
         /// <summary>
-        /// Represents the T hi rd option.
+        /// Represents Third.
         /// </summary>
         Third = 64
     }

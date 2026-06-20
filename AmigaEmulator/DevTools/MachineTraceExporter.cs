@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,68 +23,68 @@ using AmigaEmulator.Core.Cpu;
 namespace AmigaEmulator.Core.DevTools
 {
     /// <summary>
-    /// Provides Machine Trace Sample behavior used by the emulator.
+    /// Provides Machine Trace Sample functionality.
     /// </summary>
     public sealed class MachineTraceSample
     {
         /// <summary>
-        /// Gets or updates the Global Chip Cycle.
+        /// Gets or sets Global Chip Cycle.
         /// </summary>
         public long GlobalChipCycle { get; set; }
 
         /// <summary>
-        /// Gets or updates the Frame.
+        /// Gets or sets Frame.
         /// </summary>
         public long Frame { get; set; }
 
         /// <summary>
-        /// Gets or updates the Beam X.
+        /// Gets or sets Beam X.
         /// </summary>
         public int BeamX { get; set; }
 
         /// <summary>
-        /// Gets or updates the Beam Y.
+        /// Gets or sets Beam Y.
         /// </summary>
         public int BeamY { get; set; }
 
         /// <summary>
-        /// Gets or updates the DMA Slot.
+        /// Gets or sets DMA Slot.
         /// </summary>
         public int DmaSlot { get; set; }
 
         /// <summary>
-        /// Gets or updates the DMA Owner.
+        /// Gets or sets DMA Owner.
         /// </summary>
         public string DmaOwner { get; set; }
 
         /// <summary>
-        /// Gets or updates the CPU Can Use Chip Bus.
+        /// Gets or sets CPU Can Use Chip Bus.
         /// </summary>
         public bool CpuCanUseChipBus { get; set; }
 
         /// <summary>
-        /// Gets or updates the CPU PC.
+        /// Gets or sets CPU PC.
         /// </summary>
         public uint CpuPc { get; set; }
 
         /// <summary>
-        /// Gets or updates the CPU SR.
+        /// Gets or sets CPU SR.
         /// </summary>
         public ushort CpuSr { get; set; }
 
         /// <summary>
-        /// Gets or updates the CPU Trace.
+        /// Gets or sets CPU Trace.
         /// </summary>
         public M68kTraceEntry CpuTrace { get; set; }
     }
 
     /// <summary>
-    /// Provides Machine Trace Exporter behavior used by the emulator.
+    /// Provides Machine Trace Exporter functionality.
     /// </summary>
     public static class MachineTraceExporter
     {
         /// <summary>
-        /// Executes the Export logic.
+        /// Runs Export.
         /// </summary>
         public static void Export(int chipCycles, string path)
         {
@@ -100,7 +100,7 @@ namespace AmigaEmulator.Core.DevTools
         }
 
         /// <summary>
-        /// Executes the Export Until Suspicious Instruction logic.
+        /// Runs Export Until Suspicious Instruction.
         /// </summary>
         public static MachineTraceSample ExportUntilSuspiciousInstruction(int maxChipCycles, string path)
         {
@@ -116,7 +116,7 @@ namespace AmigaEmulator.Core.DevTools
         }
 
         /// <summary>
-        /// Executes the Export Json Lines Until Suspicious Instruction logic.
+        /// Runs Export Json Lines Until Suspicious Instruction.
         /// </summary>
         public static MachineTraceSample ExportJsonLinesUntilSuspiciousInstruction(AmigaSystem system, int maxChipCycles, string path)
         {
@@ -145,7 +145,7 @@ namespace AmigaEmulator.Core.DevTools
         }
 
         /// <summary>
-        /// Executes the Export Json Lines logic.
+        /// Runs Export Json Lines.
         /// </summary>
         public static void ExportJsonLines(AmigaSystem system, int chipCycles, int sampleInterval, string path)
         {
@@ -171,7 +171,7 @@ namespace AmigaEmulator.Core.DevTools
         }
 
         /// <summary>
-        /// Executes the Export Csv logic.
+        /// Runs Export Csv.
         /// </summary>
         public static void ExportCsv(AmigaSystem system, int chipCycles, int sampleInterval, string path)
         {
@@ -255,7 +255,7 @@ namespace AmigaEmulator.Core.DevTools
         }
 
         /// <summary>
-        /// Executes the Ensure Directory logic.
+        /// Runs Ensure Directory.
         /// </summary>
         private static void EnsureDirectory(string path)
         {

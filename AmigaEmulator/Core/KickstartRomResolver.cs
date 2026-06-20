@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@ namespace AmigaEmulator.Core
     public static class KickstartRomResolver
     {
         /// <summary>
-        /// Executes the Kickstart13 Names logic.
+        /// Stores Kickstart 13 Names.
         /// </summary>
         private static readonly string[] Kickstart13Names =
         {
@@ -58,7 +58,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Ensure Kickstart13 In User ROM Directory logic.
+        /// Runs Ensure Kickstart 13 In User Rom Directory.
         /// </summary>
         public static string EnsureKickstart13InUserRomDirectory()
         {
@@ -166,7 +166,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Probe logic.
+        /// Runs Probe.
         /// </summary>
         public static KickstartRomInfo Probe(string path)
         {
@@ -251,7 +251,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Add Directory logic.
+        /// Runs Add Directory.
         /// </summary>
         private static void AddDirectory(List<string> directories, string directory, bool requireExistingDirectory = true)
         {
@@ -302,7 +302,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Add ROM Candidates logic.
+        /// Runs Add Rom Candidates.
         /// </summary>
         private static void AddRomCandidates(List<KickstartRomInfo> roms, HashSet<string> seen, string directory, string pattern)
         {

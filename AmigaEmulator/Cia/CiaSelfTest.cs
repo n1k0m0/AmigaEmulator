@@ -19,7 +19,7 @@ using AmigaEmulator.Core.Memory;
 namespace AmigaEmulator.Core.Cia
 {
     /// <summary>
-    /// Provides CIA Self Test behavior used by the emulator.
+    /// Provides CIA Self Test functionality.
     /// </summary>
     public static class CiaSelfTest
     {
@@ -65,7 +65,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test Timer A Underflow logic.
+        /// Runs Test Timer A Underflow.
         /// </summary>
         private static bool TestTimerAUnderflow()
         {
@@ -80,7 +80,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test One Shot Starts On Latch High Write logic.
+        /// Runs Test One Shot Starts On Latch High Write.
         /// </summary>
         private static bool TestOneShotStartsOnLatchHighWrite()
         {
@@ -94,7 +94,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test Timer High Write Does Not Reload Running Counter logic.
+        /// Runs Test Timer High Write Does Not Reload Running Counter.
         /// </summary>
         private static bool TestTimerHighWriteDoesNotReloadRunningCounter()
         {
@@ -110,7 +110,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test Timer B Count Source logic.
+        /// Runs Test Timer B Count Source.
         /// </summary>
         private static bool TestTimerBCountSource()
         {
@@ -142,7 +142,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test System E Clock Divider logic.
+        /// Runs Test System E Clock Divider.
         /// </summary>
         private static bool TestSystemEClockDivider()
         {
@@ -157,7 +157,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test Amiga Bus CIA Byte Lanes logic.
+        /// Runs Test Amiga Bus Cia Byte Lanes.
         /// </summary>
         private static bool TestAmigaBusCiaByteLanes()
         {
@@ -190,7 +190,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test TOD Alarm Interrupt logic.
+        /// Runs Test Tod Alarm Interrupt.
         /// </summary>
         private static bool TestTodAlarmInterrupt()
         {
@@ -212,7 +212,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test TOD Read Latch logic.
+        /// Runs Test Tod Read Latch.
         /// </summary>
         private static bool TestTodReadLatch()
         {
@@ -231,7 +231,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test TOD Clock Write Does Not Alarm On Partial Value logic.
+        /// Runs Test Tod Clock Write Does Not Alarm On Partial Value.
         /// </summary>
         private static bool TestTodClockWriteDoesNotAlarmOnPartialValue()
         {
@@ -253,7 +253,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test CIA Interrupt Level logic.
+        /// Runs Test Cia Interrupt Level.
         /// </summary>
         private static bool TestCiaInterruptLevel()
         {
@@ -278,7 +278,7 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Executes the Test Flag Interrupt logic.
+        /// Runs Test Flag Interrupt.
         /// </summary>
         private static bool TestFlagInterrupt()
         {

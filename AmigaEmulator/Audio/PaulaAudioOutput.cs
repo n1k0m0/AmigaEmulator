@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,60 +24,60 @@ namespace AmigaEmulator.Core.Audio
     public sealed class PaulaAudioOutput : IDisposable
     {
         /// <summary>
-        /// Defines the Sample Rate constant.
+        /// Constant for Sample Rate.
         /// </summary>
         public const int SampleRate = 48000;
         /// <summary>
-        /// Defines the Channel Count constant.
+        /// Constant for Channel Count.
         /// </summary>
         private const int ChannelCount = 2;
         /// <summary>
-        /// Defines the Bytes period Sample constant.
+        /// Constant for Bytes Per Sample.
         /// </summary>
         private const int BytesPerSample = 2;
         /// <summary>
-        /// Defines the Frames period Buffer constant.
+        /// Constant for Frames Per Buffer.
         /// </summary>
         private const int FramesPerBuffer = 2048;
         /// <summary>
-        /// Defines the Buffer Count constant.
+        /// Constant for Buffer Count.
         /// </summary>
         private const int BufferCount = 8;
         /// <summary>
-        /// Defines the Wave Mapper constant.
+        /// Constant for Wave Mapper.
         /// </summary>
         private const int WaveMapper = -1;
         /// <summary>
-        /// Defines the Whdr Done constant.
+        /// Constant for Whdr Done.
         /// </summary>
         private const int WhdrDone = 0x00000001;
 
         /// <summary>
-        /// Tracks the staging.
+        /// Stores staging.
         /// </summary>
         private readonly byte[] _staging = new byte[FramesPerBuffer * ChannelCount * BytesPerSample];
         /// <summary>
-        /// Tracks the buffers.
+        /// Stores buffers.
         /// </summary>
         private readonly WaveBuffer[] _buffers = new WaveBuffer[BufferCount];
         /// <summary>
-        /// Tracks the wave Out.
+        /// Stores wave Out.
         /// </summary>
         private IntPtr _waveOut;
         /// <summary>
-        /// Tracks the staging Offset.
+        /// Stores staging Offset.
         /// </summary>
         private int _stagingOffset;
         /// <summary>
-        /// Tracks the available.
+        /// Stores available.
         /// </summary>
         private bool _available;
         /// <summary>
-        /// Tracks the submitted Frames.
+        /// Stores submitted Frames.
         /// </summary>
         private long _submittedFrames;
         /// <summary>
-        /// Tracks the dropped Frames.
+        /// Stores dropped Frames.
         /// </summary>
         private long _droppedFrames;
 
@@ -111,7 +111,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Available logic.
+        /// Gets Available.
         /// </summary>
         public bool Available
         {
@@ -119,7 +119,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Submitted Frames logic.
+        /// Gets Submitted Frames.
         /// </summary>
         public long SubmittedFrames
         {
@@ -127,7 +127,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Dropped Frames logic.
+        /// Gets Dropped Frames.
         /// </summary>
         public long DroppedFrames
         {
@@ -135,7 +135,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Submit logic.
+        /// Runs Submit.
         /// </summary>
         public void Submit(float left, float right, float volume)
         {
@@ -156,7 +156,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Clear logic.
+        /// Runs Clear.
         /// </summary>
         public void Clear()
         {
@@ -169,7 +169,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Dispose logic.
+        /// Runs Dispose.
         /// </summary>
         public void Dispose()
         {
@@ -200,7 +200,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Flush logic.
+        /// Runs Flush.
         /// </summary>
         private void Flush()
         {
@@ -252,7 +252,7 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the Clamp To Pcm16 logic.
+        /// Runs Clamp To Pcm 16.
         /// </summary>
         private static short ClampToPcm16(float value)
         {
@@ -269,37 +269,37 @@ namespace AmigaEmulator.Core.Audio
         }
 
         /// <summary>
-        /// Executes the wave Out Open logic.
+        /// Runs wave Out Open.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern int waveOutOpen(out IntPtr hWaveOut, int uDeviceID, ref WaveFormatEx lpFormat, IntPtr dwCallback, IntPtr dwInstance, int dwFlags);
 
         /// <summary>
-        /// Executes the wave Out Prepare Header logic.
+        /// Runs wave Out Prepare Header.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern int waveOutPrepareHeader(IntPtr hWaveOut, IntPtr lpWaveOutHdr, int uSize);
 
         /// <summary>
-        /// Executes the wave Out Unprepare Header logic.
+        /// Runs wave Out Unprepare Header.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern int waveOutUnprepareHeader(IntPtr hWaveOut, IntPtr lpWaveOutHdr, int uSize);
 
         /// <summary>
-        /// Executes the wave Out Write logic.
+        /// Runs wave Out Write.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern int waveOutWrite(IntPtr hWaveOut, IntPtr lpWaveOutHdr, int uSize);
 
         /// <summary>
-        /// Executes the wave Out Reset logic.
+        /// Runs wave Out Reset.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern int waveOutReset(IntPtr hWaveOut);
 
         /// <summary>
-        /// Executes the wave Out Close logic.
+        /// Runs wave Out Close.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern int waveOutClose(IntPtr hWaveOut);
@@ -311,31 +311,31 @@ namespace AmigaEmulator.Core.Audio
         private struct WaveFormatEx
         {
             /// <summary>
-            /// Stores the Format Tag.
+            /// Stores Format Tag.
             /// </summary>
             public ushort FormatTag;
             /// <summary>
-            /// Stores the Channels.
+            /// Stores Channels.
             /// </summary>
             public ushort Channels;
             /// <summary>
-            /// Stores the Samples period Sec.
+            /// Stores Samples period Sec.
             /// </summary>
             public int SamplesPerSec;
             /// <summary>
-            /// Stores the Avg Bytes period Sec.
+            /// Stores Avg Bytes period Sec.
             /// </summary>
             public int AvgBytesPerSec;
             /// <summary>
-            /// Stores the Block Align.
+            /// Stores Block Align.
             /// </summary>
             public ushort BlockAlign;
             /// <summary>
-            /// Stores the Bits period Sample.
+            /// Stores Bits period Sample.
             /// </summary>
             public ushort BitsPerSample;
             /// <summary>
-            /// Stores the Size.
+            /// Stores Size.
             /// </summary>
             public ushort Size;
         }
@@ -347,62 +347,62 @@ namespace AmigaEmulator.Core.Audio
         private struct WaveHeader
         {
             /// <summary>
-            /// Stores the Data.
+            /// Stores Data.
             /// </summary>
             public IntPtr Data;
             /// <summary>
-            /// Stores the Buffer Length.
+            /// Stores Buffer Length.
             /// </summary>
             public int BufferLength;
             /// <summary>
-            /// Stores the Bytes Recorded.
+            /// Stores Bytes Recorded.
             /// </summary>
             public int BytesRecorded;
             /// <summary>
-            /// Stores the User.
+            /// Stores User.
             /// </summary>
             public IntPtr User;
             /// <summary>
-            /// Stores the Flags.
+            /// Stores Flags.
             /// </summary>
             public int Flags;
             /// <summary>
-            /// Stores the Loops.
+            /// Stores Loops.
             /// </summary>
             public int Loops;
             /// <summary>
-            /// Stores the Next.
+            /// Stores Next.
             /// </summary>
             public IntPtr Next;
             /// <summary>
-            /// Stores the Reserved.
+            /// Stores Reserved.
             /// </summary>
             public IntPtr Reserved;
         }
 
         /// <summary>
-        /// Provides Wave Buffer behavior used by the emulator.
+        /// Provides Wave Buffer functionality.
         /// </summary>
         private sealed class WaveBuffer : IDisposable
         {
             /// <summary>
-            /// Tracks the capacity.
+            /// Stores capacity.
             /// </summary>
             private readonly int _capacity;
             /// <summary>
-            /// Tracks the data.
+            /// Stores data.
             /// </summary>
             private readonly IntPtr _data;
             /// <summary>
-            /// Tracks the header Pointer.
+            /// Stores header Pointer.
             /// </summary>
             private readonly IntPtr _headerPointer;
             /// <summary>
-            /// Tracks the header.
+            /// Stores header.
             /// </summary>
             private WaveHeader _header;
             /// <summary>
-            /// Tracks the prepared.
+            /// Stores prepared.
             /// </summary>
             private bool _prepared;
 
@@ -424,7 +424,7 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Executes the Header Pointer logic.
+            /// Gets Header Pointer.
             /// </summary>
             public IntPtr HeaderPointer
             {
@@ -432,7 +432,7 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Executes the Done logic.
+            /// Gets Done.
             /// </summary>
             public bool Done
             {
@@ -449,12 +449,12 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Gets or updates the In Use.
+            /// Gets or sets In Use.
             /// </summary>
             public bool InUse { get; private set; }
 
             /// <summary>
-            /// Executes the Reclaim If Done logic.
+            /// Runs Reclaim If Done.
             /// </summary>
             public void ReclaimIfDone(IntPtr waveOut)
             {
@@ -465,7 +465,7 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Executes the Prepare logic.
+            /// Runs Prepare.
             /// </summary>
             public void Prepare(IntPtr waveOut)
             {
@@ -479,7 +479,7 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Executes the Unprepare logic.
+            /// Runs Unprepare.
             /// </summary>
             public void Unprepare(IntPtr waveOut)
             {
@@ -512,7 +512,7 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Executes the Mark Submitted logic.
+            /// Runs Mark Submitted.
             /// </summary>
             public void MarkSubmitted()
             {
@@ -520,7 +520,7 @@ namespace AmigaEmulator.Core.Audio
             }
 
             /// <summary>
-            /// Executes the Dispose logic.
+            /// Runs Dispose.
             /// </summary>
             public void Dispose()
             {

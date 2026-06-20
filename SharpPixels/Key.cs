@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,367 +23,367 @@ namespace SharpPixels
     public enum Key
     {
         /// <summary>
-        /// Represents the U nk no wn option.
+        /// Represents Unknown.
         /// </summary>
         Unknown,
         /// <summary>
-        /// Represents the E sc ap e option.
+        /// Represents Escape.
         /// </summary>
         Escape,
         /// <summary>
-        /// Represents the E nt er option.
+        /// Represents Enter.
         /// </summary>
         Enter,
         /// <summary>
-        /// Represents the S pa ce option.
+        /// Represents Space.
         /// </summary>
         Space,
         /// <summary>
-        /// Represents the T ab option.
+        /// Represents Tab.
         /// </summary>
         Tab,
         /// <summary>
-        /// Represents the B ac ks pa ce option.
+        /// Represents Backspace.
         /// </summary>
         Backspace,
         /// <summary>
-        /// Represents the D el et e option.
+        /// Represents Delete.
         /// </summary>
         Delete,
         /// <summary>
-        /// Represents the H om e option.
+        /// Represents Home.
         /// </summary>
         Home,
         /// <summary>
-        /// Represents the E nd option.
+        /// Represents End.
         /// </summary>
         End,
         /// <summary>
-        /// Represents the P ag eU p option.
+        /// Represents Page Up.
         /// </summary>
         PageUp,
         /// <summary>
-        /// Represents the P ag eD ow n option.
+        /// Represents Page Down.
         /// </summary>
         PageDown,
         /// <summary>
-        /// Represents the U p option.
+        /// Represents Up.
         /// </summary>
         Up,
         /// <summary>
-        /// Represents the D ow n option.
+        /// Represents Down.
         /// </summary>
         Down,
         /// <summary>
-        /// Represents the L ef t option.
+        /// Represents Left.
         /// </summary>
         Left,
         /// <summary>
-        /// Represents the R ig ht option.
+        /// Represents Right.
         /// </summary>
         Right,
         /// <summary>
-        /// Represents the F1 option.
+        /// Represents F1.
         /// </summary>
         F1,
         /// <summary>
-        /// Represents the F2 option.
+        /// Represents F2.
         /// </summary>
         F2,
         /// <summary>
-        /// Represents the F3 option.
+        /// Represents F3.
         /// </summary>
         F3,
         /// <summary>
-        /// Represents the F4 option.
+        /// Represents F4.
         /// </summary>
         F4,
         /// <summary>
-        /// Represents the F5 option.
+        /// Represents F5.
         /// </summary>
         F5,
         /// <summary>
-        /// Represents the F6 option.
+        /// Represents F6.
         /// </summary>
         F6,
         /// <summary>
-        /// Represents the F7 option.
+        /// Represents F7.
         /// </summary>
         F7,
         /// <summary>
-        /// Represents the F8 option.
+        /// Represents F8.
         /// </summary>
         F8,
         /// <summary>
-        /// Represents the F9 option.
+        /// Represents F9.
         /// </summary>
         F9,
         /// <summary>
-        /// Represents the F10 option.
+        /// Represents F10.
         /// </summary>
         F10,
         /// <summary>
-        /// Represents the F11 option.
+        /// Represents F11.
         /// </summary>
         F11,
         /// <summary>
-        /// Represents the F12 option.
+        /// Represents F12.
         /// </summary>
         F12,
         /// <summary>
-        /// Represents the A option.
+        /// Represents A.
         /// </summary>
         A,
         /// <summary>
-        /// Represents the B option.
+        /// Represents B.
         /// </summary>
         B,
         /// <summary>
-        /// Represents the C option.
+        /// Represents C.
         /// </summary>
         C,
         /// <summary>
-        /// Represents the D option.
+        /// Represents D.
         /// </summary>
         D,
         /// <summary>
-        /// Represents the E option.
+        /// Represents E.
         /// </summary>
         E,
         /// <summary>
-        /// Represents the F option.
+        /// Represents F.
         /// </summary>
         F,
         /// <summary>
-        /// Represents the G option.
+        /// Represents G.
         /// </summary>
         G,
         /// <summary>
-        /// Represents the H option.
+        /// Represents H.
         /// </summary>
         H,
         /// <summary>
-        /// Represents the I option.
+        /// Represents I.
         /// </summary>
         I,
         /// <summary>
-        /// Represents the J option.
+        /// Represents J.
         /// </summary>
         J,
         /// <summary>
-        /// Represents the K option.
+        /// Represents K.
         /// </summary>
         K,
         /// <summary>
-        /// Represents the L option.
+        /// Represents L.
         /// </summary>
         L,
         /// <summary>
-        /// Represents the M option.
+        /// Represents M.
         /// </summary>
         M,
         /// <summary>
-        /// Represents the N option.
+        /// Represents N.
         /// </summary>
         N,
         /// <summary>
-        /// Represents the O option.
+        /// Represents O.
         /// </summary>
         O,
         /// <summary>
-        /// Represents the P option.
+        /// Represents P.
         /// </summary>
         P,
         /// <summary>
-        /// Represents the Q option.
+        /// Represents Q.
         /// </summary>
         Q,
         /// <summary>
-        /// Represents the R option.
+        /// Represents R.
         /// </summary>
         R,
         /// <summary>
-        /// Represents the S option.
+        /// Represents S.
         /// </summary>
         S,
         /// <summary>
-        /// Represents the T option.
+        /// Represents T.
         /// </summary>
         T,
         /// <summary>
-        /// Represents the U option.
+        /// Represents U.
         /// </summary>
         U,
         /// <summary>
-        /// Represents the V option.
+        /// Represents V.
         /// </summary>
         V,
         /// <summary>
-        /// Represents the W option.
+        /// Represents W.
         /// </summary>
         W,
         /// <summary>
-        /// Represents the X option.
+        /// Represents X.
         /// </summary>
         X,
         /// <summary>
-        /// Represents the Y option.
+        /// Represents Y.
         /// </summary>
         Y,
         /// <summary>
-        /// Represents the Z option.
+        /// Represents Z.
         /// </summary>
         Z,
         /// <summary>
-        /// Represents the D0 option.
+        /// Represents D0.
         /// </summary>
         D0,
         /// <summary>
-        /// Represents the D1 option.
+        /// Represents D1.
         /// </summary>
         D1,
         /// <summary>
-        /// Represents the D2 option.
+        /// Represents D2.
         /// </summary>
         D2,
         /// <summary>
-        /// Represents the D3 option.
+        /// Represents D3.
         /// </summary>
         D3,
         /// <summary>
-        /// Represents the D4 option.
+        /// Represents D4.
         /// </summary>
         D4,
         /// <summary>
-        /// Represents the D5 option.
+        /// Represents D5.
         /// </summary>
         D5,
         /// <summary>
-        /// Represents the D6 option.
+        /// Represents D6.
         /// </summary>
         D6,
         /// <summary>
-        /// Represents the D7 option.
+        /// Represents D7.
         /// </summary>
         D7,
         /// <summary>
-        /// Represents the D8 option.
+        /// Represents D8.
         /// </summary>
         D8,
         /// <summary>
-        /// Represents the D9 option.
+        /// Represents D9.
         /// </summary>
         D9,
         /// <summary>
-        /// Represents the M in us option.
+        /// Represents Minus.
         /// </summary>
         Minus,
         /// <summary>
-        /// Represents the E qu al s option.
+        /// Represents Equals.
         /// </summary>
         Equals,
         /// <summary>
-        /// Represents the O pe nB ra ck et option.
+        /// Represents Open Bracket.
         /// </summary>
         OpenBracket,
         /// <summary>
-        /// Represents the C lo se Br ac ke t option.
+        /// Represents Close Bracket.
         /// </summary>
         CloseBracket,
         /// <summary>
-        /// Represents the S em ic ol on option.
+        /// Represents Semicolon.
         /// </summary>
         Semicolon,
         /// <summary>
-        /// Represents the A po st ro ph e option.
+        /// Represents Apostrophe.
         /// </summary>
         Apostrophe,
         /// <summary>
-        /// Represents the B ac ks la sh option.
+        /// Represents Backslash.
         /// </summary>
         Backslash,
         /// <summary>
-        /// Represents the C om ma option.
+        /// Represents Comma.
         /// </summary>
         Comma,
         /// <summary>
-        /// Represents the P er io d option.
+        /// Represents Period.
         /// </summary>
         Period,
         /// <summary>
-        /// Represents the S la sh option.
+        /// Represents Slash.
         /// </summary>
         Slash,
         /// <summary>
-        /// Represents the G ra ve option.
+        /// Represents Grave.
         /// </summary>
         Grave,
         /// <summary>
-        /// Represents the S hi ft Le ft option.
+        /// Represents Shift Left.
         /// </summary>
         ShiftLeft,
         /// <summary>
-        /// Represents the S hi ft Ri gh t option.
+        /// Represents Shift Right.
         /// </summary>
         ShiftRight,
         /// <summary>
-        /// Represents the C on tr ol Le ft option.
+        /// Represents Control Left.
         /// </summary>
         ControlLeft,
         /// <summary>
-        /// Represents the C on tr ol Ri gh t option.
+        /// Represents Control Right.
         /// </summary>
         ControlRight,
         /// <summary>
-        /// Represents the A lt Le ft option.
+        /// Represents Alt Left.
         /// </summary>
         AltLeft,
         /// <summary>
-        /// Represents the A lt Ri gh t option.
+        /// Represents Alt Right.
         /// </summary>
         AltRight,
         /// <summary>
-        /// Represents the C ap sL oc k option.
+        /// Represents Caps Lock.
         /// </summary>
         CapsLock,
         /// <summary>
-        /// Represents the N um Pa d0 option.
+        /// Represents Num Pad 0.
         /// </summary>
         NumPad0,
         /// <summary>
-        /// Represents the N um Pa d1 option.
+        /// Represents Num Pad 1.
         /// </summary>
         NumPad1,
         /// <summary>
-        /// Represents the N um Pa d2 option.
+        /// Represents Num Pad 2.
         /// </summary>
         NumPad2,
         /// <summary>
-        /// Represents the N um Pa d3 option.
+        /// Represents Num Pad 3.
         /// </summary>
         NumPad3,
         /// <summary>
-        /// Represents the N um Pa d4 option.
+        /// Represents Num Pad 4.
         /// </summary>
         NumPad4,
         /// <summary>
-        /// Represents the N um Pa d5 option.
+        /// Represents Num Pad 5.
         /// </summary>
         NumPad5,
         /// <summary>
-        /// Represents the N um Pa d6 option.
+        /// Represents Num Pad 6.
         /// </summary>
         NumPad6,
         /// <summary>
-        /// Represents the N um Pa d7 option.
+        /// Represents Num Pad 7.
         /// </summary>
         NumPad7,
         /// <summary>
-        /// Represents the N um Pa d8 option.
+        /// Represents Num Pad 8.
         /// </summary>
         NumPad8,
         /// <summary>
-        /// Represents the N um Pa d9 option.
+        /// Represents Num Pad 9.
         /// </summary>
         NumPad9
     }
@@ -394,7 +394,7 @@ namespace SharpPixels
     public static class KeyMapper
     {
         /// <summary>
-        /// Executes the From Forms Key logic.
+        /// Runs From Forms Key.
         /// </summary>
         public static Key FromFormsKey(Keys key)
         {

@@ -31,7 +31,7 @@ namespace SharpPixels
     public class SharpPixelsWindow : Form
     {
         /// <summary>
-        /// Tracks the timer.
+        /// Stores timer.
         /// </summary>
         private readonly System.Windows.Forms.Timer _timer;
         /// <summary>
@@ -39,43 +39,79 @@ namespace SharpPixels
         /// </summary>
         private readonly Stopwatch _frameStopwatch = new Stopwatch();
         /// <summary>
-        /// Tracks the bitmap.
+        /// Stores bitmap.
         /// </summary>
         private Bitmap _bitmap;
         /// <summary>
-        /// Tracks the paint Upload Buffer.
+        /// Stores paint Upload Buffer.
         /// </summary>
         private int[] _paintUploadBuffer;
         /// <summary>
-        /// Tracks the filter Scratch Buffer.
+        /// Stores filter Scratch Buffer.
         /// </summary>
         private int[] _filterScratchBuffer;
         /// <summary>
-        /// Tracks the presentation Filter Mode.
+        /// Stores presentation Filter Mode.
         /// </summary>
         private SharpPixelsGpuFilterMode _presentationFilterMode = SharpPixelsGpuFilterMode.Sharp;
         /// <summary>
-        /// Tracks the presentation Upscale Mode.
+        /// Stores presentation Upscale Mode.
         /// </summary>
         private SharpPixelsGpuUpscaleMode _presentationUpscaleMode = SharpPixelsGpuUpscaleMode.None;
         /// <summary>
-        /// Tracks the update Frequency.
+        /// Stores source pixels cropped from the left before presentation scaling.
+        /// </summary>
+        private int _presentationCropLeft;
+        /// <summary>
+        /// Stores source pixels cropped from the top before presentation scaling.
+        /// </summary>
+        private int _presentationCropTop;
+        /// <summary>
+        /// Stores source pixels cropped from the right before presentation scaling.
+        /// </summary>
+        private int _presentationCropRight;
+        /// <summary>
+        /// Stores source pixels cropped from the bottom before presentation scaling.
+        /// </summary>
+        private int _presentationCropBottom;
+        /// <summary>
+        /// Stretches the presentation source to the complete client area instead of preserving aspect ratio.
+        /// </summary>
+        private bool _stretchPresentationToClient;
+        /// <summary>
+        /// Stores presentation-coordinate pixels left empty before drawing the source.
+        /// </summary>
+        private int _presentationTargetMarginLeft;
+        /// <summary>
+        /// Stores presentation-coordinate pixels left empty above the source.
+        /// </summary>
+        private int _presentationTargetMarginTop;
+        /// <summary>
+        /// Stores presentation-coordinate pixels left empty after drawing the source.
+        /// </summary>
+        private int _presentationTargetMarginRight;
+        /// <summary>
+        /// Stores presentation-coordinate pixels left empty below the source.
+        /// </summary>
+        private int _presentationTargetMarginBottom;
+        /// <summary>
+        /// Stores update Frequency.
         /// </summary>
         private double _updateFrequency = 60.0;
         /// <summary>
-        /// Tracks the next Update Seconds.
+        /// Stores next Update Seconds.
         /// </summary>
         private double _nextUpdateSeconds;
         /// <summary>
-        /// Tracks the fps Window Start Seconds.
+        /// Stores fps Window Start Seconds.
         /// </summary>
         private double _fpsWindowStartSeconds;
         /// <summary>
-        /// Tracks the fps Counter.
+        /// Stores fps Counter.
         /// </summary>
         private int _fpsCounter;
         /// <summary>
-        /// Tracks the running.
+        /// Stores running.
         /// </summary>
         private bool _running;
 
@@ -112,32 +148,48 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Gets or updates the Pixels Width.
+        /// Gets or sets Pixels Width.
         /// </summary>
         public int PixelsWidth { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Pixels Height.
+        /// Gets or sets Pixels Height.
         /// </summary>
         public int PixelsHeight { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Presentation Width.
+        /// Gets or sets Presentation Width.
         /// </summary>
         public int PresentationWidth { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Presentation Height.
+        /// Gets or sets Presentation Height.
         /// </summary>
         public int PresentationHeight { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Pixels.
+        /// Gets or sets Pixels.
         /// </summary>
         public uint[] Pixels { get; private set; }
 
         /// <summary>
-        /// Executes the Pixel Buffer logic.
+        /// Gets the source width used for host-to-pixel presentation scaling.
+        /// </summary>
+        protected int PresentationSourceWidth
+        {
+            get { return Math.Max(1, PixelsWidth - _presentationCropLeft - _presentationCropRight); }
+        }
+
+        /// <summary>
+        /// Gets the source height used for host-to-pixel presentation scaling.
+        /// </summary>
+        protected int PresentationSourceHeight
+        {
+            get { return Math.Max(1, PixelsHeight - _presentationCropTop - _presentationCropBottom); }
+        }
+
+        /// <summary>
+        /// Gets Pixel Buffer.
         /// </summary>
         public uint[] PixelBuffer
         {
@@ -155,7 +207,40 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Gets or updates the FPS.
+        /// Crops the uploaded source bitmap before it is stretched into the presentation rectangle.
+        /// </summary>
+        public void SetPresentationSourceCrop(int left, int top, int right, int bottom)
+        {
+            _presentationCropLeft = Math.Max(0, Math.Min(PixelsWidth - 1, left));
+            _presentationCropTop = Math.Max(0, Math.Min(PixelsHeight - 1, top));
+            _presentationCropRight = Math.Max(0, Math.Min(PixelsWidth - 1 - _presentationCropLeft, right));
+            _presentationCropBottom = Math.Max(0, Math.Min(PixelsHeight - 1 - _presentationCropTop, bottom));
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Selects whether the cropped source is stretched to the entire window client area.
+        /// </summary>
+        public void SetPresentationStretchToClient(bool enabled)
+        {
+            _stretchPresentationToClient = enabled;
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Leaves margins in presentation coordinates while scaling the cropped source inside them.
+        /// </summary>
+        public void SetPresentationTargetMargins(int left, int top, int right, int bottom)
+        {
+            _presentationTargetMarginLeft = Math.Max(0, Math.Min(PresentationWidth - 1, left));
+            _presentationTargetMarginTop = Math.Max(0, Math.Min(PresentationHeight - 1, top));
+            _presentationTargetMarginRight = Math.Max(0, Math.Min(PresentationWidth - 1 - _presentationTargetMarginLeft, right));
+            _presentationTargetMarginBottom = Math.Max(0, Math.Min(PresentationHeight - 1 - _presentationTargetMarginTop, bottom));
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Gets or sets FPS.
         /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int FPS { get; private set; }
@@ -203,7 +288,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Request Close logic.
+        /// Runs Request Close.
         /// </summary>
         public void RequestClose()
         {
@@ -249,7 +334,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Pump One Frame logic.
+        /// Runs Pump One Frame.
         /// </summary>
         private void PumpOneFrame()
         {
@@ -281,7 +366,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Clear logic.
+        /// Runs Clear.
         /// </summary>
         public void Clear(byte red, byte green, byte blue)
         {
@@ -454,10 +539,11 @@ namespace SharpPixels
             }
 
             e.Graphics.InterpolationMode = GetInterpolationMode();
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
+            e.Graphics.PixelOffsetMode = PixelOffsetMode.None;
             var target = GetPresentationRectangle();
+            var source = GetPresentationSourceRectangle();
             e.Graphics.Clear(Color.Black);
-            e.Graphics.DrawImage(_bitmap, target);
+            e.Graphics.DrawImage(_bitmap, target, source, GraphicsUnit.Pixel);
             OnRenderOverlay(e.Graphics, target);
         }
 
@@ -517,6 +603,11 @@ namespace SharpPixels
         /// </summary>
         protected Rectangle GetPresentationRectangle()
         {
+            if (_stretchPresentationToClient)
+            {
+                return ApplyPresentationTargetMargins(new Rectangle(0, 0, Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height)));
+            }
+
             int fixedScale = GetPresentationIntegerScale();
             double scale = fixedScale > 0
                 ? fixedScale
@@ -531,7 +622,33 @@ namespace SharpPixels
             int height = Math.Max(1, (int)(PresentationHeight * scale));
             int x = (ClientSize.Width - width) / 2;
             int y = (ClientSize.Height - height) / 2;
-            return new Rectangle(x, y, width, height);
+            return ApplyPresentationTargetMargins(new Rectangle(x, y, width, height));
+        }
+
+        /// <summary>
+        /// Converts presentation-coordinate target margins into current client pixels.
+        /// </summary>
+        private Rectangle ApplyPresentationTargetMargins(Rectangle baseTarget)
+        {
+            int left = (int)Math.Round(baseTarget.Width * (_presentationTargetMarginLeft / (double)PresentationWidth));
+            int top = (int)Math.Round(baseTarget.Height * (_presentationTargetMarginTop / (double)PresentationHeight));
+            int right = (int)Math.Round(baseTarget.Width * (_presentationTargetMarginRight / (double)PresentationWidth));
+            int bottom = (int)Math.Round(baseTarget.Height * (_presentationTargetMarginBottom / (double)PresentationHeight));
+            int width = Math.Max(1, baseTarget.Width - left - right);
+            int height = Math.Max(1, baseTarget.Height - top - bottom);
+            return new Rectangle(baseTarget.X + left, baseTarget.Y + top, width, height);
+        }
+
+        /// <summary>
+        /// Returns the uploaded bitmap source area selected for presentation.
+        /// </summary>
+        protected Rectangle GetPresentationSourceRectangle()
+        {
+            return new Rectangle(
+                _presentationCropLeft,
+                _presentationCropTop,
+                PresentationSourceWidth,
+                PresentationSourceHeight);
         }
 
         /// <summary>
@@ -643,7 +760,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Ensure Filter Scratch logic.
+        /// Runs Ensure Filter Scratch.
         /// </summary>
         private void EnsureFilterScratch()
         {
@@ -654,7 +771,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Ensure Bitmap logic.
+        /// Runs Ensure Bitmap.
         /// </summary>
         private void EnsureBitmap()
         {
@@ -712,19 +829,19 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Peek Message logic.
+        /// Runs Peek Message.
         /// </summary>
         [DllImport("user32.dll")]
         private static extern bool PeekMessage(out NativeMessage message, IntPtr windowHandle, uint filterMin, uint filterMax, uint remove);
 
         /// <summary>
-        /// Executes the time Begin Period logic.
+        /// Runs time Begin Period.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern uint timeBeginPeriod(uint milliseconds);
 
         /// <summary>
-        /// Executes the time End Period logic.
+        /// Runs time End Period.
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern uint timeEndPeriod(uint milliseconds);
@@ -736,33 +853,33 @@ namespace SharpPixels
         private struct NativeMessage
         {
             /// <summary>
-            /// Stores the Window Handle.
+            /// Stores Window Handle.
             /// </summary>
             public IntPtr WindowHandle;
             /// <summary>
-            /// Stores the Message.
+            /// Stores Message.
             /// </summary>
             public uint Message;
             /// <summary>
-            /// Stores the W Param.
+            /// Stores W Param.
             /// </summary>
             public UIntPtr WParam;
             /// <summary>
-            /// Stores the L Param.
+            /// Stores L Param.
             /// </summary>
             public IntPtr LParam;
             /// <summary>
-            /// Stores the Time.
+            /// Stores Time.
             /// </summary>
             public uint Time;
             /// <summary>
-            /// Stores the Point.
+            /// Stores Point.
             /// </summary>
             public System.Drawing.Point Point;
         }
 
         /// <summary>
-        /// Executes the To ARGB logic.
+        /// Runs To Argb.
         /// </summary>
         private static uint ToArgb(byte red, byte green, byte blue)
         {
@@ -770,7 +887,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Blend2 logic.
+        /// Runs Blend 2.
         /// </summary>
         private static int Blend2(int first, int second, int firstWeight, int secondWeight)
         {
@@ -782,7 +899,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Blend3 logic.
+        /// Runs Blend 3.
         /// </summary>
         private static int Blend3(int first, int second, int third, int firstWeight, int secondWeight, int thirdWeight)
         {
@@ -794,7 +911,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Scale RGB logic.
+        /// Runs Scale Rgb.
         /// </summary>
         private static int ScaleRgb(int color, int redPercent, int greenPercent, int bluePercent)
         {
@@ -805,7 +922,7 @@ namespace SharpPixels
         }
 
         /// <summary>
-        /// Executes the Blend logic.
+        /// Runs Blend.
         /// </summary>
         private static uint Blend(uint destination, byte red, byte green, byte blue, byte alpha)
         {

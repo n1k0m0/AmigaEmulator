@@ -24,62 +24,62 @@ namespace AmigaEmulator.Core.CustomChips
     public enum DmaOwner
     {
         /// <summary>
-        /// Represents the C pu option.
+        /// Represents CPU.
         /// </summary>
         Cpu,
         /// <summary>
-        /// Represents the R ef re sh option.
+        /// Represents Refresh.
         /// </summary>
         Refresh,
         /// <summary>
-        /// Represents the A ud io option.
+        /// Represents Audio.
         /// </summary>
         Audio,
         /// <summary>
-        /// Represents the D is k option.
+        /// Represents Disk.
         /// </summary>
         Disk,
         /// <summary>
-        /// Represents the S pr it e option.
+        /// Represents Sprite.
         /// </summary>
         Sprite,
         /// <summary>
-        /// Represents the B it pl an e option.
+        /// Represents Bitplane.
         /// </summary>
         Bitplane,
         /// <summary>
-        /// Represents the C op pe r option.
+        /// Represents Copper.
         /// </summary>
         Copper,
         /// <summary>
-        /// Represents the B li tt er option.
+        /// Represents Blitter.
         /// </summary>
         Blitter
     }
 
     /// <summary>
-    /// Describes one fixed OCS DMA slot before register enables and display-window overrides are applied.
+    /// Gets one fixed OCS DMA slot before register enables and display-window overrides are applied.
     /// </summary>
     public struct OcsDmaSlot
     {
         /// <summary>
-        /// Stores the default owner assigned by the PAL OCS DMA slot table.
+        /// Stores default owner assigned by the PAL OCS DMA slot table.
         /// </summary>
         public DmaOwner Owner;
         /// <summary>
-        /// Stores the sprite index for sprite slots.
+        /// Stores sprite index for sprite slots.
         /// </summary>
         public int SpriteIndex;
         /// <summary>
-        /// Stores the first or second word phase inside a sprite slot pair.
+        /// Stores first or second word phase inside a sprite slot pair.
         /// </summary>
         public int SpriteSlotPhase;
         /// <summary>
-        /// Stores the audio channel assigned to an audio DMA slot.
+        /// Stores audio channel assigned to an audio DMA slot.
         /// </summary>
         public int AudioChannelIndex;
         /// <summary>
-        /// Stores the first or second audio slot phase for one channel.
+        /// Stores first or second audio slot phase for one channel.
         /// </summary>
         public int AudioSlotPhase;
     }
@@ -110,24 +110,28 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const int SpriteSlotEndExclusive = 36;
         /// <summary>
-        /// Stores the base PAL OCS DMA slot table.
+        /// Stores base PAL OCS DMA slot table.
         /// </summary>
         private static readonly OcsDmaSlot[] s_ocsPalSlotTable = BuildOcsPalSlotTable();
 
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private readonly CustomRegisterMap _registers;
         /// <summary>
-        /// Tracks the bitplanes.
+        /// Stores bitplanes.
         /// </summary>
         private readonly BitplaneUnit _bitplanes;
         /// <summary>
-        /// Tracks the is Blitter Busy.
+        /// Stores is Blitter Busy.
         /// </summary>
         private System.Func<bool> _isBlitterBusy;
         /// <summary>
-        /// Tracks the is Disk DMA Active.
+        /// Stores whether the Copper needs a DMA slot for its next instruction fetch.
+        /// </summary>
+        private System.Func<bool> _doesCopperNeedBus;
+        /// <summary>
+        /// Stores is Disk DMA Active.
         /// </summary>
         private System.Func<bool> _isDiskDmaActive;
 
@@ -165,6 +169,14 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
+        /// Attaches Copper bus-demand status to this component.
+        /// </summary>
+        public void AttachCopperBusDemand(System.Func<bool> doesCopperNeedBus)
+        {
+            _doesCopperNeedBus = doesCopperNeedBus;
+        }
+
+        /// <summary>
         /// Attaches Disk DMA Status to this component.
         /// </summary>
         public void AttachDiskDmaStatus(System.Func<bool> isDiskDmaActive)
@@ -195,7 +207,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Select Owner logic.
+        /// Runs Select Owner.
         /// </summary>
         private DmaOwner SelectOwner(int beamX, int beamY, OcsDmaSlot baseSlot)
         {
@@ -209,6 +221,7 @@ namespace AmigaEmulator.Core.CustomChips
             bool bitplaneDma = dmaMaster && (dmacon & 0x0100) != 0;
             bool blitterPriority = blitterDma && (dmacon & 0x0400) != 0;
             bool blitterBusy = blitterDma && _isBlitterBusy != null && _isBlitterBusy();
+            bool copperNeedsBus = _doesCopperNeedBus == null || _doesCopperNeedBus();
 
             if (baseSlot.Owner == DmaOwner.Refresh)
             {
@@ -235,7 +248,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return spriteDma ? DmaOwner.Sprite : DmaOwner.Cpu;
             }
 
-            if (copperDma && IsCopperSlot(beamX))
+            if (copperDma && copperNeedsBus && IsCopperSlot(beamX))
             {
                 return DmaOwner.Copper;
             }

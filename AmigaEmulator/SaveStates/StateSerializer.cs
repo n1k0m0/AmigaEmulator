@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -491,7 +491,9 @@ namespace AmigaEmulator.Core.SaveStates
             for (int index = 0; index < allFields.Length; index++)
             {
                 FieldInfo field = allFields[index];
-                if (field.IsStatic || field.IsLiteral || excluded.Contains(field.Name))
+                if (field.IsStatic || field.IsLiteral ||
+                    Attribute.IsDefined(field, typeof(NonSerializedAttribute)) ||
+                    excluded.Contains(field.Name))
                 {
                     continue;
                 }

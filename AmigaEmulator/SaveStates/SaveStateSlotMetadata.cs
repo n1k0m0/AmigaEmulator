@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,19 +24,19 @@ namespace AmigaEmulator.Core.SaveStates
     public enum SaveStateSlotStatus
     {
         /// <summary>
-        /// Represents the E mp ty option.
+        /// Represents Empty.
         /// </summary>
         Empty,
         /// <summary>
-        /// Represents the O cc up ie d option.
+        /// Represents Occupied.
         /// </summary>
         Occupied,
         /// <summary>
-        /// Represents the C or ru pt option.
+        /// Represents Corrupt.
         /// </summary>
         Corrupt,
         /// <summary>
-        /// Represents the I nc om pa ti bl e option.
+        /// Represents Incompatible.
         /// </summary>
         Incompatible
     }
@@ -58,62 +58,62 @@ namespace AmigaEmulator.Core.SaveStates
         }
 
         /// <summary>
-        /// Gets or updates the Slot Index.
+        /// Gets or sets Slot Index.
         /// </summary>
         public int SlotIndex { get; set; }
 
         /// <summary>
-        /// Gets or updates the Status.
+        /// Gets or sets Status.
         /// </summary>
         public SaveStateSlotStatus Status { get; set; }
 
         /// <summary>
-        /// Gets or updates the Path.
+        /// Gets or sets Path.
         /// </summary>
         public string Path { get; set; }
 
         /// <summary>
-        /// Gets or updates the Display Name.
+        /// Gets or sets Display Name.
         /// </summary>
         public string DisplayName { get; set; }
 
         /// <summary>
-        /// Gets or updates the Created Local Time.
+        /// Gets or sets Created Local Time.
         /// </summary>
         public DateTime CreatedLocalTime { get; set; }
 
         /// <summary>
-        /// Gets or updates the Mounted Media.
+        /// Gets or sets Mounted Media.
         /// </summary>
         public MountedMediaInfo MountedMedia { get; set; }
 
         /// <summary>
-        /// Gets or updates the Kickstart.
+        /// Gets or sets Kickstart.
         /// </summary>
         public AmigaKickstart Kickstart { get; set; }
 
         /// <summary>
-        /// Gets or updates the RAM Profile.
+        /// Gets or sets RAM Profile.
         /// </summary>
         public AmigaRamProfile RamProfile { get; set; }
 
         /// <summary>
-        /// Gets or updates the Accuracy Profile.
+        /// Gets or sets Accuracy Profile.
         /// </summary>
         public AmigaAccuracyProfile AccuracyProfile { get; set; }
 
         /// <summary>
-        /// Gets or updates the Screenshot Width.
+        /// Gets or sets Screenshot Width.
         /// </summary>
         public int ScreenshotWidth { get; set; }
 
         /// <summary>
-        /// Gets or updates the Screenshot Height.
+        /// Gets or sets Screenshot Height.
         /// </summary>
         public int ScreenshotHeight { get; set; }
 
         /// <summary>
-        /// Gets or updates the Screenshot Pixels.
+        /// Gets or sets Screenshot Pixels.
         /// </summary>
         public uint[] ScreenshotPixels { get; set; }
 
@@ -134,7 +134,7 @@ namespace AmigaEmulator.Core.SaveStates
         }
 
         /// <summary>
-        /// Executes the Empty logic.
+        /// Runs Empty.
         /// </summary>
         public static SaveStateSlotMetadata Empty(int slotIndex, string path)
         {

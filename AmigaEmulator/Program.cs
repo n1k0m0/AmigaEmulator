@@ -18,6 +18,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using AmigaEmulator.Core;
@@ -38,12 +39,12 @@ namespace AmigaEmulator
     internal static class Program
     {
         /// <summary>
-        /// Tracks the relaxed Bus Diagnostics.
+        /// Stores relaxed Bus Diagnostics.
         /// </summary>
         private static bool _relaxedBusDiagnostics;
 
         /// <summary>
-        /// Executes the Main logic.
+        /// Runs Main.
         /// </summary>
         [STAThread]
         private static void Main(string[] args)
@@ -206,6 +207,58 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-mouse", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_mouse.png");
+                int mouseDx = args.Length >= 4 && int.TryParse(args[3], out int parsedSaveMouseDx) ? parsedSaveMouseDx : 0;
+                int mouseDy = args.Length >= 5 && int.TryParse(args[4], out int parsedSaveMouseDy) ? parsedSaveMouseDy : 0;
+                int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedSaveMouseFrames) && parsedSaveMouseFrames > 0
+                    ? parsedSaveMouseFrames
+                    : 4;
+                DumpSavestateMouse(savePath, imagePath, mouseDx, mouseDy, frames, ParseModelArgument(args, 6));
+                Console.WriteLine("Savestate mouse frame written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-mouse-planar", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_planar.png");
+                int mouseDx = args.Length >= 4 && int.TryParse(args[3], out int parsedPlanarDx) ? parsedPlanarDx : 0;
+                int mouseDy = args.Length >= 5 && int.TryParse(args[4], out int parsedPlanarDy) ? parsedPlanarDy : 0;
+                int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedPlanarFrames) && parsedPlanarFrames >= 0
+                    ? parsedPlanarFrames
+                    : 4;
+                uint baseAddress = args.Length >= 7 ? Convert.ToUInt32(args[6].Replace("$", string.Empty), 16) : 0x000523FEu;
+                int planes = args.Length >= 8 && int.TryParse(args[7], out int parsedPlanarPlanes) && parsedPlanarPlanes > 0 ? parsedPlanarPlanes : 4;
+                int wordsPerLine = args.Length >= 9 && int.TryParse(args[8], out int parsedPlanarWords) && parsedPlanarWords > 0 ? parsedPlanarWords : 20;
+                int lines = args.Length >= 10 && int.TryParse(args[9], out int parsedPlanarLines) && parsedPlanarLines > 0 ? parsedPlanarLines : 200;
+                DumpSavestateMousePlanar(savePath, imagePath, mouseDx, mouseDy, frames, baseAddress, planes, wordsPerLine, lines, ParseModelArgument(args, 10));
+                Console.WriteLine("Savestate planar image written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-click", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_click.png");
+                int mouseDx = args.Length >= 4 && int.TryParse(args[3], out int parsedClickDx) ? parsedClickDx : 0;
+                int mouseDy = args.Length >= 5 && int.TryParse(args[4], out int parsedClickDy) ? parsedClickDy : 0;
+                int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedClickFrames) && parsedClickFrames > 0
+                    ? parsedClickFrames
+                    : 50;
+                DumpSavestateClick(savePath, imagePath, mouseDx, mouseDy, frames, ParseModelArgument(args, 6));
+                Console.WriteLine("Savestate click frame written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-frame-poke-viewlist", StringComparison.OrdinalIgnoreCase))
             {
                 int cycles = args.Length >= 2 && int.TryParse(args[1], out int parsedDumpPokeCycles) && parsedDumpPokeCycles > 0
@@ -248,6 +301,28 @@ namespace AmigaEmulator
                     ? args[4]
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_adf_boot_fire.png");
                 DiagnoseAdfBootFire(adfPath, preCycles, postCycles, imagePath, ParseModelArgument(args, 5));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--diagnose-adf-boot-mouse", StringComparison.OrdinalIgnoreCase))
+            {
+                string adfPath = args.Length >= 2 ? args[1] : string.Empty;
+                int preCycles = args.Length >= 3 && int.TryParse(args[2], out int parsedPreMouseCycles) && parsedPreMouseCycles > 0
+                    ? parsedPreMouseCycles
+                    : 240000000;
+                int mouseDx = args.Length >= 4 && int.TryParse(args[3], out int parsedMouseDx)
+                    ? parsedMouseDx
+                    : 0;
+                int mouseDy = args.Length >= 5 && int.TryParse(args[4], out int parsedMouseDy)
+                    ? parsedMouseDy
+                    : 0;
+                int postCycles = args.Length >= 6 && int.TryParse(args[5], out int parsedPostMouseCycles) && parsedPostMouseCycles > 0
+                    ? parsedPostMouseCycles
+                    : 120000000;
+                string imagePath = args.Length >= 7
+                    ? args[6]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_adf_boot_mouse.png");
+                DiagnoseAdfBootMouse(adfPath, preCycles, mouseDx, mouseDy, postCycles, imagePath, ParseModelArgument(args, 7));
                 return;
             }
 
@@ -692,6 +767,85 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-blit-words", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedSaveBlitWordCycles) && parsedSaveBlitWordCycles > 0
+                    ? parsedSaveBlitWordCycles
+                    : 10000000;
+                int maxWords = args.Length >= 4 && int.TryParse(args[3], out int parsedSaveMaxBlitWords) && parsedSaveMaxBlitWords > 0
+                    ? parsedSaveMaxBlitWords
+                    : 256;
+                uint filterStart = args.Length >= 5 ? Convert.ToUInt32(args[4].Replace("$", string.Empty), 16) : 0u;
+                uint filterEnd = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0u;
+                TraceSavestateBlitWords(savePath, cycles, maxWords, filterStart, filterEnd, ParseModelArgument(args, 6));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-mouse-blit-words", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int mouseDx = args.Length >= 3 && int.TryParse(args[2], out int parsedTraceMouseDx) ? parsedTraceMouseDx : 0;
+                int mouseDy = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceMouseDy) ? parsedTraceMouseDy : 0;
+                int cycles = args.Length >= 5 && int.TryParse(args[4], out int parsedTraceMouseBlitCycles) && parsedTraceMouseBlitCycles > 0
+                    ? parsedTraceMouseBlitCycles
+                    : 10000000;
+                int maxWords = args.Length >= 6 && int.TryParse(args[5], out int parsedTraceMouseBlitMaxWords) && parsedTraceMouseBlitMaxWords > 0
+                    ? parsedTraceMouseBlitMaxWords
+                    : 256;
+                uint filterStart = args.Length >= 7 ? Convert.ToUInt32(args[6].Replace("$", string.Empty), 16) : 0u;
+                uint filterEnd = args.Length >= 8 ? Convert.ToUInt32(args[7].Replace("$", string.Empty), 16) : 0u;
+                long startCycle = ParseLongOption(args, "--start-cycle", 0);
+                TraceSavestateMouseBlitWords(savePath, mouseDx, mouseDy, cycles, maxWords, filterStart, filterEnd, startCycle, ParseModelArgument(args, 8));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-mouse-writes", StringComparison.OrdinalIgnoreCase))
+            {
+                if (args.Length < 7)
+                {
+                    Console.WriteLine("Usage: --trace-savestate-mouse-writes <save> <dx> <dy> <cycles> <startHex> <endHex> [maxWrites]");
+                    return;
+                }
+
+                string savePath = args[1];
+                int mouseDx = int.Parse(args[2]);
+                int mouseDy = int.Parse(args[3]);
+                int cycles = int.Parse(args[4]);
+                uint filterStart = Convert.ToUInt32(args[5].Replace("$", string.Empty), 16);
+                uint filterEnd = Convert.ToUInt32(args[6].Replace("$", string.Empty), 16);
+                int maxWrites = args.Length >= 8 && int.TryParse(args[7], out int parsedTraceMouseMaxWrites) && parsedTraceMouseMaxWrites > 0
+                    ? parsedTraceMouseMaxWrites
+                    : 200;
+                long startCycle = ParseLongOption(args, "--start-cycle", 0);
+                TraceSavestateMouseWrites(savePath, mouseDx, mouseDy, cycles, filterStart, filterEnd, maxWrites, startCycle, ParseModelArgument(args, 8));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-mouse-before-pc", StringComparison.OrdinalIgnoreCase))
+            {
+                if (args.Length < 6)
+                {
+                    Console.WriteLine("Usage: --trace-savestate-mouse-before-pc <save> <dx> <dy> <cycles> <pcHex> [samples] [hit]");
+                    return;
+                }
+
+                string savePath = args[1];
+                int mouseDx = int.Parse(args[2]);
+                int mouseDy = int.Parse(args[3]);
+                int cycles = int.Parse(args[4]);
+                uint pc = Convert.ToUInt32(args[5].Replace("$", string.Empty), 16);
+                int samples = args.Length >= 7 && int.TryParse(args[6], out int parsedSamples) && parsedSamples > 0
+                    ? parsedSamples
+                    : 48;
+                int hit = args.Length >= 8 && int.TryParse(args[7], out int parsedHit) && parsedHit > 0
+                    ? parsedHit
+                    : 1;
+                long startCycle = ParseLongOption(args, "--start-cycle", 0);
+                TraceSavestateMouseBeforePc(savePath, mouseDx, mouseDy, cycles, pc, samples, hit, startCycle, ParseModelArgument(args, 8));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-copper", StringComparison.OrdinalIgnoreCase))
             {
                 int cycles = args.Length >= 2 && int.TryParse(args[1], out int parsedCopperCycles) && parsedCopperCycles > 0
@@ -753,7 +907,11 @@ namespace AmigaEmulator
                 string logPath = args.Length >= 5
                     ? args[4]
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_trace_after_pc.jsonl");
-                TraceAfterPc(pc, hit, cycles, logPath, ParseModelArgument(args, 5));
+                bool hasTraceAfterSearchCycles = args.Length >= 6 && !string.Equals(args[5], "--model", StringComparison.OrdinalIgnoreCase);
+                int maxSearchCycles = hasTraceAfterSearchCycles && int.TryParse(args[5], out int parsedTraceAfterSearchCycles) && parsedTraceAfterSearchCycles > 0
+                    ? parsedTraceAfterSearchCycles
+                    : 10000000;
+                TraceAfterPc(pc, hit, cycles, maxSearchCycles, logPath, ParseModelArgument(args, hasTraceAfterSearchCycles ? 6 : 5));
                 return;
             }
 
@@ -1127,6 +1285,20 @@ namespace AmigaEmulator
                     Console.WriteLine("FAIL disk motor did not latch off when selected with motor line high");
                 }
 
+                controller.ApplyCiaBPort(0x77, 0xFF);
+                if (!controller.Drive0.Selected || !controller.Drive0.MotorOn)
+                {
+                    failures++;
+                    Console.WriteLine("FAIL disk motor did not relatch on while selected");
+                }
+
+                controller.ApplyCiaBPort(0xF7, 0xFF);
+                if (!controller.Drive0.Selected || controller.Drive0.MotorOn)
+                {
+                    failures++;
+                    Console.WriteLine("FAIL disk motor did not follow motor line high while selected");
+                }
+
                 var stepController = new AmigaEmulator.Core.Media.FloppyController();
                 stepController.ApplyCiaBPort(0x75, 0xFF);
                 stepController.ApplyCiaBPort(0x74, 0xFF);
@@ -1215,7 +1387,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Parse Benchmark Accuracy Options logic.
+        /// Runs Parse Benchmark Accuracy Options.
         /// </summary>
         private static AmigaAccuracyOptions ParseBenchmarkAccuracyOptions(string profile)
         {
@@ -1261,7 +1433,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print Profile Line logic.
+        /// Runs Print Profile Line.
         /// </summary>
         private static void PrintProfileLine(string name, long ticks, AmigaSystemComponentProfile profile)
         {
@@ -1335,6 +1507,94 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Dumps a frame after restoring a savestate and feeding relative mouse movement.
+        /// </summary>
+        private static void DumpSavestateMouse(string savePath, string imagePath, int mouseDx, int mouseDy, int framesToRun, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
+                for (int frame = 0; frame < framesToRun; frame++)
+                {
+                    system.RunChipCycles(frameCycles);
+                }
+
+                SaveFrameBuffer(system.PresentedFrameBuffer, imagePath);
+                Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy + " Frames=" + framesToRun);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Dumps a planar chip-memory buffer after restoring a savestate and feeding relative mouse movement.
+        /// </summary>
+        private static void DumpSavestateMousePlanar(string savePath, string imagePath, int mouseDx, int mouseDy, int framesToRun, uint baseAddress, int planes, int wordsPerLine, int lines, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
+                for (int frame = 0; frame < framesToRun; frame++)
+                {
+                    system.RunChipCycles(frameCycles);
+                }
+
+                SavePlanarMemoryImage(system, imagePath, baseAddress, planes, wordsPerLine, lines);
+                Console.WriteLine(string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    "MouseDx={0} MouseDy={1} Frames={2} Base=${3:X6} Planes={4} WordsPerLine={5} Lines={6}",
+                    mouseDx,
+                    mouseDy,
+                    framesToRun,
+                    baseAddress,
+                    planes,
+                    wordsPerLine,
+                    lines));
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+            }
+        }
+
+        /// <summary>
+        /// Dumps a frame after restoring a savestate, moving the mouse, and clicking.
+        /// </summary>
+        private static void DumpSavestateClick(string savePath, string imagePath, int mouseDx, int mouseDy, int framesToRun, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                system.RunChipCycles(200000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
+                Console.WriteLine("MouseDown JOY0DAT=$" + system.Bus.ReadWord(0x00DFF00A).ToString("X4") + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
+                system.RunChipCycles(2000000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
+                int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
+                for (int frame = 0; frame < framesToRun; frame++)
+                {
+                    system.RunChipCycles(frameCycles);
+                }
+
+                SaveFrameBuffer(system.PresentedFrameBuffer, imagePath);
+                Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy + " Frames=" + framesToRun);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
         /// Prints the display-related custom registers for savestate diagnostics.
         /// </summary>
         private static void DumpVideoRegisterSummary(AmigaSystem system)
@@ -1344,6 +1604,8 @@ namespace AmigaEmulator
             Console.WriteLine("BPLCON0=$" + registers.ReadWord(0x100).ToString("X4"));
             Console.WriteLine("BPLCON1=$" + registers.ReadWord(0x102).ToString("X4"));
             Console.WriteLine("BPLCON2=$" + registers.ReadWord(0x104).ToString("X4"));
+            Console.WriteLine("BPL1MOD=$" + registers.ReadWord(0x108).ToString("X4"));
+            Console.WriteLine("BPL2MOD=$" + registers.ReadWord(0x10A).ToString("X4"));
             Console.WriteLine("DIWSTRT=$" + registers.ReadWord(0x08E).ToString("X4"));
             Console.WriteLine("DIWSTOP=$" + registers.ReadWord(0x090).ToString("X4"));
             Console.WriteLine("DDFSTRT=$" + registers.ReadWord(0x092).ToString("X4"));
@@ -1357,6 +1619,22 @@ namespace AmigaEmulator
             {
                 uint address = ((uint)registers.ReadWord((uint)(0x0E0 + (index * 4))) << 16) | registers.ReadWord((uint)(0x0E2 + (index * 4)));
                 Console.WriteLine("BPL" + (index + 1) + "PT=$" + address.ToString("X8"));
+            }
+
+            for (int index = 0; index < 8; index++)
+            {
+                uint pointer = ((uint)registers.ReadWord((uint)(0x120 + (index * 4))) << 16) | registers.ReadWord((uint)(0x122 + (index * 4)));
+                uint registerBase = 0x140u + (uint)(index * 8);
+                Console.WriteLine(
+                    "SPR" + index + "PT=$" + pointer.ToString("X8") +
+                    " POS=$" + registers.ReadWord(registerBase).ToString("X4") +
+                    " CTL=$" + registers.ReadWord(registerBase + 2u).ToString("X4") +
+                    " DATA=$" + registers.ReadWord(registerBase + 4u).ToString("X4") +
+                    " DATB=$" + registers.ReadWord(registerBase + 6u).ToString("X4"));
+                if (pointer != 0)
+                {
+                    DumpChipWords(system, "SPR" + index + "LIST", pointer, 24);
+                }
             }
 
             DumpChipWords(system, "COP1", cop1, 80);
@@ -1398,11 +1676,72 @@ namespace AmigaEmulator
             using (var bitmap = new Bitmap(frameBuffer.Width, frameBuffer.Height, PixelFormat.Format32bppArgb))
             {
                 uint[] pixels = frameBuffer.Pixels;
-                for (int y = 0; y < frameBuffer.Height; y++)
+                var data = bitmap.LockBits(
+                    new Rectangle(0, 0, frameBuffer.Width, frameBuffer.Height),
+                    ImageLockMode.WriteOnly,
+                    PixelFormat.Format32bppArgb);
+                try
                 {
-                    for (int x = 0; x < frameBuffer.Width; x++)
+                    if (data.Stride == frameBuffer.Width * 4)
                     {
-                        bitmap.SetPixel(x, y, Color.FromArgb(unchecked((int)pixels[(y * frameBuffer.Width) + x])));
+                        var signedPixels = new int[pixels.Length];
+                        Buffer.BlockCopy(pixels, 0, signedPixels, 0, pixels.Length * 4);
+                        Marshal.Copy(signedPixels, 0, data.Scan0, signedPixels.Length);
+                    }
+                    else
+                    {
+                        var row = new int[frameBuffer.Width];
+                        for (int y = 0; y < frameBuffer.Height; y++)
+                        {
+                            Buffer.BlockCopy(pixels, y * frameBuffer.Width * 4, row, 0, frameBuffer.Width * 4);
+                            Marshal.Copy(row, 0, data.Scan0 + (y * data.Stride), row.Length);
+                        }
+                    }
+                }
+                finally
+                {
+                    bitmap.UnlockBits(data);
+                }
+
+                bitmap.Save(imagePath, ImageFormat.Png);
+            }
+        }
+
+        /// <summary>
+        /// Writes a plane-major chip-memory screen buffer to a PNG file.
+        /// </summary>
+        private static void SavePlanarMemoryImage(AmigaSystem system, string imagePath, uint baseAddress, int planes, int wordsPerLine, int lines)
+        {
+            string directory = Path.GetDirectoryName(Path.GetFullPath(imagePath));
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            planes = Math.Max(1, Math.Min(6, planes));
+            wordsPerLine = Math.Max(1, wordsPerLine);
+            lines = Math.Max(1, lines);
+            int width = wordsPerLine * 16;
+            int planeStride = wordsPerLine * lines * 2;
+            var registers = system.Agnus.CustomRegisters;
+
+            using (var bitmap = new Bitmap(width, lines, PixelFormat.Format32bppArgb))
+            {
+                for (int y = 0; y < lines; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        int colorIndex = 0;
+                        int wordIndex = x >> 4;
+                        int bit = 15 - (x & 0x0F);
+                        for (int plane = 0; plane < planes; plane++)
+                        {
+                            uint address = (baseAddress + (uint)(plane * planeStride) + (uint)((y * wordsPerLine + wordIndex) * 2)) & 0x00FFFFFEu;
+                            ushort word = (ushort)((system.Bus.ChipRam.Read(address) << 8) | system.Bus.ChipRam.Read(address + 1u));
+                            colorIndex |= ((word >> bit) & 1) << plane;
+                        }
+
+                        bitmap.SetPixel(x, y, Color.FromArgb(unchecked((int)ReadColorRegister(registers, colorIndex))));
                     }
                 }
 
@@ -1439,7 +1778,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Diagnose ADF Boot logic.
+        /// Runs Diagnose Adf Boot.
         /// </summary>
         private static void DiagnoseAdfBoot(string adfPath, int cycles, string imagePath, AmigaModel model)
         {
@@ -1452,13 +1791,13 @@ namespace AmigaEmulator
 
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, AmigaAccuracyOptions.Fast.Clone()))
             {
+                var image = AdfImage.Load(adfPath);
+                system.Bus.FloppyController.InsertDrive0(image, true);
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
                     system.LoadKickstart(romBytes);
                 }
 
-                var image = AdfImage.Load(adfPath);
-                system.Bus.FloppyController.InsertDrive0(image, true);
                 system.RunChipCycles(cycles);
                 SaveFrame(system, imagePath);
 
@@ -1468,7 +1807,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Diagnose ADF Boot Fire logic.
+        /// Runs Diagnose Adf Boot Fire.
         /// </summary>
         private static void DiagnoseAdfBootFire(string adfPath, int preCycles, int postCycles, string imagePath, AmigaModel model)
         {
@@ -1481,12 +1820,12 @@ namespace AmigaEmulator
 
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, AmigaAccuracyOptions.Fast.Clone()))
             {
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
                     system.LoadKickstart(romBytes);
                 }
 
-                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
                 system.RunChipCycles(preCycles);
                 system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
                 system.Input.SetJoystickButton(AmigaControlPort.Port1, AmigaJoystickButtons.Fire, true);
@@ -1499,6 +1838,66 @@ namespace AmigaEmulator
                 DumpAdfBootDiagnostics(system, adfPath, preCycles + 400000 + postCycles);
                 Console.WriteLine("InjectedFireAt=" + preCycles);
                 Console.WriteLine("Frame written: " + Path.GetFullPath(imagePath));
+            }
+        }
+
+        /// <summary>
+        /// Boots an ADF, moves the emulated mouse by a relative delta, clicks, and dumps diagnostics.
+        /// </summary>
+        private static void DiagnoseAdfBootMouse(string adfPath, int preCycles, int mouseDx, int mouseDy, int postCycles, string imagePath, AmigaModel model)
+        {
+            if (string.IsNullOrWhiteSpace(adfPath) || !File.Exists(adfPath))
+            {
+                Console.WriteLine("ADF not found: " + adfPath);
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
+                {
+                    system.LoadKickstart(romBytes);
+                }
+
+                system.RunChipCycles(preCycles);
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                system.RunChipCycles(200000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
+                Console.WriteLine("MouseDown JOY0DAT=$" + system.Bus.ReadWord(0x00DFF00A).ToString("X4") + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
+                system.RunChipCycles(2000000);
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
+                system.RunChipCycles(postCycles);
+                SaveFrame(system, imagePath);
+
+                DumpAdfBootDiagnostics(system, adfPath, preCycles + 600000 + postCycles);
+                Console.WriteLine("InjectedMouseAt=" + preCycles + " dx=" + mouseDx + " dy=" + mouseDy);
+                Console.WriteLine("Frame written: " + Path.GetFullPath(imagePath));
+            }
+        }
+
+        /// <summary>
+        /// Feeds relative mouse movement in small timed deltas so software polling JOYxDAT sees real motion.
+        /// </summary>
+        private static void MoveMouseGradually(AmigaSystem system, AmigaControlPort port, int dx, int dy, int cyclesPerStep)
+        {
+            int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+            if (steps == 0)
+            {
+                return;
+            }
+
+            int lastX = 0;
+            int lastY = 0;
+            for (int step = 1; step <= steps; step++)
+            {
+                int nextX = (dx * step) / steps;
+                int nextY = (dy * step) / steps;
+                system.Input.MoveMouse(port, nextX - lastX, nextY - lastY);
+                system.RunChipCycles(cyclesPerStep);
+                lastX = nextX;
+                lastY = nextY;
             }
         }
 
@@ -1525,13 +1924,15 @@ namespace AmigaEmulator
             Console.WriteLine("INTENA=$" + system.Agnus.CustomRegisters.InterruptEnable.ToString("X4") + " LEVEL=" + system.Agnus.CustomRegisters.ActiveInterruptLevel);
             Console.WriteLine("INTREQ=$" + system.Agnus.CustomRegisters.InterruptRequest.ToString("X4"));
             Console.WriteLine("DMACON=$" + system.Agnus.CustomRegisters.DmaControl.ToString("X4"));
+            Console.WriteLine("JOY0DAT=$" + system.Bus.ReadWord(0x00DFF00A).ToString("X4") + " JOY1DAT=$" + system.Bus.ReadWord(0x00DFF00C).ToString("X4") + " POTINP=$" + system.Bus.ReadWord(0x00DFF016).ToString("X4"));
+            Console.WriteLine("SPR0POS=$" + system.Bus.PeekWord(0x00DFF140).ToString("X4") + " SPR0CTL=$" + system.Bus.PeekWord(0x00DFF142).ToString("X4") + " SPR1POS=$" + system.Bus.PeekWord(0x00DFF148).ToString("X4") + " SPR1CTL=$" + system.Bus.PeekWord(0x00DFF14A).ToString("X4"));
             DumpCpuRegisters(system);
             DumpWords(system, system.Cpu.PC >= 16 ? system.Cpu.PC - 16u : system.Cpu.PC, 16, "PCCTX");
             DumpDisplayRegisters(system);
         }
 
         /// <summary>
-        /// Executes the Diagnose ADF Bootblock logic.
+        /// Runs Diagnose Adf Bootblock.
         /// </summary>
         private static void DiagnoseAdfBootblock(string adfPath, int cycles, AmigaModel model)
         {
@@ -1579,7 +1980,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Diagnose ADF DMA Block logic.
+        /// Runs Diagnose Adf Dma Block.
         /// </summary>
         private static void DiagnoseAdfDmaBlock(string adfPath, int targetBlock, int maxCycles, AmigaModel model)
         {
@@ -1635,7 +2036,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print Raw Word Pattern logic.
+        /// Runs Print Raw Word Pattern.
         /// </summary>
         private static void PrintRawWordPattern(AmigaSystem system, uint start, uint length, ushort[] pattern, string label)
         {
@@ -1687,7 +2088,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print MFM Candidates logic.
+        /// Runs Print Mfm Candidates.
         /// </summary>
         private static void PrintMfmCandidates(AmigaSystem system, uint start, uint length, int maxCandidates)
         {
@@ -1719,7 +2120,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Words logic.
+        /// Runs Format Words.
         /// </summary>
         private static string FormatWords(AmigaSystem system, uint address, int words)
         {
@@ -1777,7 +2178,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Track Words logic.
+        /// Runs Format Track Words.
         /// </summary>
         private static string FormatTrackWords(AdfTrackStream track, int startWord, int words)
         {
@@ -1899,15 +2300,15 @@ namespace AmigaEmulator
 
             data = new byte[AdfImage.SectorSize];
             /// <summary>
-            /// Defines the data Offset Words constant.
+            /// Constant for data Offset Words.
             /// </summary>
             const int dataOffsetWords = 28;
             /// <summary>
-            /// Defines the data Longs constant.
+            /// Constant for data Longs.
             /// </summary>
             const int dataLongs = AdfImage.SectorSize / 4;
             /// <summary>
-            /// Defines the even Data Offset Words constant.
+            /// Constant for even Data Offset Words.
             /// </summary>
             const int evenDataOffsetWords = dataOffsetWords + (dataLongs * 2);
             for (int index = 0; index < dataLongs; index++)
@@ -1926,7 +2327,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Compute MFM Checksum logic.
+        /// Runs Compute Mfm Checksum.
         /// </summary>
         private static uint ComputeMfmChecksum(Func<int, ushort> readWord, int offsetWords, int encodedLongCount)
         {
@@ -2051,7 +2452,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Count Matching Prefix logic.
+        /// Runs Count Matching Prefix.
         /// </summary>
         private static int CountMatchingPrefix(AmigaSystem system, uint address, byte[] expected)
         {
@@ -2067,7 +2468,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Count Differences logic.
+        /// Runs Count Differences.
         /// </summary>
         private static int CountDifferences(AmigaSystem system, uint address, byte[] expected)
         {
@@ -2084,7 +2485,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Count Byte Differences logic.
+        /// Runs Count Byte Differences.
         /// </summary>
         private static int CountByteDifferences(byte[] actual, byte[] expected)
         {
@@ -2116,7 +2517,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Compute Amiga Bootblock Checksum logic.
+        /// Runs Compute Amiga Bootblock Checksum.
         /// </summary>
         private static uint ComputeAmigaBootblockChecksum(byte[] bytes)
         {
@@ -2141,7 +2542,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Bytes logic.
+        /// Runs Format Bytes.
         /// </summary>
         private static string FormatBytes(byte[] bytes, int offset, int count)
         {
@@ -2331,7 +2732,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print Floppy Probe Line logic.
+        /// Runs Print Floppy Probe Line.
         /// </summary>
         private static void PrintFloppyProbeLine(AmigaSystem system, string access, AmigaAddressRegion region, uint address, uint value, ref int lines)
         {
@@ -2408,7 +2809,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Diagnose ADF Insert After logic.
+        /// Runs Diagnose Adf Insert After.
         /// </summary>
         private static void DiagnoseAdfInsertAfter(string adfPath, int preCycles, int postCycles, string imagePath, AmigaModel model)
         {
@@ -2612,7 +3013,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Analyze Frame logic.
+        /// Runs Analyze Frame.
         /// </summary>
         private static FrameImageMetrics AnalyzeFrame(AmigaSystem system)
         {
@@ -2760,7 +3161,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Classify ADF Matrix Case logic.
+        /// Runs Classify Adf Matrix Case.
         /// </summary>
         private static string ClassifyAdfMatrixCase(AmigaSystem system, FrameImageMetrics metrics)
         {
@@ -2819,40 +3220,40 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Provides Frame Image Metrics behavior used by the emulator.
+        /// Provides Frame Image Metrics functionality.
         /// </summary>
         private sealed class FrameImageMetrics
         {
             /// <summary>
-            /// Stores the Activity.
+            /// Stores Activity.
             /// </summary>
             public string Activity;
             /// <summary>
-            /// Stores the Unique Colors.
+            /// Stores Unique Colors.
             /// </summary>
             public int UniqueColors;
             /// <summary>
-            /// Stores the Non Background Pixels.
+            /// Stores Non Background Pixels.
             /// </summary>
             public int NonBackgroundPixels;
             /// <summary>
-            /// Stores the deterministic hash of the presented frame.
+            /// Stores deterministic hash of the presented frame.
             /// </summary>
             public ulong FrameHash;
             /// <summary>
-            /// Stores the dominant ARGB color.
+            /// Stores dominant ARGB color.
             /// </summary>
             public uint DominantColor;
             /// <summary>
-            /// Stores the dominant ARGB color percentage.
+            /// Stores dominant ARGB color percentage.
             /// </summary>
             public double DominantPercent;
             /// <summary>
-            /// Stores the non-background pixel count in the outer frame border.
+            /// Stores non-background pixel count in the outer frame border.
             /// </summary>
             public int EdgeNonBackgroundPixels;
             /// <summary>
-            /// Stores the non-background percentage in the outer frame border.
+            /// Stores non-background percentage in the outer frame border.
             /// </summary>
             public double EdgeNonBackgroundPercent;
             /// <summary>
@@ -2862,133 +3263,133 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Provides ADF Matrix Result behavior used by the emulator.
+        /// Provides ADF Matrix Result functionality.
         /// </summary>
         private sealed class AdfMatrixResult
         {
             /// <summary>
-            /// Stores the ADF Name.
+            /// Stores ADF Name.
             /// </summary>
             public string AdfName;
             /// <summary>
-            /// Stores the relative or absolute ADF path.
+            /// Stores relative or absolute ADF path.
             /// </summary>
             public string AdfPath;
             /// <summary>
-            /// Stores the Model Name.
+            /// Stores Model Name.
             /// </summary>
             public string ModelName;
             /// <summary>
-            /// Stores the Cycles.
+            /// Stores Cycles.
             /// </summary>
             public int Cycles;
             /// <summary>
-            /// Stores the Frame.
+            /// Stores Frame.
             /// </summary>
             public long Frame;
             /// <summary>
-            /// Stores the PC.
+            /// Stores PC.
             /// </summary>
             public uint Pc;
             /// <summary>
-            /// Stores the Opcode.
+            /// Stores Opcode.
             /// </summary>
             public ushort Opcode;
             /// <summary>
-            /// Stores the SR.
+            /// Stores SR.
             /// </summary>
             public ushort Sr;
             /// <summary>
-            /// Stores the Category.
+            /// Stores Category.
             /// </summary>
             public string Category;
             /// <summary>
-            /// Stores the Image Activity.
+            /// Stores Image Activity.
             /// </summary>
             public string ImageActivity;
             /// <summary>
-            /// Stores the Unique Colors.
+            /// Stores Unique Colors.
             /// </summary>
             public int UniqueColors;
             /// <summary>
-            /// Stores the Non Background Pixels.
+            /// Stores Non Background Pixels.
             /// </summary>
             public int NonBackgroundPixels;
             /// <summary>
-            /// Stores the deterministic hash of the presented frame.
+            /// Stores deterministic hash of the presented frame.
             /// </summary>
             public ulong FrameHash;
             /// <summary>
-            /// Stores the dominant ARGB color in the presented frame.
+            /// Stores dominant ARGB color in the presented frame.
             /// </summary>
             public uint DominantColor;
             /// <summary>
-            /// Stores the percentage covered by the dominant color.
+            /// Stores percentage covered by the dominant color.
             /// </summary>
             public double DominantPercent;
             /// <summary>
-            /// Stores the non-background pixel count in the outer frame border.
+            /// Stores non-background pixel count in the outer frame border.
             /// </summary>
             public int EdgeNonBackgroundPixels;
             /// <summary>
-            /// Stores the non-background percentage in the outer frame border.
+            /// Stores non-background percentage in the outer frame border.
             /// </summary>
             public double EdgeNonBackgroundPercent;
             /// <summary>
-            /// Stores the visual warning flags derived from the presented frame.
+            /// Stores visual warning flags derived from the presented frame.
             /// </summary>
             public string GlitchFlags;
             /// <summary>
-            /// Stores the Df0.
+            /// Stores Df0.
             /// </summary>
             public string Df0;
             /// <summary>
-            /// Stores the Paula.
+            /// Stores Paula.
             /// </summary>
             public string Paula;
             /// <summary>
-            /// Stores the Paula Audio.
+            /// Stores Paula Audio.
             /// </summary>
             public string PaulaAudio;
             /// <summary>
-            /// Stores the Dmacon.
+            /// Stores Dmacon.
             /// </summary>
             public ushort Dmacon;
             /// <summary>
-            /// Stores the Intena.
+            /// Stores Intena.
             /// </summary>
             public ushort Intena;
             /// <summary>
-            /// Stores the Intreq.
+            /// Stores Intreq.
             /// </summary>
             public ushort Intreq;
             /// <summary>
-            /// Stores the Bplcon0.
+            /// Stores Bplcon0.
             /// </summary>
             public ushort Bplcon0;
             /// <summary>
-            /// Stores the Bplcon1.
+            /// Stores Bplcon1.
             /// </summary>
             public ushort Bplcon1;
             /// <summary>
-            /// Stores the Cop1 Lc.
+            /// Stores Cop1 Lc.
             /// </summary>
             public uint Cop1Lc;
             /// <summary>
-            /// Stores the Bpl1 Pt.
+            /// Stores Bpl1 Pt.
             /// </summary>
             public uint Bpl1Pt;
             /// <summary>
-            /// Stores the Bpl2 Pt.
+            /// Stores Bpl2 Pt.
             /// </summary>
             public uint Bpl2Pt;
             /// <summary>
-            /// Stores the Screenshot.
+            /// Stores Screenshot.
             /// </summary>
             public string Screenshot;
 
             /// <summary>
-            /// Executes the To Csv Line logic.
+            /// Runs To Csv Line.
             /// </summary>
             public string ToCsvLine()
             {
@@ -3312,7 +3713,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Diagnose Kickstart Display logic.
+        /// Runs Diagnose Kickstart Display.
         /// </summary>
         private static void DiagnoseKickstartDisplay(int cycles, AmigaModel model)
         {
@@ -3497,7 +3898,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Graphics Object Printer logic.
+        /// Runs Graphics Object Printer.
         /// </summary>
         private delegate bool GraphicsObjectPrinter(AmigaSystem system, uint address);
 
@@ -3632,7 +4033,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Looks Like Ras Info logic.
+        /// Runs Looks Like Ras Info.
         /// </summary>
         private static bool LooksLikeRasInfo(AmigaSystem system, uint address)
         {
@@ -3682,7 +4083,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Looks Like Bit Map logic.
+        /// Runs Looks Like Bit Map.
         /// </summary>
         private static bool LooksLikeBitMap(AmigaSystem system, uint address)
         {
@@ -4356,7 +4757,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print Write Trace logic.
+        /// Runs Print Write Trace.
         /// </summary>
         private static void PrintWriteTrace(AmigaSystem system, string source, string region, uint address, int size, uint value)
         {
@@ -4364,7 +4765,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print Bus Trace logic.
+        /// Runs Print Bus Trace.
         /// </summary>
         private static void PrintBusTrace(AmigaSystem system, string source, string region, uint address, int size, uint value)
         {
@@ -4387,7 +4788,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print Trace Register Context logic.
+        /// Runs Print Trace Register Context.
         /// </summary>
         private static void PrintTraceRegisterContext(AmigaSystem system)
         {
@@ -4611,7 +5012,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Clamp To Pcm16 logic.
+        /// Runs Clamp To Pcm 16.
         /// </summary>
         private static short ClampToPcm16(float value)
         {
@@ -4905,7 +5306,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print blitter Trace logic.
+        /// Runs Print Blit Trace.
         /// </summary>
         private static void PrintBlitTrace(AmigaSystem system, int index, int widthWords, int heightLines, uint targetStart, uint targetEnd)
         {
@@ -5026,7 +5427,312 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Print blitter Word Trace logic.
+        /// Traces blitter destination words after restoring a savestate.
+        /// </summary>
+        private static void TraceSavestateBlitWords(string savePath, int cycles, int maxWords, uint filterStart, uint filterEnd, AmigaModel model)
+        {
+            if (filterEnd < filterStart)
+            {
+                uint swap = filterStart;
+                filterStart = filterEnd;
+                filterEnd = swap;
+            }
+
+            bool useFilter = filterStart != 0 || filterEnd != 0;
+            filterStart &= 0x00FFFFFEu;
+            filterEnd &= 0x00FFFFFEu;
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                int words = 0;
+                system.Agnus.Blitter.WordExecuted += delegate(BlitterWordTraceEntry entry)
+                {
+                    if (words >= maxWords)
+                    {
+                        return;
+                    }
+
+                    uint d = entry.DAddress & 0x00FFFFFEu;
+                    if (useFilter && (d < filterStart || d > filterEnd))
+                    {
+                        return;
+                    }
+
+                    PrintBlitWordTrace(system, words + 1, entry);
+                    words++;
+                };
+
+                for (int cycle = 0; cycle < cycles && words < maxWords; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                Console.WriteLine("BlitWords=" + words);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Traces blitter destination words after restoring a savestate and feeding relative mouse movement.
+        /// </summary>
+        private static void TraceSavestateMouseBlitWords(string savePath, int mouseDx, int mouseDy, int cycles, int maxWords, uint filterStart, uint filterEnd, long startCycle, AmigaModel model)
+        {
+            if (filterEnd < filterStart)
+            {
+                uint swap = filterStart;
+                filterStart = filterEnd;
+                filterEnd = swap;
+            }
+
+            bool useFilter = filterStart != 0 || filterEnd != 0;
+            filterStart &= 0x00FFFFFEu;
+            filterEnd &= 0x00FFFFFEu;
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                int words = 0;
+                int starts = 0;
+                system.Bus.WriteObserved += delegate(uint address, int size, uint value, AmigaAddressRegion region)
+                {
+                    if (starts >= 10000 || region != AmigaAddressRegion.CustomRegisters || system.Agnus.Beam.GlobalChipCycle < startCycle)
+                    {
+                        return;
+                    }
+
+                    uint offset = address & 0x01FFu;
+                    bool startsBlit = (size == 2 && (offset & 0x01FEu) == 0x058u) ||
+                        (size == 1 && offset == 0x059u);
+                    if (!startsBlit)
+                    {
+                        return;
+                    }
+
+                    starts++;
+                    var registers = system.Agnus.CustomRegisters;
+                    ushort bltcon0 = registers.ReadWord(0x040);
+                    ushort bltcon1 = registers.ReadWord(0x042);
+                    ushort bltsize = registers.ReadWord(0x058);
+                    int widthWords = bltsize & 0x003F;
+                    int heightLines = (bltsize >> 6) & 0x03FF;
+                    if (widthWords == 0)
+                    {
+                        widthWords = 64;
+                    }
+
+                    if (heightLines == 0)
+                    {
+                        heightLines = 1024;
+                    }
+
+                    Console.WriteLine(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        "{0,9} F{1,4} {2,3},{3,3} BSTART #{4,3} busy={5} pending={6} PC ${7:X6} C0=${8:X4} C1=${9:X4} size={10}x{11} A=${12:X6} B=${13:X6} C=${14:X6} D=${15:X6} AM={16:X4} BM={17:X4} CM={18:X4} DM={19:X4} FWM={20:X4} LWM={21:X4}",
+                        system.Agnus.Beam.GlobalChipCycle,
+                        system.FrameCounter,
+                        system.Agnus.Beam.BeamX,
+                        system.Agnus.Beam.BeamY,
+                        starts,
+                        system.Agnus.Blitter.Busy,
+                        system.Agnus.Blitter.DmaPending,
+                        system.Cpu.CurrentInstructionAddress,
+                        bltcon0,
+                        bltcon1,
+                        widthWords,
+                        heightLines,
+                        ReadCustomPointer(registers, 0x050),
+                        ReadCustomPointer(registers, 0x04C),
+                        ReadCustomPointer(registers, 0x048),
+                        ReadCustomPointer(registers, 0x054),
+                        registers.ReadWord(0x064),
+                        registers.ReadWord(0x062),
+                        registers.ReadWord(0x060),
+                        registers.ReadWord(0x066),
+                        registers.ReadWord(0x044),
+                        registers.ReadWord(0x046)));
+                };
+
+                system.Agnus.Blitter.WordExecuted += delegate(BlitterWordTraceEntry entry)
+                {
+                    if (system.Agnus.Beam.GlobalChipCycle < startCycle)
+                    {
+                        return;
+                    }
+
+                    if (words >= maxWords)
+                    {
+                        return;
+                    }
+
+                    uint d = entry.DAddress & 0x00FFFFFEu;
+                    if (useFilter && (d < filterStart || d > filterEnd))
+                    {
+                        return;
+                    }
+
+                    PrintBlitWordTrace(system, words + 1, entry);
+                    words++;
+                };
+
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                for (int cycle = 0; cycle < cycles && words < maxWords; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy);
+                Console.WriteLine("BlitWords=" + words);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Traces CPU and Blitter writes after restoring a savestate and feeding relative mouse movement.
+        /// </summary>
+        private static void TraceSavestateMouseWrites(string savePath, int mouseDx, int mouseDy, int cycles, uint filterStart, uint filterEnd, int maxWrites, long startCycle, AmigaModel model)
+        {
+            if (filterEnd < filterStart)
+            {
+                uint swap = filterStart;
+                filterStart = filterEnd;
+                filterEnd = swap;
+            }
+
+            filterStart &= 0x00FFFFFEu;
+            filterEnd &= 0x00FFFFFEu;
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                int writes = 0;
+                system.Bus.WriteObserved += delegate(uint address, int size, uint value, AmigaAddressRegion region)
+                {
+                    uint normalized = address & 0x00FFFFFEu;
+                    if (writes >= maxWrites ||
+                        system.Agnus.Beam.GlobalChipCycle < startCycle ||
+                        normalized < filterStart ||
+                        normalized > filterEnd)
+                    {
+                        return;
+                    }
+
+                    PrintWriteTrace(system, "CPU", region.ToString(), address, size, value);
+                    writes++;
+                };
+
+                system.Agnus.Blitter.ChipWordWritten += delegate(uint address, ushort value)
+                {
+                    uint normalized = address & 0x00FFFFFEu;
+                    if (writes >= maxWrites ||
+                        system.Agnus.Beam.GlobalChipCycle < startCycle ||
+                        normalized < filterStart ||
+                        normalized > filterEnd)
+                    {
+                        return;
+                    }
+
+                    PrintWriteTrace(system, "BLT", "ChipRam", address, 2, value);
+                    writes++;
+                };
+
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                for (int cycle = 0; cycle < cycles && writes < maxWrites; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy);
+                Console.WriteLine("Writes=" + writes);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Traces recent CPU opcode fetches before a PC hit after restoring a savestate and feeding mouse movement.
+        /// </summary>
+        private static void TraceSavestateMouseBeforePc(string savePath, int mouseDx, int mouseDy, int cycles, uint pc, int samplesToKeep, int requestedHit, long startCycle, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+
+                var samples = new Queue<string>();
+                int hits = 0;
+                uint lastInstructionAddress = 0xFFFFFFFFu;
+                for (int cycle = 0; cycle < cycles; cycle++)
+                {
+                    system.TickChipCycle();
+                    if (system.Agnus.Beam.GlobalChipCycle < startCycle ||
+                        system.Cpu.CurrentInstructionAddress == lastInstructionAddress)
+                    {
+                        continue;
+                    }
+
+                    lastInstructionAddress = system.Cpu.CurrentInstructionAddress;
+                    if (samples.Count == samplesToKeep)
+                    {
+                        samples.Dequeue();
+                    }
+
+                    samples.Enqueue(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        "{0,9} F{1,4} {2,3},{3,3} IP ${4:X6} OP ${5:X4} PC ${6:X6} {7}",
+                        system.Agnus.Beam.GlobalChipCycle,
+                        system.Agnus.Beam.Frame,
+                        system.Agnus.Beam.BeamX,
+                        system.Agnus.Beam.BeamY,
+                        system.Cpu.CurrentInstructionAddress,
+                        system.Cpu.CurrentOpcode,
+                        system.Cpu.PC,
+                        system.Cpu.LastInstruction ?? string.Empty));
+                    if (system.Cpu.CurrentInstructionAddress != pc)
+                    {
+                        continue;
+                    }
+
+                    hits++;
+                    if (hits < requestedHit)
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine("Trace before PC=$" + pc.ToString("X6") + " hit=" + requestedHit + " at cycle=" + system.Agnus.Beam.GlobalChipCycle);
+                    foreach (string entry in samples)
+                    {
+                        Console.WriteLine(entry);
+                    }
+
+                    Console.WriteLine("MouseDx=" + mouseDx + " MouseDy=" + mouseDy);
+                    Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                    Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                    Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                    Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                    DumpCpuRegisters(system);
+                    DumpVideoRegisterSummary(system);
+                    return;
+                }
+
+                Console.WriteLine("PC=$" + pc.ToString("X6") + " hit=" + requestedHit + " not reached within " + cycles + " cycles after mouse input. Hits=" + hits);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Runs Print Blit Word Trace.
         /// </summary>
         private static void PrintBlitWordTrace(AmigaSystem system, int index, BlitterWordTraceEntry entry)
         {
@@ -5094,7 +5800,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Chip Word Sample logic.
+        /// Runs Format Chip Word Sample.
         /// </summary>
         private static string FormatChipWordSample(AmigaSystem system, uint address)
         {
@@ -5240,11 +5946,11 @@ namespace AmigaEmulator
         private struct WatchedCustomRegister
         {
             /// <summary>
-            /// Stores the Address.
+            /// Stores Address.
             /// </summary>
             public uint Address;
             /// <summary>
-            /// Stores the Name.
+            /// Stores Name.
             /// </summary>
             public string Name;
         }
@@ -5320,7 +6026,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Add Watched logic.
+        /// Runs Add Watched.
         /// </summary>
         private static void AddWatched(List<WatchedCustomRegister> list, uint address, string name)
         {
@@ -5435,7 +6141,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Profile Program Counter logic.
+        /// Runs Profile Program Counter.
         /// </summary>
         private static void ProfileProgramCounter(int maxCycles, int top)
         {
@@ -5485,13 +6191,13 @@ namespace AmigaEmulator
         /// </summary>
         private static void TraceAfterPc(uint pc, int requestedHit, int traceCycles, string logPath)
         {
-            TraceAfterPc(pc, requestedHit, traceCycles, logPath, AmigaModel.PalA500);
+            TraceAfterPc(pc, requestedHit, traceCycles, 10000000, logPath, AmigaModel.PalA500);
         }
 
         /// <summary>
         /// Traces After PC for diagnostics.
         /// </summary>
-        private static void TraceAfterPc(uint pc, int requestedHit, int traceCycles, string logPath, AmigaModel model)
+        private static void TraceAfterPc(uint pc, int requestedHit, int traceCycles, int maxSearchCycles, string logPath, AmigaModel model)
         {
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
             {
@@ -5501,9 +6207,11 @@ namespace AmigaEmulator
                 }
 
                 int hits = 0;
-                while (hits < requestedHit)
+                int searchedCycles = 0;
+                while (hits < requestedHit && searchedCycles < maxSearchCycles)
                 {
                     system.TickChipCycle();
+                    searchedCycles++;
                     MachineTraceSample sample = system.LastTraceSample;
                     if (sample.CpuTrace != null &&
                         sample.CpuTrace.AccessType == M68kTraceAccessType.OpcodeFetch &&
@@ -5513,9 +6221,16 @@ namespace AmigaEmulator
                     }
                 }
 
+                if (hits < requestedHit)
+                {
+                    Console.WriteLine("Trace-after-PC stopped before requested occurrence.");
+                    Console.WriteLine("PC=$" + pc.ToString("X6") + " hits=" + hits + " requested=" + requestedHit + " searchCycles=" + searchedCycles + "/" + maxSearchCycles);
+                    return;
+                }
+
                 MachineTraceExporter.ExportJsonLines(system, traceCycles, 1, logPath);
                 Console.WriteLine("Trace-after-PC written: " + Path.GetFullPath(logPath));
-                Console.WriteLine("PC=$" + pc.ToString("X6") + " occurrence=" + requestedHit + " cycles=" + traceCycles);
+                Console.WriteLine("PC=$" + pc.ToString("X6") + " occurrence=" + requestedHit + " searchCycles=" + searchedCycles + " traceCycles=" + traceCycles);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 DumpCpuRegisters(system);
             }
@@ -6045,7 +6760,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Pass logic.
+        /// Runs Format Pass.
         /// </summary>
         private static string FormatPass(bool value)
         {
@@ -6113,7 +6828,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Parse Model Argument logic.
+        /// Runs Parse Model Argument.
         /// </summary>
         private static AmigaModel ParseModelArgument(string[] args, int startIndex)
         {
@@ -6145,6 +6860,25 @@ namespace AmigaEmulator
                     return AmigaModel.A500Pal1MbChip;
                 }
 
+                if (string.Equals(value, "2mbchip", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "chip2mb", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500chip2mb", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500-2mbchip", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500-2mb-chip", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500pal2mbchip", StringComparison.OrdinalIgnoreCase))
+                {
+                    return AmigaModel.A500Pal2MbChip;
+                }
+
+                if (string.Equals(value, "2mbchip8mbfast", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "chip2mbfast8mb", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500-2mbchip-8mbfast", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500-2mb-chip-8mb-fast", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "a500pal2mbchipfast8mb", StringComparison.OrdinalIgnoreCase))
+                {
+                    return AmigaModel.A500Pal2MbChipFast8Mb;
+                }
+
                 if (string.Equals(value, "a500", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "chip512", StringComparison.OrdinalIgnoreCase))
                 {
@@ -6156,7 +6890,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Parse interrupt Option logic.
+        /// Runs Parse Int Option.
         /// </summary>
         private static int ParseIntOption(string[] args, string name, int defaultValue)
         {
@@ -6164,6 +6898,23 @@ namespace AmigaEmulator
             {
                 if (string.Equals(args[index], name, StringComparison.OrdinalIgnoreCase) &&
                     int.TryParse(args[index + 1], out int value))
+                {
+                    return value;
+                }
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Parses a named long integer command-line option.
+        /// </summary>
+        private static long ParseLongOption(string[] args, string name, long defaultValue)
+        {
+            for (int index = 0; args != null && index < args.Length - 1; index++)
+            {
+                if (string.Equals(args[index], name, StringComparison.OrdinalIgnoreCase) &&
+                    long.TryParse(args[index + 1], out long value))
                 {
                     return value;
                 }
@@ -6215,7 +6966,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Sanitize File Name logic.
+        /// Runs Sanitize File Name.
         /// </summary>
         private static string SanitizeFileName(string value)
         {
@@ -6246,7 +6997,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Csv Escape logic.
+        /// Runs Csv Escape.
         /// </summary>
         private static string CsvEscape(string value)
         {

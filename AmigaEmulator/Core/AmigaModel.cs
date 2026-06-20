@@ -18,12 +18,12 @@ using System;
 namespace AmigaEmulator.Core
 {
     /// <summary>
-    /// Describes a concrete Amiga hardware profile.
+    /// Gets a concrete Amiga hardware profile.
     /// </summary>
     public sealed class AmigaModel
     {
         /// <summary>
-        /// Initializes a new instance of the AmigaModel class.
+        /// Default PAL OCS Amiga 500 with 512 KB Chip RAM.
         /// </summary>
         public static readonly AmigaModel A500Pal = new AmigaModel(
             "A500 PAL OCS",
@@ -36,7 +36,7 @@ namespace AmigaEmulator.Core
             256);
 
         /// <summary>
-        /// Initializes a new instance of the AmigaModel class.
+        /// PAL OCS Amiga 500 with the common 512 KB trapdoor Slow RAM expansion.
         /// </summary>
         public static readonly AmigaModel A500Pal512Slow512 = new AmigaModel(
             "A500 PAL OCS + 512K SLOW",
@@ -49,13 +49,40 @@ namespace AmigaEmulator.Core
             256);
 
         /// <summary>
-        /// Initializes a new instance of the AmigaModel class.
+        /// PAL OCS Amiga 500 profile with 1 MB Chip RAM.
         /// </summary>
         public static readonly AmigaModel A500Pal1MbChip = new AmigaModel(
             "A500 PAL OCS + 1MB CHIP",
             7093790,
             1024 * 1024,
             0,
+            227,
+            312,
+            640,
+            256);
+
+        /// <summary>
+        /// PAL OCS Amiga 500 profile with 2 MB Chip RAM.
+        /// </summary>
+        public static readonly AmigaModel A500Pal2MbChip = new AmigaModel(
+            "A500 PAL OCS + 2MB CHIP",
+            7093790,
+            2 * 1024 * 1024,
+            0,
+            227,
+            312,
+            640,
+            256);
+
+        /// <summary>
+        /// PAL OCS Amiga 500 profile with 2 MB Chip RAM and 8 MB Zorro II Fast RAM.
+        /// </summary>
+        public static readonly AmigaModel A500Pal2MbChipFast8Mb = new AmigaModel(
+            "A500 PAL OCS + 2MB CHIP + 8MB FAST",
+            7093790,
+            2 * 1024 * 1024,
+            0,
+            8 * 1024 * 1024,
             227,
             312,
             640,
@@ -116,12 +143,12 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Gets or updates the Name.
+        /// Gets the display name for this hardware profile.
         /// </summary>
         public string Name { get; private set; }
 
         /// <summary>
-        /// Gets or updates the CPU Clock Hz.
+        /// Gets the configured 68000 CPU clock in hertz.
         /// </summary>
         public int CpuClockHz { get; private set; }
 
@@ -142,12 +169,12 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Gets or updates the Chip RAM Bytes.
+        /// Gets the amount of Chip RAM mapped from address zero.
         /// </summary>
         public int ChipRamBytes { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Slow RAM Bytes.
+        /// Gets the amount of trapdoor Slow RAM mapped at the A500 Slow RAM range.
         /// </summary>
         public int SlowRamBytes { get; private set; }
 
@@ -157,22 +184,22 @@ namespace AmigaEmulator.Core
         public int FastRamBytes { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Chip Cycles period Line.
+        /// Gets the PAL chip cycles per scanline used by the beam model.
         /// </summary>
         public int ChipCyclesPerLine { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Lines period Frame.
+        /// Gets the PAL scanline count per frame used by the beam model.
         /// </summary>
         public int LinesPerFrame { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Visible Width.
+        /// Gets the visible framebuffer width exposed to the frontend.
         /// </summary>
         public int VisibleWidth { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Visible Height.
+        /// Gets the visible framebuffer height exposed to the frontend.
         /// </summary>
         public int VisibleHeight { get; private set; }
     }

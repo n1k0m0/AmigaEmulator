@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,7 @@ using AmigaEmulator.Core.Memory;
 namespace AmigaEmulator.Core.CustomChips
 {
     /// <summary>
-    /// Provides Copper Self Test behavior used by the emulator.
+    /// Provides Copper Self Test functionality.
     /// </summary>
     public static class CopperSelfTest
     {
@@ -41,11 +41,15 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint Cop2lcl = 0x086;
         /// <summary>
-        /// Defines the Color00 constant.
+        /// Defines the COPJMP1 custom register offset or bit mask.
+        /// </summary>
+        private const uint Copjmp1 = 0x088;
+        /// <summary>
+        /// Constant for Color 00.
         /// </summary>
         private const uint Color00 = 0x180;
         /// <summary>
-        /// Defines the Bltcon0 constant.
+        /// Constant for Bltcon 0.
         /// </summary>
         private const uint Bltcon0 = 0x040;
 
@@ -58,6 +62,7 @@ namespace AmigaEmulator.Core.CustomChips
             failures += RunCase(log, "OCS protected register ranges", TestProtectedRegisterRanges);
             failures += RunCase(log, "BFD waits for blitter when clear", TestBfdWaitsForBlitterWhenClear);
             failures += RunCase(log, "COPJMP2 accepts low chip targets", TestCopjmp2AcceptsLowChipTarget);
+            failures += RunCase(log, "COPJMP1 read strobes copper list 1", TestCopjmp1ReadStrobesCopperList1);
             log.AppendLine(failures == 0 ? "Copper self-test OK" : "Copper self-test FAILED: " + failures);
             return failures;
         }
@@ -83,7 +88,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Protected Register Ranges logic.
+        /// Runs Test Protected Register Ranges.
         /// </summary>
         private static bool TestProtectedRegisterRanges()
         {
@@ -114,7 +119,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Bfd Waits For Blitter When Clear logic.
+        /// Runs Test Bfd Waits For Blitter When Clear.
         /// </summary>
         private static bool TestBfdWaitsForBlitterWhenClear()
         {
@@ -147,7 +152,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Test Copjmp2 Accepts Low Chip Target logic.
+        /// Runs Test Copjmp 2 Accepts Low Chip Target.
         /// </summary>
         private static bool TestCopjmp2AcceptsLowChipTarget()
         {
@@ -163,12 +168,24 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Provides Harness behavior used by the emulator.
+        /// Runs Test Copjmp 1 Read Strobes Copper List 1.
+        /// </summary>
+        private static bool TestCopjmp1ReadStrobesCopperList1()
+        {
+            var harness = new Harness();
+            harness.Registers.WriteWord(0x080, 0x0000);
+            harness.Registers.WriteWord(0x082, 0x0100);
+            harness.Registers.ReadWord(Copjmp1);
+            return harness.Copper.ProgramCounter == 0x0100;
+        }
+
+        /// <summary>
+        /// Provides Harness functionality.
         /// </summary>
         private sealed class Harness
         {
             /// <summary>
-            /// Tracks the memory.
+            /// Stores memory.
             /// </summary>
             private readonly ushort[] _memory = new ushort[0x80000 / 2];
 
@@ -180,21 +197,22 @@ namespace AmigaEmulator.Core.CustomChips
                 Registers = new CustomRegisterMap();
                 Copper = new Copper(Registers, ReadWord);
                 Copper.InstructionExecuted += entry => LastKind = entry.Kind;
+                Registers.CopperJumpRequested += Copper.StrobeJump;
                 Registers.WriteWord(Dmacon, 0x8280);
             }
 
             /// <summary>
-            /// Gets or updates the Registers.
+            /// Gets or sets Registers.
             /// </summary>
             public CustomRegisterMap Registers { get; private set; }
 
             /// <summary>
-            /// Gets or updates the Copper.
+            /// Gets or sets Copper.
             /// </summary>
             public Copper Copper { get; private set; }
 
             /// <summary>
-            /// Gets or updates the Last Kind.
+            /// Gets or sets Last Kind.
             /// </summary>
             public CopperInstructionKind LastKind { get; private set; }
 

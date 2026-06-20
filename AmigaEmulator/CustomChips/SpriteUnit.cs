@@ -41,36 +41,40 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint SpriteRegisterStride = 0x08;
         /// <summary>
-        /// Defines the Color Base constant.
+        /// Constant for Color Base.
         /// </summary>
         private const uint ColorBase = 0x180;
+        /// <summary>
+        /// Sprite lowres horizontal coordinate that maps to the left edge of the emulator framebuffer.
+        /// </summary>
+        private const int FramebufferLowresStart = 0x80;
 
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private readonly AmigaEmulator.Core.Memory.CustomRegisterMap _registers;
         /// <summary>
-        /// Tracks the read Chip Word.
+        /// Stores read Chip Word.
         /// </summary>
         private System.Func<uint, ushort> _readChipWord;
         /// <summary>
-        /// Tracks the DMA Address.
+        /// Stores DMA Address.
         /// </summary>
         private readonly ChipDmaAddress _dmaAddress;
         /// <summary>
-        /// Tracks the sprite Pointers.
+        /// Stores sprite Pointers.
         /// </summary>
         private readonly uint[] _spritePointers = new uint[8];
         /// <summary>
-        /// Tracks the states.
+        /// Stores states.
         /// </summary>
         private readonly SpriteState[] _states = new SpriteState[8];
         /// <summary>
-        /// Tracks the last Beam Y.
+        /// Stores last Beam Y.
         /// </summary>
         private int _lastBeamY = -1;
         /// <summary>
-        /// Tracks the DMA Enabled.
+        /// Stores DMA Enabled.
         /// </summary>
         private bool _dmaEnabled;
 
@@ -147,12 +151,12 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Gets or updates the Has Active Sprites.
+        /// Gets or sets Has Active Sprites.
         /// </summary>
         public bool HasActiveSprites { get; private set; }
 
         /// <summary>
-        /// Executes the Refresh From Registers logic.
+        /// Runs Refresh From Registers.
         /// </summary>
         public void RefreshFromRegisters()
         {
@@ -187,7 +191,7 @@ namespace AmigaEmulator.Core.CustomChips
                 if (sprite >= 0 && sprite < 8)
                 {
                     _spritePointers[sprite] = ReadSpritePointer(sprite);
-                    _states[sprite].Pointer = _spritePointers[sprite];
+                    _states[sprite].ResetForFrame(_spritePointers[sprite]);
                     HasActiveSprites = HasActiveSprites || _spritePointers[sprite] != 0;
                 }
 
@@ -210,9 +214,20 @@ namespace AmigaEmulator.Core.CustomChips
             HasActiveSprites = true;
             if (localOffset == 0u || localOffset == 2u)
             {
-                ApplyControlWords(state, ReadSpriteRegister(spriteIndex, 0), ReadSpriteRegister(spriteIndex, 2));
+                bool hadLineData = state.LineActive || state.DataA != 0 || state.DataB != 0;
+                int oldHStart = state.HStart;
+                int oldVStart = state.VStart;
+                int oldVStop = state.VStop;
+                ushort pos = localOffset == 0u || !state.ControlLoaded
+                    ? ReadSpriteRegister(spriteIndex, 0)
+                    : state.Pos;
+                ushort ctl = localOffset == 2u || !state.ControlLoaded
+                    ? ReadSpriteRegister(spriteIndex, 2)
+                    : state.Ctl;
+                ApplyControlWords(state, pos, ctl, false);
                 state.Active = beamY >= state.VStart && beamY < state.VStop;
-                state.LineActive = state.Active;
+                bool sameOutputWindow = oldHStart == state.HStart && oldVStart == state.VStart && oldVStop == state.VStop;
+                state.LineActive = state.Active && !state.Terminated && hadLineData && sameOutputWindow;
                 return;
             }
 
@@ -393,7 +408,7 @@ namespace AmigaEmulator.Core.CustomChips
             if (state.PendingFetch == SpriteFetchKind.Control)
             {
                 state.Pointer = _dmaAddress.Add(state.Pointer, 4u);
-                ApplyControlWords(state, state.PendingFirstWord, second);
+                ApplyControlWords(state, state.PendingFirstWord, second, true);
                 state.PendingFetch = SpriteFetchKind.None;
                 return;
             }
@@ -402,9 +417,8 @@ namespace AmigaEmulator.Core.CustomChips
             state.DataB = second;
             state.Pointer = _dmaAddress.Add(state.Pointer, 4u);
             state.LineActive = true;
-            int dataStop = state.VStop + 1;
-            state.Active = beamY > state.VStart && beamY <= dataStop;
-            if (beamY >= dataStop)
+            state.Active = beamY >= state.VStart && beamY < state.VStop;
+            if (beamY >= state.VStop)
             {
                 state.Active = false;
             }
@@ -434,13 +448,12 @@ namespace AmigaEmulator.Core.CustomChips
                 return SpriteFetchKind.Control;
             }
 
-            int dataStop = state.VStop + 1;
-            if (beamY > dataStop)
+            if (beamY >= state.VStop)
             {
                 return SpriteFetchKind.Control;
             }
 
-            if (beamY > state.VStart && beamY <= dataStop)
+            if (beamY >= state.VStart && beamY < state.VStop)
             {
                 return SpriteFetchKind.Data;
             }
@@ -537,7 +550,7 @@ namespace AmigaEmulator.Core.CustomChips
             SpriteState state = _states[sprite];
             ushort pos = ReadSpriteRegister(sprite, 0);
             ushort ctl = ReadSpriteRegister(sprite, 2);
-            ApplyControlWords(state, pos, ctl);
+            ApplyControlWords(state, pos, ctl, true);
             if (!state.ControlLoaded || state.Terminated)
             {
                 return;
@@ -555,7 +568,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Applies Control Words to the current state.
         /// </summary>
-        private static void ApplyControlWords(SpriteState state, ushort pos, ushort ctl)
+        private static void ApplyControlWords(SpriteState state, ushort pos, ushort ctl, bool clearOutputLatch)
         {
             state.Pos = pos;
             state.Ctl = ctl;
@@ -567,11 +580,14 @@ namespace AmigaEmulator.Core.CustomChips
                 state.VStop += 256;
             }
 
-            state.HStart = (((pos & 0x00FF) << 1) | (ctl & 0x0001)) - 0x80;
+            state.HStart = (((pos & 0x00FF) << 1) | (ctl & 0x0001)) - FramebufferLowresStart;
             state.ControlLoaded = pos != 0 || ctl != 0;
             state.Terminated = !state.ControlLoaded;
-            state.Active = false;
-            state.LineActive = false;
+            if (clearOutputLatch)
+            {
+                state.Active = false;
+                state.LineActive = false;
+            }
         }
 
         /// <summary>
@@ -663,7 +679,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Expand Nibble logic.
+        /// Runs Expand Nibble.
         /// </summary>
         private static byte ExpandNibble(int value)
         {
@@ -671,68 +687,68 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Provides Sprite State behavior used by the emulator.
+        /// Provides Sprite State functionality.
         /// </summary>
         private sealed class SpriteState
         {
             /// <summary>
-            /// Stores the Pointer.
+            /// Stores Pointer.
             /// </summary>
             public uint Pointer;
             /// <summary>
-            /// Stores the Pos.
+            /// Stores Pos.
             /// </summary>
             public ushort Pos;
             /// <summary>
-            /// Stores the control.
+            /// Stores control.
             /// </summary>
             public ushort Ctl;
             /// <summary>
-            /// Stores the Data A.
+            /// Stores Data A.
             /// </summary>
             public ushort DataA;
             /// <summary>
-            /// Stores the Data B.
+            /// Stores Data B.
             /// </summary>
             public ushort DataB;
             /// <summary>
-            /// Stores the V Start.
+            /// Stores V Start.
             /// </summary>
             public int VStart;
             /// <summary>
-            /// Stores the V Stop.
+            /// Stores V Stop.
             /// </summary>
             public int VStop;
             /// <summary>
-            /// Stores the H Start.
+            /// Stores H Start.
             /// </summary>
             public int HStart;
             /// <summary>
-            /// Stores the Attached.
+            /// Stores Attached.
             /// </summary>
             public bool Attached;
             /// <summary>
-            /// Stores the Control Loaded.
+            /// Stores Control Loaded.
             /// </summary>
             public bool ControlLoaded;
             /// <summary>
-            /// Stores the Terminated.
+            /// Stores Terminated.
             /// </summary>
             public bool Terminated;
             /// <summary>
-            /// Stores the Active.
+            /// Stores Active.
             /// </summary>
             public bool Active;
             /// <summary>
-            /// Stores the Line Active.
+            /// Stores Line Active.
             /// </summary>
             public bool LineActive;
             /// <summary>
-            /// Stores the pending fetch type selected by the first slot of a sprite DMA pair.
+            /// Stores pending fetch type selected by the first slot of a sprite DMA pair.
             /// </summary>
             public SpriteFetchKind PendingFetch;
             /// <summary>
-            /// Stores the first word fetched by the first slot of a sprite DMA pair.
+            /// Stores first word fetched by the first slot of a sprite DMA pair.
             /// </summary>
             public ushort PendingFirstWord;
 

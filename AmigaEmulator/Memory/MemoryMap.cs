@@ -21,35 +21,35 @@ namespace AmigaEmulator.Core.Memory
     public enum AmigaAddressRegion
     {
         /// <summary>
-        /// Represents the U nm ap pe d option.
+        /// Represents Unmapped.
         /// </summary>
         Unmapped,
         /// <summary>
-        /// Represents the C hi pR am option.
+        /// Represents Chip RAM.
         /// </summary>
         ChipRam,
         /// <summary>
-        /// Represents the S lo wR am option.
+        /// Represents Slow RAM.
         /// </summary>
         SlowRam,
         /// <summary>
-        /// Represents the F as tR am option.
+        /// Represents Fast RAM.
         /// </summary>
         FastRam,
         /// <summary>
-        /// Represents the C ia A option.
+        /// Represents CIA A.
         /// </summary>
         CiaA,
         /// <summary>
-        /// Represents the C ia B option.
+        /// Represents CIA B.
         /// </summary>
         CiaB,
         /// <summary>
-        /// Represents the C us to mR eg is te rs option.
+        /// Represents Custom Registers.
         /// </summary>
         CustomRegisters,
         /// <summary>
-        /// Represents the K ic ks ta rt Ro m option.
+        /// Represents Kickstart ROM.
         /// </summary>
         KickstartRom
     }
@@ -60,24 +60,24 @@ namespace AmigaEmulator.Core.Memory
     public struct MemoryMapEntry
     {
         /// <summary>
-        /// Stores the Start.
+        /// Stores Start.
         /// </summary>
         public uint Start;
         /// <summary>
-        /// Stores the End.
+        /// Stores End.
         /// </summary>
         public uint End;
         /// <summary>
-        /// Stores the Region.
+        /// Stores Region.
         /// </summary>
         public AmigaAddressRegion Region;
         /// <summary>
-        /// Stores the Name.
+        /// Stores Name.
         /// </summary>
         public string Name;
 
         /// <summary>
-        /// Executes the Contains logic.
+        /// Runs Contains.
         /// </summary>
         public bool Contains(uint address)
         {
@@ -86,73 +86,73 @@ namespace AmigaEmulator.Core.Memory
     }
 
     /// <summary>
-    /// Provides Memory Map behavior used by the emulator.
+        /// Defines the 24-bit A500 memory regions used by the bus decoder.
     /// </summary>
     public static class MemoryMap
     {
         /// <summary>
-        /// Defines the Address Mask constant.
+        /// Mask applied to 68000 addresses before region decoding.
         /// </summary>
         public const uint AddressMask = 0x00FFFFFF;
         /// <summary>
-        /// Defines the Chip RAM Start constant.
+        /// Start address of Chip RAM.
         /// </summary>
         public const uint ChipRamStart = 0x000000;
         /// <summary>
-        /// Defines the Chip RAM End constant.
+        /// Default end address for a 512 KB Chip RAM map.
         /// </summary>
         public const uint ChipRamEnd = 0x07FFFF;
         /// <summary>
-        /// Defines the Zorro II Fast RAM Start constant.
+        /// Start address of the supported Zorro II Fast RAM window.
         /// </summary>
         public const uint FastRamStart = 0x200000;
         /// <summary>
-        /// Defines the Zorro II Fast RAM End constant.
+        /// End address of the supported Zorro II Fast RAM window.
         /// </summary>
         public const uint FastRamEnd = 0x9FFFFF;
         /// <summary>
-        /// Defines the CIA B Start constant.
+        /// Start address of the CIA-B register mirror range.
         /// </summary>
         public const uint CiaBStart = 0xBFD000;
         /// <summary>
-        /// Defines the CIA B End constant.
+        /// End address of the CIA-B register mirror range.
         /// </summary>
         public const uint CiaBEnd = 0xBFDFFF;
         /// <summary>
-        /// Defines the CIA A Start constant.
+        /// Start address of the CIA-A register mirror range.
         /// </summary>
         public const uint CiaAStart = 0xBFE000;
         /// <summary>
-        /// Defines the CIA A End constant.
+        /// End address of the CIA-A register mirror range.
         /// </summary>
         public const uint CiaAEnd = 0xBFEFFF;
         /// <summary>
-        /// Defines the Slow RAM Start constant.
+        /// Start address of the A500 trapdoor Slow RAM window.
         /// </summary>
         public const uint SlowRamStart = 0xC00000;
         /// <summary>
-        /// Defines the Slow RAM End constant.
+        /// End address of the A500 trapdoor Slow RAM window.
         /// </summary>
         public const uint SlowRamEnd = 0xC7FFFF;
         /// <summary>
-        /// Defines the Custom Start constant.
+        /// Start address of the custom-chip register range.
         /// </summary>
         public const uint CustomStart = 0xDFF000;
         /// <summary>
-        /// Defines the Custom End constant.
+        /// End address of the custom-chip register range.
         /// </summary>
         public const uint CustomEnd = 0xDFFFFF;
         /// <summary>
-        /// Defines the Kickstart Start constant.
+        /// Start address of the 512 KB Kickstart ROM range.
         /// </summary>
         public const uint KickstartStart = 0xF80000;
         /// <summary>
-        /// Defines the Kickstart End constant.
+        /// End address of the 512 KB Kickstart ROM range.
         /// </summary>
         public const uint KickstartEnd = 0xFFFFFF;
 
         /// <summary>
-        /// Executes the Normalize logic.
+        /// Normalizes an address to the 68000 24-bit bus width.
         /// </summary>
         public static uint Normalize(uint address)
         {

@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,11 @@ namespace AmigaEmulator.Core.Input
     public enum AmigaControlPort
     {
         /// <summary>
-        /// Represents the P or t0 option.
+        /// Represents Port 0.
         /// </summary>
         Port0 = 0,
         /// <summary>
-        /// Represents the P or t1 option.
+        /// Represents Port 1.
         /// </summary>
         Port1 = 1
     }

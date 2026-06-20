@@ -21,27 +21,27 @@ namespace AmigaEmulator.Core.DevTools
     public struct BeamTraceEntry
     {
         /// <summary>
-        /// Stores the Global Chip Cycle.
+        /// Stores Global Chip Cycle.
         /// </summary>
         public long GlobalChipCycle;
         /// <summary>
-        /// Stores the Frame.
+        /// Stores Frame.
         /// </summary>
         public long Frame;
         /// <summary>
-        /// Stores the Beam X.
+        /// Stores Beam X.
         /// </summary>
         public int BeamX;
         /// <summary>
-        /// Stores the Beam Y.
+        /// Stores Beam Y.
         /// </summary>
         public int BeamY;
         /// <summary>
-        /// Stores the Is H Blank.
+        /// Stores Is H Blank.
         /// </summary>
         public bool IsHBlank;
         /// <summary>
-        /// Stores the Is V Blank.
+        /// Stores Is V Blank.
         /// </summary>
         public bool IsVBlank;
     }

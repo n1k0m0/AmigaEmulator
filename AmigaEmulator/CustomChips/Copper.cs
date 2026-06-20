@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,88 +26,88 @@ namespace AmigaEmulator.Core.CustomChips
     public enum CopperInstructionKind
     {
         /// <summary>
-        /// Represents the M ov e option.
+        /// Represents Move.
         /// </summary>
         Move,
         /// <summary>
-        /// Represents the W ai t option.
+        /// Represents Wait.
         /// </summary>
         Wait,
         /// <summary>
-        /// Represents the S ki p option.
+        /// Represents Skip.
         /// </summary>
         Skip,
         /// <summary>
-        /// Represents the J um p1 option.
+        /// Represents Jump 1.
         /// </summary>
         Jump1,
         /// <summary>
-        /// Represents the J um p2 option.
+        /// Represents Jump 2.
         /// </summary>
         Jump2,
         /// <summary>
-        /// Represents the B lo ck ed Mo ve option.
+        /// Represents Blocked Move.
         /// </summary>
         BlockedMove
     }
 
     /// <summary>
-    /// Provides Copper Trace Entry behavior used by the emulator.
+    /// Provides Copper Trace Entry functionality.
     /// </summary>
     public sealed class CopperTraceEntry
     {
         /// <summary>
-        /// Gets or updates the Global Chip Cycle.
+        /// Gets or sets Global Chip Cycle.
         /// </summary>
         public long GlobalChipCycle { get; set; }
 
         /// <summary>
-        /// Gets or updates the Beam X.
+        /// Gets or sets Beam X.
         /// </summary>
         public int BeamX { get; set; }
 
         /// <summary>
-        /// Gets or updates the Beam Y.
+        /// Gets or sets Beam Y.
         /// </summary>
         public int BeamY { get; set; }
 
         /// <summary>
-        /// Gets or updates the Program Counter.
+        /// Gets or sets Program Counter.
         /// </summary>
         public uint ProgramCounter { get; set; }
 
         /// <summary>
-        /// Gets or updates the First Word.
+        /// Gets or sets First Word.
         /// </summary>
         public ushort FirstWord { get; set; }
 
         /// <summary>
-        /// Gets or updates the Second Word.
+        /// Gets or sets Second Word.
         /// </summary>
         public ushort SecondWord { get; set; }
 
         /// <summary>
-        /// Gets or updates the Kind.
+        /// Gets or sets Kind.
         /// </summary>
         public CopperInstructionKind Kind { get; set; }
 
         /// <summary>
-        /// Gets or updates the Register Offset.
+        /// Gets or sets Register Offset.
         /// </summary>
         public uint RegisterOffset { get; set; }
 
         /// <summary>
-        /// Gets or updates the Value.
+        /// Gets or sets Value.
         /// </summary>
         public ushort Value { get; set; }
 
         /// <summary>
-        /// Gets or updates the Target.
+        /// Gets or sets Target.
         /// </summary>
         public uint Target { get; set; }
 
         /// <summary>
-        /// Gets or updates the Waiting.
+        /// Gets or sets Waiting.
         /// </summary>
         public bool Waiting { get; set; }
     }
@@ -151,55 +151,67 @@ namespace AmigaEmulator.Core.CustomChips
         private const uint Copjmp2 = 0x08A;
 
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private CustomRegisterMap _registers;
         /// <summary>
-        /// Tracks the read Chip Word.
+        /// Stores read Chip Word.
         /// </summary>
         private Func<uint, ushort> _readChipWord;
         /// <summary>
-        /// Tracks the is Blitter Busy.
+        /// Stores is Blitter Busy.
         /// </summary>
         private Func<bool> _isBlitterBusy;
         /// <summary>
-        /// Tracks the DMA Address.
+        /// Stores DMA Address.
         /// </summary>
         private readonly ChipDmaAddress _dmaAddress;
         /// <summary>
-        /// Tracks the program Counter Loaded.
+        /// Stores program Counter Loaded.
         /// </summary>
         private bool _programCounterLoaded;
         /// <summary>
-        /// Tracks the waiting.
+        /// Stores waiting.
         /// </summary>
         private bool _waiting;
         /// <summary>
-        /// Tracks the wait Instruction.
+        /// Stores wait Instruction.
         /// </summary>
         private ushort _waitInstruction;
         /// <summary>
-        /// Tracks the wait Mask.
+        /// Stores wait Mask.
         /// </summary>
         private ushort _waitMask;
         /// <summary>
-        /// Tracks the first Word Latched.
+        /// Stores first Word Latched.
         /// </summary>
         private bool _firstWordLatched;
         /// <summary>
-        /// Tracks the first Word.
+        /// Stores first Word.
         /// </summary>
         private ushort _firstWord;
 
         /// <summary>
-        /// Gets or updates the Program Counter.
+        /// Gets or sets Program Counter.
         /// </summary>
         public uint ProgramCounter { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Enabled.
+        /// Gets or sets Enabled.
         /// </summary>
         public bool Enabled { get; set; }
+
+        /// <summary>
+        /// Gets whether the Copper currently needs a DMA slot to fetch instruction data.
+        /// </summary>
+        public bool NeedsDmaBus
+        {
+            get
+            {
+                RefreshFromRegisters();
+                return Enabled && _programCounterLoaded && !_waiting && _readChipWord != null;
+            }
+        }
 
         /// <summary>
         /// Raised when the Copper executes an instruction or writes a custom register.
@@ -320,7 +332,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the strobe Jump logic.
+        /// Runs Strobe Jump.
         /// </summary>
         public void StrobeJump(int list)
         {
@@ -363,7 +375,7 @@ namespace AmigaEmulator.Core.CustomChips
         public void Tick(bool dmaSlotAvailable, int beamX, int beamY, long globalChipCycle)
         {
             RefreshFromRegisters();
-            if (!Enabled || !dmaSlotAvailable || !_programCounterLoaded)
+            if (!Enabled || !_programCounterLoaded)
             {
                 return;
             }
@@ -383,6 +395,11 @@ namespace AmigaEmulator.Core.CustomChips
                 _waiting = false;
                 ProgramCounter = _dmaAddress.Add(ProgramCounter, 4u);
                 EmitTrace(globalChipCycle, beamX, beamY, ProgramCounter - 4, _waitInstruction, _waitMask, CopperInstructionKind.Wait, 0, 0, 0, false);
+                return;
+            }
+
+            if (!dmaSlotAvailable)
+            {
                 return;
             }
 
@@ -451,7 +468,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Beam Reached logic.
+        /// Runs Beam Reached.
         /// </summary>
         private static bool BeamReached(ushort instruction, ushort mask, int beamX, int beamY)
         {
@@ -473,7 +490,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Condition Reached logic.
+        /// Runs Condition Reached.
         /// </summary>
         private bool ConditionReached(ushort instruction, ushort mask, int beamX, int beamY)
         {
@@ -486,7 +503,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Blitter Finished Disabled logic.
+        /// Runs Blitter Finished Disabled.
         /// </summary>
         private static bool BlitterFinishedDisabled(ushort mask)
         {
@@ -494,7 +511,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Refresh From Registers logic.
+        /// Runs Refresh From Registers.
         /// </summary>
         private void RefreshFromRegisters()
         {
@@ -508,7 +525,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Restart At Copper List1 logic.
+        /// Runs Restart At Copper List 1.
         /// </summary>
         public void RestartAtCopperList1()
         {
@@ -525,7 +542,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Move logic.
+        /// Runs Move.
         /// </summary>
         private bool Move(ushort instruction, ushort value, int beamX, int beamY, long globalChipCycle)
         {
@@ -587,7 +604,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Emit Trace logic.
+        /// Runs Emit Trace.
         /// </summary>
         private void EmitTrace(
             long globalChipCycle,

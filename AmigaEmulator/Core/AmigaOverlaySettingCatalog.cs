@@ -18,7 +18,7 @@ using System.Collections.Generic;
 namespace AmigaEmulator.Core
 {
     /// <summary>
-    /// Describes a selectable overlay option.
+    /// Gets a selectable overlay option.
     /// </summary>
     public sealed class AmigaSettingOption<T>
         where T : struct
@@ -50,7 +50,7 @@ namespace AmigaEmulator.Core
     }
 
     /// <summary>
-    /// Describes an Amiga RAM layout selected by the overlay.
+    /// Gets an Amiga RAM layout selected by the overlay.
     /// </summary>
     public sealed class AmigaRamProfileInfo
     {
@@ -103,70 +103,70 @@ namespace AmigaEmulator.Core
     public static class AmigaOverlaySettingCatalog
     {
         /// <summary>
-        /// Defines the K512 constant.
+        /// Constant for K 512.
         /// </summary>
         private const int K512 = 512 * 1024;
         /// <summary>
-        /// Defines the M1 constant.
+        /// Constant for M 1.
         /// </summary>
         private const int M1 = 1024 * 1024;
 
         /// <summary>
-        /// Executes the Video Filter Options logic.
+        /// Stores Video Filter Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaVideoFilter>[] VideoFilterOptions =
         {
             /// <summary>
-            /// Executes the pixels logic.
+            /// Gets pixels.
             /// </summary>
             new AmigaSettingOption<AmigaVideoFilter>(AmigaVideoFilter.Sharp, "SHARP", "Unfiltered square pixels."),
             /// <summary>
-            /// Executes the presentation logic.
+            /// Gets presentation.
             /// </summary>
             new AmigaSettingOption<AmigaVideoFilter>(AmigaVideoFilter.Crt, "CRT", "Scanline CRT presentation."),
             /// <summary>
-            /// Executes the presentation logic.
+            /// Gets presentation.
             /// </summary>
             new AmigaSettingOption<AmigaVideoFilter>(AmigaVideoFilter.Tv, "TV", "Softer composite-style presentation.")
         };
 
         /// <summary>
-        /// Executes the Upscale Options logic.
+        /// Stores Upscale Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaUpscaleMode>[] UpscaleOptions =
         {
             /// <summary>
-            /// Executes the resolution logic.
+            /// Gets resolution.
             /// </summary>
             new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.None, "NONE", "Use the source resolution."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale2x, "SCALE2X", "Scale2x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale2x, "2X SHARP", "Nearest-neighbor 2x source upscale."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale3x, "SCALE3X", "Scale3x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale3x, "3X SHARP", "Nearest-neighbor 3x source upscale."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq2x, "HQ2X", "HQ2x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq2x, "2X SMOOTH", "Bicubic 2x source upscale."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq3x, "HQ3X", "HQ3x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq3x, "3X SMOOTH", "Bicubic 3x source upscale."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq4x, "HQ4X", "HQ4x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq4x, "4X SMOOTH", "Bicubic 4x source upscale."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Xbrz, "XBRZ", "xBRZ source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Xbrz, "4X SOFT", "Bicubic 4x source upscale for legacy xBRZ settings."),
             /// <summary>
-            /// Executes the upscale logic.
+            /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Clean4, "CLEAN4", "Clean 4x source upscale.")
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Clean4, "4X SHARP", "Nearest-neighbor 4x source upscale.")
         };
 
         /// <summary>
@@ -175,166 +175,166 @@ namespace AmigaEmulator.Core
         private static readonly AmigaSettingOption<AmigaRenderFps>[] RenderFpsOptions =
         {
             /// <summary>
-            /// Executes the standard logic.
+            /// Gets standard.
             /// </summary>
             new AmigaSettingOption<AmigaRenderFps>(AmigaRenderFps.Native, "NATIVE", "Use the current Amiga video standard."),
             /// <summary>
-            /// Executes the second logic.
+            /// Gets second.
             /// </summary>
             new AmigaSettingOption<AmigaRenderFps>(AmigaRenderFps.Hz50, "50 HZ", "Cap rendering at 50 frames per second."),
             /// <summary>
-            /// Executes the second logic.
+            /// Gets second.
             /// </summary>
             new AmigaSettingOption<AmigaRenderFps>(AmigaRenderFps.Hz60, "60 HZ", "Cap rendering at 60 frames per second."),
             /// <summary>
-            /// Executes the second logic.
+            /// Gets second.
             /// </summary>
             new AmigaSettingOption<AmigaRenderFps>(AmigaRenderFps.Hz100, "100 HZ", "Cap rendering at 100 frames per second."),
             /// <summary>
-            /// Executes the second logic.
+            /// Gets second.
             /// </summary>
             new AmigaSettingOption<AmigaRenderFps>(AmigaRenderFps.Hz120, "120 HZ", "Cap rendering at 120 frames per second."),
             /// <summary>
-            /// Executes the loop logic.
+            /// Gets loop.
             /// </summary>
             new AmigaSettingOption<AmigaRenderFps>(AmigaRenderFps.Unlimited, "UNLIMIT", "Do not cap the frontend render loop.")
         };
 
         /// <summary>
-        /// Executes the RAM Profiles logic.
+        /// Stores Ram Profiles.
         /// </summary>
         private static readonly AmigaRamProfileInfo[] RamProfiles =
         {
             /// <summary>
-            /// Executes the Amiga RAM Profile Info logic.
+            /// Runs Amiga Ram Profile Info.
             /// </summary>
             new AmigaRamProfileInfo(AmigaRamProfile.Chip512K, "512K CHIP", K512, 0, 0),
             /// <summary>
-            /// Executes the Amiga RAM Profile Info logic.
+            /// Runs Amiga Ram Profile Info.
             /// </summary>
             new AmigaRamProfileInfo(AmigaRamProfile.Chip512KSlow512K, "512K+512K", K512, K512, 0),
             /// <summary>
-            /// Executes the Amiga RAM Profile Info logic.
+            /// Runs Amiga Ram Profile Info.
             /// </summary>
             new AmigaRamProfileInfo(AmigaRamProfile.Chip1Mb, "1MB CHIP", M1, 0, 0),
             /// <summary>
-            /// Executes the Amiga RAM Profile Info logic.
+            /// Runs Amiga Ram Profile Info.
             /// </summary>
             new AmigaRamProfileInfo(AmigaRamProfile.Chip2Mb, "2MB CHIP", 2 * M1, 0, 0),
             /// <summary>
-            /// Executes the Amiga RAM Profile Info logic.
+            /// Runs Amiga Ram Profile Info.
             /// </summary>
             new AmigaRamProfileInfo(AmigaRamProfile.Chip2MbFast8Mb, "2MB+8MB", 2 * M1, 0, 8 * M1)
         };
 
         /// <summary>
-        /// Executes the Kickstart Options logic.
+        /// Stores Kickstart Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaKickstart>[] KickstartOptions =
         {
             /// <summary>
-            /// Executes the model logic.
+            /// Gets model.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Auto, "AUTO", "Use the best available ROM for the selected model."),
             /// <summary>
-            /// Executes the Kickstart logic.
+            /// Gets Kickstart.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Kickstart11, "KS 1.1", "Kickstart 1.1."),
             /// <summary>
-            /// Executes the Kickstart logic.
+            /// Gets Kickstart.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Kickstart12, "KS 1.2", "Kickstart 1.2."),
             /// <summary>
-            /// Executes the Kickstart logic.
+            /// Gets Kickstart.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Kickstart13, "KS 1.3", "Kickstart 1.3."),
             /// <summary>
-            /// Executes the Kickstart logic.
+            /// Gets Kickstart.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Kickstart20, "KS 2.0", "Kickstart 2.0."),
             /// <summary>
-            /// Executes the Kickstart logic.
+            /// Gets Kickstart.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Kickstart30, "KS 3.0", "Kickstart 3.0."),
             /// <summary>
-            /// Executes the Kickstart logic.
+            /// Gets Kickstart.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Kickstart31, "KS 3.1", "Kickstart 3.1."),
             /// <summary>
-            /// Executes the path logic.
+            /// Gets path.
             /// </summary>
             new AmigaSettingOption<AmigaKickstart>(AmigaKickstart.Custom, "CUSTOM", "Use the configured custom ROM path.")
         };
 
         /// <summary>
-        /// Executes the Floppy Speed Options logic.
+        /// Stores Floppy Speed Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaFloppySpeed>[] FloppySpeedOptions =
         {
             /// <summary>
-            /// Executes the timing logic.
+            /// Gets timing.
             /// </summary>
             new AmigaSettingOption<AmigaFloppySpeed>(AmigaFloppySpeed.Accurate, "ACCURATE", "Use hardware-like disk timing."),
             /// <summary>
-            /// Executes the time logic.
+            /// Gets time.
             /// </summary>
             new AmigaSettingOption<AmigaFloppySpeed>(AmigaFloppySpeed.Fast, "FAST", "Reduce normal disk wait time."),
             /// <summary>
-            /// Executes the timing logic.
+            /// Gets timing.
             /// </summary>
             new AmigaSettingOption<AmigaFloppySpeed>(AmigaFloppySpeed.Turbo, "TURBO", "Use aggressive fast-loading disk timing."),
             /// <summary>
-            /// Executes the immediately logic.
+            /// Gets immediately.
             /// </summary>
             new AmigaSettingOption<AmigaFloppySpeed>(AmigaFloppySpeed.Instant, "INSTANT", "Complete supported disk waits immediately.")
         };
 
         /// <summary>
-        /// Executes the Paula Filter Options logic.
+        /// Stores Paula Filter Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaPaulaFilter>[] PaulaFilterOptions =
         {
             /// <summary>
-            /// Executes the filtering logic.
+            /// Gets filtering.
             /// </summary>
             new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.Off, "OFF", "Disable host-side Paula filtering."),
             /// <summary>
-            /// Executes the filtering logic.
+            /// Gets filtering.
             /// </summary>
             new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.A500, "A500", "A500-style low-pass filtering."),
             /// <summary>
-            /// Executes the filtering logic.
+            /// Gets filtering.
             /// </summary>
             new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.A1200, "A1200", "A1200-style brighter filtering."),
             /// <summary>
-            /// Executes the filter logic.
+            /// Gets filter.
             /// </summary>
             new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.Led, "LED", "Apply the stronger LED filter.")
         };
 
         /// <summary>
-        /// Executes the Input Port Options logic.
+        /// Stores Input Port Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaInputPortMode>[] InputPortOptions =
         {
             /// <summary>
-            /// Executes the port logic.
+            /// Gets port.
             /// </summary>
             new AmigaSettingOption<AmigaInputPortMode>(AmigaInputPortMode.None, "NONE", "No host input on this port."),
             /// <summary>
-            /// Executes the mouse logic.
+            /// Gets mouse.
             /// </summary>
             new AmigaSettingOption<AmigaInputPortMode>(AmigaInputPortMode.Mouse, "MOUSE", "Use the host mouse."),
             /// <summary>
-            /// Executes the controls logic.
+            /// Gets controls.
             /// </summary>
             new AmigaSettingOption<AmigaInputPortMode>(AmigaInputPortMode.Joystick, "JOYSTICK", "Use keyboard joystick controls."),
             /// <summary>
-            /// Executes the gamepad logic.
+            /// Gets gamepad.
             /// </summary>
             new AmigaSettingOption<AmigaInputPortMode>(AmigaInputPortMode.Gamepad, "GAMEPAD", "Use a host gamepad."),
             /// <summary>
-            /// Executes the controls logic.
+            /// Gets controls.
             /// </summary>
             new AmigaSettingOption<AmigaInputPortMode>(AmigaInputPortMode.KeyboardJoystick, "KEY JOY", "Use keyboard joystick controls.")
         };
@@ -345,40 +345,40 @@ namespace AmigaEmulator.Core
         private static readonly AmigaSettingOption<AmigaResetMode>[] ResetModeOptions =
         {
             /// <summary>
-            /// Executes the state logic.
+            /// Gets state.
             /// </summary>
             new AmigaSettingOption<AmigaResetMode>(AmigaResetMode.Warm, "WARM", "Reset without clearing all host-side state."),
             /// <summary>
-            /// Executes the media logic.
+            /// Gets media.
             /// </summary>
             new AmigaSettingOption<AmigaResetMode>(AmigaResetMode.Reload, "RELOAD", "Reset and reload mounted media."),
             /// <summary>
-            /// Executes the media logic.
+            /// Gets media.
             /// </summary>
             new AmigaSettingOption<AmigaResetMode>(AmigaResetMode.Power, "POWER", "Power-cycle and remount configured media.")
         };
 
         /// <summary>
-        /// Executes the Accuracy Profile Options logic.
+        /// Stores Accuracy Profile Options.
         /// </summary>
         private static readonly AmigaSettingOption<AmigaAccuracyProfile>[] AccuracyProfileOptions =
         {
             /// <summary>
-            /// Executes the timing logic.
+            /// Gets timing.
             /// </summary>
             new AmigaSettingOption<AmigaAccuracyProfile>(AmigaAccuracyProfile.Fast, "FAST", "Prefer responsiveness over detailed timing."),
             /// <summary>
-            /// Executes the use logic.
+            /// Gets use.
             /// </summary>
             new AmigaSettingOption<AmigaAccuracyProfile>(AmigaAccuracyProfile.Compatible, "COMPAT", "Balanced timing profile for normal use."),
             /// <summary>
-            /// Executes the detail logic.
+            /// Gets detail.
             /// </summary>
             new AmigaSettingOption<AmigaAccuracyProfile>(AmigaAccuracyProfile.Strict, "STRICT", "Prefer strict timing detail.")
         };
 
         /// <summary>
-        /// Executes the Video Filters logic.
+        /// Gets Video Filters.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaVideoFilter>> VideoFilters
         {
@@ -386,7 +386,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Upscale Modes logic.
+        /// Gets Upscale Modes.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaUpscaleMode>> UpscaleModes
         {
@@ -402,7 +402,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the RAM Profile Infos logic.
+        /// Gets RAM Profile Infos.
         /// </summary>
         public static IReadOnlyList<AmigaRamProfileInfo> RamProfileInfos
         {
@@ -410,7 +410,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Kickstarts logic.
+        /// Gets Kickstarts.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaKickstart>> Kickstarts
         {
@@ -418,7 +418,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Floppy Speeds logic.
+        /// Gets Floppy Speeds.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaFloppySpeed>> FloppySpeeds
         {
@@ -426,7 +426,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Paula Filters logic.
+        /// Gets Paula Filters.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaPaulaFilter>> PaulaFilters
         {
@@ -434,7 +434,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Input Port Modes logic.
+        /// Gets Input Port Modes.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaInputPortMode>> InputPortModes
         {
@@ -450,7 +450,7 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Executes the Accuracy Profiles logic.
+        /// Gets Accuracy Profiles.
         /// </summary>
         public static IReadOnlyList<AmigaSettingOption<AmigaAccuracyProfile>> AccuracyProfiles
         {

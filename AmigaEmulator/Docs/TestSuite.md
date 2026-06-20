@@ -47,6 +47,30 @@ non-uniform visible output, and has a matching vAmigaTS reference artifact.
 Exact RAW screenshot comparison is intentionally deferred until the emulator
 exports the full vAmigaTS 716x285 border/overscan capture area.
 
+## Include Amiga Devtest Checks
+
+The external `cdhooper/amiga_devtest` repository is stored under
+`external-tests/amiga_devtest`. These checks are optional because they require a
+bootable AmigaDOS ADF that runs `devtest` from `S:startup-sequence`.
+
+```powershell
+.\Tools\run-amiga-devtest.ps1
+```
+
+or:
+
+```powershell
+dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --include-amiga-devtest
+```
+
+Pass a prepared ADF explicitly with:
+
+```powershell
+.\Tools\run-amiga-devtest.ps1 -AdfPath C:\path\to\amiga_devtest_trackdisk.adf
+```
+
+When the prepared ADF or Kickstart ROM is missing, the test reports `SKIP`.
+
 ## Useful Filters
 
 ```powershell
@@ -55,6 +79,7 @@ dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.d
 dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter Denise
 dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter GoldenADF --include-adf
 dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter vAmigaTS --include-vamigats
+dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter AmigaDevtest --include-amiga-devtest
 ```
 
 ## Current Coverage
@@ -82,6 +107,8 @@ dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.d
 - Optional vAmigaTS smoke coverage for representative Agnus, Blitter, Copper,
   Denise, Paula, CIA, memory, and mainboard/input ADFs.
 - Optional vAmigaTS recursive discovery mode for broader local sweeps.
+- Optional Amiga Devtest boot-ADF smoke coverage for the AmigaOS
+  `trackdisk.device` block-device path.
 
 ## Next Test Targets
 

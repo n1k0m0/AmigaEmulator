@@ -25,67 +25,67 @@ namespace AmigaEmulator.Core.Memory
     public enum CustomInterruptSource : ushort
     {
         /// <summary>
-        /// Represents the N on e option.
+        /// Represents None.
         /// </summary>
         None = 0x0000,
         /// <summary>
-        /// Represents the T be option.
+        /// Represents Tbe.
         /// </summary>
         Tbe = 0x0001,
         /// <summary>
-        /// Represents the D sk Bl k option.
+        /// Represents Dsk Blk.
         /// </summary>
         DskBlk = 0x0002,
         /// <summary>
-        /// Represents the S of t option.
+        /// Represents Soft.
         /// </summary>
         Soft = 0x0004,
         /// <summary>
-        /// Represents the P or ts option.
+        /// Represents Ports.
         /// </summary>
         Ports = 0x0008,
         /// <summary>
-        /// Represents the C op pe r option.
+        /// Represents Copper.
         /// </summary>
         Copper = 0x0010,
         /// <summary>
-        /// Represents the V er ti ca lB la nk option.
+        /// Represents Vertical Blank.
         /// </summary>
         VerticalBlank = 0x0020,
         /// <summary>
-        /// Represents the B li tt er option.
+        /// Represents Blitter.
         /// </summary>
         Blitter = 0x0040,
         /// <summary>
-        /// Represents the A ud io0 option.
+        /// Represents Audio 0.
         /// </summary>
         Audio0 = 0x0080,
         /// <summary>
-        /// Represents the A ud io1 option.
+        /// Represents Audio 1.
         /// </summary>
         Audio1 = 0x0100,
         /// <summary>
-        /// Represents the A ud io2 option.
+        /// Represents Audio 2.
         /// </summary>
         Audio2 = 0x0200,
         /// <summary>
-        /// Represents the A ud io3 option.
+        /// Represents Audio 3.
         /// </summary>
         Audio3 = 0x0400,
         /// <summary>
-        /// Represents the R ec ei ve Bu ff er Fu ll option.
+        /// Represents Receive Buffer Full.
         /// </summary>
         ReceiveBufferFull = 0x0800,
         /// <summary>
-        /// Represents the D is kS yn c option.
+        /// Represents Disk Sync.
         /// </summary>
         DiskSync = 0x1000,
         /// <summary>
-        /// Represents the E xt er na l option.
+        /// Represents External.
         /// </summary>
         External = 0x2000,
         /// <summary>
-        /// Represents the M as te r option.
+        /// Represents Master.
         /// </summary>
         Master = 0x4000
     }
@@ -96,11 +96,11 @@ namespace AmigaEmulator.Core.Memory
     public sealed class CustomRegisterMap
     {
         /// <summary>
-        /// Defines the Set Clear Bit constant.
+        /// Constant for Set Clear Bit.
         /// </summary>
         public const ushort SetClearBit = 0x8000;
         /// <summary>
-        /// Defines the Custom Bit Mask constant.
+        /// Constant for Custom Bit Mask.
         /// </summary>
         public const ushort CustomBitMask = 0x7FFF;
         /// <summary>
@@ -186,51 +186,59 @@ namespace AmigaEmulator.Core.Memory
         public const uint Copjmp2 = 0x08A;
 
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private readonly ushort[] _registers = new ushort[0x1000 / 2];
         /// <summary>
-        /// Tracks the dmacon.
+        /// Stores dmacon.
         /// </summary>
         private ushort _dmacon;
         /// <summary>
-        /// Tracks the adkcon.
+        /// Stores adkcon.
         /// </summary>
         private ushort _adkcon;
         /// <summary>
-        /// Tracks the intena.
+        /// Stores intena.
         /// </summary>
         private ushort _intena;
         /// <summary>
-        /// Tracks the intreq.
+        /// Stores intreq.
         /// </summary>
         private ushort _intreq;
         /// <summary>
-        /// Tracks the potgo.
+        /// Stores potgo.
         /// </summary>
         private ushort _potgo;
         /// <summary>
-        /// Tracks the collision unit used for CLXCON/CLXDAT side effects.
+        /// Stores live potentiometer counter values for POT0DAT and POT1DAT.
+        /// </summary>
+        private readonly byte[,] _potCounters = new byte[2, 2];
+        /// <summary>
+        /// Stores whether each potentiometer counter is running after a POTGO start strobe.
+        /// </summary>
+        private readonly bool[,] _potCounterActive = new bool[2, 2];
+        /// <summary>
+        /// Stores collision Unit.
         /// </summary>
         private CollisionUnit _collisionUnit;
         /// <summary>
-        /// Tracks the is Blitter Busy.
+        /// Stores is Blitter Busy.
         /// </summary>
         private Func<bool> _isBlitterBusy;
         /// <summary>
-        /// Tracks the is Blitter Zero.
+        /// Stores is Blitter Zero.
         /// </summary>
         private Func<bool> _isBlitterZero;
         /// <summary>
-        /// Tracks the read Joy0 data.
+        /// Stores read Joy 0 Dat.
         /// </summary>
         private Func<ushort> _readJoy0Dat;
         /// <summary>
-        /// Tracks the read Joy1 data.
+        /// Stores read Joy 1 Dat.
         /// </summary>
         private Func<ushort> _readJoy1Dat;
         /// <summary>
-        /// Tracks the read pot Inp.
+        /// Stores read Pot Inp.
         /// </summary>
         private Func<ushort, ushort> _readPotInp;
 
@@ -245,7 +253,7 @@ namespace AmigaEmulator.Core.Memory
         public event Action<int> CopperJumpRequested;
 
         /// <summary>
-        /// Executes the DMA Control logic.
+        /// Gets DMA Control.
         /// </summary>
         public ushort DmaControl
         {
@@ -253,7 +261,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Adk Control logic.
+        /// Gets Adk Control.
         /// </summary>
         public ushort AdkControl
         {
@@ -261,7 +269,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Interrupt Enable logic.
+        /// Gets Interrupt Enable.
         /// </summary>
         public ushort InterruptEnable
         {
@@ -269,7 +277,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Interrupt Request logic.
+        /// Gets Interrupt Request.
         /// </summary>
         public ushort InterruptRequest
         {
@@ -277,7 +285,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Master Interrupt Enabled logic.
+        /// Gets Master Interrupt Enabled.
         /// </summary>
         public bool MasterInterruptEnabled
         {
@@ -285,7 +293,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Interrupt Pending logic.
+        /// Gets Interrupt Pending.
         /// </summary>
         public bool InterruptPending
         {
@@ -293,7 +301,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Active Interrupt Level logic.
+        /// Gets Active Interrupt Level.
         /// </summary>
         public int ActiveInterruptLevel
         {
@@ -315,6 +323,7 @@ namespace AmigaEmulator.Core.Memory
             _intena = 0;
             _intreq = 0;
             _potgo = 0;
+            ResetPotCounters(false);
             RaiseInterruptStateChanged();
         }
 
@@ -367,6 +376,18 @@ namespace AmigaEmulator.Core.Memory
                 return status;
             }
 
+            if (offset == Copjmp1)
+            {
+                RaiseCopperJumpRequested(1);
+                return _registers[GetIndex(address)];
+            }
+
+            if (offset == Copjmp2)
+            {
+                RaiseCopperJumpRequested(2);
+                return _registers[GetIndex(address)];
+            }
+
             if (offset == Dmacon)
             {
                 return _dmacon;
@@ -394,7 +415,8 @@ namespace AmigaEmulator.Core.Memory
 
             if (offset == Pot0dat || offset == Pot1dat)
             {
-                return 0xFFFF;
+                int port = offset == Pot0dat ? 0 : 1;
+                return (ushort)((_potCounters[port, 1] << 8) | _potCounters[port, 0]);
             }
 
             if (offset == Potinp)
@@ -429,6 +451,11 @@ namespace AmigaEmulator.Core.Memory
             if (offset == Clxdat)
             {
                 return _collisionUnit != null ? _collisionUnit.CollisionFlags : (ushort)0;
+            }
+
+            if (offset == Copjmp1 || offset == Copjmp2)
+            {
+                return _registers[GetIndex(address)];
             }
 
             return ReadWord(address);
@@ -482,6 +509,11 @@ namespace AmigaEmulator.Core.Memory
             if (offset == Potgo)
             {
                 _potgo = value;
+                if ((value & 0x0001) != 0)
+                {
+                    ResetPotCounters(true);
+                }
+
                 _registers[GetIndex(address)] = _potgo;
                 return;
             }
@@ -515,6 +547,38 @@ namespace AmigaEmulator.Core.Memory
         public void WriteRawWord(uint address, ushort value)
         {
             _registers[GetIndex(address)] = value;
+        }
+
+        /// <summary>
+        /// Advances live potentiometer counters once per scanline.
+        /// </summary>
+        public void TickPotCounters()
+        {
+            for (int port = 0; port < 2; port++)
+            {
+                for (int axis = 0; axis < 2; axis++)
+                {
+                    if (_potCounterActive[port, axis])
+                    {
+                        _potCounters[port, axis]++;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears potentiometer counters and optionally starts them.
+        /// </summary>
+        private void ResetPotCounters(bool active)
+        {
+            for (int port = 0; port < 2; port++)
+            {
+                for (int axis = 0; axis < 2; axis++)
+                {
+                    _potCounters[port, axis] = 0;
+                    _potCounterActive[port, axis] = active;
+                }
+            }
         }
 
         /// <summary>
@@ -564,7 +628,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Request Interrupt logic.
+        /// Runs Request Interrupt.
         /// </summary>
         public void RequestInterrupt(CustomInterruptSource source)
         {
@@ -582,7 +646,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Clear Interrupt logic.
+        /// Runs Clear Interrupt.
         /// </summary>
         public void ClearInterrupt(CustomInterruptSource source)
         {

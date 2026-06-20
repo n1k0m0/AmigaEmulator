@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,21 +20,21 @@ using AmigaEmulator.Core.Cpu;
 namespace AmigaEmulator.Tests
 {
     /// <summary>
-    /// Provides 68000 Opcode Matrix Tests behavior used by the emulator.
+    /// Provides 68000 Opcode Matrix Tests functionality.
     /// </summary>
     internal static class M68kOpcodeMatrixTests
     {
         /// <summary>
-        /// Defines the Reset Stack constant.
+        /// Constant for Reset Stack.
         /// </summary>
         private const uint ResetStack = 0x00000F00;
         /// <summary>
-        /// Defines the Program Start constant.
+        /// Constant for Program Start.
         /// </summary>
         private const uint ProgramStart = 0x00000100;
 
         /// <summary>
-        /// Builds the value.
+        /// Builds the Build result.
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
@@ -56,7 +56,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test All Opcode Words Step Safely logic.
+        /// Runs Test All Opcode Words Step Safely.
         /// </summary>
         private static void TestAllOpcodeWordsStepSafely()
         {
@@ -85,7 +85,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Implemented Families Decode logic.
+        /// Runs Test Implemented Families Decode.
         /// </summary>
         private static void TestImplementedFamiliesDecode()
         {
@@ -118,7 +118,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Executes the Test Representative Semantics logic.
+        /// Runs Test Representative Semantics.
         /// </summary>
         private static void TestRepresentativeSemantics()
         {
@@ -705,12 +705,12 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Provides Matrix Bus behavior used by the emulator.
+        /// Provides Matrix Bus functionality.
         /// </summary>
         private sealed class MatrixBus : IM68kBus
         {
             /// <summary>
-            /// Tracks the memory.
+            /// Stores memory.
             /// </summary>
             private readonly byte[] _memory;
 

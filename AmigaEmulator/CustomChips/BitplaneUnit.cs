@@ -26,19 +26,19 @@ namespace AmigaEmulator.Core.CustomChips
     public sealed class BitplaneUnit
     {
         /// <summary>
-        /// Defines the Pal Visible Top constant.
+        /// Constant for Pal Visible Top.
         /// </summary>
         public const int PalVisibleTop = 44;
         /// <summary>
-        /// Defines the Pal Visible Height constant.
+        /// Constant for Pal Visible Height.
         /// </summary>
         public const int PalVisibleHeight = 256;
         /// <summary>
-        /// Defines the Lowres Pixels period Chip Cycle constant.
+        /// Constant for Lowres Pixels Per Chip Cycle.
         /// </summary>
         public const int LowresPixelsPerChipCycle = 2;
         /// <summary>
-        /// Defines the Hires Pixels period Chip Cycle constant.
+        /// Constant for Hires Pixels Per Chip Cycle.
         /// </summary>
         public const int HiresPixelsPerChipCycle = 4;
 
@@ -47,19 +47,19 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint Dmacon = 0x096;
         /// <summary>
-        /// Defines the Diwstrt constant.
+        /// Constant for Diwstrt.
         /// </summary>
         private const uint Diwstrt = 0x08E;
         /// <summary>
-        /// Defines the Diwstop constant.
+        /// Constant for Diwstop.
         /// </summary>
         private const uint Diwstop = 0x090;
         /// <summary>
-        /// Defines the Ddfstrt constant.
+        /// Constant for Ddfstrt.
         /// </summary>
         private const uint Ddfstrt = 0x092;
         /// <summary>
-        /// Defines the Ddfstop constant.
+        /// Constant for Ddfstop.
         /// </summary>
         private const uint Ddfstop = 0x094;
         /// <summary>
@@ -83,7 +83,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint Bpl2mod = 0x10A;
         /// <summary>
-        /// Defines the bitplane Data Base constant.
+        /// Constant for Bpl Data Base.
         /// </summary>
         private const uint BplDataBase = 0x110;
         /// <summary>
@@ -91,142 +91,148 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint BplPointerBase = 0x0E0;
         /// <summary>
-        /// Defines the Color Base constant.
+        /// Constant for Color Base.
         /// </summary>
         private const uint ColorBase = 0x180;
         /// <summary>
-        /// Defines the Max Planes constant.
+        /// Constant for Max Planes.
         /// </summary>
         private const int MaxPlanes = 6;
         /// <summary>
-        /// Defines the Max Fetched Words constant.
+        /// Constant for Max Fetched Words.
         /// </summary>
         private const int MaxFetchedWords = 128;
 
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private readonly CustomRegisterMap _registers;
         /// <summary>
-        /// Tracks the fetched Words.
+        /// Stores fetched Words.
         /// </summary>
         private readonly ushort[,] _fetchedWords;
         /// <summary>
-        /// Tracks the fetched Rows.
+        /// Stores fetched Rows.
         /// </summary>
         private readonly int[,] _fetchedRows;
         /// <summary>
-        /// Tracks the pending Fetched Words.
+        /// Stores pending Fetched Words.
         /// </summary>
         private readonly ushort[,] _pendingFetchedWords;
         /// <summary>
-        /// Tracks the pending Fetched Rows.
+        /// Stores pending Fetched Rows.
         /// </summary>
         private readonly int[] _pendingFetchedRows;
         /// <summary>
-        /// Tracks the pending Fetched Plane Mask.
+        /// Stores pending Fetched Plane Mask.
         /// </summary>
         private readonly int[] _pendingFetchedPlaneMask;
         /// <summary>
-        /// Tracks the data Latches.
+        /// Stores data Latches.
         /// </summary>
         private readonly ushort[] _dataLatches;
         /// <summary>
-        /// Tracks the data Latch Valid.
+        /// Stores data Latch Valid.
         /// </summary>
         private readonly bool[] _dataLatchValid;
         /// <summary>
-        /// Tracks the DMA Pointers.
+        /// Stores DMA Pointers.
         /// </summary>
         private readonly uint[] _dmaPointers;
         /// <summary>
-        /// Tracks the last Pointer Register Values.
+        /// Stores last Pointer Register Values.
         /// </summary>
         private readonly uint[] _lastPointerRegisterValues;
         /// <summary>
-        /// Tracks the DMA Address.
+        /// Stores DMA Address.
         /// </summary>
         private readonly ChipDmaAddress _dmaAddress;
         /// <summary>
-        /// Tracks the read Chip Word.
+        /// Stores read Chip Word.
         /// </summary>
         private Func<uint, ushort> _readChipWord;
         /// <summary>
-        /// Tracks the active DMA Row.
+        /// Stores active DMA Row.
         /// </summary>
         private int _activeDmaRow;
         /// <summary>
-        /// Tracks the last Fetched Word Index.
+        /// Stores last Fetched Word Index.
         /// </summary>
         private int _lastFetchedWordIndex;
         /// <summary>
-        /// Tracks the completed DMA Line.
+        /// Stores completed DMA Line.
         /// </summary>
         private bool _completedDmaLine;
         /// <summary>
-        /// Tracks the has Pointer Register Snapshot.
+        /// Stores has Pointer Register Snapshot.
         /// </summary>
         private bool _hasPointerRegisterSnapshot;
         /// <summary>
-        /// Tracks the split Fetch Active.
+        /// Preserves older savestate layouts that stored the former split-fetch display-delay flag.
         /// </summary>
+#pragma warning disable 0169, 0414
         private bool _splitFetchActive;
+#pragma warning restore 0169, 0414
         /// <summary>
-        /// Tracks the DMA Active.
+        /// Stores DMA Active.
         /// </summary>
         private bool _dmaActive;
         /// <summary>
-        /// Tracks the display Active.
+        /// Stores display Active.
         /// </summary>
         private bool _displayActive;
         /// <summary>
-        /// Tracks the diw Top.
+        /// Stores diw Top.
         /// </summary>
         private int _diwTop;
         /// <summary>
-        /// Tracks the diw Bottom.
+        /// Stores diw Bottom.
         /// </summary>
         private int _diwBottom;
         /// <summary>
-        /// Tracks the viewport-relative DIW left edge.
+        /// Stores diw Left.
         /// </summary>
         private int _diwLeft;
         /// <summary>
-        /// Tracks the viewport-relative DIW right edge.
+        /// Stores diw Right.
         /// </summary>
         private int _diwRight;
         /// <summary>
-        /// Tracks the ddf Start.
+        /// Stores ddf Start.
         /// </summary>
         private int _ddfStart;
         /// <summary>
-        /// Tracks the ddf Stop.
+        /// Stores ddf Stop.
         /// </summary>
         private int _ddfStop;
         /// <summary>
-        /// Tracks the words period Fetched Line.
+        /// Stores words Per Fetched Line.
         /// </summary>
         private int _wordsPerFetchedLine;
         /// <summary>
-        /// Tracks the display Fetch Width.
+        /// Stores display Fetch Width.
         /// </summary>
         private int _displayFetchWidth;
         /// <summary>
-        /// Tracks the scroll Even.
+        /// Stores scroll Even.
         /// </summary>
         private int _scrollEven;
         /// <summary>
-        /// Tracks the scroll Odd.
+        /// Stores scroll Odd.
         /// </summary>
         private int _scrollOdd;
         /// <summary>
-        /// Tracks the hires.
+        /// Stores hires.
         /// </summary>
         private bool _hires;
         /// <summary>
         /// Tracks whether BPLCON0 selects HAM output.
         /// </summary>
         private bool _ham;
+        /// <summary>
+        /// Tracks whether the effective BPLCON0 selects dual-playfield output.
+        /// </summary>
+        private bool _dualPlayfield;
         /// <summary>
         /// Tracks whether six bitplanes select Extra Half-Brite output.
         /// </summary>
@@ -277,12 +283,12 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Gets or updates the Enabled Planes.
+        /// Gets or sets Enabled Planes.
         /// </summary>
         public int EnabledPlanes { get; private set; }
 
         /// <summary>
-        /// Executes the DMA Active logic.
+        /// Gets DMA Active.
         /// </summary>
         public bool DmaActive
         {
@@ -326,7 +332,6 @@ namespace AmigaEmulator.Core.CustomChips
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
             _hasPointerRegisterSnapshot = false;
-            _splitFetchActive = false;
             for (int word = 0; word < MaxFetchedWords; word++)
             {
                 _pendingFetchedRows[word] = int.MinValue;
@@ -359,7 +364,6 @@ namespace AmigaEmulator.Core.CustomChips
             _activeDmaRow = int.MinValue;
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
-            _splitFetchActive = false;
         }
 
         /// <summary>
@@ -403,11 +407,11 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Refresh From Registers logic.
+        /// Runs Refresh From Registers.
         /// </summary>
         public void RefreshFromRegisters()
         {
-            ushort bplcon0 = Read(Bplcon0);
+            ushort bplcon0 = GetEffectiveBplcon0();
             ushort bplcon1 = Read(Bplcon1);
             ushort dmacon = Read(Dmacon);
             ushort diwStart = Read(Diwstrt);
@@ -418,12 +422,13 @@ namespace AmigaEmulator.Core.CustomChips
             EnabledPlanes = Math.Min(6, (bplcon0 >> 12) & 0x07);
             _hires = (bplcon0 & 0x8000) != 0;
             _ham = (bplcon0 & 0x0800) != 0;
+            _dualPlayfield = (bplcon0 & 0x0400) != 0;
             _ehb = !_ham && EnabledPlanes == 6;
             _dmaActive = (dmacon & 0x0200) != 0 && (dmacon & 0x0100) != 0;
             _displayActive = EnabledPlanes > 0 && (_dmaActive || HasValidDataLatch());
 
             int rawTop = diwStart == 0 ? PalVisibleTop : (diwStart >> 8) & 0xFF;
-            _diwTop = rawTop < PalVisibleTop ? PalVisibleTop : rawTop;
+            _diwTop = rawTop;
             _diwBottom = diwStop == 0 ? rawTop + PalVisibleHeight : (diwStop >> 8) & 0xFF;
             if (rawTop < PalVisibleTop && _diwBottom <= PalVisibleTop + 32)
             {
@@ -506,7 +511,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Fetch DMA Words logic.
+        /// Runs Fetch Dma Words.
         /// </summary>
         public void FetchDmaWords(int beamX, int beamY)
         {
@@ -515,7 +520,6 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            _splitFetchActive = false;
             int row = GetScreenY(beamY);
             if (row < 0)
             {
@@ -572,7 +576,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Fetch DMA Plane Word logic.
+        /// Runs Fetch Dma Plane Word.
         /// </summary>
         public void FetchDmaPlaneWord(int beamX, int beamY)
         {
@@ -581,7 +585,6 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            _splitFetchActive = true;
             int row = GetScreenY(beamY);
             if (row < 0)
             {
@@ -738,7 +741,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Priority Control logic.
+        /// Gets Priority Control.
         /// </summary>
         public ushort PriorityControl
         {
@@ -750,7 +753,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public bool IsDualPlayfield
         {
-            get { return (Read(Bplcon0) & 0x0400) != 0; }
+            get { return _dualPlayfield; }
         }
 
         /// <summary>
@@ -780,8 +783,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return 0;
             }
 
-            ushort bplcon0 = Read(Bplcon0);
-            if ((bplcon0 & 0x0400) != 0)
+            if (_dualPlayfield)
             {
                 return ReadDualPlayfieldColorIndex(displayX, row);
             }
@@ -880,7 +882,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Ensure DMA Line logic.
+        /// Runs Ensure Dma Line.
         /// </summary>
         private void EnsureDmaLine(int row, int wordIndex)
         {
@@ -894,6 +896,7 @@ namespace AmigaEmulator.Core.CustomChips
             _activeDmaRow = row;
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
+            InvalidateFetchedRow(row);
 
             if (!continuesPreviousLine)
             {
@@ -915,7 +918,33 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the End DMA Line logic.
+        /// Clears cached fetch words for a display row before fresh DMA data for that row arrives.
+        /// </summary>
+        private void InvalidateFetchedRow(int row)
+        {
+            for (int plane = 0; plane < MaxPlanes; plane++)
+            {
+                for (int word = 0; word < MaxFetchedWords; word++)
+                {
+                    if (_fetchedRows[plane, word] == row)
+                    {
+                        _fetchedRows[plane, word] = int.MinValue;
+                    }
+                }
+            }
+
+            for (int word = 0; word < MaxFetchedWords; word++)
+            {
+                if (_pendingFetchedRows[word] == row)
+                {
+                    _pendingFetchedRows[word] = int.MinValue;
+                    _pendingFetchedPlaneMask[word] = 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Runs End Dma Line.
         /// </summary>
         private void EndDmaLine()
         {
@@ -939,7 +968,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Have Pointer Registers Changed logic.
+        /// Runs Have Pointer Registers Changed.
         /// </summary>
         private bool HavePointerRegistersChanged()
         {
@@ -960,7 +989,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Capture Pointer Register Snapshot logic.
+        /// Runs Capture Pointer Register Snapshot.
         /// </summary>
         private void CapturePointerRegisterSnapshot()
         {
@@ -978,10 +1007,7 @@ namespace AmigaEmulator.Core.CustomChips
         private int GetDisplayX(int screenX)
         {
             int left = (_ddfStart - 0x38) * HiresPixelsPerChipCycle;
-            int splitPrefetchDelay = _splitFetchActive && _dmaActive
-                ? EnabledPlanes * HiresPixelsPerChipCycle
-                : 0;
-            return screenX - left - splitPrefetchDelay;
+            return screenX - left;
         }
 
         /// <summary>
@@ -1051,7 +1077,15 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Diw Raw Top logic.
+        /// Returns BPLCON0 after the OCS Agnus mask has removed unsupported bits.
+        /// </summary>
+        private ushort GetEffectiveBplcon0()
+        {
+            return (ushort)(Read(Bplcon0) & 0xFF0F);
+        }
+
+        /// <summary>
+        /// Gets Diw Raw Top.
         /// </summary>
         private int DiwRawTop
         {
@@ -1063,7 +1097,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Diw Raw Bottom logic.
+        /// Gets Diw Raw Bottom.
         /// </summary>
         private int DiwRawBottom
         {
@@ -1088,7 +1122,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Ddf Start logic.
+        /// Gets Ddf Start.
         /// </summary>
         private int DdfStart
         {
@@ -1100,7 +1134,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Ddf Stop logic.
+        /// Gets Ddf Stop.
         /// </summary>
         private int DdfStop
         {
@@ -1112,7 +1146,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Words period Fetched Line logic.
+        /// Gets Words period Fetched Line.
         /// </summary>
         private int WordsPerFetchedLine
         {
@@ -1123,7 +1157,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Display Fetch Width logic.
+        /// Gets Display Fetch Width.
         /// </summary>
         private int DisplayFetchWidth
         {
@@ -1168,7 +1202,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Expand Nibble logic.
+        /// Runs Expand Nibble.
         /// </summary>
         private static byte ExpandNibble(int value)
         {
@@ -1176,7 +1210,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Signed Word logic.
+        /// Runs Signed Word.
         /// </summary>
         private static int SignedWord(ushort value)
         {

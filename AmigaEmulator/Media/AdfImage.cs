@@ -24,30 +24,35 @@ namespace AmigaEmulator.Core.Media
     public sealed class AdfImage
     {
         /// <summary>
-        /// Defines the Standard Size constant.
+        /// Standard 880 KB double-density ADF size in bytes.
         /// </summary>
         public const int StandardSize = 901120;
         /// <summary>
-        /// Defines the Tracks constant.
+        /// Number of cylinders in a standard double-density ADF.
         /// </summary>
         public const int Tracks = 80;
         /// <summary>
-        /// Defines the Sides constant.
+        /// Number of disk sides in a standard double-density ADF.
         /// </summary>
         public const int Sides = 2;
         /// <summary>
-        /// Defines the Sectors period Track constant.
+        /// Number of AmigaDOS sectors per logical track.
         /// </summary>
         public const int SectorsPerTrack = 11;
         /// <summary>
-        /// Defines the Sector Size constant.
+        /// Size of one AmigaDOS sector in bytes.
         /// </summary>
         public const int SectorSize = 512;
 
         /// <summary>
-        /// Tracks the bytes.
+        /// Stores the mutable in-memory disk image bytes.
         /// </summary>
         private readonly byte[] _bytes;
+        /// <summary>
+        /// Tracks whether the in-memory ADF differs from its host file.
+        /// </summary>
+        [NonSerialized]
+        private bool _dirty;
 
         /// <summary>
         /// Initializes a new instance of the AdfImage class.
@@ -59,16 +64,24 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Gets or updates the Path.
+        /// Gets the host file path backing this ADF image.
         /// </summary>
         public string Path { get; private set; }
 
         /// <summary>
-        /// Executes the Size logic.
+        /// Gets the current in-memory image size in bytes.
         /// </summary>
         public int Size
         {
             get { return _bytes.Length; }
+        }
+
+        /// <summary>
+        /// Gets whether sector writes need to be flushed to the host file.
+        /// </summary>
+        public bool IsDirty
+        {
+            get { return _dirty; }
         }
 
         /// <summary>
@@ -180,7 +193,64 @@ namespace AmigaEmulator.Core.Media
             }
 
             Buffer.BlockCopy(source, sourceOffset, _bytes, offset, SectorSize);
+            _dirty = true;
             return true;
+        }
+
+        /// <summary>
+        /// Persists dirty ADF bytes back to the original host file using a replace-by-rename write.
+        /// </summary>
+        public void Flush()
+        {
+            if (!_dirty)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Path))
+            {
+                throw new InvalidOperationException("ADF image has no host path.");
+            }
+
+            string fullPath = System.IO.Path.GetFullPath(Path);
+            string directory = System.IO.Path.GetDirectoryName(fullPath);
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                directory = Directory.GetCurrentDirectory();
+            }
+
+            Directory.CreateDirectory(directory);
+            string tempPath = System.IO.Path.Combine(directory, System.IO.Path.GetFileName(fullPath) + ".tmp");
+            string backupPath = System.IO.Path.Combine(directory, System.IO.Path.GetFileName(fullPath) + ".bak");
+            File.WriteAllBytes(tempPath, _bytes);
+            if (File.Exists(fullPath))
+            {
+                File.Replace(tempPath, fullPath, backupPath, true);
+                TryDelete(backupPath);
+            }
+            else
+            {
+                File.Move(tempPath, fullPath);
+            }
+
+            _dirty = false;
+        }
+
+        /// <summary>
+        /// Deletes a temporary file while ignoring cleanup errors.
+        /// </summary>
+        private static void TryDelete(string path)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch
+            {
+            }
         }
 
         /// <summary>

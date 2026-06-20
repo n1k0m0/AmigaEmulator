@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using AmigaEmulator.Core;
 using AmigaEmulator.Core.Audio;
@@ -39,43 +40,43 @@ namespace AmigaEmulator
         private enum OverlayMode
         {
             /// <summary>
-            /// Represents the N on e option.
+            /// Represents None.
             /// </summary>
             None,
             /// <summary>
-            /// Represents the S et ti ng s option.
+            /// Represents Settings.
             /// </summary>
             Settings,
             /// <summary>
-            /// Represents the M ai nM en u option.
+            /// Represents Main Menu.
             /// </summary>
             MainMenu,
             /// <summary>
-            /// Represents the D is pl ay option.
+            /// Represents Display.
             /// </summary>
             Display,
             /// <summary>
-            /// Represents the M ed ia option.
+            /// Represents Media.
             /// </summary>
             Media,
             /// <summary>
-            /// Represents the M ac hi ne option.
+            /// Represents Machine.
             /// </summary>
             Machine,
             /// <summary>
-            /// Represents the R om s option.
+            /// Represents Roms.
             /// </summary>
             Roms,
             /// <summary>
-            /// Represents the I np ut option.
+            /// Represents Input.
             /// </summary>
             Input,
             /// <summary>
-            /// Represents the R es et option.
+            /// Represents Reset.
             /// </summary>
             Reset,
             /// <summary>
-            /// Represents the S av eS ta te s option.
+            /// Represents Save States.
             /// </summary>
             SaveStates
         }
@@ -86,15 +87,27 @@ namespace AmigaEmulator
         private enum RenderLimitMode
         {
             /// <summary>
-            /// Represents the H z50 option.
+            /// Represents Native.
+            /// </summary>
+            Native,
+            /// <summary>
+            /// Represents 50 Hz.
             /// </summary>
             Hz50,
             /// <summary>
-            /// Represents the H z120 option.
+            /// Represents 60 Hz.
+            /// </summary>
+            Hz60,
+            /// <summary>
+            /// Represents 100 Hz.
+            /// </summary>
+            Hz100,
+            /// <summary>
+            /// Represents 120 Hz.
             /// </summary>
             Hz120,
             /// <summary>
-            /// Represents the U nl im it ed option.
+            /// Represents Unlimited.
             /// </summary>
             Unlimited
         }
@@ -105,15 +118,15 @@ namespace AmigaEmulator
         private enum VideoFilterMode
         {
             /// <summary>
-            /// Represents the S ha rp option.
+            /// Represents Sharp.
             /// </summary>
             Sharp,
             /// <summary>
-            /// Represents the C rt option.
+            /// Represents CRT.
             /// </summary>
             Crt,
             /// <summary>
-            /// Represents the T v option.
+            /// Represents TV.
             /// </summary>
             Tv
         }
@@ -124,27 +137,35 @@ namespace AmigaEmulator
         private enum VideoUpscaleMode
         {
             /// <summary>
-            /// Represents the N on e option.
+            /// Represents None.
             /// </summary>
             None,
             /// <summary>
-            /// Represents the S ca le2 x option.
+            /// Represents Scale2x.
             /// </summary>
             Scale2x,
             /// <summary>
-            /// Represents the S ca le3 x option.
+            /// Represents Scale3x.
             /// </summary>
             Scale3x,
             /// <summary>
-            /// Represents the H q2 x option.
+            /// Represents HQ2x.
             /// </summary>
             Hq2x,
             /// <summary>
-            /// Represents the H q3 x option.
+            /// Represents HQ3x.
             /// </summary>
             Hq3x,
             /// <summary>
-            /// Represents the C le an4 option.
+            /// Represents HQ4x.
+            /// </summary>
+            Hq4x,
+            /// <summary>
+            /// Represents xBRZ.
+            /// </summary>
+            Xbrz,
+            /// <summary>
+            /// Represents Clean 4.
             /// </summary>
             Clean4
         }
@@ -155,15 +176,15 @@ namespace AmigaEmulator
         private enum PaulaFilterMode
         {
             /// <summary>
-            /// Represents the O ff option.
+            /// Represents Off.
             /// </summary>
             Off,
             /// <summary>
-            /// Represents the L ed option.
+            /// Represents Led.
             /// </summary>
             Led,
             /// <summary>
-            /// Represents the L ow Pa ss option.
+            /// Represents Low Pass.
             /// </summary>
             LowPass
         }
@@ -174,21 +195,25 @@ namespace AmigaEmulator
         private enum RamProfile
         {
             /// <summary>
-            /// Represents the C hi p512 Sl ow512 option.
+            /// Represents Chip 512 Slow 512.
             /// </summary>
             Chip512Slow512,
             /// <summary>
-            /// Represents the C hi p512 option.
+            /// Represents Chip 512.
             /// </summary>
             Chip512,
             /// <summary>
-            /// Represents the C hi p1 Mb option.
+            /// Represents Chip 1 Mb.
             /// </summary>
             Chip1Mb,
             /// <summary>
-            /// Represents the C hi p1 Mb Fa st4 Mb option.
+            /// Represents Chip 2 Mb.
             /// </summary>
-            Chip1MbFast4Mb
+            Chip2Mb,
+            /// <summary>
+            /// Represents Chip 2 Mb Fast 8 Mb.
+            /// </summary>
+            Chip2MbFast8Mb
         }
 
         /// <summary>
@@ -197,15 +222,15 @@ namespace AmigaEmulator
         private enum FloppySpeedMode
         {
             /// <summary>
-            /// Represents the R ea l option.
+            /// Represents Real.
             /// </summary>
             Real,
             /// <summary>
-            /// Represents the T ur bo Lo ad in g option.
+            /// Represents Turbo Loading.
             /// </summary>
             TurboLoading,
             /// <summary>
-            /// Represents the T ur bo Al wa ys option.
+            /// Represents Turbo Always.
             /// </summary>
             TurboAlways
         }
@@ -216,15 +241,15 @@ namespace AmigaEmulator
         private enum InputPortMode
         {
             /// <summary>
-            /// Represents the M ou se Po rt1 Jo ys ti ck Po rt2 option.
+            /// Represents Mouse Port 1 Joystick Port 2.
             /// </summary>
             MousePort1JoystickPort2,
             /// <summary>
-            /// Represents the J oy st ic kP or t1 Mo us eP or t2 option.
+            /// Represents Joystick Port 1 Mouse Port 2.
             /// </summary>
             JoystickPort1MousePort2,
             /// <summary>
-            /// Represents the D ua lJ oy st ic k option.
+            /// Represents Dual Joystick.
             /// </summary>
             DualJoystick
         }
@@ -235,263 +260,376 @@ namespace AmigaEmulator
         private enum ResetMode
         {
             /// <summary>
-            /// Represents the W ar m option.
+            /// Represents Warm.
             /// </summary>
             Warm,
             /// <summary>
-            /// Represents the R em ou nt option.
+            /// Represents Remount.
             /// </summary>
             Remount,
             /// <summary>
-            /// Represents the P ow er option.
+            /// Represents Power.
             /// </summary>
             Power
         }
 
         /// <summary>
-        /// Tracks the system.
+        /// Caps one host mouse injection below the signed 8-bit JOYxDAT wrap danger zone.
+        /// </summary>
+        private const int MaxMouseDeltaPerSlice = 32;
+
+        /// <summary>
+        /// Spreads host mouse motion through sub-frame chunks so it stays responsive without one-shot counter jumps.
+        /// </summary>
+        private const int MouseDeltaDrainSliceCycles = 4096;
+
+        /// <summary>
+        /// Holds a delayed mouse click long enough for frame-polled software to observe it.
+        /// </summary>
+        private const int DeferredMouseButtonHoldCycles = 2000000;
+
+        /// <summary>
+        /// Keeps host edge-to-edge mouse motion inside the drawable width of a 16-lores-pixel Amiga sprite cursor.
+        /// </summary>
+        private const int MouseSpriteGuardHiresPixelsX = 32;
+
+        /// <summary>
+        /// Lets Kickstart finish early initialization before restoring DF0 from persistent settings.
+        /// </summary>
+        private const int DeferredMediaMountChipCycles = 16000000;
+        /// <summary>
+        /// Hides the measured left overscan border before scaling the North & South presentation.
+        /// </summary>
+        private const int PresentationCropPixelsLeft = 0;
+
+        /// <summary>
+        /// Hides the measured right overscan border so the active North & South image reaches the window edge.
+        /// </summary>
+        private const int PresentationCropPixelsRight = 8;
+
+        /// <summary>
+        /// Hides the bottom border below the active North & South PAL playfield presentation area.
+        /// </summary>
+        private const int PresentationCropPixelsBottom = 56;
+
+        /// <summary>
+        /// Stores system.
         /// </summary>
         private AmigaSystem _system;
         /// <summary>
-        /// Executes the Paula Audio Output logic.
+        /// Runs Paula Audio Output.
         /// </summary>
         private readonly PaulaAudioOutput _audioOutput = new PaulaAudioOutput();
         /// <summary>
-        /// Executes the Start New logic.
+        /// Runs Start New.
         /// </summary>
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
         /// <summary>
-        /// Executes the Font logic.
+        /// Runs Font.
         /// </summary>
         private readonly Font _smallFont = new Font(FontFamily.GenericMonospace, 11.0f, FontStyle.Regular);
         /// <summary>
-        /// Executes the Font logic.
+        /// Runs Font.
         /// </summary>
         private readonly Font _titleFont = new Font(FontFamily.GenericMonospace, 18.0f, FontStyle.Bold);
         /// <summary>
-        /// Tracks the main Menu Items.
+        /// Stores main Menu Items.
         /// </summary>
         private readonly string[] _mainMenuItems = { "SETTINGS", "MEDIA", "MACHINE", "INPUT", "RESET", "DISPLAY" };
         /// <summary>
-        /// Tracks the save Slots.
+        /// Stores save Slots.
         /// </summary>
         private readonly SaveStateSlotMetadata[] _saveSlots = new SaveStateSlotMetadata[10];
         /// <summary>
-        /// Tracks the settings.
+        /// Stores settings.
         /// </summary>
         private readonly AmigaEmulatorSettings _settings;
         /// <summary>
-        /// Tracks the overlay Mode.
+        /// Stores overlay Mode.
         /// </summary>
         private OverlayMode _overlayMode = OverlayMode.None;
         /// <summary>
-        /// Tracks the previous Overlay Mode.
+        /// Stores previous Overlay Mode.
         /// </summary>
         private OverlayMode _previousOverlayMode = OverlayMode.None;
         /// <summary>
-        /// Tracks the render Limit Mode.
+        /// Stores render Limit Mode.
         /// </summary>
         private RenderLimitMode _renderLimitMode = RenderLimitMode.Hz50;
         /// <summary>
-        /// Tracks the video Filter Mode.
+        /// Stores video Filter Mode.
         /// </summary>
         private VideoFilterMode _videoFilterMode = VideoFilterMode.Sharp;
         /// <summary>
-        /// Tracks the video Upscale Mode.
+        /// Stores video Upscale Mode.
         /// </summary>
         private VideoUpscaleMode _videoUpscaleMode = VideoUpscaleMode.None;
         /// <summary>
-        /// Tracks the paula Filter Mode.
+        /// Stores paula Filter Mode.
         /// </summary>
         private PaulaFilterMode _paulaFilterMode = PaulaFilterMode.Led;
         /// <summary>
-        /// Tracks the RAM Profile.
+        /// Stores RAM Profile.
         /// </summary>
         private RamProfile _ramProfile = RamProfile.Chip512;
         /// <summary>
-        /// Tracks the floppy Speed Mode.
+        /// Stores floppy Speed Mode.
         /// </summary>
         private FloppySpeedMode _floppySpeedMode = FloppySpeedMode.Real;
         /// <summary>
-        /// Tracks the input Port Mode.
+        /// Stores input Port Mode.
         /// </summary>
         private InputPortMode _inputPortMode = InputPortMode.MousePort1JoystickPort2;
         /// <summary>
-        /// Tracks the reset Mode.
+        /// Stores reset Mode.
         /// </summary>
         private ResetMode _resetMode = ResetMode.Warm;
         /// <summary>
-        /// Tracks the accuracy Profile.
+        /// Stores accuracy Profile.
         /// </summary>
         private AmigaAccuracyProfile _accuracyProfile = AmigaAccuracyProfile.Fast;
         /// <summary>
-        /// Tracks the mounted Media.
+        /// Stores mounted Media.
         /// </summary>
         private MountedMediaInfo _mountedMedia = MountedMediaInfo.None;
         /// <summary>
-        /// Executes the media Entries logic.
+        /// Stores a DF0 image that should be mounted after Kickstart startup has settled.
+        /// </summary>
+        private MountedMediaInfo _deferredMediaMount = MountedMediaInfo.None;
+        /// <summary>
+        /// Stores the frame at which the deferred DF0 mount may run.
+        /// </summary>
+        private long _deferredMediaMountFrame = -1;
+        /// <summary>
+        /// Stores media Entries.
         /// </summary>
         private readonly List<string> _mediaEntries = new List<string>();
         /// <summary>
-        /// Executes the ROM Entries logic.
+        /// Stores rom Entries.
         /// </summary>
         private readonly List<KickstartRomInfo> _romEntries = new List<KickstartRomInfo>();
         /// <summary>
-        /// Tracks the media Directory.
+        /// Stores media Directory.
         /// </summary>
         private string _mediaDirectory;
         /// <summary>
-        /// Tracks the selected ROM Path.
+        /// Stores selected ROM Path.
         /// </summary>
         private string _selectedRomPath;
         /// <summary>
-        /// Tracks the settings Selection.
+        /// Stores settings Selection.
         /// </summary>
         private int _settingsSelection;
         /// <summary>
-        /// Tracks the main Selection.
+        /// Stores main Selection.
         /// </summary>
         private int _mainSelection;
         /// <summary>
-        /// Tracks the display Selection.
+        /// Stores display Selection.
         /// </summary>
         private int _displaySelection;
         /// <summary>
-        /// Tracks the media Selection.
+        /// Stores media Selection.
         /// </summary>
         private int _mediaSelection;
         /// <summary>
-        /// Tracks the ROM Selection.
+        /// Stores ROM Selection.
         /// </summary>
         private int _romSelection;
         /// <summary>
-        /// Tracks the machine Selection.
+        /// Stores machine Selection.
         /// </summary>
         private int _machineSelection;
         /// <summary>
-        /// Tracks the input Selection.
+        /// Stores input Selection.
         /// </summary>
         private int _inputSelection;
         /// <summary>
-        /// Tracks the reset Selection.
+        /// Stores reset Selection.
         /// </summary>
         private int _resetSelection;
         /// <summary>
-        /// Tracks the save Selection.
+        /// Stores save Selection.
         /// </summary>
         private int _saveSelection;
         /// <summary>
-        /// Tracks the debug Overlay Visible.
+        /// Stores debug Overlay Visible.
         /// </summary>
         private bool _debugOverlayVisible = false;
         /// <summary>
-        /// Tracks the drive Overlay Visible.
+        /// Stores drive Overlay Visible.
         /// </summary>
         private bool _driveOverlayVisible = true;
         /// <summary>
-        /// Tracks the audio Enabled.
+        /// Stores audio Enabled.
         /// </summary>
         private bool _audioEnabled = true;
         /// <summary>
-        /// Tracks the floppy Write Protected.
+        /// Stores floppy Write Protected.
         /// </summary>
         private bool _floppyWriteProtected = true;
         /// <summary>
-        /// Tracks the turbo Mode.
+        /// Stores turbo Mode.
         /// </summary>
         private bool _turboMode;
         /// <summary>
-        /// Tracks the fullscreen.
+        /// Stores fullscreen.
         /// </summary>
         private bool _fullscreen;
         /// <summary>
-        /// Tracks the has Last Mouse Position.
+        /// Stores has Last Mouse Position.
         /// </summary>
         private bool _hasLastMousePosition;
         /// <summary>
-        /// Tracks the last Mouse Position.
+        /// Stores last Mouse Position.
         /// </summary>
         private Point _lastMousePosition;
         /// <summary>
-        /// Tracks the master Volume.
+        /// Stores pending relative Mouse X motion.
+        /// </summary>
+        private int _pendingMouseDx;
+        /// <summary>
+        /// Stores pending relative Mouse Y motion.
+        /// </summary>
+        private int _pendingMouseDy;
+        /// <summary>
+        /// Stores the port receiving buffered Mouse motion.
+        /// </summary>
+        private AmigaControlPort _pendingMousePort;
+        /// <summary>
+        /// Stores queued mouse buttons waiting for buffered motion to drain.
+        /// </summary>
+        private AmigaJoystickButtons _queuedMouseDownButtons;
+        /// <summary>
+        /// Stores queued mouse button releases waiting for a deferred press.
+        /// </summary>
+        private AmigaJoystickButtons _queuedMouseUpButtons;
+        /// <summary>
+        /// Stores deferred mouse buttons currently held in the emulated port.
+        /// </summary>
+        private AmigaJoystickButtons _deferredHeldMouseButtons;
+        /// <summary>
+        /// Stores the remaining minimum hold time for deferred mouse buttons.
+        /// </summary>
+        private int _deferredMouseButtonHoldCycles;
+        /// <summary>
+        /// Hides the host cursor while the Amiga display owns mouse input.
+        /// </summary>
+        private readonly Cursor _hiddenHostCursor = CreateHiddenHostCursor();
+        /// <summary>
+        /// Tracks whether Windows currently clips host mouse motion to the emulator display.
+        /// </summary>
+        private bool _hostMouseCaptured;
+        /// <summary>
+        /// Stores the client rectangle currently used for host mouse clipping.
+        /// </summary>
+        private Rectangle _capturedHostMouseClientRectangle;
+        /// <summary>
+        /// Tracks a synthetic MouseMove generated by re-centering the host cursor.
+        /// </summary>
+        private bool _pendingHostMouseWarp;
+        /// <summary>
+        /// Stores the screen position targeted by the most recent host cursor warp.
+        /// </summary>
+        private Point _pendingHostMouseWarpScreenPoint;
+        /// <summary>
+        /// Stores master Volume.
         /// </summary>
         private float _masterVolume = 0.80f;
         /// <summary>
-        /// Tracks the last Seconds.
+        /// Stores last Seconds.
         /// </summary>
         private double _lastSeconds;
         /// <summary>
-        /// Tracks the last Update Seconds.
+        /// Stores last Update Seconds.
         /// </summary>
         private double _lastUpdateSeconds;
         /// <summary>
-        /// Tracks the last Perf Seconds.
+        /// Stores last Perf Seconds.
         /// </summary>
         private double _lastPerfSeconds;
         /// <summary>
-        /// Tracks the pending Chip Cycles.
+        /// Stores last Title Update Seconds.
+        /// </summary>
+        private double _lastTitleUpdateSeconds;
+        /// <summary>
+        /// Stores pending Chip Cycles.
         /// </summary>
         private double _pendingChipCycles;
         /// <summary>
-        /// Tracks the perf Chip Cycles.
+        /// Stores perf Chip Cycles.
         /// </summary>
         private long _perfChipCycles;
         /// <summary>
-        /// Tracks the host Speed Percent.
+        /// Stores host Speed Percent.
         /// </summary>
         private double _hostSpeedPercent = 100.0;
         /// <summary>
-        /// Tracks the smoothed CPU Mhz.
+        /// Stores smoothed CPU Mhz.
         /// </summary>
         private double _smoothedCpuMhz;
         /// <summary>
-        /// Tracks the audio Filter Left.
+        /// Stores audio Filter Left.
         /// </summary>
         private float _audioFilterLeft;
         /// <summary>
-        /// Tracks the audio Filter Right.
+        /// Stores audio Filter Right.
         /// </summary>
         private float _audioFilterRight;
         /// <summary>
-        /// Tracks the last Frame.
+        /// Stores last Frame.
         /// </summary>
         private long _lastFrame;
         /// <summary>
-        /// Tracks the ROM Status Text.
+        /// Stores ROM Status Text.
         /// </summary>
         private string _romStatusText = "KICKSTART MISSING";
         /// <summary>
-        /// Tracks the status Text.
+        /// Stores status Text.
         /// </summary>
         private string _statusText = "READY";
 
         /// <summary>
-        /// Executes the Amiga Window logic.
+        /// Runs Amiga Window.
         /// </summary>
         public AmigaWindow(AmigaModel model, string title)
-            : base(model.VisibleWidth, model.VisibleHeight, model.VisibleWidth / 2, model.VisibleHeight, title)
+            : base(
+                model.VisibleWidth,
+                model.VisibleHeight,
+                model.VisibleWidth / 2,
+                model.VisibleHeight,
+                title)
         {
             _settings = AmigaEmulatorSettingsStore.Load();
             _videoFilterMode = GetVideoFilterFromSettings(_settings.VideoFilter);
             _videoUpscaleMode = GetVideoUpscaleFromSettings(_settings.UpscaleMode);
             _renderLimitMode = GetRenderLimitFromSettings(_settings.RenderFps);
             _paulaFilterMode = GetPaulaFilterFromSettings(_settings.PaulaFilter);
+            _floppySpeedMode = GetFloppySpeedFromSettings(_settings.FloppySpeed);
+            _resetMode = GetResetModeFromSettings(_settings.ResetMode);
             _driveOverlayVisible = _settings.DriveOverlayEnabled;
             _turboMode = _settings.TurboMode;
+            _fullscreen = _settings.Fullscreen;
             _accuracyProfile = _settings.AccuracyProfile;
             _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, GetRamProfileForModel(model));
             _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), _settings.CreateAccuracyOptions());
+            SetPresentationSourceCrop(PresentationCropPixelsLeft, 0, PresentationCropPixelsRight, PresentationCropPixelsBottom);
+            SetPresentationStretchToClient(true);
+            ApplyFloppyTiming();
             AttachAudioToSystem();
             _inputPortMode = GetInputPortModeFromSettings(_settings.Port1Mode, _settings.Port2Mode);
             ApplyInputPortMode();
             _mediaDirectory = !string.IsNullOrWhiteSpace(_settings.MediaBrowserDirectory) ? _settings.MediaBrowserDirectory : GetInitialMediaDirectory();
             _selectedRomPath = _settings.CustomKickstartPath ?? string.Empty;
             LoadConfiguredKickstart();
+            ScheduleConfiguredMediaRemount();
             RefreshMediaEntries();
             RefreshRomEntries();
             RefreshSaveStateSlots();
+            _saveSelection = Math.Max(0, Math.Min(_saveSlots.Length - 1, _settings.SelectedSaveStateSlot));
             ApplyVideoPresentation();
             UpdateFrequency = GetRenderUpdateFrequency(_renderLimitMode);
+            ApplyStartupFullscreen();
             ResetEmulationClock();
         }
 
@@ -503,18 +641,23 @@ namespace AmigaEmulator
             int cycles = CalculateCyclesForUpdate();
             if (cycles > 0)
             {
-                _system.RunChipCycles(cycles);
+                RunChipCyclesWithBufferedMouse(cycles);
+                CompleteDeferredMediaMountIfReady();
                 UpdatePerformanceCounters(cycles);
-                UpdateTitleStatus(cycles);
+                UpdateTitleStatus();
             }
 
-            _system.PresentedFrameBuffer.CopyTo(Pixels);
+            if (_system.FrameCounter != _lastFrame)
+            {
+                _system.PresentedFrameBuffer.CopyTo(Pixels);
+                _lastFrame = _system.FrameCounter;
+            }
+
             _lastSeconds = _stopwatch.Elapsed.TotalSeconds;
-            _lastFrame = _system.FrameCounter;
         }
 
         /// <summary>
-        /// Executes the Process Cmd Key logic.
+        /// Runs Process Cmd Key.
         /// </summary>
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -635,20 +778,60 @@ namespace AmigaEmulator
         /// </summary>
         protected override void OnMouseMove(MouseEventArgs e)
         {
-            if (_overlayMode == OverlayMode.None &&
-                TryGetMousePort(out AmigaControlPort mousePort) &&
-                _hasLastMousePosition)
+            Rectangle presentation = GetPresentationRectangle();
+            bool insidePresentation = presentation.Contains(e.Location);
+            bool captureWasCentered = UpdateHostMouseCapture();
+            if (_hostMouseCaptured)
             {
-                Rectangle presentation = GetPresentationRectangle();
-                double scaleX = presentation.Width > 0 ? PixelsWidth / (double)presentation.Width : 1.0;
-                double scaleY = presentation.Height > 0 ? PixelsHeight / (double)presentation.Height : 1.0;
+                Point center = GetHostMouseCaptureCenter(presentation);
+                if (captureWasCentered || TryConsumeHostMouseWarp(e.Location))
+                {
+                    _lastMousePosition = center;
+                    _hasLastMousePosition = true;
+                    base.OnMouseMove(e);
+                    return;
+                }
+
+                if (_overlayMode == OverlayMode.None &&
+                    insidePresentation &&
+                    TryGetMousePort(out AmigaControlPort capturedMousePort))
+                {
+                    int rawDx = e.X - center.X;
+                    int rawDy = e.Y - center.Y;
+                    if (rawDx != 0 || rawDy != 0)
+                    {
+                        int cursorSafeSourceWidth = Math.Max(1, PresentationSourceWidth - MouseSpriteGuardHiresPixelsX);
+                        double scaleX = presentation.Width > 0 ? cursorSafeSourceWidth / (double)presentation.Width : 1.0;
+                        double scaleY = presentation.Height > 0 ? PresentationSourceHeight / (double)presentation.Height : 1.0;
+                        int dx = (int)Math.Round(rawDx * scaleX);
+                        int dy = (int)Math.Round(rawDy * scaleY);
+                        QueueBufferedMouseMotion(capturedMousePort, dx, dy);
+                    }
+                }
+
+                CenterHostMouse(center);
+                _lastMousePosition = center;
+                _hasLastMousePosition = true;
+                base.OnMouseMove(e);
+                return;
+            }
+
+            if (_overlayMode == OverlayMode.None &&
+                insidePresentation &&
+                TryGetMousePort(out AmigaControlPort mousePort) &&
+                _hasLastMousePosition &&
+                presentation.Contains(_lastMousePosition))
+            {
+                int cursorSafeSourceWidth = Math.Max(1, PresentationSourceWidth - MouseSpriteGuardHiresPixelsX);
+                double scaleX = presentation.Width > 0 ? cursorSafeSourceWidth / (double)presentation.Width : 1.0;
+                double scaleY = presentation.Height > 0 ? PresentationSourceHeight / (double)presentation.Height : 1.0;
                 int dx = (int)Math.Round((e.X - _lastMousePosition.X) * scaleX);
                 int dy = (int)Math.Round((e.Y - _lastMousePosition.Y) * scaleY);
-                _system.Input.MoveMouse(mousePort, dx, dy);
+                QueueBufferedMouseMotion(mousePort, dx, dy);
             }
 
             _lastMousePosition = e.Location;
-            _hasLastMousePosition = true;
+            _hasLastMousePosition = insidePresentation;
             base.OnMouseMove(e);
         }
 
@@ -657,13 +840,14 @@ namespace AmigaEmulator
         /// </summary>
         protected override void OnMouseDown(MouseEventArgs e)
         {
-            if (_overlayMode == OverlayMode.None && TryGetMousePort(out AmigaControlPort mousePort))
+            if (_overlayMode == OverlayMode.None &&
+                GetPresentationRectangle().Contains(e.Location) &&
+                TryGetMousePort(out AmigaControlPort mousePort))
             {
                 AmigaJoystickButtons button = MapMouseButton(e.Button);
                 if (button != AmigaJoystickButtons.None)
                 {
-                    _system.Input.SetMouseButton(mousePort, button, true);
-                    Capture = true;
+                    QueueOrApplyMouseButton(mousePort, button, true);
                 }
             }
 
@@ -680,13 +864,8 @@ namespace AmigaEmulator
                 AmigaJoystickButtons button = MapMouseButton(e.Button);
                 if (button != AmigaJoystickButtons.None)
                 {
-                    _system.Input.SetMouseButton(mousePort, button, false);
+                    QueueOrApplyMouseButton(mousePort, button, false);
                 }
-            }
-
-            if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right || e.Button == MouseButtons.Middle)
-            {
-                Capture = false;
             }
 
             base.OnMouseUp(e);
@@ -698,7 +877,139 @@ namespace AmigaEmulator
         protected override void OnMouseLeave(EventArgs e)
         {
             _hasLastMousePosition = false;
+            UpdateHostMouseCapture();
+            if (!_hostMouseCaptured)
+            {
+                ClearBufferedMouseMotion();
+            }
+
             base.OnMouseLeave(e);
+        }
+
+        /// <summary>
+        /// Captures or refreshes the host mouse clip while this window owns focus.
+        /// </summary>
+        private bool UpdateHostMouseCapture()
+        {
+            if (!IsHandleCreated || IsDisposed || WindowState == FormWindowState.Minimized)
+            {
+                ReleaseHostMouseCapture();
+                return false;
+            }
+
+            if (!Focused && !ContainsFocus)
+            {
+                ReleaseHostMouseCapture();
+                return false;
+            }
+
+            Rectangle presentation = GetPresentationRectangle();
+            if (presentation.Width <= 0 || presentation.Height <= 0)
+            {
+                presentation = ClientRectangle;
+            }
+
+            if (presentation.Width <= 0 || presentation.Height <= 0)
+            {
+                ReleaseHostMouseCapture();
+                return false;
+            }
+
+            bool centered = false;
+            bool newlyCaptured = !_hostMouseCaptured;
+            if (newlyCaptured || presentation != _capturedHostMouseClientRectangle)
+            {
+                NativeRect clip = ToScreenNativeRect(presentation);
+                ClipCursor(ref clip);
+                _capturedHostMouseClientRectangle = presentation;
+                _hostMouseCaptured = true;
+                CenterHostMouse(GetHostMouseCaptureCenter(presentation));
+                centered = true;
+            }
+
+            if (!ReferenceEquals(Cursor, _hiddenHostCursor))
+            {
+                Cursor = _hiddenHostCursor;
+            }
+
+            return centered;
+        }
+
+        /// <summary>
+        /// Releases the host mouse clip and restores the normal Windows cursor.
+        /// </summary>
+        private void ReleaseHostMouseCapture()
+        {
+            if (_hostMouseCaptured)
+            {
+                ClipCursor(IntPtr.Zero);
+                _hostMouseCaptured = false;
+                _capturedHostMouseClientRectangle = Rectangle.Empty;
+            }
+
+            _pendingHostMouseWarp = false;
+
+            if (!ReferenceEquals(Cursor, Cursors.Default))
+            {
+                Cursor = Cursors.Default;
+            }
+        }
+
+        /// <summary>
+        /// Returns the client-space center used by relative mouse capture.
+        /// </summary>
+        private static Point GetHostMouseCaptureCenter(Rectangle rectangle)
+        {
+            return new Point(
+                rectangle.Left + Math.Max(0, rectangle.Width / 2),
+                rectangle.Top + Math.Max(0, rectangle.Height / 2));
+        }
+
+        /// <summary>
+        /// Moves the host cursor back to the capture center.
+        /// </summary>
+        private void CenterHostMouse(Point clientPoint)
+        {
+            Point screenPoint = PointToScreen(clientPoint);
+            if (Cursor.Position != screenPoint)
+            {
+                _pendingHostMouseWarp = true;
+                _pendingHostMouseWarpScreenPoint = screenPoint;
+                Cursor.Position = screenPoint;
+            }
+        }
+
+        /// <summary>
+        /// Consumes the MouseMove generated by Cursor.Position when it lands at the capture center.
+        /// </summary>
+        private bool TryConsumeHostMouseWarp(Point clientPoint)
+        {
+            if (!_pendingHostMouseWarp)
+            {
+                return false;
+            }
+
+            Point screenPoint = PointToScreen(clientPoint);
+            int dx = Math.Abs(screenPoint.X - _pendingHostMouseWarpScreenPoint.X);
+            int dy = Math.Abs(screenPoint.Y - _pendingHostMouseWarpScreenPoint.Y);
+            _pendingHostMouseWarp = false;
+            return dx <= 2 && dy <= 2;
+        }
+
+        /// <summary>
+        /// Converts a client rectangle into the Win32 screen rectangle used by ClipCursor.
+        /// </summary>
+        private NativeRect ToScreenNativeRect(Rectangle clientRectangle)
+        {
+            Point topLeft = PointToScreen(clientRectangle.Location);
+            Point bottomRight = PointToScreen(new Point(clientRectangle.Right, clientRectangle.Bottom));
+            return new NativeRect
+            {
+                Left = topLeft.X,
+                Top = topLeft.Y,
+                Right = bottomRight.X,
+                Bottom = bottomRight.Y
+            };
         }
 
         /// <summary>
@@ -753,15 +1064,59 @@ namespace AmigaEmulator
         /// </summary>
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            ReleaseHostMouseCapture();
+            FlushMountedMedia();
             _smallFont.Dispose();
             _titleFont.Dispose();
             _audioOutput.Dispose();
+            if (!ReferenceEquals(_hiddenHostCursor, Cursors.Default))
+            {
+                _hiddenHostCursor.Dispose();
+            }
+
             if (_system != null)
             {
                 DetachAudioFromSystem(_system);
                 _system.Dispose();
             }
             base.OnFormClosed(e);
+        }
+
+        /// <summary>
+        /// Handles focus loss by releasing all emulated input buttons.
+        /// </summary>
+        protected override void OnDeactivate(EventArgs e)
+        {
+            ReleaseHostMouseCapture();
+            ReleaseAllHostInput();
+            base.OnDeactivate(e);
+        }
+
+        /// <summary>
+        /// Captures the host mouse again when the emulator regains focus.
+        /// </summary>
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            UpdateHostMouseCapture();
+        }
+
+        /// <summary>
+        /// Refreshes the host mouse clip after window moves.
+        /// </summary>
+        protected override void OnMove(EventArgs e)
+        {
+            base.OnMove(e);
+            UpdateHostMouseCapture();
+        }
+
+        /// <summary>
+        /// Refreshes the host mouse clip after window resizes.
+        /// </summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            UpdateHostMouseCapture();
         }
 
         /// <summary>
@@ -850,7 +1205,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Toggle Overlay logic.
+        /// Runs Toggle Overlay.
         /// </summary>
         private void ToggleOverlay(OverlayMode mode)
         {
@@ -858,6 +1213,7 @@ namespace AmigaEmulator
             {
                 _previousOverlayMode = OverlayMode.None;
                 _overlayMode = OverlayMode.None;
+                UpdateHostMouseCapture();
                 return;
             }
 
@@ -865,16 +1221,17 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Show Overlay logic.
+        /// Runs Show Overlay.
         /// </summary>
         private void ShowOverlay(OverlayMode mode)
         {
             _previousOverlayMode = _overlayMode == OverlayMode.None ? OverlayMode.None : _overlayMode;
             _overlayMode = mode;
+            UpdateHostMouseCapture();
         }
 
         /// <summary>
-        /// Executes the Close Or Back Overlay logic.
+        /// Runs Close Or Back Overlay.
         /// </summary>
         private void CloseOrBackOverlay()
         {
@@ -887,15 +1244,17 @@ namespace AmigaEmulator
             {
                 _overlayMode = _previousOverlayMode == OverlayMode.None ? OverlayMode.MainMenu : _previousOverlayMode;
                 _previousOverlayMode = OverlayMode.None;
+                UpdateHostMouseCapture();
                 return;
             }
 
             _overlayMode = OverlayMode.None;
             _previousOverlayMode = OverlayMode.None;
+            UpdateHostMouseCapture();
         }
 
         /// <summary>
-        /// Executes the Move Selection logic.
+        /// Runs Move Selection.
         /// </summary>
         private void MoveSelection(int delta)
         {
@@ -970,7 +1329,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Change Selected Item logic.
+        /// Runs Change Selected Item.
         /// </summary>
         private void ChangeSelectedItem(int direction)
         {
@@ -995,7 +1354,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Activate Selected Item logic.
+        /// Runs Activate Selected Item.
         /// </summary>
         private void ActivateSelectedItem()
         {
@@ -1032,7 +1391,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Activate Main Menu Item logic.
+        /// Runs Activate Main Menu Item.
         /// </summary>
         private void ActivateMainMenuItem()
         {
@@ -1048,7 +1407,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Change Settings Item logic.
+        /// Runs Change Settings Item.
         /// </summary>
         private void ChangeSettingsItem(int direction)
         {
@@ -1062,20 +1421,20 @@ namespace AmigaEmulator
                 case 5: CycleRenderLimit(); break;
                 case 6: ToggleFullscreen(); break;
                 case 7: ToggleTurboMode(); break;
-                case 8: _floppySpeedMode = CycleEnum(_floppySpeedMode, direction); break;
+                case 8: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;
                 case 9: _inputPortMode = CycleEnum(_inputPortMode, direction); ApplyInputPortMode(); break;
                 case 10: ApplyRamProfile(CycleEnum(_ramProfile, direction)); break;
                 case 11: _debugOverlayVisible = !_debugOverlayVisible; break;
                 case 12: ToggleDriveOverlay(); break;
                 case 13: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
                 case 14: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
-                case 15: _resetMode = CycleEnum(_resetMode, direction); break;
+                case 15: ApplyResetMode(CycleEnum(_resetMode, direction)); break;
                 case 16: ShowOverlay(OverlayMode.Reset); break;
             }
         }
 
         /// <summary>
-        /// Executes the Change Display Item logic.
+        /// Runs Change Display Item.
         /// </summary>
         private void ChangeDisplayItem(int direction)
         {
@@ -1090,7 +1449,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Change Machine Item logic.
+        /// Runs Change Machine Item.
         /// </summary>
         private void ChangeMachineItem(int direction)
         {
@@ -1098,17 +1457,17 @@ namespace AmigaEmulator
             {
                 case 0: _statusText = _system.Model.Name; break;
                 case 1: ApplyRamProfile(CycleEnum(_ramProfile, direction)); break;
-                case 2: _floppySpeedMode = CycleEnum(_floppySpeedMode, direction); break;
-                case 3: _floppyWriteProtected = !_floppyWriteProtected; break;
+                case 2: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;
+                case 3: ToggleDiskWriteProtection(); break;
                 case 4: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
                 case 5: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
-                case 6: _resetMode = CycleEnum(_resetMode, direction); break;
+                case 6: ApplyResetMode(CycleEnum(_resetMode, direction)); break;
                 case 7: ShowOverlay(OverlayMode.Reset); break;
             }
         }
 
         /// <summary>
-        /// Executes the Change Input Item logic.
+        /// Runs Change Input Item.
         /// </summary>
         private void ChangeInputItem(int direction)
         {
@@ -1123,24 +1482,24 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Change Reset Item logic.
+        /// Runs Change Reset Item.
         /// </summary>
         private void ChangeResetItem(int direction)
         {
             if (_resetSelection == 0)
             {
-                _resetMode = CycleEnum(_resetMode, direction);
+                ApplyResetMode(CycleEnum(_resetMode, direction));
             }
         }
 
         /// <summary>
-        /// Executes the Activate Reset Item logic.
+        /// Runs Activate Reset Item.
         /// </summary>
         private void ActivateResetItem()
         {
             if (_resetSelection == 0)
             {
-                _resetMode = CycleEnum(_resetMode, 1);
+                ApplyResetMode(CycleEnum(_resetMode, 1));
                 return;
             }
 
@@ -1151,11 +1510,17 @@ namespace AmigaEmulator
             }
 
             bool powerCycle = _resetSelection == 2 || _resetMode == ResetMode.Power;
+            MountedMediaInfo media = _mountedMedia;
             _system.Reset(powerCycle);
             ResetAudioOutput();
             if (powerCycle)
             {
-                LoadDefaultKickstart();
+                LoadConfiguredKickstart();
+                ScheduleDeferredMediaMount(media);
+            }
+            else if (_resetMode == ResetMode.Remount)
+            {
+                RemountMedia(media);
             }
 
             ResetEmulationClock();
@@ -1164,7 +1529,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Activate Media Item logic.
+        /// Runs Activate Media Item.
         /// </summary>
         private void ActivateMediaItem()
         {
@@ -1177,9 +1542,20 @@ namespace AmigaEmulator
 
             if (_mediaSelection == 1)
             {
-                _mountedMedia = MountedMediaInfo.None;
-                _system.Bus.FloppyController.EjectDrive0();
-                _statusText = "DF0 EJECTED";
+                try
+                {
+                    ClearDeferredMediaMount();
+                    _system.Bus.FloppyController.EjectDrive0();
+                    _mountedMedia = MountedMediaInfo.None;
+                    SaveMountedMediaSettings();
+                    _statusText = "DF0 EJECTED";
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                    _statusText = "DF0 EJECT FAILED";
+                }
+
                 return;
             }
 
@@ -1188,6 +1564,7 @@ namespace AmigaEmulator
                 try
                 {
                     _mediaDirectory = Directory.GetParent(_mediaDirectory)?.FullName ?? _mediaDirectory;
+                    SaveMediaDirectorySetting();
                     RefreshMediaEntries();
                 }
                 catch
@@ -1208,15 +1585,19 @@ namespace AmigaEmulator
             if (Directory.Exists(path))
             {
                 _mediaDirectory = path;
+                SaveMediaDirectorySetting();
                 RefreshMediaEntries();
                 return;
             }
 
             try
             {
+                ClearDeferredMediaMount();
+                FlushMountedMedia();
                 AdfImage image = AdfImage.Load(path);
                 _system.Bus.FloppyController.InsertDrive0(image, _floppyWriteProtected);
                 _mountedMedia = MountedMediaInfo.ForFloppy(0, Path.GetFileName(path), path, _floppyWriteProtected);
+                SaveMountedMediaSettings();
                 _statusText = "DF0 MOUNTED " + _mountedMedia.DisplayName;
             }
             catch
@@ -1226,7 +1607,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Activate ROM Item logic.
+        /// Runs Activate Rom Item.
         /// </summary>
         private void ActivateRomItem()
         {
@@ -1275,6 +1656,12 @@ namespace AmigaEmulator
         private void LoadOrCreateSaveSlot()
         {
             SaveStateSlotMetadata slot = _saveSlots[_saveSelection];
+            if (slot != null && slot.Status == SaveStateSlotStatus.Incompatible)
+            {
+                _statusText = "SAVE SLOT INCOMPATIBLE";
+                return;
+            }
+
             if (slot == null || !slot.HasState)
             {
                 SaveCurrentSlot();
@@ -1283,9 +1670,31 @@ namespace AmigaEmulator
 
             try
             {
+                FlushMountedMedia();
+                RamProfile targetRamProfile = GetRamProfileFromSettings(slot.RamProfile, _ramProfile);
+                bool needsRecreate = _ramProfile != targetRamProfile || _accuracyProfile != slot.AccuracyProfile;
+                _ramProfile = targetRamProfile;
+                _accuracyProfile = slot.AccuracyProfile;
+                _settings.RamProfile = GetSettingsRamProfile(_ramProfile);
+                _settings.AccuracyProfile = _accuracyProfile;
+                _settings.SelectedSaveStateSlot = _saveSelection;
+                AmigaEmulatorSettingsStore.Save(_settings);
+                if (needsRecreate)
+                {
+                    RecreateSystemForCurrentProfile();
+                }
+                else
+                {
+                    _system.SetAccuracyOptions(CreateAccuracyOptions(_accuracyProfile));
+                }
+
                 SaveStateFile.Load(slot.Path, _system);
+                ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
                 _mountedMedia = slot.MountedMedia ?? MountedMediaInfo.None;
+                SaveMountedMediaSettings();
+                ResetAudioOutput();
+                ResetEmulationClock();
                 _statusText = "SAVE SLOT " + (_saveSelection + 1) + " LOADED";
                 _overlayMode = OverlayMode.None;
             }
@@ -1317,6 +1726,8 @@ namespace AmigaEmulator
                     screenshotPixels,
                     _system.Model.VisibleWidth,
                     _system.Model.VisibleHeight);
+                _settings.SelectedSaveStateSlot = _saveSelection;
+                AmigaEmulatorSettingsStore.Save(_settings);
                 RefreshSaveStateSlots();
                 _statusText = "SAVE SLOT " + (_saveSelection + 1) + " WRITTEN";
             }
@@ -1353,7 +1764,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Calculate Cycles For Update logic.
+        /// Runs Calculate Cycles For Update.
         /// </summary>
         private int CalculateCyclesForUpdate()
         {
@@ -1390,9 +1801,203 @@ namespace AmigaEmulator
         {
             _lastUpdateSeconds = _stopwatch.Elapsed.TotalSeconds;
             _lastPerfSeconds = _lastUpdateSeconds;
+            _lastTitleUpdateSeconds = _lastUpdateSeconds;
             _pendingChipCycles = 0.0;
             _perfChipCycles = 0;
             _smoothedCpuMhz = (_system.Model.ChipClockHz * 2.0) / 1000000.0;
+            ClearBufferedMouseMotion();
+        }
+
+        /// <summary>
+        /// Runs chip cycles while draining buffered host mouse motion in poll-safe slices.
+        /// </summary>
+        private void RunChipCyclesWithBufferedMouse(int cycles)
+        {
+            int remaining = cycles;
+            while (remaining > 0)
+            {
+                DrainBufferedMouseMotionSlice();
+                ApplyQueuedMouseButtonsIfReady();
+                int slice = Math.Min(remaining, MouseDeltaDrainSliceCycles);
+                _system.RunChipCycles(slice);
+                AdvanceDeferredMouseButtons(slice);
+                remaining -= slice;
+            }
+        }
+
+        /// <summary>
+        /// Queues relative host mouse motion for timed injection into JOYxDAT counters.
+        /// </summary>
+        private void QueueBufferedMouseMotion(AmigaControlPort port, int dx, int dy)
+        {
+            if (dx == 0 && dy == 0)
+            {
+                return;
+            }
+
+            _pendingMousePort = port;
+            _pendingMouseDx += dx;
+            _pendingMouseDy += dy;
+        }
+
+        /// <summary>
+        /// Queues mouse buttons behind buffered motion or applies them immediately when safe.
+        /// </summary>
+        private void QueueOrApplyMouseButton(AmigaControlPort port, AmigaJoystickButtons button, bool pressed)
+        {
+            _pendingMousePort = port;
+            if (pressed)
+            {
+                if (HasBufferedMouseMotion())
+                {
+                    _queuedMouseDownButtons |= button;
+                    _queuedMouseUpButtons &= ~button;
+                }
+                else
+                {
+                    _system.Input.SetMouseButton(port, button, true);
+                }
+
+                return;
+            }
+
+            if (HasBufferedMouseMotion() ||
+                (_queuedMouseDownButtons & button) != 0 ||
+                (_deferredHeldMouseButtons & button) != 0)
+            {
+                _queuedMouseUpButtons |= button;
+                return;
+            }
+
+            _system.Input.SetMouseButton(port, button, false);
+        }
+
+        /// <summary>
+        /// Injects one bounded mouse-motion slice into the emulated input counters.
+        /// </summary>
+        private void DrainBufferedMouseMotionSlice()
+        {
+            if (_pendingMouseDx == 0 && _pendingMouseDy == 0)
+            {
+                return;
+            }
+
+            int dx = ClampMouseDelta(_pendingMouseDx);
+            int dy = ClampMouseDelta(_pendingMouseDy);
+            _pendingMouseDx -= dx;
+            _pendingMouseDy -= dy;
+            _system.Input.MoveMouse(_pendingMousePort, dx, dy);
+        }
+
+        /// <summary>
+        /// Applies queued mouse-button presses after all buffered motion has reached JOYxDAT.
+        /// </summary>
+        private void ApplyQueuedMouseButtonsIfReady()
+        {
+            if (HasBufferedMouseMotion() || _queuedMouseDownButtons == AmigaJoystickButtons.None)
+            {
+                return;
+            }
+
+            SetMouseButtons(_pendingMousePort, _queuedMouseDownButtons, true);
+            _deferredHeldMouseButtons |= _queuedMouseDownButtons;
+            _queuedMouseDownButtons = AmigaJoystickButtons.None;
+            _deferredMouseButtonHoldCycles = Math.Max(_deferredMouseButtonHoldCycles, DeferredMouseButtonHoldCycles);
+        }
+
+        /// <summary>
+        /// Releases deferred mouse buttons after a minimum emulated hold time.
+        /// </summary>
+        private void AdvanceDeferredMouseButtons(int cycles)
+        {
+            if (_deferredHeldMouseButtons == AmigaJoystickButtons.None || _queuedMouseUpButtons == AmigaJoystickButtons.None)
+            {
+                return;
+            }
+
+            if (_deferredMouseButtonHoldCycles > 0)
+            {
+                _deferredMouseButtonHoldCycles -= cycles;
+                if (_deferredMouseButtonHoldCycles > 0)
+                {
+                    return;
+                }
+            }
+
+            AmigaJoystickButtons release = _queuedMouseUpButtons & _deferredHeldMouseButtons;
+            if (release == AmigaJoystickButtons.None)
+            {
+                return;
+            }
+
+            SetMouseButtons(_pendingMousePort, release, false);
+            _deferredHeldMouseButtons &= ~release;
+            _queuedMouseUpButtons &= ~release;
+        }
+
+        /// <summary>
+        /// Clears queued host mouse motion that should not survive focus or timing resets.
+        /// </summary>
+        private void ClearBufferedMouseMotion()
+        {
+            if (_system != null && _deferredHeldMouseButtons != AmigaJoystickButtons.None)
+            {
+                SetMouseButtons(_pendingMousePort, _deferredHeldMouseButtons, false);
+            }
+
+            _pendingMouseDx = 0;
+            _pendingMouseDy = 0;
+            _queuedMouseDownButtons = AmigaJoystickButtons.None;
+            _queuedMouseUpButtons = AmigaJoystickButtons.None;
+            _deferredHeldMouseButtons = AmigaJoystickButtons.None;
+            _deferredMouseButtonHoldCycles = 0;
+        }
+
+        /// <summary>
+        /// Returns whether host mouse motion is waiting to be injected.
+        /// </summary>
+        private bool HasBufferedMouseMotion()
+        {
+            return _pendingMouseDx != 0 || _pendingMouseDy != 0;
+        }
+
+        /// <summary>
+        /// Applies a set of mouse button bits to the current emulated mouse port.
+        /// </summary>
+        private void SetMouseButtons(AmigaControlPort port, AmigaJoystickButtons buttons, bool pressed)
+        {
+            if ((buttons & AmigaJoystickButtons.Fire) != 0)
+            {
+                _system.Input.SetMouseButton(port, AmigaJoystickButtons.Fire, pressed);
+            }
+
+            if ((buttons & AmigaJoystickButtons.Second) != 0)
+            {
+                _system.Input.SetMouseButton(port, AmigaJoystickButtons.Second, pressed);
+            }
+
+            if ((buttons & AmigaJoystickButtons.Third) != 0)
+            {
+                _system.Input.SetMouseButton(port, AmigaJoystickButtons.Third, pressed);
+            }
+        }
+
+        /// <summary>
+        /// Clamps a pending mouse delta to one poll-safe injection slice.
+        /// </summary>
+        private static int ClampMouseDelta(int value)
+        {
+            if (value > MaxMouseDeltaPerSlice)
+            {
+                return MaxMouseDeltaPerSlice;
+            }
+
+            if (value < -MaxMouseDeltaPerSlice)
+            {
+                return -MaxMouseDeltaPerSlice;
+            }
+
+            return value;
         }
 
         /// <summary>
@@ -1425,8 +2030,15 @@ namespace AmigaEmulator
         /// <summary>
         /// Updates Title Status from current emulator state.
         /// </summary>
-        private void UpdateTitleStatus(int chipCycles)
+        private void UpdateTitleStatus()
         {
+            double now = _stopwatch.Elapsed.TotalSeconds;
+            if (now - _lastTitleUpdateSeconds < 0.25)
+            {
+                return;
+            }
+
+            _lastTitleUpdateSeconds = now;
             Text = string.Format(
                 "Amiga Emulator {0}{1:F2} MHz - PC:{2:X6} OPC:{3:X4} - FPS:{4} - DF0:{5}",
                 _turboMode ? "TURBO " : string.Empty,
@@ -1438,7 +2050,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Title Drive Status logic.
+        /// Runs Format Title Drive Status.
         /// </summary>
         private string FormatTitleDriveStatus()
         {
@@ -1475,45 +2087,161 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Recreate System For Current Profile logic.
+        /// Runs Recreate System For Current Profile.
         /// </summary>
         private void RecreateSystemForCurrentProfile()
         {
             MountedMediaInfo media = _mountedMedia;
             AmigaSystem oldSystem = _system;
+            FlushMountedMedia();
             DetachAudioFromSystem(oldSystem);
             _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), CreateAccuracyOptions(_accuracyProfile));
+            ApplyFloppyTiming();
             AttachAudioToSystem();
             oldSystem?.Dispose();
             ApplyInputPortMode();
 
             LoadConfiguredKickstart();
-            RemountMedia(media);
+            ScheduleDeferredMediaMount(media);
             UpdateFrequency = _system.Model.FrameRateHz;
             ResetEmulationClock();
         }
 
         /// <summary>
-        /// Executes the Remount Media logic.
+        /// Runs Remount Media.
         /// </summary>
         private void RemountMedia(MountedMediaInfo media)
         {
+            ClearDeferredMediaMount();
             if (media == null || !media.HasMedia || media.Kind != MountedMediaKind.Adf || string.IsNullOrWhiteSpace(media.HostPath) || !File.Exists(media.HostPath))
             {
                 _mountedMedia = MountedMediaInfo.None;
+                SaveMountedMediaSettings();
                 return;
             }
 
             try
             {
+                FlushMountedMedia();
                 AdfImage image = AdfImage.Load(media.HostPath);
                 _system.Bus.FloppyController.InsertDrive0(image, media.IsWriteProtected);
                 _mountedMedia = MountedMediaInfo.ForFloppy(media.DriveIndex < 0 ? 0 : media.DriveIndex, media.DisplayName, media.HostPath, media.IsWriteProtected);
+                SaveMountedMediaSettings();
             }
             catch
             {
                 _mountedMedia = media.WithStatus(MountedMediaStatus.Error, "REMOUNT FAILED");
             }
+        }
+
+        /// <summary>
+        /// Schedules the configured DF0 image from settings when present.
+        /// </summary>
+        private void ScheduleConfiguredMediaRemount()
+        {
+            string path = _settings.Df0Path;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                _mountedMedia = MountedMediaInfo.None;
+                ClearDeferredMediaMount();
+                return;
+            }
+
+            ScheduleDeferredMediaMount(MountedMediaInfo.ForFloppy(0, Path.GetFileName(path), path, _floppyWriteProtected));
+        }
+
+        /// <summary>
+        /// Queues an automatic DF0 remount until Kickstart has run enough frames to accept media reliably.
+        /// </summary>
+        private void ScheduleDeferredMediaMount(MountedMediaInfo media)
+        {
+            if (media == null || !media.HasMedia || media.Kind != MountedMediaKind.Adf)
+            {
+                ClearDeferredMediaMount();
+                return;
+            }
+
+            _deferredMediaMount = media;
+            int cyclesPerFrame = _system.Model.ChipCyclesPerLine * _system.Model.LinesPerFrame;
+            long delayFrames = Math.Max(1, (DeferredMediaMountChipCycles + cyclesPerFrame - 1) / cyclesPerFrame);
+            _deferredMediaMountFrame = _system.FrameCounter + delayFrames;
+            _mountedMedia = media.WithStatus(MountedMediaStatus.Loading, "WAITING FOR KICKSTART");
+            _statusText = "DF0 QUEUED " + media.DisplayName;
+        }
+
+        /// <summary>
+        /// Mounts queued DF0 media after the deferred startup window has elapsed.
+        /// </summary>
+        private void CompleteDeferredMediaMountIfReady()
+        {
+            if (_deferredMediaMount == null || !_deferredMediaMount.HasMedia || _deferredMediaMountFrame < 0)
+            {
+                return;
+            }
+
+            if (_system.FrameCounter < _deferredMediaMountFrame)
+            {
+                return;
+            }
+
+            MountedMediaInfo media = _deferredMediaMount;
+            ClearDeferredMediaMount();
+            RemountMedia(media);
+            if (_mountedMedia.HasMedia && _mountedMedia.Status == MountedMediaStatus.Mounted)
+            {
+                _statusText = "DF0 MOUNTED " + _mountedMedia.DisplayName;
+            }
+        }
+
+        /// <summary>
+        /// Clears any pending automatic DF0 remount.
+        /// </summary>
+        private void ClearDeferredMediaMount()
+        {
+            _deferredMediaMount = MountedMediaInfo.None;
+            _deferredMediaMountFrame = -1;
+        }
+
+        /// <summary>
+        /// Flushes dirty writable media and reports failures in the overlay status.
+        /// </summary>
+        private void FlushMountedMedia()
+        {
+            try
+            {
+                if (_system != null)
+                {
+                    _system.Bus.FloppyController.FlushDrive0();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                _statusText = "DISK FLUSH FAILED";
+            }
+        }
+
+        /// <summary>
+        /// Stores current media browser directory.
+        /// </summary>
+        private void SaveMediaDirectorySetting()
+        {
+            _settings.MediaBrowserDirectory = _mediaDirectory ?? string.Empty;
+            AmigaEmulatorSettingsStore.Save(_settings);
+        }
+
+        /// <summary>
+        /// Stores mounted DF0 path settings.
+        /// </summary>
+        private void SaveMountedMediaSettings()
+        {
+            _settings.Df0Path = _mountedMedia != null && _mountedMedia.HasMedia && _mountedMedia.Kind == MountedMediaKind.Adf
+                ? _mountedMedia.HostPath ?? string.Empty
+                : string.Empty;
+            _settings.Df1Path = string.Empty;
+            _settings.Df2Path = string.Empty;
+            _settings.Df3Path = string.Empty;
+            AmigaEmulatorSettingsStore.Save(_settings);
         }
 
         /// <summary>
@@ -1526,8 +2254,11 @@ namespace AmigaEmulator
                 case RamProfile.Chip512:
                     return AmigaModel.A500Pal;
                 case RamProfile.Chip1Mb:
-                case RamProfile.Chip1MbFast4Mb:
                     return AmigaModel.A500Pal1MbChip;
+                case RamProfile.Chip2Mb:
+                    return AmigaModel.A500Pal2MbChip;
+                case RamProfile.Chip2MbFast8Mb:
+                    return AmigaModel.A500Pal2MbChipFast8Mb;
                 default:
                     return AmigaModel.A500Pal512Slow512;
             }
@@ -1548,6 +2279,16 @@ namespace AmigaEmulator
                 return RamProfile.Chip1Mb;
             }
 
+            if (model == AmigaModel.A500Pal2MbChip)
+            {
+                return RamProfile.Chip2Mb;
+            }
+
+            if (model == AmigaModel.A500Pal2MbChipFast8Mb)
+            {
+                return RamProfile.Chip2MbFast8Mb;
+            }
+
             return RamProfile.Chip512Slow512;
         }
 
@@ -1563,10 +2304,11 @@ namespace AmigaEmulator
                 case AmigaRamProfile.Chip512KSlow512K:
                     return RamProfile.Chip512Slow512;
                 case AmigaRamProfile.Chip1Mb:
-                case AmigaRamProfile.Chip2Mb:
                     return RamProfile.Chip1Mb;
+                case AmigaRamProfile.Chip2Mb:
+                    return RamProfile.Chip2Mb;
                 case AmigaRamProfile.Chip2MbFast8Mb:
-                    return RamProfile.Chip1MbFast4Mb;
+                    return RamProfile.Chip2MbFast8Mb;
                 default:
                     return fallback;
             }
@@ -1583,7 +2325,9 @@ namespace AmigaEmulator
                     return AmigaRamProfile.Chip512KSlow512K;
                 case RamProfile.Chip1Mb:
                     return AmigaRamProfile.Chip1Mb;
-                case RamProfile.Chip1MbFast4Mb:
+                case RamProfile.Chip2Mb:
+                    return AmigaRamProfile.Chip2Mb;
+                case RamProfile.Chip2MbFast8Mb:
                     return AmigaRamProfile.Chip2MbFast8Mb;
                 default:
                     return AmigaRamProfile.Chip512K;
@@ -1607,7 +2351,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Refresh Media Entries logic.
+        /// Runs Refresh Media Entries.
         /// </summary>
         private void RefreshMediaEntries()
         {
@@ -1639,7 +2383,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Refresh ROM Entries logic.
+        /// Runs Refresh Rom Entries.
         /// </summary>
         private void RefreshRomEntries()
         {
@@ -1688,7 +2432,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Open ROM Directory logic.
+        /// Runs Open Rom Directory.
         /// </summary>
         private void OpenRomDirectory()
         {
@@ -1788,7 +2532,7 @@ namespace AmigaEmulator
             };
 
             /// <summary>
-            /// Defines the max Visible Entries constant.
+            /// Constant for max Visible Entries.
             /// </summary>
             const int maxVisibleEntries = 10;
             int firstEntry = GetScrolledEntryStart(_mediaSelection - 3, _mediaEntries.Count, maxVisibleEntries);
@@ -1831,7 +2575,7 @@ namespace AmigaEmulator
             };
 
             /// <summary>
-            /// Defines the max Visible Entries constant.
+            /// Constant for max Visible Entries.
             /// </summary>
             const int maxVisibleEntries = 12;
             int firstEntry = GetScrolledEntryStart(_romSelection - 3, _romEntries.Count, maxVisibleEntries);
@@ -1922,6 +2666,10 @@ namespace AmigaEmulator
                 if (slot != null && slot.Status == SaveStateSlotStatus.Corrupt)
                 {
                     value = "CORRUPT";
+                }
+                else if (slot != null && slot.Status == SaveStateSlotStatus.Incompatible)
+                {
+                    value = "INCOMPATIBLE";
                 }
 
                 lines[index] = MenuLine("SLOT " + (index + 1), string.IsNullOrWhiteSpace(value) ? "EMPTY" : value);
@@ -2049,7 +2797,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Adjust Volume logic.
+        /// Runs Adjust Volume.
         /// </summary>
         private void AdjustVolume(int direction)
         {
@@ -2057,7 +2805,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Toggle Audio logic.
+        /// Runs Toggle Audio.
         /// </summary>
         private void ToggleAudio()
         {
@@ -2082,7 +2830,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Detach Audio From System logic.
+        /// Runs Detach Audio From System.
         /// </summary>
         private void DetachAudioFromSystem(AmigaSystem system)
         {
@@ -2100,6 +2848,19 @@ namespace AmigaEmulator
             _audioFilterLeft = 0.0f;
             _audioFilterRight = 0.0f;
             _audioOutput.Clear();
+        }
+
+        /// <summary>
+        /// Releases keyboard, joystick, and mouse state derived from host input.
+        /// </summary>
+        private void ReleaseAllHostInput()
+        {
+            _hasLastMousePosition = false;
+            ClearBufferedMouseMotion();
+            if (_system != null)
+            {
+                _system.Input.ReleaseAll();
+            }
         }
 
         /// <summary>
@@ -2143,22 +2904,11 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Cycle Render Limit logic.
+        /// Runs Cycle Render Limit.
         /// </summary>
         private void CycleRenderLimit()
         {
-            switch (_renderLimitMode)
-            {
-                case RenderLimitMode.Hz50:
-                    _renderLimitMode = RenderLimitMode.Hz120;
-                    break;
-                case RenderLimitMode.Hz120:
-                    _renderLimitMode = RenderLimitMode.Unlimited;
-                    break;
-                default:
-                    _renderLimitMode = RenderLimitMode.Hz50;
-                    break;
-            }
+            _renderLimitMode = CycleEnum(_renderLimitMode, 1);
 
             UpdateFrequency = GetRenderUpdateFrequency(_renderLimitMode);
             _settings.RenderFps = GetSettingsRenderFps(_renderLimitMode);
@@ -2175,12 +2925,15 @@ namespace AmigaEmulator
         {
             switch (mode)
             {
+                case RenderLimitMode.Native: return _system != null ? _system.Model.FrameRateHz : 50.0;
+                case RenderLimitMode.Hz60: return 60.0;
+                case RenderLimitMode.Hz100: return 100.0;
                 case RenderLimitMode.Hz120:
                     return 120.0;
                 case RenderLimitMode.Unlimited:
                     return 0.0;
                 default:
-                    return _system != null ? _system.Model.FrameRateHz : 50.0;
+                    return 50.0;
             }
         }
 
@@ -2228,7 +2981,58 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Toggle Drive Overlay logic.
+        /// Applies Floppy Speed Mode to the current state.
+        /// </summary>
+        private void ApplyFloppySpeedMode(FloppySpeedMode mode)
+        {
+            _floppySpeedMode = mode;
+            _settings.FloppySpeed = GetSettingsFloppySpeed(mode);
+            ApplyFloppyTiming();
+            AmigaEmulatorSettingsStore.Save(_settings);
+            _statusText = "FLOPPY SPEED " + FormatFloppySpeed(mode);
+        }
+
+        /// <summary>
+        /// Applies Reset Mode to persistent settings.
+        /// </summary>
+        private void ApplyResetMode(ResetMode mode)
+        {
+            _resetMode = mode;
+            _settings.ResetMode = GetSettingsResetMode(mode);
+            AmigaEmulatorSettingsStore.Save(_settings);
+            _statusText = "RESET MODE " + FormatResetMode(mode);
+        }
+
+        /// <summary>
+        /// Toggles DF0 write protection and remounts the current image when needed.
+        /// </summary>
+        private void ToggleDiskWriteProtection()
+        {
+            _floppyWriteProtected = !_floppyWriteProtected;
+            MountedMediaInfo media = _mountedMedia;
+            if (media != null && media.HasMedia && media.Kind == MountedMediaKind.Adf)
+            {
+                RemountMedia(MountedMediaInfo.ForFloppy(0, media.DisplayName, media.HostPath, _floppyWriteProtected));
+            }
+
+            _statusText = "DISK WRITE " + (_floppyWriteProtected ? "PROTECTED" : "ENABLED");
+        }
+
+        /// <summary>
+        /// Applies the selected floppy timing to Paula.
+        /// </summary>
+        private void ApplyFloppyTiming()
+        {
+            if (_system == null)
+            {
+                return;
+            }
+
+            _system.Paula.DiskWordPeriodChipCycles = GetDiskWordPeriodChipCycles(_floppySpeedMode);
+        }
+
+        /// <summary>
+        /// Runs Toggle Drive Overlay.
         /// </summary>
         private void ToggleDriveOverlay()
         {
@@ -2238,7 +3042,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Toggle Fullscreen logic.
+        /// Runs Toggle Fullscreen.
         /// </summary>
         private void ToggleFullscreen()
         {
@@ -2262,7 +3066,21 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Toggle Turbo Mode logic.
+        /// Applies persisted fullscreen state without resaving settings during startup.
+        /// </summary>
+        private void ApplyStartupFullscreen()
+        {
+            if (!_fullscreen)
+            {
+                return;
+            }
+
+            FormBorderStyle = FormBorderStyle.None;
+            WindowState = FormWindowState.Maximized;
+        }
+
+        /// <summary>
+        /// Runs Toggle Turbo Mode.
         /// </summary>
         private void ToggleTurboMode()
         {
@@ -2273,7 +3091,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Reload Kickstart logic.
+        /// Runs Reload Kickstart.
         /// </summary>
         private void ReloadKickstart()
         {
@@ -2303,6 +3121,7 @@ namespace AmigaEmulator
             if (KickstartRomResolver.TryLoadKickstart(path, out byte[] romBytes, out KickstartRomInfo info))
             {
                 _system.LoadKickstart(romBytes);
+                ApplyFloppyTiming();
                 ResetEmulationClock();
                 _selectedRomPath = info.Path;
                 _settings.CustomKickstartPath = info.Path;
@@ -2326,6 +3145,7 @@ namespace AmigaEmulator
             if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo info))
             {
                 _system.LoadKickstart(romBytes);
+                ApplyFloppyTiming();
                 ResetEmulationClock();
                 _romStatusText = FormatRomStatus(info);
                 return;
@@ -2337,7 +3157,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format ROM Status logic.
+        /// Runs Format Rom Status.
         /// </summary>
         private static string FormatRomStatus(KickstartRomInfo info)
         {
@@ -2379,7 +3199,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format ROM List Value logic.
+        /// Runs Format Rom List Value.
         /// </summary>
         private static string FormatRomListValue(KickstartRomInfo info)
         {
@@ -2420,7 +3240,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the struct logic.
+        /// Gets struct.
         /// </summary>
         private static T CycleEnum<T>(T value, int direction) where T : struct
         {
@@ -2436,7 +3256,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Menu Line logic.
+        /// Runs Menu Line.
         /// </summary>
         private static string MenuLine(string label, string value)
         {
@@ -2444,7 +3264,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Percent logic.
+        /// Runs Format Percent.
         /// </summary>
         private static string FormatPercent(float value)
         {
@@ -2452,20 +3272,23 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Render Limit logic.
+        /// Runs Format Render Limit.
         /// </summary>
         private static string FormatRenderLimit(RenderLimitMode mode)
         {
             switch (mode)
             {
+                case RenderLimitMode.Native: return "NATIVE";
                 case RenderLimitMode.Hz120: return "120 HZ";
+                case RenderLimitMode.Hz100: return "100 HZ";
+                case RenderLimitMode.Hz60: return "60 HZ";
                 case RenderLimitMode.Unlimited: return "UNLIMITED";
                 default: return "50 HZ";
             }
         }
 
         /// <summary>
-        /// Executes the Format Video Filter logic.
+        /// Runs Format Video Filter.
         /// </summary>
         private static string FormatVideoFilter(VideoFilterMode mode)
         {
@@ -2478,23 +3301,25 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Video Upscale logic.
+        /// Runs Format Video Upscale.
         /// </summary>
         private static string FormatVideoUpscale(VideoUpscaleMode mode)
         {
             switch (mode)
             {
-                case VideoUpscaleMode.Scale2x: return "SCALE2X";
-                case VideoUpscaleMode.Scale3x: return "SCALE3X";
-                case VideoUpscaleMode.Hq2x: return "HQ2X";
-                case VideoUpscaleMode.Hq3x: return "HQ3X";
-                case VideoUpscaleMode.Clean4: return "CLEAN4";
+                case VideoUpscaleMode.Scale2x: return "2X SHARP";
+                case VideoUpscaleMode.Scale3x: return "3X SHARP";
+                case VideoUpscaleMode.Hq2x: return "2X SMOOTH";
+                case VideoUpscaleMode.Hq3x: return "3X SMOOTH";
+                case VideoUpscaleMode.Hq4x: return "4X SMOOTH";
+                case VideoUpscaleMode.Xbrz: return "4X SOFT";
+                case VideoUpscaleMode.Clean4: return "4X SHARP";
                 default: return "NONE";
             }
         }
 
         /// <summary>
-        /// Executes the Format Paula Filter logic.
+        /// Runs Format Paula Filter.
         /// </summary>
         private static string FormatPaulaFilter(PaulaFilterMode mode)
         {
@@ -2507,7 +3332,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the To Sharp Pixels Filter logic.
+        /// Runs To Sharp Pixels Filter.
         /// </summary>
         private static SharpPixelsGpuFilterMode ToSharpPixelsFilter(VideoFilterMode mode)
         {
@@ -2520,7 +3345,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the To Sharp Pixels Upscale logic.
+        /// Runs To Sharp Pixels Upscale.
         /// </summary>
         private static SharpPixelsGpuUpscaleMode ToSharpPixelsUpscale(VideoUpscaleMode mode)
         {
@@ -2530,6 +3355,8 @@ namespace AmigaEmulator
                 case VideoUpscaleMode.Scale3x: return SharpPixelsGpuUpscaleMode.Scale3x;
                 case VideoUpscaleMode.Hq2x: return SharpPixelsGpuUpscaleMode.Hq2x;
                 case VideoUpscaleMode.Hq3x: return SharpPixelsGpuUpscaleMode.Hq3x;
+                case VideoUpscaleMode.Hq4x: return SharpPixelsGpuUpscaleMode.Hq4x;
+                case VideoUpscaleMode.Xbrz: return SharpPixelsGpuUpscaleMode.Xbrz;
                 case VideoUpscaleMode.Clean4: return SharpPixelsGpuUpscaleMode.Clean4;
                 default: return SharpPixelsGpuUpscaleMode.None;
             }
@@ -2572,6 +3399,8 @@ namespace AmigaEmulator
                 case AmigaUpscaleMode.Scale3x: return VideoUpscaleMode.Scale3x;
                 case AmigaUpscaleMode.Hq2x: return VideoUpscaleMode.Hq2x;
                 case AmigaUpscaleMode.Hq3x: return VideoUpscaleMode.Hq3x;
+                case AmigaUpscaleMode.Hq4x: return VideoUpscaleMode.Hq4x;
+                case AmigaUpscaleMode.Xbrz: return VideoUpscaleMode.Xbrz;
                 case AmigaUpscaleMode.Clean4: return VideoUpscaleMode.Clean4;
                 default: return VideoUpscaleMode.None;
             }
@@ -2588,6 +3417,8 @@ namespace AmigaEmulator
                 case VideoUpscaleMode.Scale3x: return AmigaUpscaleMode.Scale3x;
                 case VideoUpscaleMode.Hq2x: return AmigaUpscaleMode.Hq2x;
                 case VideoUpscaleMode.Hq3x: return AmigaUpscaleMode.Hq3x;
+                case VideoUpscaleMode.Hq4x: return AmigaUpscaleMode.Hq4x;
+                case VideoUpscaleMode.Xbrz: return AmigaUpscaleMode.Xbrz;
                 case VideoUpscaleMode.Clean4: return AmigaUpscaleMode.Clean4;
                 default: return AmigaUpscaleMode.None;
             }
@@ -2600,9 +3431,13 @@ namespace AmigaEmulator
         {
             switch (mode)
             {
+                case AmigaRenderFps.Native: return RenderLimitMode.Native;
+                case AmigaRenderFps.Hz50: return RenderLimitMode.Hz50;
+                case AmigaRenderFps.Hz60: return RenderLimitMode.Hz60;
+                case AmigaRenderFps.Hz100: return RenderLimitMode.Hz100;
                 case AmigaRenderFps.Hz120: return RenderLimitMode.Hz120;
                 case AmigaRenderFps.Unlimited: return RenderLimitMode.Unlimited;
-                default: return RenderLimitMode.Hz50;
+                default: return RenderLimitMode.Native;
             }
         }
 
@@ -2613,9 +3448,12 @@ namespace AmigaEmulator
         {
             switch (mode)
             {
+                case RenderLimitMode.Native: return AmigaRenderFps.Native;
+                case RenderLimitMode.Hz60: return AmigaRenderFps.Hz60;
+                case RenderLimitMode.Hz100: return AmigaRenderFps.Hz100;
                 case RenderLimitMode.Hz120: return AmigaRenderFps.Hz120;
                 case RenderLimitMode.Unlimited: return AmigaRenderFps.Unlimited;
-                default: return AmigaRenderFps.Native;
+                default: return AmigaRenderFps.Hz50;
             }
         }
 
@@ -2649,7 +3487,88 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format RAM Profile logic.
+        /// Returns the Floppy Speed From Settings.
+        /// </summary>
+        private static FloppySpeedMode GetFloppySpeedFromSettings(AmigaFloppySpeed mode)
+        {
+            switch (mode)
+            {
+                case AmigaFloppySpeed.Fast:
+                    return FloppySpeedMode.TurboLoading;
+                case AmigaFloppySpeed.Turbo:
+                case AmigaFloppySpeed.Instant:
+                    return FloppySpeedMode.TurboAlways;
+                default:
+                    return FloppySpeedMode.Real;
+            }
+        }
+
+        /// <summary>
+        /// Returns the Settings Floppy Speed.
+        /// </summary>
+        private static AmigaFloppySpeed GetSettingsFloppySpeed(FloppySpeedMode mode)
+        {
+            switch (mode)
+            {
+                case FloppySpeedMode.TurboLoading:
+                    return AmigaFloppySpeed.Fast;
+                case FloppySpeedMode.TurboAlways:
+                    return AmigaFloppySpeed.Turbo;
+                default:
+                    return AmigaFloppySpeed.Accurate;
+            }
+        }
+
+        /// <summary>
+        /// Returns the configured disk DMA word period.
+        /// </summary>
+        private static int GetDiskWordPeriodChipCycles(FloppySpeedMode mode)
+        {
+            switch (mode)
+            {
+                case FloppySpeedMode.TurboLoading:
+                    return 27;
+                case FloppySpeedMode.TurboAlways:
+                    return 8;
+                default:
+                    return 108;
+            }
+        }
+
+        /// <summary>
+        /// Returns the Reset Mode From Settings.
+        /// </summary>
+        private static ResetMode GetResetModeFromSettings(AmigaResetMode mode)
+        {
+            switch (mode)
+            {
+                case AmigaResetMode.Reload:
+                    return ResetMode.Remount;
+                case AmigaResetMode.Power:
+                    return ResetMode.Power;
+                default:
+                    return ResetMode.Warm;
+            }
+        }
+
+        /// <summary>
+        /// Returns the Settings Reset Mode.
+        /// </summary>
+        private static AmigaResetMode GetSettingsResetMode(ResetMode mode)
+        {
+            switch (mode)
+            {
+                case ResetMode.Remount:
+                    return AmigaResetMode.Reload;
+                case ResetMode.Power:
+                    return AmigaResetMode.Power;
+                default:
+                    return AmigaResetMode.Warm;
+            }
+        }
+
+        /// <summary>
+        /// Runs Format Ram Profile.
         /// </summary>
         private static string FormatRamProfile(RamProfile profile)
         {
@@ -2657,13 +3576,14 @@ namespace AmigaEmulator
             {
                 case RamProfile.Chip512: return "512K CHIP";
                 case RamProfile.Chip1Mb: return "1MB CHIP";
-                case RamProfile.Chip1MbFast4Mb: return "1MB CHIP + 4MB FAST";
+                case RamProfile.Chip2Mb: return "2MB CHIP";
+                case RamProfile.Chip2MbFast8Mb: return "2MB CHIP + 8MB FAST";
                 default: return "512K CHIP + 512K SLOW";
             }
         }
 
         /// <summary>
-        /// Executes the Format Floppy Speed logic.
+        /// Runs Format Floppy Speed.
         /// </summary>
         private static string FormatFloppySpeed(FloppySpeedMode mode)
         {
@@ -2676,7 +3596,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Input Ports logic.
+        /// Runs Format Input Ports.
         /// </summary>
         private static string FormatInputPorts(InputPortMode mode)
         {
@@ -2960,7 +3880,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Reset Mode logic.
+        /// Runs Format Reset Mode.
         /// </summary>
         private static string FormatResetMode(ResetMode mode)
         {
@@ -2973,7 +3893,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Accuracy Profile logic.
+        /// Runs Format Accuracy Profile.
         /// </summary>
         private static string FormatAccuracyProfile(AmigaAccuracyProfile profile)
         {
@@ -3004,7 +3924,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Format Overlay Path logic.
+        /// Runs Format Overlay Path.
         /// </summary>
         private static string FormatOverlayPath(string path, int maxLength)
         {
@@ -3018,7 +3938,7 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Executes the Trim Text logic.
+        /// Runs Trim Text.
         /// </summary>
         private static string TrimText(string text, int maxLength)
         {
@@ -3028,6 +3948,47 @@ namespace AmigaEmulator
             }
 
             return "..." + text.Substring(text.Length - Math.Max(0, maxLength - 3));
+        }
+
+        /// <summary>
+        /// Creates a transparent cursor used while the Amiga mouse sprite owns the display.
+        /// </summary>
+        private static Cursor CreateHiddenHostCursor()
+        {
+            byte[] andMask = new byte[128];
+            byte[] xorMask = new byte[128];
+            for (int index = 0; index < andMask.Length; index++)
+            {
+                andMask[index] = 0xFF;
+            }
+
+            IntPtr handle = CreateCursor(IntPtr.Zero, 0, 0, 32, 32, andMask, xorMask);
+            return handle != IntPtr.Zero ? new Cursor(handle) : Cursors.Default;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr CreateCursor(
+            IntPtr hInst,
+            int xHotSpot,
+            int yHotSpot,
+            int nWidth,
+            int nHeight,
+            byte[] pvANDPlane,
+            byte[] pvXORPlane);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool ClipCursor(ref NativeRect lpRect);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool ClipCursor(IntPtr lpRect);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeRect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
         }
     }
 }

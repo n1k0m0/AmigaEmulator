@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,26 +21,26 @@ namespace AmigaEmulator.Core.Video
     public enum VideoFilterKind
     {
         /// <summary>
-        /// Represents the S ha rp option.
+        /// Represents Sharp.
         /// </summary>
         Sharp,
         /// <summary>
-        /// Represents the C rt option.
+        /// Represents CRT.
         /// </summary>
         Crt,
         /// <summary>
-        /// Represents the T v option.
+        /// Represents TV.
         /// </summary>
         Tv
     }
 
     /// <summary>
-    /// Provides Video Filters behavior used by the emulator.
+    /// Provides Video Filters functionality.
     /// </summary>
     public sealed class VideoFilters
     {
         /// <summary>
-        /// Gets or updates the Current.
+        /// Gets or sets Current.
         /// </summary>
         public VideoFilterKind Current { get; set; }
     }

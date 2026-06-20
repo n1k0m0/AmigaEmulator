@@ -53,288 +53,292 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Defines the Bltcon0 constant.
+        /// Constant for Bltcon 0.
         /// </summary>
         private const uint Bltcon0 = 0x040;
         /// <summary>
-        /// Defines the Bltcon1 constant.
+        /// Constant for Bltcon 1.
         /// </summary>
         private const uint Bltcon1 = 0x042;
         /// <summary>
-        /// Defines the Bltafwm constant.
+        /// Constant for Bltafwm.
         /// </summary>
         private const uint Bltafwm = 0x044;
         /// <summary>
-        /// Defines the Bltalwm constant.
+        /// Constant for Bltalwm.
         /// </summary>
         private const uint Bltalwm = 0x046;
         /// <summary>
-        /// Defines the Bltcpt constant.
+        /// Constant for Bltcpt.
         /// </summary>
         private const uint Bltcpt = 0x048;
         /// <summary>
-        /// Defines the Bltbpt constant.
+        /// Constant for Bltbpt.
         /// </summary>
         private const uint Bltbpt = 0x04C;
         /// <summary>
-        /// Defines the Bltapt constant.
+        /// Constant for Bltapt.
         /// </summary>
         private const uint Bltapt = 0x050;
         /// <summary>
-        /// Defines the Bltdpt constant.
+        /// Constant for Bltdpt.
         /// </summary>
         private const uint Bltdpt = 0x054;
         /// <summary>
-        /// Defines the Bltsize constant.
+        /// Constant for Bltsize.
         /// </summary>
         private const uint Bltsize = 0x058;
         /// <summary>
-        /// Defines the Bltcmod constant.
+        /// Constant for Bltcmod.
         /// </summary>
         private const uint Bltcmod = 0x060;
         /// <summary>
-        /// Defines the Bltbmod constant.
+        /// Constant for Bltbmod.
         /// </summary>
         private const uint Bltbmod = 0x062;
         /// <summary>
-        /// Defines the Bltamod constant.
+        /// Constant for Bltamod.
         /// </summary>
         private const uint Bltamod = 0x064;
         /// <summary>
-        /// Defines the Bltdmod constant.
+        /// Constant for Bltdmod.
         /// </summary>
         private const uint Bltdmod = 0x066;
         /// <summary>
-        /// Defines the Bltcdat constant.
+        /// Constant for Bltcdat.
         /// </summary>
         private const uint Bltcdat = 0x070;
         /// <summary>
-        /// Defines the Bltbdat constant.
+        /// Constant for Bltbdat.
         /// </summary>
         private const uint Bltbdat = 0x072;
         /// <summary>
-        /// Defines the Bltadat constant.
+        /// Constant for Bltadat.
         /// </summary>
         private const uint Bltadat = 0x074;
 
         /// <summary>
-        /// Tracks the registers.
+        /// Stores registers.
         /// </summary>
         private readonly CustomRegisterMap _registers;
         /// <summary>
-        /// Tracks the DMA Address.
+        /// Stores DMA Address.
         /// </summary>
         private readonly ChipDmaAddress _dmaAddress;
         /// <summary>
-        /// Tracks the read Chip Word.
+        /// Stores read Chip Word.
         /// </summary>
         private Func<uint, ushort> _readChipWord;
         /// <summary>
-        /// Tracks the write Chip Word.
+        /// Stores write Chip Word.
         /// </summary>
         private Action<uint, ushort> _writeChipWord;
         /// <summary>
-        /// Tracks the request Interrupt.
+        /// Stores request Interrupt.
         /// </summary>
         private Action<CustomInterruptSource> _requestInterrupt;
         /// <summary>
-        /// Tracks the remaining Slots.
+        /// Stores remaining Slots.
         /// </summary>
         private int _remainingSlots;
         /// <summary>
-        /// Tracks the zero Flag.
+        /// Stores zero Flag.
         /// </summary>
         private bool _zeroFlag;
         /// <summary>
-        /// Tracks the width Words.
+        /// Stores width Words.
         /// </summary>
         private int _widthWords;
         /// <summary>
-        /// Tracks the height Lines.
+        /// Stores height Lines.
         /// </summary>
         private int _heightLines;
         /// <summary>
-        /// Tracks the current Word.
+        /// Stores current Word.
         /// </summary>
         private int _currentWord;
         /// <summary>
-        /// Tracks the current Line.
+        /// Stores current Line.
         /// </summary>
         private int _currentLine;
         /// <summary>
-        /// Tracks the block Slots period Word.
+        /// Stores block Slots Per Word.
         /// </summary>
         private int _blockSlotsPerWord;
         /// <summary>
-        /// Tracks the block Slot Phase.
+        /// Stores block Slot Phase.
         /// </summary>
         private int _blockSlotPhase;
         /// <summary>
-        /// Tracks the use A.
+        /// Stores use A.
         /// </summary>
         private bool _useA;
         /// <summary>
-        /// Tracks the use B.
+        /// Stores use B.
         /// </summary>
         private bool _useB;
         /// <summary>
-        /// Tracks the use C.
+        /// Stores use C.
         /// </summary>
         private bool _useC;
         /// <summary>
-        /// Tracks the use D.
+        /// Stores use D.
         /// </summary>
         private bool _useD;
         /// <summary>
-        /// Tracks the minterm.
+        /// Stores minterm.
         /// </summary>
         private byte _minterm;
         /// <summary>
-        /// Tracks the shift A.
+        /// Stores shift A.
         /// </summary>
         private int _shiftA;
         /// <summary>
-        /// Tracks the shift B.
+        /// Stores shift B.
         /// </summary>
         private int _shiftB;
         /// <summary>
-        /// Tracks the descending.
+        /// Stores descending.
         /// </summary>
         private bool _descending;
         /// <summary>
-        /// Tracks the line Mode.
+        /// Stores line Mode.
         /// </summary>
         private bool _lineMode;
         /// <summary>
-        /// Tracks the single Dot period Line.
+        /// Stores single Dot Per Line.
         /// </summary>
         private bool _singleDotPerLine;
         /// <summary>
-        /// Tracks the fill Inclusive.
+        /// Stores fill Inclusive.
         /// </summary>
         private bool _fillInclusive;
         /// <summary>
-        /// Tracks the fill Exclusive.
+        /// Stores fill Exclusive.
         /// </summary>
         private bool _fillExclusive;
         /// <summary>
-        /// Tracks the fill Carry In.
+        /// Stores fill Carry In.
         /// </summary>
         private bool _fillCarryIn;
         /// <summary>
-        /// Tracks the fill Carry.
+        /// Stores fill Carry.
         /// </summary>
         private bool _fillCarry;
         /// <summary>
-        /// Tracks the row A.
+        /// Stores row A.
         /// </summary>
         private uint _rowA;
         /// <summary>
-        /// Tracks the row B.
+        /// Stores row B.
         /// </summary>
         private uint _rowB;
         /// <summary>
-        /// Tracks the row C.
+        /// Stores row C.
         /// </summary>
         private uint _rowC;
         /// <summary>
-        /// Tracks the row D.
+        /// Stores row D.
         /// </summary>
         private uint _rowD;
         /// <summary>
-        /// Tracks the amod.
+        /// Stores amod.
         /// </summary>
         private int _amod;
         /// <summary>
-        /// Tracks the bmod.
+        /// Stores bmod.
         /// </summary>
         private int _bmod;
         /// <summary>
-        /// Tracks the cmod.
+        /// Stores cmod.
         /// </summary>
         private int _cmod;
         /// <summary>
-        /// Tracks the dmod.
+        /// Stores dmod.
         /// </summary>
         private int _dmod;
         /// <summary>
-        /// Tracks the afwm.
+        /// Stores afwm.
         /// </summary>
         private ushort _afwm;
         /// <summary>
-        /// Tracks the alwm.
+        /// Stores alwm.
         /// </summary>
         private ushort _alwm;
         /// <summary>
-        /// Tracks the adat.
+        /// Stores adat.
         /// </summary>
         private ushort _adat;
         /// <summary>
-        /// Tracks the bdat.
+        /// Stores bdat.
         /// </summary>
         private ushort _bdat;
         /// <summary>
-        /// Tracks the cdat.
+        /// Stores cdat.
         /// </summary>
         private ushort _cdat;
         /// <summary>
-        /// Tracks the previous A.
+        /// Stores previous A.
         /// </summary>
         private ushort _previousA;
         /// <summary>
-        /// Tracks the previous B.
+        /// Stores previous B.
         /// </summary>
         private ushort _previousB;
         /// <summary>
-        /// Tracks the block micro-operation A address for the current word.
+        /// Stores the shifted B source hold value used when B DMA is disabled.
+        /// </summary>
+        private ushort _bhold;
+        /// <summary>
+        /// Stores micro Address A.
         /// </summary>
         private uint _microAddressA;
         /// <summary>
-        /// Tracks the block micro-operation B address for the current word.
+        /// Stores micro Address B.
         /// </summary>
         private uint _microAddressB;
         /// <summary>
-        /// Tracks the block micro-operation C address for the current word.
+        /// Stores micro Address C.
         /// </summary>
         private uint _microAddressC;
         /// <summary>
-        /// Tracks the block micro-operation D address for the current word.
+        /// Stores micro Address D.
         /// </summary>
         private uint _microAddressD;
         /// <summary>
-        /// Tracks the block micro-operation first/last word mask for the current word.
+        /// Stores micro Mask.
         /// </summary>
         private ushort _microMask;
         /// <summary>
-        /// Tracks the raw source A value latched by its DMA slot.
+        /// Stores micro Raw A.
         /// </summary>
         private ushort _microRawA;
         /// <summary>
-        /// Tracks the raw source B value latched by its DMA slot.
+        /// Stores micro Raw B.
         /// </summary>
         private ushort _microRawB;
         /// <summary>
-        /// Tracks the raw source C value latched by its DMA slot.
+        /// Stores micro Raw C.
         /// </summary>
         private ushort _microRawC;
         /// <summary>
-        /// Tracks the shifted source A value calculated after source reads complete.
+        /// Stores micro Shifted A.
         /// </summary>
         private ushort _microShiftedA;
         /// <summary>
-        /// Tracks the shifted source B value calculated after source reads complete.
+        /// Stores micro Shifted B.
         /// </summary>
         private ushort _microShiftedB;
         /// <summary>
-        /// Tracks the current word result before fill logic.
+        /// Stores micro Result Before Fill.
         /// </summary>
         private ushort _microResultBeforeFill;
         /// <summary>
-        /// Tracks the current word result after fill logic.
+        /// Stores micro Result.
         /// </summary>
         private ushort _microResult;
         /// <summary>
-        /// Tracks the fill carry before the current word result is calculated.
+        /// Stores micro Fill Carry In.
         /// </summary>
         private bool _microFillCarryIn;
         /// <summary>
@@ -342,51 +346,63 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool _microResultComputed;
         /// <summary>
-        /// Tracks the line Error.
+        /// Tracks whether the D channel has a delayed destination write pending.
+        /// </summary>
+        private bool _pendingDWrite;
+        /// <summary>
+        /// Stores the delayed D-channel destination address.
+        /// </summary>
+        private uint _pendingDAddress;
+        /// <summary>
+        /// Stores the delayed D-channel destination value.
+        /// </summary>
+        private ushort _pendingDValue;
+        /// <summary>
+        /// Stores line Error.
         /// </summary>
         private int _lineError;
         /// <summary>
-        /// Tracks the line X.
+        /// Stores line X.
         /// </summary>
         private int _lineX;
         /// <summary>
-        /// Tracks the line Y.
+        /// Stores line Y.
         /// </summary>
         private int _lineY;
         /// <summary>
-        /// Tracks the line Last Drawn Y.
+        /// Stores line Last Drawn Y.
         /// </summary>
         private int _lineLastDrawnY;
         /// <summary>
-        /// Tracks the line Texture Bit.
+        /// Stores line Texture Bit.
         /// </summary>
         private int _lineTextureBit;
         /// <summary>
-        /// Tracks the line Slots period Pixel.
+        /// Stores line Slots Per Pixel.
         /// </summary>
         private int _lineSlotsPerPixel;
         /// <summary>
-        /// Tracks the line Slot Phase.
+        /// Stores line Slot Phase.
         /// </summary>
         private int _lineSlotPhase;
         /// <summary>
-        /// Tracks the line Sud.
+        /// Stores line Sud.
         /// </summary>
         private bool _lineSud;
         /// <summary>
-        /// Tracks the line Sul.
+        /// Stores line Sul.
         /// </summary>
         private bool _lineSul;
         /// <summary>
-        /// Tracks the line Aul.
+        /// Stores line Aul.
         /// </summary>
         private bool _lineAul;
         /// <summary>
-        /// Tracks the line Sign.
+        /// Stores line Sign.
         /// </summary>
         private bool _lineSign;
         /// <summary>
-        /// Tracks the busy Visible.
+        /// Stores busy Visible.
         /// </summary>
         private bool _busyVisible;
 
@@ -419,7 +435,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Busy logic.
+        /// Gets Busy.
         /// </summary>
         public bool Busy
         {
@@ -427,7 +443,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the DMA Pending logic.
+        /// Gets DMA Pending.
         /// </summary>
         public bool DmaPending
         {
@@ -435,7 +451,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Zero Flag logic.
+        /// Gets Zero Flag.
         /// </summary>
         public bool ZeroFlag
         {
@@ -488,13 +504,17 @@ namespace AmigaEmulator.Core.CustomChips
             _currentLine = 0;
             _previousA = 0;
             _previousB = 0;
+            _bhold = 0;
+            _pendingDWrite = false;
+            _pendingDAddress = 0;
+            _pendingDValue = 0;
             _lineMode = false;
             _fillCarry = false;
             _busyVisible = false;
         }
 
         /// <summary>
-        /// Executes the Start Block blitter logic.
+        /// Runs Start Block Blit.
         /// </summary>
         public void StartBlockBlit(int widthWords, int heightLines)
         {
@@ -510,6 +530,11 @@ namespace AmigaEmulator.Core.CustomChips
         public void NotifyCustomRegisterWrite(uint address, int size)
         {
             uint offset = address & 0x01FFu;
+            if (size == 2 && (offset & 0x01FEu) == Bltbdat)
+            {
+                LoadBData(Read(Bltbdat));
+            }
+
             if ((size == 2 && (offset & 0x01FEu) == Bltsize) ||
                 (size == 1 && offset == Bltsize + 1u))
             {
@@ -529,7 +554,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Start Block blitter From Registers logic.
+        /// Runs Start Block Blit From Registers.
         /// </summary>
         private void StartBlockBlitFromRegisters()
         {
@@ -562,7 +587,7 @@ namespace AmigaEmulator.Core.CustomChips
             _useB = (bltcon0 & 0x0400) != 0;
             _useC = (bltcon0 & 0x0200) != 0;
             _useD = (bltcon0 & 0x0100) != 0;
-            _blockSlotsPerWord = Math.Max(1, CountActiveChannels(_useA, _useB, _useC, _useD));
+            _blockSlotsPerWord = CountBlockWordPhases(_useA, _useB, _useC, _useD);
             _minterm = (byte)(bltcon0 & 0x00FF);
             _shiftA = (bltcon0 >> 12) & 0x0F;
             _shiftB = (bltcon1 >> 12) & 0x0F;
@@ -588,13 +613,16 @@ namespace AmigaEmulator.Core.CustomChips
             _cdat = Read(Bltcdat);
             _previousA = 0;
             _previousB = 0;
+            _pendingDWrite = false;
+            _pendingDAddress = 0;
+            _pendingDValue = 0;
             _fillCarry = _fillCarryIn;
             _lineError = (short)(_rowA & 0xFFFF);
             _lineX = _shiftA & 0x0F;
             _lineY = 0;
             _lineLastDrawnY = int.MinValue;
             _lineTextureBit = _shiftB & 0x0F;
-            _lineSlotsPerPixel = Math.Max(1, widthWords);
+            _lineSlotsPerPixel = 4;
             _lineSlotPhase = 0;
             _lineSign = (bltcon1 & 0x0040) != 0;
             _lineSud = (bltcon1 & 0x0010) != 0;
@@ -611,7 +639,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Execute One Word logic.
+        /// Runs Execute One Word.
         /// </summary>
         private void ExecuteOneWord()
         {
@@ -649,8 +677,9 @@ namespace AmigaEmulator.Core.CustomChips
                     _microRawC = ReadChip(_microAddressC);
                     break;
                 case BlitterBlockChannel.D:
+                    FlushPendingDWrite();
                     EnsureBlockWordResultComputed();
-                    WriteChip(_microAddressD, _microResult);
+                    ArmPendingDWrite(_microAddressD, _microResult);
                     break;
             }
 
@@ -670,7 +699,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void PrepareBlockWordMicroOps()
         {
-            int wordIndex = _descending ? _widthWords - 1 - _currentWord : _currentWord;
+            int wordIndex = _currentWord;
             ushort mask = 0xFFFF;
             if (wordIndex == 0)
             {
@@ -710,7 +739,9 @@ namespace AmigaEmulator.Core.CustomChips
 
             ushort maskedA = (ushort)(_microRawA & _microMask);
             _microShiftedA = ShiftSource(_previousA, maskedA, _shiftA, _descending);
-            _microShiftedB = ShiftSource(_previousB, _microRawB, _shiftB, _descending);
+            _microShiftedB = _useB
+                ? ShiftSource(_previousB, _microRawB, _shiftB, _descending)
+                : _bhold;
             _microResult = ApplyMinterm(_microShiftedA, _microShiftedB, _microRawC, _minterm);
             _microResultBeforeFill = _microResult;
             if (_fillInclusive || _fillExclusive)
@@ -762,7 +793,11 @@ namespace AmigaEmulator.Core.CustomChips
             });
 
             _previousA = maskedA;
-            _previousB = _microRawB;
+            if (_useB)
+            {
+                _previousB = _microRawB;
+                _bhold = _microShiftedB;
+            }
             if (_useA)
             {
                 _rowA = Advance(_rowA, _descending);
@@ -822,8 +857,6 @@ namespace AmigaEmulator.Core.CustomChips
                     _rowD = AddSigned(_rowD, _dmod, _descending);
                 }
 
-                _previousA = 0;
-                _previousB = 0;
                 _fillCarry = _fillCarryIn;
                 _currentWord = 0;
                 _currentLine++;
@@ -840,50 +873,47 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private BlitterBlockChannel GetBlockChannelForPhase(int phase)
         {
-            int current = 0;
+            int activePhase = 0;
             if (_useA)
             {
-                if (phase == current)
+                if (activePhase == phase)
                 {
                     return BlitterBlockChannel.A;
                 }
 
-                current++;
+                activePhase++;
             }
 
             if (_useB)
             {
-                if (phase == current)
+                if (activePhase == phase)
                 {
                     return BlitterBlockChannel.B;
                 }
 
-                current++;
+                activePhase++;
             }
 
             if (_useC)
             {
-                if (phase == current)
+                if (activePhase == phase)
                 {
                     return BlitterBlockChannel.C;
                 }
 
-                current++;
+                activePhase++;
             }
 
-            if (_useD)
+            if (_useD && activePhase == phase)
             {
-                if (phase == current)
-                {
-                    return BlitterBlockChannel.D;
-                }
+                return BlitterBlockChannel.D;
             }
 
             return BlitterBlockChannel.Idle;
         }
 
         /// <summary>
-        /// Executes the Execute One Line Slot logic.
+        /// Runs Execute One Line Slot.
         /// </summary>
         private void ExecuteOneLineSlot()
         {
@@ -904,13 +934,13 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Execute One Line Pixel logic.
+        /// Runs Execute One Line Pixel.
         /// </summary>
         private void ExecuteOneLinePixel()
         {
             bool draw = !_singleDotPerLine || _lineY != _lineLastDrawnY;
             uint addressC = _rowC;
-            uint addressD = _rowD;
+            uint addressD = _useC ? _rowC : _rowD;
             int lineError = _lineError;
             int lineX = _lineX;
             int lineY = _lineY;
@@ -926,9 +956,9 @@ namespace AmigaEmulator.Core.CustomChips
                 b = IsLineTextureBitSet() ? (ushort)0xFFFF : (ushort)0;
                 result = ApplyMinterm(a, b, rawC, _minterm);
                 lineResultComputed = true;
-                if (_useD)
+                if (_useC)
                 {
-                    WriteChip(_rowD, result);
+                    WriteChip(_rowC, result);
                     wrotePixel = true;
                 }
 
@@ -974,10 +1004,11 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Complete Block blitter logic.
+        /// Runs Complete Block Blit.
         /// </summary>
         private void CompleteBlockBlit()
         {
+            FlushPendingDWrite();
             if (_lineMode)
             {
                 ushort bltcon0 = Read(Bltcon0);
@@ -1009,7 +1040,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Defines the Bltssize Compat constant.
+        /// Constant for Bltssize Compat.
         /// </summary>
         private const uint BltssizeCompat = Bltsize;
 
@@ -1044,6 +1075,30 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
+        /// Arms the OCS Blitter D-channel writeback latch for the next destination slot.
+        /// </summary>
+        private void ArmPendingDWrite(uint address, ushort value)
+        {
+            _pendingDAddress = address;
+            _pendingDValue = value;
+            _pendingDWrite = true;
+        }
+
+        /// <summary>
+        /// Flushes the delayed OCS Blitter D-channel writeback latch.
+        /// </summary>
+        private void FlushPendingDWrite()
+        {
+            if (!_pendingDWrite)
+            {
+                return;
+            }
+
+            WriteChip(_pendingDAddress, _pendingDValue);
+            _pendingDWrite = false;
+        }
+
+        /// <summary>
         /// Raises the Word Executed notification.
         /// </summary>
         private void RaiseWordExecuted(BlitterWordTraceEntry entry)
@@ -1075,7 +1130,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Shift Source logic.
+        /// Runs Shift Source.
         /// </summary>
         private static ushort ShiftSource(ushort previous, ushort current, int shift, bool descending)
         {
@@ -1092,6 +1147,18 @@ namespace AmigaEmulator.Core.CustomChips
 
             uint reversed = ((uint)current << 16) | previous;
             return (ushort)((reversed << shift) >> 16);
+        }
+
+        /// <summary>
+        /// Loads BLTBDAT and updates the B source hold latch just like a B-channel DMA fetch.
+        /// </summary>
+        private void LoadBData(ushort value)
+        {
+            int shift = (Read(Bltcon1) >> 12) & 0x0F;
+            bool descending = (Read(Bltcon1) & 0x0002) != 0;
+            _bdat = value;
+            _bhold = ShiftSource(_previousB, value, shift, descending);
+            _previousB = value;
         }
 
         /// <summary>
@@ -1168,7 +1235,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Advance Line Texture logic.
+        /// Runs Advance Line Texture.
         /// </summary>
         private void AdvanceLineTexture()
         {
@@ -1176,7 +1243,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Step Line logic.
+        /// Runs Step Line.
         /// </summary>
         private void StepLine()
         {
@@ -1201,7 +1268,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Step Line Major Axis logic.
+        /// Runs Step Line Major Axis.
         /// </summary>
         private void StepLineMajorAxis()
         {
@@ -1215,7 +1282,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Step Line Minor Axis logic.
+        /// Runs Step Line Minor Axis.
         /// </summary>
         private void StepLineMinorAxis()
         {
@@ -1229,7 +1296,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Step Line Horizontal logic.
+        /// Runs Step Line Horizontal.
         /// </summary>
         private void StepLineHorizontal(int direction)
         {
@@ -1253,7 +1320,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Step Line Vertical logic.
+        /// Runs Step Line Vertical.
         /// </summary>
         private void StepLineVertical(int direction)
         {
@@ -1265,7 +1332,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Advance Line Destination Horizontal logic.
+        /// Runs Advance Line Destination Horizontal.
         /// </summary>
         private void AdvanceLineDestinationHorizontal(int delta)
         {
@@ -1273,7 +1340,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Signed Word logic.
+        /// Runs Signed Word.
         /// </summary>
         private static int SignedWord(ushort value)
         {
@@ -1281,7 +1348,7 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Advance logic.
+        /// Runs Advance.
         /// </summary>
         private uint Advance(uint address, bool descending)
         {
@@ -1289,17 +1356,17 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Executes the Add Signed logic.
+        /// Runs Add Signed.
         /// </summary>
         private uint AddSigned(uint address, int modulo, bool descending)
         {
-            return _dmaAddress.Add(address, modulo);
+            return _dmaAddress.Add(address, descending ? -modulo : modulo);
         }
 
         /// <summary>
-        /// Executes the Count Active Channels logic.
+        /// Returns the number of bus phases a block-blit word occupies.
         /// </summary>
-        private static int CountActiveChannels(bool a, bool b, bool c, bool d)
+        private static int CountBlockWordPhases(bool a, bool b, bool c, bool d)
         {
             int count = 0;
             if (a)

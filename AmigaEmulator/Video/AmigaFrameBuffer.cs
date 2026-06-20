@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +14,19 @@
    limitations under the License.
 */
 using System;
+using System.Collections.Generic;
 using System.IO;
 using AmigaEmulator.Core.SaveStates;
 
 namespace AmigaEmulator.Core.Video
 {
     /// <summary>
-    /// Provides Amiga Frame Buffer behavior used by the emulator.
+    /// Provides Amiga Frame Buffer functionality.
     /// </summary>
     public sealed class AmigaFrameBuffer
     {
         /// <summary>
-        /// Tracks the pixels.
+        /// Stores pixels.
         /// </summary>
         private readonly uint[] _pixels;
 
@@ -50,17 +51,17 @@ namespace AmigaEmulator.Core.Video
         }
 
         /// <summary>
-        /// Gets or updates the Width.
+        /// Gets or sets Width.
         /// </summary>
         public int Width { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Height.
+        /// Gets or sets Height.
         /// </summary>
         public int Height { get; private set; }
 
         /// <summary>
-        /// Executes the Pixels logic.
+        /// Gets Pixels.
         /// </summary>
         public uint[] Pixels
         {
@@ -68,7 +69,7 @@ namespace AmigaEmulator.Core.Video
         }
 
         /// <summary>
-        /// Executes the Clear logic.
+        /// Runs Clear.
         /// </summary>
         public void Clear(uint argb)
         {
@@ -92,7 +93,7 @@ namespace AmigaEmulator.Core.Video
         }
 
         /// <summary>
-        /// Executes the Copy To logic.
+        /// Runs Copy To.
         /// </summary>
         public void CopyTo(uint[] target)
         {
@@ -100,7 +101,7 @@ namespace AmigaEmulator.Core.Video
         }
 
         /// <summary>
-        /// Executes the Copy From logic.
+        /// Runs Copy From.
         /// </summary>
         public void CopyFrom(AmigaFrameBuffer source)
         {
@@ -110,6 +111,113 @@ namespace AmigaEmulator.Core.Video
             }
 
             Array.Copy(source._pixels, _pixels, Math.Min(_pixels.Length, source._pixels.Length));
+        }
+
+        /// <summary>
+        /// Copies a rectangular source window into this framebuffer.
+        /// </summary>
+        public void CopyWindowFrom(AmigaFrameBuffer source, int sourceX, int sourceY)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            Clear(0xFF000000);
+            int startX = Math.Max(0, sourceX);
+            int startY = Math.Max(0, sourceY);
+            int width = Math.Min(Width, source.Width - startX);
+            int height = Math.Min(Height, source.Height - startY);
+            if (width <= 0 || height <= 0)
+            {
+                return;
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                Array.Copy(
+                    source._pixels,
+                    ((startY + y) * source.Width) + startX,
+                    _pixels,
+                    y * Width,
+                    width);
+            }
+        }
+
+        /// <summary>
+        /// Removes sparse non-border pixels from the top overscan rows without cropping real top-edge artwork.
+        /// </summary>
+        public void ClearSparseTopBorderArtifacts(int rows, int maxNonBorderPixels)
+        {
+            if (rows <= 0 || maxNonBorderPixels <= 0 || _pixels.Length == 0)
+            {
+                return;
+            }
+
+            int scanRows = Math.Min(rows, Height);
+            uint borderColor = FindDominantColor(0, scanRows);
+            int nonBorderPixels = 0;
+            for (int y = 0; y < scanRows; y++)
+            {
+                int row = y * Width;
+                for (int x = 0; x < Width; x++)
+                {
+                    if (_pixels[row + x] != borderColor)
+                    {
+                        nonBorderPixels++;
+                        if (nonBorderPixels > maxNonBorderPixels)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+
+            if (nonBorderPixels == 0)
+            {
+                return;
+            }
+
+            for (int y = 0; y < scanRows; y++)
+            {
+                int row = y * Width;
+                for (int x = 0; x < Width; x++)
+                {
+                    if (_pixels[row + x] != borderColor)
+                    {
+                        _pixels[row + x] = borderColor;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Finds the most common color in a small framebuffer band.
+        /// </summary>
+        private uint FindDominantColor(int startY, int rows)
+        {
+            var counts = new Dictionary<uint, int>();
+            int endY = Math.Min(Height, startY + rows);
+            uint dominant = 0;
+            int dominantCount = 0;
+            for (int y = Math.Max(0, startY); y < endY; y++)
+            {
+                int row = y * Width;
+                for (int x = 0; x < Width; x++)
+                {
+                    uint color = _pixels[row + x];
+                    counts.TryGetValue(color, out int count);
+                    count++;
+                    counts[color] = count;
+                    if (count > dominantCount)
+                    {
+                        dominant = color;
+                        dominantCount = count;
+                    }
+                }
+            }
+
+            return dominant;
         }
 
         /// <summary>
@@ -130,12 +238,24 @@ namespace AmigaEmulator.Core.Video
             int width = reader.ReadInt32();
             int height = reader.ReadInt32();
             uint[] pixels = StateSerializer.ReadUIntArray(reader) ?? Array.Empty<uint>();
-            if (width != Width || height != Height || pixels.Length != _pixels.Length)
+            if (width == Width && height == Height && pixels.Length == _pixels.Length)
+            {
+                Array.Copy(pixels, _pixels, _pixels.Length);
+                return;
+            }
+
+            if (width <= 0 || height <= 0 || pixels.Length != width * height)
             {
                 throw new InvalidDataException("Savestate framebuffer size does not match the current Amiga model.");
             }
 
-            Array.Copy(pixels, _pixels, _pixels.Length);
+            Clear(0xFF000000);
+            int copyWidth = Math.Min(width, Width);
+            int copyHeight = Math.Min(height, Height);
+            for (int y = 0; y < copyHeight; y++)
+            {
+                Array.Copy(pixels, y * width, _pixels, y * Width, copyWidth);
+            }
         }
     }
 }

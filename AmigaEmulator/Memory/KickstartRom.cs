@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,38 +26,38 @@ namespace AmigaEmulator.Core.Memory
     public enum KickstartRomKind
     {
         /// <summary>
-        /// Represents the M is si ng option.
+        /// Represents Missing.
         /// </summary>
         Missing,
         /// <summary>
-        /// Represents the U nk no wn option.
+        /// Represents Unknown.
         /// </summary>
         Unknown,
         /// <summary>
-        /// Represents the K ic ks ta rt12 option.
+        /// Represents Kickstart 12.
         /// </summary>
         Kickstart12,
         /// <summary>
-        /// Represents the K ic ks ta rt13 option.
+        /// Represents Kickstart 13.
         /// </summary>
         Kickstart13,
         /// <summary>
-        /// Represents the K ic ks ta rt204 option.
+        /// Represents Kickstart 204.
         /// </summary>
         Kickstart204
     }
 
     /// <summary>
-    /// Provides Kickstart ROM behavior used by the emulator.
+    /// Provides Kickstart ROM functionality.
     /// </summary>
     public sealed class KickstartRom
     {
         /// <summary>
-        /// Tracks the bytes.
+        /// Stores bytes.
         /// </summary>
         private readonly byte[] _bytes;
         /// <summary>
-        /// Tracks the overlay Size.
+        /// Stores overlay Size.
         /// </summary>
         private readonly int _overlaySize;
 
@@ -113,7 +113,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Size logic.
+        /// Gets Size.
         /// </summary>
         public int Size
         {
@@ -121,7 +121,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Overlay Size logic.
+        /// Gets Overlay Size.
         /// </summary>
         public int OverlaySize
         {
@@ -129,12 +129,12 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Gets or updates the Kind.
+        /// Gets or sets Kind.
         /// </summary>
         public KickstartRomKind Kind { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Sha1.
+        /// Gets or sets Sha 1.
         /// </summary>
         public string Sha1 { get; private set; }
 
@@ -180,7 +180,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Detect Kind logic.
+        /// Runs Detect Kind.
         /// </summary>
         private static KickstartRomKind DetectKind(byte[] bytes, string sha1)
         {
@@ -239,7 +239,7 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
-        /// Executes the Compute Sha1 logic.
+        /// Runs Compute Sha 1.
         /// </summary>
         private static string ComputeSha1(byte[] bytes)
         {

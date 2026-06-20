@@ -19,12 +19,12 @@ using System.Collections.Generic;
 namespace AmigaEmulator.Core.Media
 {
     /// <summary>
-    /// Provides ADF MFM Track behavior used by the emulator.
+    /// Provides ADF MFM Track functionality.
     /// </summary>
     public sealed class AdfMfmTrack
     {
         /// <summary>
-        /// Tracks the words.
+        /// Stores words.
         /// </summary>
         private readonly ushort[] _words;
 
@@ -45,22 +45,22 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Gets or updates the Cylinder.
+        /// Gets or sets Cylinder.
         /// </summary>
         public int Cylinder { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Side.
+        /// Gets or sets Side.
         /// </summary>
         public int Side { get; private set; }
 
         /// <summary>
-        /// Gets or updates the Logical Track.
+        /// Gets or sets Logical Track.
         /// </summary>
         public int LogicalTrack { get; private set; }
 
         /// <summary>
-        /// Executes the Word Count logic.
+        /// Gets Word Count.
         /// </summary>
         public int WordCount
         {
@@ -68,7 +68,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Words logic.
+        /// Gets Words.
         /// </summary>
         public IReadOnlyList<ushort> Words
         {
@@ -108,7 +108,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the To Array logic.
+        /// Runs To Array.
         /// </summary>
         public ushort[] ToArray()
         {

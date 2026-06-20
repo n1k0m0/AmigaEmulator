@@ -35,45 +35,45 @@ namespace AmigaEmulator.Core.Cpu
             /// </summary>
             public bool Write;
             /// <summary>
-            /// Stores the access type used for tracing and diagnostics.
+            /// Stores access type used for tracing and diagnostics.
             /// </summary>
             public M68kTraceAccessType AccessType;
             /// <summary>
-            /// Stores the normalized address.
+            /// Stores normalized address.
             /// </summary>
             public uint Address;
             /// <summary>
-            /// Stores the transfer size in bytes.
+            /// Stores transfer size in bytes.
             /// </summary>
             public int Size;
             /// <summary>
-            /// Stores the value for write operations.
+            /// Stores value for write operations.
             /// </summary>
             public uint Value;
         }
 
         /// <summary>
-        /// Defines the Flag C constant.
+        /// Constant for Flag C.
         /// </summary>
         private const ushort FlagC = 0x0001;
         /// <summary>
-        /// Defines the Flag V constant.
+        /// Constant for Flag V.
         /// </summary>
         private const ushort FlagV = 0x0002;
         /// <summary>
-        /// Defines the Flag Z constant.
+        /// Constant for Flag Z.
         /// </summary>
         private const ushort FlagZ = 0x0004;
         /// <summary>
-        /// Defines the Flag N constant.
+        /// Constant for Flag N.
         /// </summary>
         private const ushort FlagN = 0x0008;
         /// <summary>
-        /// Defines the Flag X constant.
+        /// Constant for Flag X.
         /// </summary>
         private const ushort FlagX = 0x0010;
         /// <summary>
-        /// Defines the Flag S constant.
+        /// Constant for Flag S.
         /// </summary>
         private const ushort FlagS = 0x2000;
         /// <summary>
@@ -81,12 +81,12 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private const ushort InterruptMask = 0x0700;
         /// <summary>
-        /// Defines the Address Mask constant.
+        /// Constant for Address Mask.
         /// </summary>
         private const uint AddressMask = 0x00FFFFFF;
 
         /// <summary>
-        /// Tracks the bus.
+        /// Stores bus.
         /// </summary>
         private readonly IM68kBus _bus;
         /// <summary>
@@ -94,27 +94,27 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private readonly IM68kBusArbitration _busArbitration;
         /// <summary>
-        /// Tracks the state.
+        /// Stores state.
         /// </summary>
         private readonly M68kState _state;
         /// <summary>
-        /// Tracks the remaining CPU Cycles.
+        /// Stores remaining CPU Cycles.
         /// </summary>
         private int _remainingCpuCycles;
         /// <summary>
-        /// Tracks the last Instruction Cycles.
+        /// Stores last Instruction Cycles.
         /// </summary>
         private int _lastInstructionCycles;
         /// <summary>
-        /// Tracks the pending Interrupt Level.
+        /// Stores pending Interrupt Level.
         /// </summary>
         private int _pendingInterruptLevel;
         /// <summary>
-        /// Tracks the last Instruction.
+        /// Stores last Instruction.
         /// </summary>
         private string _lastInstruction;
         /// <summary>
-        /// Tracks the current Instruction Address.
+        /// Stores current Instruction Address.
         /// </summary>
         private uint _currentInstructionAddress;
         /// <summary>
@@ -138,7 +138,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private bool _lastReadLocationValid;
         /// <summary>
-        /// Tracks the last memory effective-address read location for RMW pairing.
+        /// Stores last Read Location.
         /// </summary>
         private EaLocation _lastReadLocation;
         /// <summary>
@@ -172,32 +172,32 @@ namespace AmigaEmulator.Core.Cpu
         private struct EaLocation
         {
             /// <summary>
-            /// Stores the Mode.
+            /// Stores Mode.
             /// </summary>
             public int Mode;
             /// <summary>
-            /// Stores the Register.
+            /// Stores Register.
             /// </summary>
             public int Register;
             /// <summary>
-            /// Stores the Size.
+            /// Stores Size.
             /// </summary>
             public int Size;
             /// <summary>
-            /// Stores the Address.
+            /// Stores Address.
             /// </summary>
             public uint Address;
         }
 
         /// <summary>
-        /// Provides Address Error Exception behavior used by the emulator.
+        /// Provides Address Error Exception functionality.
         /// </summary>
         private sealed class AddressErrorException : Exception
         {
         }
 
         /// <summary>
-        /// Executes the 68000 CPU logic.
+        /// Runs M 68 k Cpu.
         /// </summary>
         public M68kCpu(IM68kBus bus)
         {
@@ -209,7 +209,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the D0 logic.
+        /// Gets D0.
         /// </summary>
         public uint D0
         {
@@ -217,7 +217,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the A7 logic.
+        /// Gets A7.
         /// </summary>
         public uint A7
         {
@@ -225,7 +225,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the PC logic.
+        /// Gets PC.
         /// </summary>
         public uint PC
         {
@@ -233,7 +233,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the SR logic.
+        /// Gets SR.
         /// </summary>
         public ushort SR
         {
@@ -241,7 +241,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the USP logic.
+        /// Gets USP.
         /// </summary>
         public uint USP
         {
@@ -249,7 +249,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the SSP logic.
+        /// Gets SSP.
         /// </summary>
         public uint SSP
         {
@@ -265,7 +265,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Gets or updates the Trace Enabled.
+        /// Gets or sets Trace Enabled.
         /// </summary>
         public bool TraceEnabled { get; set; }
 
@@ -275,7 +275,7 @@ namespace AmigaEmulator.Core.Cpu
         public event Action<uint, int, bool, uint, ushort> OddAddressAccessed;
 
         /// <summary>
-        /// Executes the Current Instruction Address logic.
+        /// Gets Current Instruction Address.
         /// </summary>
         public uint CurrentInstructionAddress
         {
@@ -283,7 +283,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Current Opcode logic.
+        /// Gets Current Opcode.
         /// </summary>
         public ushort CurrentOpcode
         {
@@ -291,7 +291,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Last Instruction logic.
+        /// Gets Last Instruction.
         /// </summary>
         public string LastInstruction
         {
@@ -299,7 +299,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Snapshot logic.
+        /// Gets Snapshot.
         /// </summary>
         public M68kState Snapshot
         {
@@ -466,7 +466,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Step logic.
+        /// Runs Step.
         /// </summary>
         public M68kTraceEntry Step()
         {
@@ -530,7 +530,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Request Interrupt logic.
+        /// Runs Request Interrupt.
         /// </summary>
         public void RequestInterrupt(int level)
         {
@@ -563,7 +563,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Enter Exception logic.
+        /// Runs Enter Exception.
         /// </summary>
         public void EnterException(int vectorNumber)
         {
@@ -587,7 +587,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Estimate Instruction Cycles logic.
+        /// Runs Estimate Instruction Cycles.
         /// </summary>
         private static int EstimateInstructionCycles(ushort opcode, string instruction, uint pcBefore, uint pcAfter)
         {
@@ -600,6 +600,14 @@ namespace AmigaEmulator.Core.Cpu
             if (instruction.StartsWith("MOVEQ", StringComparison.Ordinal))
             {
                 return 4;
+            }
+
+            if (instruction.StartsWith("BTST", StringComparison.Ordinal) ||
+                instruction.StartsWith("BCHG", StringComparison.Ordinal) ||
+                instruction.StartsWith("BCLR", StringComparison.Ordinal) ||
+                instruction.StartsWith("BSET", StringComparison.Ordinal))
+            {
+                return EstimateEaInstructionCycles(opcode, 6, 10);
             }
 
             if (instruction.StartsWith("BRA", StringComparison.Ordinal) ||
@@ -668,14 +676,6 @@ namespace AmigaEmulator.Core.Cpu
                 return EstimateEaInstructionCycles(opcode, 4, 8);
             }
 
-            if (instruction.StartsWith("BTST", StringComparison.Ordinal) ||
-                instruction.StartsWith("BCHG", StringComparison.Ordinal) ||
-                instruction.StartsWith("BCLR", StringComparison.Ordinal) ||
-                instruction.StartsWith("BSET", StringComparison.Ordinal))
-            {
-                return EstimateEaInstructionCycles(opcode, 6, 10);
-            }
-
             if (instruction.StartsWith("LS", StringComparison.Ordinal) ||
                 instruction.StartsWith("AS", StringComparison.Ordinal) ||
                 instruction.StartsWith("RO", StringComparison.Ordinal))
@@ -708,7 +708,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Estimate Move Cycles logic.
+        /// Runs Estimate Move Cycles.
         /// </summary>
         private static int EstimateMoveCycles(ushort opcode, int size)
         {
@@ -722,7 +722,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Estimate Ea Instruction Cycles logic.
+        /// Runs Estimate Ea Instruction Cycles.
         /// </summary>
         private static int EstimateEaInstructionCycles(ushort opcode, int registerCycles, int memoryCycles)
         {
@@ -732,7 +732,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Estimate Ea Read Cycles logic.
+        /// Runs Estimate Ea Read Cycles.
         /// </summary>
         private static int EstimateEaReadCycles(int mode, int register, int size)
         {
@@ -765,7 +765,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Estimate Ea Write Cycles logic.
+        /// Runs Estimate Ea Write Cycles.
         /// </summary>
         private static int EstimateEaWriteCycles(int mode, int register, int size)
         {
@@ -792,7 +792,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Opcode logic.
+        /// Runs Execute Opcode.
         /// </summary>
         private string ExecuteOpcode(ushort opcode)
         {
@@ -1165,7 +1165,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Moveq logic.
+        /// Runs Execute Moveq.
         /// </summary>
         private string ExecuteMoveq(ushort opcode)
         {
@@ -1176,7 +1176,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Move logic.
+        /// Runs Execute Move.
         /// </summary>
         private string ExecuteMove(ushort opcode)
         {
@@ -1208,7 +1208,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Branch logic.
+        /// Runs Execute Branch.
         /// </summary>
         private string ExecuteBranch(ushort opcode)
         {
@@ -1233,7 +1233,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Dbcc logic.
+        /// Runs Execute Dbcc.
         /// </summary>
         private string ExecuteDbcc(ushort opcode)
         {
@@ -1255,7 +1255,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Scc logic.
+        /// Runs Execute Scc.
         /// </summary>
         private string ExecuteScc(ushort opcode)
         {
@@ -1273,7 +1273,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Addq Subq logic.
+        /// Runs Execute Addq Subq.
         /// </summary>
         private string ExecuteAddqSubq(ushort opcode)
         {
@@ -1317,7 +1317,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Add Sub Cmp logic.
+        /// Runs Execute Add Sub Cmp.
         /// </summary>
         private string ExecuteAddSubCmp(ushort opcode, bool add, bool allowStore)
         {
@@ -1386,7 +1386,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Addx Subx logic.
+        /// Runs Execute Addx Subx.
         /// </summary>
         private string ExecuteAddxSubx(bool add, int operationMode, int destinationRegister, int mode, int sourceRegister)
         {
@@ -1419,7 +1419,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Or logic.
+        /// Runs Execute Or.
         /// </summary>
         private string ExecuteOr(ushort opcode)
         {
@@ -1458,7 +1458,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Exg logic.
+        /// Runs Execute Exg.
         /// </summary>
         private string ExecuteExg(ushort opcode)
         {
@@ -1489,7 +1489,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Multiply logic.
+        /// Runs Execute Multiply.
         /// </summary>
         private string ExecuteMultiply(ushort opcode)
         {
@@ -1508,7 +1508,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Divide logic.
+        /// Runs Execute Divide.
         /// </summary>
         private string ExecuteDivide(ushort opcode)
         {
@@ -1569,7 +1569,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute And logic.
+        /// Runs Execute And.
         /// </summary>
         private string ExecuteAnd(ushort opcode)
         {
@@ -1608,7 +1608,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Cmp logic.
+        /// Runs Execute Cmp.
         /// </summary>
         private string ExecuteCmp(ushort opcode)
         {
@@ -1913,7 +1913,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Clr logic.
+        /// Runs Execute Clr.
         /// </summary>
         private string ExecuteClr(ushort opcode)
         {
@@ -1932,7 +1932,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Tst logic.
+        /// Runs Execute Tst.
         /// </summary>
         private string ExecuteTst(ushort opcode)
         {
@@ -1951,7 +1951,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Negx logic.
+        /// Runs Execute Negx.
         /// </summary>
         private string ExecuteNegx(ushort opcode)
         {
@@ -1980,7 +1980,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Neg logic.
+        /// Runs Execute Neg.
         /// </summary>
         private string ExecuteNeg(ushort opcode)
         {
@@ -2007,7 +2007,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Not logic.
+        /// Runs Execute Not.
         /// </summary>
         private string ExecuteNot(ushort opcode)
         {
@@ -2028,7 +2028,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Shift Rotate logic.
+        /// Runs Execute Shift Rotate.
         /// </summary>
         private string ExecuteShiftRotate(ushort opcode)
         {
@@ -2068,7 +2068,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Shift Rotate Name logic.
+        /// Runs Shift Rotate Name.
         /// </summary>
         private static string ShiftRotateName(int kind, bool left)
         {
@@ -2091,7 +2091,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Memory Shift Rotate logic.
+        /// Runs Execute Memory Shift Rotate.
         /// </summary>
         private string ExecuteMemoryShiftRotate(ushort opcode)
         {
@@ -2133,7 +2133,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Shift Rotate Value logic.
+        /// Runs Shift Rotate Value.
         /// </summary>
         private uint ShiftRotateValue(uint value, int size, int count, bool left, int kind, out bool carry, out bool overflow)
         {
@@ -2239,7 +2239,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Movem logic.
+        /// Runs Execute Movem.
         /// </summary>
         private string ExecuteMovem(ushort opcode)
         {
@@ -2322,7 +2322,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Movep logic.
+        /// Runs Execute Movep.
         /// </summary>
         private string ExecuteMovep(ushort opcode)
         {
@@ -2389,7 +2389,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Fetch Word logic.
+        /// Runs Fetch Word.
         /// </summary>
         private ushort FetchWord()
         {
@@ -2399,7 +2399,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Fetch Long logic.
+        /// Runs Fetch Long.
         /// </summary>
         private uint FetchLong()
         {
@@ -2409,7 +2409,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Fetch Immediate logic.
+        /// Runs Fetch Immediate.
         /// </summary>
         private uint FetchImmediate(int size)
         {
@@ -2513,7 +2513,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Resolve Ea Location logic.
+        /// Runs Resolve Ea Location.
         /// </summary>
         private EaLocation ResolveEaLocation(int mode, int register, int size, bool forWrite)
         {
@@ -3032,7 +3032,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Address Increment logic.
+        /// Runs Address Increment.
         /// </summary>
         private uint AddressIncrement(int register, int size)
         {
@@ -3040,7 +3040,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Push Word logic.
+        /// Runs Push Word.
         /// </summary>
         private void PushWord(ushort value)
         {
@@ -3049,7 +3049,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Push Long logic.
+        /// Runs Push Long.
         /// </summary>
         private void PushLong(uint value)
         {
@@ -3088,7 +3088,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Pop Word logic.
+        /// Runs Pop Word.
         /// </summary>
         private ushort PopWord()
         {
@@ -3098,7 +3098,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Pop Long logic.
+        /// Runs Pop Long.
         /// </summary>
         private uint PopLong()
         {
@@ -3108,7 +3108,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Execute Rte logic.
+        /// Runs Execute Rte.
         /// </summary>
         private void ExecuteRte()
         {
@@ -3121,7 +3121,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Enter Exception logic.
+        /// Runs Enter Exception.
         /// </summary>
         private void EnterException(int vectorNumber, ushort interruptMask)
         {
@@ -3129,7 +3129,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Enter Exception logic.
+        /// Runs Enter Exception.
         /// </summary>
         private void EnterException(int vectorNumber, ushort interruptMask, uint stackedPc)
         {
@@ -3149,7 +3149,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Enter Address Error logic.
+        /// Runs Enter Address Error.
         /// </summary>
         private void EnterAddressError(uint faultAddress, int size, bool write)
         {
@@ -3286,7 +3286,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Add Values logic.
+        /// Runs Add Values.
         /// </summary>
         private uint AddValues(uint destination, uint source, int size, bool affectExtend)
         {
@@ -3302,7 +3302,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Subtract Values logic.
+        /// Runs Subtract Values.
         /// </summary>
         private uint SubtractValues(uint destination, uint source, int size, bool affectExtend)
         {
@@ -3318,7 +3318,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Add Extend Values logic.
+        /// Runs Add Extend Values.
         /// </summary>
         private uint AddExtendValues(uint destination, uint source, int size)
         {
@@ -3335,7 +3335,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Subtract Extend Values logic.
+        /// Runs Subtract Extend Values.
         /// </summary>
         private uint SubtractExtendValues(uint destination, uint source, int size)
         {
@@ -3470,7 +3470,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Evaluate Condition logic.
+        /// Runs Evaluate Condition.
         /// </summary>
         private bool EvaluateCondition(int condition)
         {
@@ -3551,7 +3551,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Size Mask logic.
+        /// Runs Size Mask.
         /// </summary>
         private static uint SizeMask(int size)
         {
@@ -3559,7 +3559,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Sign Bit logic.
+        /// Runs Sign Bit.
         /// </summary>
         private static uint SignBit(int size)
         {
@@ -3567,7 +3567,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Sign Extend logic.
+        /// Runs Sign Extend.
         /// </summary>
         private static uint SignExtend(uint value, int size)
         {
@@ -3585,7 +3585,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Signed Add Overflows logic.
+        /// Runs Signed Add Overflows.
         /// </summary>
         private static bool SignedAddOverflows(uint destination, uint source, uint extend, int size)
         {
@@ -3594,7 +3594,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Signed Subtract Overflows logic.
+        /// Runs Signed Subtract Overflows.
         /// </summary>
         private static bool SignedSubtractOverflows(uint destination, uint source, uint extend, int size)
         {
@@ -3603,7 +3603,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the To Signed logic.
+        /// Runs To Signed.
         /// </summary>
         private static long ToSigned(uint value, int size)
         {
@@ -3621,7 +3621,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Signed Minimum logic.
+        /// Runs Signed Minimum.
         /// </summary>
         private static long SignedMinimum(int size)
         {
@@ -3629,7 +3629,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Signed Maximum logic.
+        /// Runs Signed Maximum.
         /// </summary>
         private static long SignedMaximum(int size)
         {
@@ -3637,7 +3637,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Size Suffix logic.
+        /// Runs Size Suffix.
         /// </summary>
         private static string SizeSuffix(int size)
         {
@@ -3645,7 +3645,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Condition Name logic.
+        /// Runs Condition Name.
         /// </summary>
         private static string ConditionName(int condition)
         {
@@ -3685,7 +3685,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Format Ea Instruction logic.
+        /// Runs Format Ea Instruction.
         /// </summary>
         private static string FormatEaInstruction(string name, int size, int mode, int register)
         {
@@ -3693,7 +3693,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Format Ea logic.
+        /// Runs Format Ea.
         /// </summary>
         private static string FormatEa(int mode, int register, int size)
         {
@@ -3735,7 +3735,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Validate Register logic.
+        /// Runs Validate Register.
         /// </summary>
         private static void ValidateRegister(int register)
         {

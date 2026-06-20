@@ -26,12 +26,12 @@ namespace AmigaEmulator.Core.CustomChips
         private ushort _control;
 
         /// <summary>
-        /// Gets or updates the Collision Flags.
+        /// Gets or sets Collision Flags.
         /// </summary>
         public ushort CollisionFlags { get; private set; }
 
         /// <summary>
-        /// Gets or updates the CLXCON collision control register.
+        /// Gets or sets the CLXCON collision control register.
         /// </summary>
         public ushort Control
         {

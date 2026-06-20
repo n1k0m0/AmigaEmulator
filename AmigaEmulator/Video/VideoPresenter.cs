@@ -16,17 +16,17 @@
 namespace AmigaEmulator.Core.Video
 {
     /// <summary>
-    /// Provides Video Presenter behavior used by the emulator.
+    /// Provides Video Presenter functionality.
     /// </summary>
     public sealed class VideoPresenter
     {
         /// <summary>
-        /// Gets or updates the Last Frame.
+        /// Gets or sets Last Frame.
         /// </summary>
         public AmigaFrameBuffer LastFrame { get; private set; }
 
         /// <summary>
-        /// Executes the Present logic.
+        /// Runs Present.
         /// </summary>
         public void Present(AmigaFrameBuffer frameBuffer)
         {

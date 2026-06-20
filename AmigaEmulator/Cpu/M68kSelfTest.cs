@@ -20,7 +20,7 @@ using AmigaEmulator.Core.Memory;
 namespace AmigaEmulator.Core.Cpu
 {
     /// <summary>
-    /// Provides 68000 Self Test behavior used by the emulator.
+    /// Provides 68000 Self Test functionality.
     /// </summary>
     public static class M68kSelfTest
     {
@@ -1242,7 +1242,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Step logic.
+        /// Runs Step.
         /// </summary>
         private static void Step(M68kCpu cpu, int instructions)
         {
@@ -1273,7 +1273,7 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Executes the Expect logic.
+        /// Runs Expect.
         /// </summary>
         private static int Expect(StringBuilder log, string name, bool condition, string detail)
         {

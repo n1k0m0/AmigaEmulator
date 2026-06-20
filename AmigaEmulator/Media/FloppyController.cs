@@ -21,44 +21,44 @@ namespace AmigaEmulator.Core.Media
     public sealed class FloppyController
     {
         /// <summary>
-        /// Defines the CIA A Status Mask constant.
+        /// Constant for CIA A Status Mask.
         /// </summary>
         public const byte CiaAStatusMask = 0x3C;
         /// <summary>
-        /// Defines the CIA A Disk Change Bit constant.
+        /// Constant for CIA A Disk Change Bit.
         /// </summary>
         public const byte CiaADiskChangeBit = 0x04;
         /// <summary>
-        /// Defines the CIA A Write Protect Bit constant.
+        /// Constant for CIA A Write Protect Bit.
         /// </summary>
         public const byte CiaAWriteProtectBit = 0x08;
         /// <summary>
-        /// Defines the CIA A Track0 Bit constant.
+        /// Constant for CIA A Track 0 Bit.
         /// </summary>
         public const byte CiaATrack0Bit = 0x10;
         /// <summary>
-        /// Defines the CIA A Ready Bit constant.
+        /// Constant for CIA A Ready Bit.
         /// </summary>
         public const byte CiaAReadyBit = 0x20;
 
         /// <summary>
-        /// Defines the CIA B Step Bit constant.
+        /// Constant for CIA B Step Bit.
         /// </summary>
         private const byte CiaBStepBit = 0x01;
         /// <summary>
-        /// Defines the CIA B Direction Bit constant.
+        /// Constant for CIA B Direction Bit.
         /// </summary>
         private const byte CiaBDirectionBit = 0x02;
         /// <summary>
-        /// Defines the CIA B Side Bit constant.
+        /// Constant for CIA B Side Bit.
         /// </summary>
         private const byte CiaBSideBit = 0x04;
         /// <summary>
-        /// Defines the CIA B Select0 Bit constant.
+        /// Constant for CIA B Select 0 Bit.
         /// </summary>
         private const byte CiaBSelect0Bit = 0x08;
         /// <summary>
-        /// Defines the CIA B Motor Bit constant.
+        /// Constant for CIA B Motor Bit.
         /// </summary>
         private const byte CiaBMotorBit = 0x80;
 
@@ -76,12 +76,12 @@ namespace AmigaEmulator.Core.Media
         public event System.Action MediaChanged;
 
         /// <summary>
-        /// Gets or updates the Drive0.
+        /// Gets or sets Drive 0.
         /// </summary>
         public FloppyDrive Drive0 { get; private set; }
 
         /// <summary>
-        /// Executes the Index Pulse Pending logic.
+        /// Gets Index Pulse Pending.
         /// </summary>
         public bool IndexPulsePending
         {
@@ -89,7 +89,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Insert Drive0 logic.
+        /// Runs Insert Drive 0.
         /// </summary>
         public void InsertDrive0(AdfImage image)
         {
@@ -98,7 +98,7 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Insert Drive0 logic.
+        /// Runs Insert Drive 0.
         /// </summary>
         public void InsertDrive0(AdfImage image, bool writeProtected)
         {
@@ -107,12 +107,20 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Executes the Eject Drive0 logic.
+        /// Runs Eject Drive 0.
         /// </summary>
         public void EjectDrive0()
         {
             Drive0.Eject();
             RaiseMediaChanged();
+        }
+
+        /// <summary>
+        /// Flushes dirty writable floppy media.
+        /// </summary>
+        public void FlushDrive0()
+        {
+            Drive0.FlushImage();
         }
 
         /// <summary>
