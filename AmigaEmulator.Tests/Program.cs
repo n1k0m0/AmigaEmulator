@@ -1467,6 +1467,11 @@ namespace AmigaEmulator.Tests
                 "selected DF0 follows CIA-B motor line changes without requiring reselection",
                 "Amiga CIA-B floppy select and motor control lines",
                 TestSelectedDriveFollowsMotorLine);
+            yield return new ChipTestCase(
+                "Paula/Serial",
+                "SERDATR idle read does not expose stale custom-register shadow data",
+                "Amiga Paula SERDATR transmit-ready status during Kickstart reset",
+                TestSerdatrIdleReadIsNotStaleShadow);
         }
 
         /// <summary>
@@ -1507,6 +1512,21 @@ namespace AmigaEmulator.Tests
                 {
                 }
             }
+        }
+
+        /// <summary>
+        /// Verifies that Paula owns SERDATR reads so reset code cannot see stale shadow values.
+        /// </summary>
+        private static void TestSerdatrIdleReadIsNotStaleShadow()
+        {
+            var paula = new Paula();
+            ushort value;
+            Check.True(paula.TryReadCustomRegisterWord(0x018, out value), "Paula should handle SERDATR reads.");
+            Check.Equal(0x30FF, value, "Idle SERDATR should report transmitter-ready status with the receive line high.");
+
+            Check.True(paula.TryPeekCustomRegisterWord(0x018, out value), "Paula should handle SERDATR peeks.");
+            Check.Equal(0x30FF, value, "Idle SERDATR peek should match the side-effecting read.");
+            Check.Equal(0x007F, value & 0x007F, "Kickstart reset waits for the idle receive line through SERDATR low bits.");
         }
 
         /// <summary>
@@ -1757,6 +1777,11 @@ namespace AmigaEmulator.Tests
                 TestTwoMbChipEightMbFastRamProfile);
             yield return new ChipTestCase(
                 "Integration",
+                "default frontend RAM profile exposes 1MB Chip RAM for OCS game loaders",
+                "Amiga emulator settings default RAM profile",
+                TestDefaultRamProfileIsOneMbChip);
+            yield return new ChipTestCase(
+                "Integration",
                 "INTREQ is readable before the delayed CPU IPL pin observes it",
                 "OCS INTREQ register visibility versus delayed 68000 IPL sampling",
                 TestInterruptRequestPrecedesCpuIplPins);
@@ -1835,6 +1860,16 @@ namespace AmigaEmulator.Tests
             Check.Equal(0xCAFE, bus.ReadWord(MemoryMap.FastRamStart), "Fast RAM base should be writable.");
             Check.Equal(0x7B, bus.ReadByte(MemoryMap.FastRamEnd), "Final 8MB Fast RAM byte should be writable.");
             Check.True(!bus.RequiresChipBus(MemoryMap.FastRamStart, 2), "Fast RAM should not be contended by custom-chip DMA.");
+        }
+
+        /// <summary>
+        /// Verifies that the default frontend profile gives OCS loaders the common 1MB Chip RAM map.
+        /// </summary>
+        private static void TestDefaultRamProfileIsOneMbChip()
+        {
+            var settings = new AmigaEmulatorSettings();
+            Check.Equal(AmigaRamProfile.Chip1Mb, settings.RamProfile, "New settings should default to the 1MB Chip RAM profile.");
+            Check.Equal(4, settings.Version, "Settings version should track the 1MB Chip RAM default migration.");
         }
 
         /// <summary>

@@ -36,6 +36,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint Dskbytr = 0x01A;
         /// <summary>
+        /// Defines the SERDATR custom register offset or bit mask.
+        /// </summary>
+        private const uint Serdatr = 0x018;
+        /// <summary>
+        /// Defines the idle SERDATR status bits for an empty receive buffer and ready transmitter.
+        /// </summary>
+        private const ushort SerdatrIdle = 0x30FF;
+        /// <summary>
         /// Defines the DSKPTH custom register offset or bit mask.
         /// </summary>
         private const uint Dskpth = 0x020;
@@ -597,6 +605,12 @@ namespace AmigaEmulator.Core.CustomChips
         public bool TryReadCustomRegisterWord(uint address, out ushort value)
         {
             uint offset = address & 0x01FE;
+            if (offset == Serdatr)
+            {
+                value = SerdatrIdle;
+                return true;
+            }
+
             if (offset == Dskbytr)
             {
                 value = BuildDiskBytr();
@@ -627,6 +641,12 @@ namespace AmigaEmulator.Core.CustomChips
         public bool TryPeekCustomRegisterWord(uint address, out ushort value)
         {
             uint offset = address & 0x01FE;
+            if (offset == Serdatr)
+            {
+                value = SerdatrIdle;
+                return true;
+            }
+
             if (offset == Dskbytr)
             {
                 value = BuildDiskBytr();

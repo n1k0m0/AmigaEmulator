@@ -371,7 +371,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Stores RAM Profile.
         /// </summary>
-        private RamProfile _ramProfile = RamProfile.Chip512;
+        private RamProfile _ramProfile = RamProfile.Chip1Mb;
         /// <summary>
         /// Stores floppy Speed Mode.
         /// </summary>

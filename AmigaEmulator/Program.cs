@@ -220,6 +220,56 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-pc", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedTraceCycles) && parsedTraceCycles > 0
+                    ? parsedTraceCycles
+                    : 2000000;
+                int maxLines = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceLines) && parsedTraceLines > 0
+                    ? parsedTraceLines
+                    : 64;
+                uint filterStart = args.Length >= 5 ? Convert.ToUInt32(args[4].Replace("$", string.Empty), 16) : 0u;
+                uint filterEnd = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0x00FFFFFFu;
+                TraceSavestatePc(savePath, cycles, maxLines, filterStart, filterEnd, ParseModelArgument(args, 6));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-bus-words", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                uint address = args.Length >= 3 ? Convert.ToUInt32(args[2].Replace("$", string.Empty), 16) : 0u;
+                int words = args.Length >= 4 && int.TryParse(args[3], out int parsedWords) && parsedWords > 0
+                    ? parsedWords
+                    : 32;
+                int cycles = args.Length >= 5 && int.TryParse(args[4], out int parsedCycles) && parsedCycles > 0
+                    ? parsedCycles
+                    : 0;
+                DumpSavestateBusWords(savePath, address, words, cycles, ParseModelArgument(args, 5));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-exceptions", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedExceptionCycles) && parsedExceptionCycles > 0
+                    ? parsedExceptionCycles
+                    : 20000000;
+                int maxLines = args.Length >= 4 && int.TryParse(args[3], out int parsedExceptionLines) && parsedExceptionLines > 0
+                    ? parsedExceptionLines
+                    : 16;
+                int modelArgumentStart = 4;
+                int? filterVector = null;
+                if (args.Length >= 5 && !args[4].StartsWith("--", StringComparison.Ordinal) && int.TryParse(args[4], out int parsedVector))
+                {
+                    filterVector = parsedVector;
+                    modelArgumentStart = 5;
+                }
+
+                TraceSavestateExceptions(savePath, cycles, maxLines, filterVector, ParseModelArgument(args, modelArgumentStart));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-mouse", StringComparison.OrdinalIgnoreCase))
             {
                 string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
@@ -1979,6 +2029,159 @@ namespace AmigaEmulator
             for (int frame = 0; frame < framesToRun; frame++)
             {
                 system.RunChipCycles(frameCycles);
+            }
+        }
+
+        /// <summary>
+        /// Traces compact CPU and chipset status while replaying a savestate.
+        /// </summary>
+        private static void TraceSavestatePc(string savePath, int cycles, int maxLines, uint filterStart, uint filterEnd, AmigaModel model)
+        {
+            if (filterEnd < filterStart)
+            {
+                uint swap = filterStart;
+                filterStart = filterEnd;
+                filterEnd = swap;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                uint lastPc = 0xFFFFFFFFu;
+                int lines = 0;
+                for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
+                {
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress;
+                    if (pc == lastPc || pc < filterStart || pc > filterEnd)
+                    {
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    Console.WriteLine(FormatCompactMachineState(system));
+                    lines++;
+                }
+
+                Console.WriteLine("TraceLines=" + lines);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("OverlayAtZero=" + system.Bus.RomOverlayAtZero);
+                Console.WriteLine("CIAA " + system.CiaA.GetDebugInfo() + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
+                Console.WriteLine("CIAB " + system.CiaB.GetDebugInfo() + " PRB(read)=$" + system.Bus.ReadByte(0x00BFD100).ToString("X2"));
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Formats a single-line machine state sample for command-line diagnostics.
+        /// </summary>
+        private static string FormatCompactMachineState(AmigaSystem system)
+        {
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0,10} F{1,5} {2,3},{3,3} PC ${4:X6} OP ${5:X4} SR ${6:X4} D0 ${7:X8} D1 ${8:X8} A0 ${9:X8} A7 ${10:X8} {11,-10} OVL {12} PRA ${13:X2} PRB ${14:X2} DF0 {15}",
+                system.Agnus.Beam.GlobalChipCycle,
+                system.FrameCounter,
+                system.Agnus.Beam.BeamX,
+                system.Agnus.Beam.BeamY,
+                system.Cpu.CurrentInstructionAddress,
+                system.Cpu.CurrentOpcode,
+                system.Cpu.SR,
+                system.Cpu.GetD(0),
+                system.Cpu.GetD(1),
+                system.Cpu.GetA(0),
+                system.Cpu.GetA(7),
+                system.Cpu.LastInstruction ?? string.Empty,
+                system.Bus.RomOverlayAtZero ? "ON" : "OFF",
+                system.Bus.ReadByte(0x00BFE001),
+                system.Bus.ReadByte(0x00BFD100),
+                system.Bus.FloppyController.GetDebugInfo());
+        }
+
+        /// <summary>
+        /// Dumps bus words after restoring and optionally advancing a savestate.
+        /// </summary>
+        private static void DumpSavestateBusWords(string savePath, uint address, int words, int cycles, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                if (cycles > 0)
+                {
+                    system.RunChipCycles(cycles);
+                }
+
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                uint current = address & 0x00FFFFFEu;
+                for (int index = 0; index < words; index += 8)
+                {
+                    var builder = new StringBuilder();
+                    builder.Append("$");
+                    builder.Append(current.ToString("X6"));
+                    builder.Append(":");
+                    int count = Math.Min(8, words - index);
+                    for (int word = 0; word < count; word++)
+                    {
+                        builder.Append(" $");
+                        builder.Append(system.Bus.ReadWord(current + (uint)(word * 2)).ToString("X4"));
+                    }
+
+                    Console.WriteLine(builder.ToString());
+                    current += (uint)(count * 2);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Traces CPU exception entry while replaying a savestate.
+        /// </summary>
+        private static void TraceSavestateExceptions(string savePath, int cycles, int maxLines, int? filterVector, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                int lines = 0;
+                system.Cpu.ExceptionEntered += delegate(int vector, uint stackedPc, ushort oldSr, uint instructionPc, ushort opcode, uint targetPc)
+                {
+                    if (lines >= maxLines || (filterVector.HasValue && vector != filterVector.Value))
+                    {
+                        return;
+                    }
+
+                    Console.WriteLine(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        "{0,10} F{1,5} {2,3},{3,3} EXC {4,3} stackedPC ${5:X6} oldSR ${6:X4} instrPC ${7:X6} op ${8:X4} target ${9:X6} A7 ${10:X6} {11}",
+                        system.Agnus.Beam.GlobalChipCycle,
+                        system.FrameCounter,
+                        system.Agnus.Beam.BeamX,
+                        system.Agnus.Beam.BeamY,
+                        vector,
+                        stackedPc,
+                        oldSr,
+                        instructionPc,
+                        opcode,
+                        targetPc,
+                        system.Cpu.GetA(7),
+                        system.Cpu.LastInstruction ?? string.Empty));
+                    Console.WriteLine("    " + FormatCompactMachineState(system));
+                    Console.WriteLine("    PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                    Console.WriteLine("    DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                    lines++;
+                };
+
+                for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                Console.WriteLine("ExceptionLines=" + lines + (filterVector.HasValue ? " filter=" + filterVector.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty));
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
             }
         }
 
@@ -7398,7 +7601,9 @@ namespace AmigaEmulator
                 }
 
                 if (string.Equals(value, "1mbchip", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "chip1", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "chip1mb", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(value, "chip1m", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "a500chip1mb", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "a500-1mbchip", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "a500-1mb-chip", StringComparison.OrdinalIgnoreCase) ||

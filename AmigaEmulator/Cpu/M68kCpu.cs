@@ -275,6 +275,11 @@ namespace AmigaEmulator.Core.Cpu
         public event Action<uint, int, bool, uint, ushort> OddAddressAccessed;
 
         /// <summary>
+        /// Raised when the CPU vectors into a 68000 exception handler.
+        /// </summary>
+        public event Action<int, uint, ushort, uint, ushort, uint> ExceptionEntered;
+
+        /// <summary>
         /// Gets Current Instruction Address.
         /// </summary>
         public uint CurrentInstructionAddress
@@ -3144,7 +3149,14 @@ namespace AmigaEmulator.Core.Cpu
             PushWord(oldSr);
             ushort newSr = (ushort)((_state.SR & unchecked((ushort)~InterruptMask)) | FlagS | interruptMask);
             SetStatusRegister(newSr);
-            _state.PC = ReadLong((uint)(vectorNumber * 4)) & AddressMask;
+            uint targetPc = ReadLong((uint)(vectorNumber * 4)) & AddressMask;
+            Action<int, uint, ushort, uint, ushort, uint> handler = ExceptionEntered;
+            if (handler != null)
+            {
+                handler(vectorNumber, stackedPc & AddressMask, oldSr, _currentInstructionAddress & AddressMask, _state.CurrentOpcode, targetPc);
+            }
+
+            _state.PC = targetPc;
             _state.ExecutionState = M68kExecutionState.FetchOpcode;
         }
 
@@ -3166,7 +3178,14 @@ namespace AmigaEmulator.Core.Cpu
             PushExceptionWordUnchecked(oldSr);
             ushort newSr = (ushort)((_state.SR & unchecked((ushort)~InterruptMask)) | FlagS | (_state.SR & InterruptMask));
             SetStatusRegister(newSr);
-            _state.PC = ReadLong(3u * 4u) & AddressMask;
+            uint targetPc = ReadLong(3u * 4u) & AddressMask;
+            Action<int, uint, ushort, uint, ushort, uint> handler = ExceptionEntered;
+            if (handler != null)
+            {
+                handler(3, stackedPc, oldSr, _currentInstructionAddress & AddressMask, instruction, targetPc);
+            }
+
+            _state.PC = targetPc;
             _state.ExecutionState = M68kExecutionState.FetchOpcode;
         }
 

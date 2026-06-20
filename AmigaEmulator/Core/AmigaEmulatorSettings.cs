@@ -29,7 +29,7 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Gets or sets Version.
         /// </summary>
-        public int Version { get; set; } = 3;
+        public int Version { get; set; } = 4;
 
         /// <summary>
         /// Gets or sets Video Filter.
@@ -49,7 +49,7 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Gets or sets RAM Profile.
         /// </summary>
-        public AmigaRamProfile RamProfile { get; set; } = AmigaRamProfile.Chip512K;
+        public AmigaRamProfile RamProfile { get; set; } = AmigaRamProfile.Chip1Mb;
 
         /// <summary>
         /// Gets or sets Kickstart.
@@ -241,6 +241,16 @@ namespace AmigaEmulator.Core
             {
                 settings.RamProfile = AmigaRamProfile.Chip512K;
                 settings.Version = 3;
+            }
+
+            if (settings.Version < 4)
+            {
+                if (settings.RamProfile == AmigaRamProfile.Chip512K)
+                {
+                    settings.RamProfile = AmigaRamProfile.Chip1Mb;
+                }
+
+                settings.Version = 4;
             }
         }
     }
