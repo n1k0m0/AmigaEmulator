@@ -152,6 +152,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private readonly bool[] _dataLatchValid;
         /// <summary>
+        /// Caches COLORxx registers as expanded ARGB values for pixel rendering.
+        /// </summary>
+        private readonly uint[] _paletteArgb;
+        /// <summary>
         /// Stores DMA Pointers.
         /// </summary>
         private readonly uint[] _dmaPointers;
@@ -254,6 +258,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool _ehb;
         /// <summary>
+        /// Tracks whether the palette cache must be rebuilt from custom registers.
+        /// </summary>
+        private bool _paletteDirty = true;
+        /// <summary>
         /// Initializes a new instance of the BitplaneUnit class.
         /// </summary>
         public BitplaneUnit()
@@ -292,6 +300,7 @@ namespace AmigaEmulator.Core.CustomChips
             _pendingFetchedPlaneMask = new int[MaxFetchedWords];
             _dataLatches = new ushort[MaxPlanes];
             _dataLatchValid = new bool[MaxPlanes];
+            _paletteArgb = new uint[64];
             _dmaPointers = new uint[MaxPlanes];
             _lastPointerRegisterValues = new uint[MaxPlanes];
             Reset();
@@ -347,6 +356,7 @@ namespace AmigaEmulator.Core.CustomChips
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
             _hasPointerRegisterSnapshot = false;
+            _paletteDirty = true;
             for (int word = 0; word < MaxFetchedWords; word++)
             {
                 _pendingFetchedRows[word] = int.MinValue;
@@ -403,6 +413,7 @@ namespace AmigaEmulator.Core.CustomChips
         public void LoadState(BinaryReader reader)
         {
             StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord");
+            _paletteDirty = true;
         }
 
         /// <summary>
@@ -416,6 +427,12 @@ namespace AmigaEmulator.Core.CustomChips
                 int plane = (int)((registerOffset - BplDataBase) >> 1);
                 _dataLatches[plane] = value;
                 _dataLatchValid[plane] = true;
+                return;
+            }
+
+            if (registerOffset >= ColorBase && registerOffset < ColorBase + 64u)
+            {
+                UpdatePaletteEntry((int)((registerOffset - ColorBase) >> 1), value);
                 return;
             }
 
@@ -450,7 +467,13 @@ namespace AmigaEmulator.Core.CustomChips
             _hires = (bplcon0 & 0x8000) != 0;
             _ham = (bplcon0 & 0x0800) != 0;
             _dualPlayfield = (bplcon0 & 0x0400) != 0;
+            bool previousEhb = _ehb;
             _ehb = !_ham && EnabledPlanes == 6;
+            if (previousEhb != _ehb)
+            {
+                _paletteDirty = true;
+            }
+
             _dmaActive = (dmacon & 0x0200) != 0 && (dmacon & 0x0100) != 0;
             _displayActive = EnabledPlanes > 0 && (_dmaActive || hasValidDataLatch);
 
@@ -765,7 +788,7 @@ namespace AmigaEmulator.Core.CustomChips
                 int data = index & 0x0F;
                 if (control == 0)
                 {
-                    return ReadColorRegister(data);
+                    return ReadColor(data);
                 }
 
                 byte component = ExpandNibble(data);
@@ -850,9 +873,20 @@ namespace AmigaEmulator.Core.CustomChips
         private int ReadPlaneMask(int displayX, int row)
         {
             int mask = 0;
+            int bitplaneX = _hires ? displayX : displayX >> 1;
+            int planeDisplayWidth = _wordsPerFetchedLine * 16;
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
-                mask |= ReadPlanePixelPair(plane, row, displayX) << plane;
+                int firstX = bitplaneX - (((plane & 1) == 0) ? _scrollOdd : _scrollEven);
+                if (firstX < 0 || firstX >= planeDisplayWidth)
+                {
+                    continue;
+                }
+
+                int wordIndex = firstX >> 4;
+                int bit = 15 - (firstX & 0x0F);
+                ushort word = ReadFetchedWord(plane, row, wordIndex);
+                mask |= ((word >> bit) & 1) << plane;
             }
 
             return mask & 0x3F;
@@ -921,24 +955,6 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             return !_dmaActive && _dataLatchValid[plane] ? _dataLatches[plane] : (ushort)0;
-        }
-
-        /// <summary>
-        /// Extracts one pixel bit from a fetched bitplane word after scroll adjustment.
-        /// </summary>
-        private int ReadPlanePixelPair(int plane, int row, int displayX)
-        {
-            int firstX = GetBitplaneX(displayX) - GetPlaneScroll(plane);
-            int planeDisplayWidth = _wordsPerFetchedLine * 16;
-            if (firstX < 0 || firstX >= planeDisplayWidth)
-            {
-                return 0;
-            }
-
-            int wordIndex = firstX >> 4;
-            int bit = 15 - (firstX & 0x0F);
-            ushort word = ReadFetchedWord(plane, row, wordIndex);
-            return (word >> bit) & 1;
         }
 
         /// <summary>
@@ -1075,24 +1091,6 @@ namespace AmigaEmulator.Core.CustomChips
         private int GetDisplayLeft()
         {
             return (_ddfStart - 0x38) * HiresPixelsPerChipCycle;
-        }
-
-        /// <summary>
-        /// Returns the Plane Scroll.
-        /// </summary>
-        private int GetPlaneScroll(int plane)
-        {
-            return (plane & 1) == 0
-                ? _scrollOdd
-                : _scrollEven;
-        }
-
-        /// <summary>
-        /// Returns the Bitplane X.
-        /// </summary>
-        private int GetBitplaneX(int displayX)
-        {
-            return _hires ? displayX : displayX >> 1;
         }
 
         /// <summary>
@@ -1303,28 +1301,59 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private uint ReadColor(int index)
         {
-            if (_ehb && (index & 0x20) != 0)
-            {
-                uint baseColor = ReadColorRegister(index & 0x1F);
-                uint red = ((baseColor >> 16) & 0xFF) >> 1;
-                uint green = ((baseColor >> 8) & 0xFF) >> 1;
-                uint blue = (baseColor & 0xFF) >> 1;
-                return 0xFF000000u | (red << 16) | (green << 8) | blue;
-            }
-
-            return ReadColorRegister(index & 0x1F);
+            EnsurePaletteCache();
+            return _paletteArgb[index & 0x3F];
         }
 
         /// <summary>
-        /// Reads and expands one bitplane palette register to ARGB format.
+        /// Rebuilds the ARGB palette cache when COLORxx or EHB state changed.
         /// </summary>
-        private uint ReadColorRegister(int index)
+        private void EnsurePaletteCache()
         {
-            ushort color = Read(ColorBase + ((uint)(index & 0x1F) * 2u));
+            if (!_paletteDirty)
+            {
+                return;
+            }
+
+            for (int index = 0; index < 32; index++)
+            {
+                UpdatePaletteEntry(index, Read(ColorBase + ((uint)index * 2u)));
+            }
+
+            _paletteDirty = false;
+        }
+
+        /// <summary>
+        /// Updates one cached COLORxx entry and its EHB mirror.
+        /// </summary>
+        private void UpdatePaletteEntry(int index, ushort color)
+        {
+            index &= 0x1F;
+            uint argb = ExpandColor(color);
+            _paletteArgb[index] = argb;
+            _paletteArgb[index | 0x20] = _ehb ? HalfBright(argb) : argb;
+        }
+
+        /// <summary>
+        /// Converts an Amiga 12-bit color word into 32-bit ARGB.
+        /// </summary>
+        private static uint ExpandColor(ushort color)
+        {
             byte red = ExpandNibble((color >> 8) & 0x0F);
             byte green = ExpandNibble((color >> 4) & 0x0F);
             byte blue = ExpandNibble(color & 0x0F);
             return 0xFF000000u | ((uint)red << 16) | ((uint)green << 8) | blue;
+        }
+
+        /// <summary>
+        /// Returns the Extra Half-Brite version of an expanded ARGB color.
+        /// </summary>
+        private static uint HalfBright(uint argb)
+        {
+            uint red = ((argb >> 16) & 0xFF) >> 1;
+            uint green = ((argb >> 8) & 0xFF) >> 1;
+            uint blue = (argb & 0xFF) >> 1;
+            return 0xFF000000u | (red << 16) | (green << 8) | blue;
         }
 
         /// <summary>
