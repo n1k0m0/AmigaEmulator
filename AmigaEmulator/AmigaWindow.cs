@@ -3708,6 +3708,12 @@ namespace AmigaEmulator
                     return 0;
                 }
 
+                if (IsBrightNeutralBottomBackground(pixels, width, height, cropRows))
+                {
+                    _bottomOverscanContentHoldFrames = BottomOverscanContentHoldFrames;
+                    return 0;
+                }
+
                 _bottomOverscanContentHoldFrames = 0;
                 return PresentationCropPixelsBottom;
             }
@@ -3762,6 +3768,42 @@ namespace AmigaEmulator
             double verticalPercent = verticalPairs > 0 ? (verticalTransitions * 100.0) / verticalPairs : 0.0;
             return horizontalPercent >= BottomOverscanHorizontalStructureMinimumPercent ||
                    verticalPercent >= BottomOverscanVerticalStructureMinimumPercent;
+        }
+
+        /// <summary>
+        /// Keeps Kickstart-style light backgrounds from being mistaken for removable bottom overscan.
+        /// </summary>
+        private static bool IsBrightNeutralBottomBackground(uint[] pixels, int width, int height, int cropRows)
+        {
+            int startY = height - cropRows;
+            long redSum = 0;
+            long greenSum = 0;
+            long blueSum = 0;
+            int count = 0;
+            for (int y = startY; y < height; y++)
+            {
+                int rowOffset = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    uint color = pixels[rowOffset + x];
+                    redSum += (color >> 16) & 0xFFu;
+                    greenSum += (color >> 8) & 0xFFu;
+                    blueSum += color & 0xFFu;
+                    count++;
+                }
+            }
+
+            if (count <= 0)
+            {
+                return false;
+            }
+
+            int red = (int)(redSum / count);
+            int green = (int)(greenSum / count);
+            int blue = (int)(blueSum / count);
+            int brightest = Math.Max(red, Math.Max(green, blue));
+            int darkest = Math.Min(red, Math.Min(green, blue));
+            return red >= 200 && green >= 200 && blue >= 200 && brightest - darkest <= 40;
         }
 
         /// <summary>

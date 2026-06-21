@@ -482,6 +482,7 @@ namespace AmigaEmulator.Core.CustomChips
             _diwBottom = diwStop == 0 ? rawTop + PalVisibleHeight : (diwStop >> 8) & 0xFF;
             if (rawTop < PalVisibleTop && _diwBottom <= PalVisibleTop + 32)
             {
+                _diwTop = PalVisibleTop;
                 _diwBottom = PalVisibleTop + PalVisibleHeight;
             }
 
@@ -1090,6 +1091,20 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetDisplayLeft()
         {
+            int fetchLeadIn = GetRawDisplayLeft();
+            if (_dmaActive && !_hires && EnabledPlanes > 4)
+            {
+                fetchLeadIn += HiresPixelsPerChipCycle;
+            }
+
+            return fetchLeadIn;
+        }
+
+        /// <summary>
+        /// Returns the raw viewport-relative X coordinate implied by DDFSTRT.
+        /// </summary>
+        private int GetRawDisplayLeft()
+        {
             return (_ddfStart - 0x38) * HiresPixelsPerChipCycle;
         }
 
@@ -1197,7 +1212,10 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 ushort value = Read(Diwstrt);
-                return value == 0 ? PalVisibleTop : (value >> 8) & 0xFF;
+                ushort stop = Read(Diwstop);
+                int top = value == 0 ? PalVisibleTop : (value >> 8) & 0xFF;
+                int bottom = stop == 0 ? top + PalVisibleHeight : (stop >> 8) & 0xFF;
+                return top < PalVisibleTop && bottom <= PalVisibleTop + 32 ? PalVisibleTop : top;
             }
         }
 
@@ -1277,7 +1295,7 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 RefreshFromRegisters();
-                int displayLeft = GetDisplayLeft();
+                int displayLeft = GetRawDisplayLeft();
                 int sourceLeft = Math.Min(0, displayLeft);
                 int sourceRight = Math.Max(PalVisibleWidth, displayLeft + _displayFetchWidth);
                 return Math.Max(0, sourceRight - sourceLeft);
@@ -1292,7 +1310,7 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 RefreshFromRegisters();
-                return Math.Min(0, GetDisplayLeft());
+                return Math.Min(0, GetRawDisplayLeft());
             }
         }
 

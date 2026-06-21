@@ -332,41 +332,11 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Attempts to load a Copper list and rejects obvious data-structure targets.
+        /// Loads a Copper list exactly like a COPJMP strobe. Hardware does not validate the target contents.
         /// </summary>
-        private bool TryLoadList(uint address, bool rejectSystemArea)
+        private bool TryLoadList(uint address)
         {
-            uint target = _dmaAddress.Normalize(address);
-            if ((rejectSystemArea && target < 0x1000u) || !LooksLikeCopperList(target))
-            {
-                _waiting = true;
-                _waitInstruction = 0xFFFF;
-                _waitMask = 0xFFFE;
-                _firstWordLatched = false;
-                return false;
-            }
-
-            LoadList(target);
-            return true;
-        }
-
-        /// <summary>
-        /// Returns whether the target begins like executable Copper code rather than an OS structure.
-        /// </summary>
-        private bool LooksLikeCopperList(uint address)
-        {
-            if (_readChipWord == null)
-            {
-                return true;
-            }
-
-            ushort first = _readChipWord(address);
-            ushort second = _readChipWord(_dmaAddress.Add(address, 2u));
-            if ((first & 1) == 0 && (first & 0x01FE) == 0 && second != 0)
-            {
-                return false;
-            }
-
+            LoadList(address);
             return true;
         }
 
@@ -382,13 +352,13 @@ namespace AmigaEmulator.Core.CustomChips
 
             if (list == 1)
             {
-                TryLoadList(ReadPointer(Cop1lch), false);
+                TryLoadList(ReadPointer(Cop1lch));
                 return;
             }
 
             if (list == 2)
             {
-                TryLoadList(ReadPointer(Cop2lch), true);
+                TryLoadList(ReadPointer(Cop2lch));
             }
         }
 
@@ -601,7 +571,7 @@ namespace AmigaEmulator.Core.CustomChips
             if (registerOffset == Copjmp1)
             {
                 uint target = ReadPointer(Cop1lch);
-                bool jumped = TryLoadList(target, false);
+                bool jumped = TryLoadList(target);
 
                 EmitTrace(globalChipCycle, beamX, beamY, pcBefore, instruction, value, jumped ? CopperInstructionKind.Jump1 : CopperInstructionKind.BlockedMove, registerOffset, value, target, !jumped);
                 return true;
@@ -610,7 +580,7 @@ namespace AmigaEmulator.Core.CustomChips
             if (registerOffset == Copjmp2)
             {
                 uint target = ReadPointer(Cop2lch);
-                bool jumped = TryLoadList(target, true);
+                bool jumped = TryLoadList(target);
 
                 EmitTrace(globalChipCycle, beamX, beamY, pcBefore, instruction, value, jumped ? CopperInstructionKind.Jump2 : CopperInstructionKind.BlockedMove, registerOffset, value, target, !jumped);
                 return true;

@@ -734,6 +734,21 @@ namespace AmigaEmulator.Tests
                 TestDdfStartBeforeVisibleEdgeSkipsPrefetchedPixels);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "five-plane lowres DDF lead-in waits for the extended fetch group",
+                "Amiga OCS five-plane lowres DMA needs the longer fetch group before the visible data phase",
+                TestFivePlaneDdfLeadInUsesCompleteFetchGroup);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "five-plane lowres wide DDF renders continuous words without column holes",
+                "Amiga OCS five-plane lowres DMA must keep adjacent fetched words contiguous on screen",
+                TestFivePlaneWideDdfRendersContinuousWords);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "five-plane standard DDF waits for the complete fetch group",
+                "Amiga OCS five-plane lowres DMA still needs the full fetch-group delay at the normal DDF start",
+                TestFivePlaneStandardDdfWaitsForCompleteFetchGroup);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "wide DDF overscan reports the full presentation source width",
                 "Amiga HRM DDFSTRT/DDFSTOP can fetch wider-than-standard PAL overscan lines",
                 TestWideDdfOverscanReportsPresentationSourceWidth);
@@ -858,7 +873,8 @@ namespace AmigaEmulator.Tests
                 bitplanes.FetchDmaPlaneWord(slot, BitplaneUnit.PalVisibleTop);
             }
 
-            Check.Equal(8, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Slot $39 must feed BPL4, selecting color bit 3 on a six-plane OCS line.");
+            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Six-plane lowres DMA should not display before the extended fetch group has completed.");
+            Check.Equal(8, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "Slot $39 must feed BPL4, selecting color bit 3 after the six-plane OCS lead-in.");
         }
 
         /// <summary>
@@ -1038,6 +1054,111 @@ namespace AmigaEmulator.Tests
             bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
 
             Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Visible X zero should show the word fetched after the offscreen DDF lead-in.");
+        }
+
+        /// <summary>
+        /// Verifies that five-plane lowres fetches do not display a word before all OCS DMA slots have completed.
+        /// </summary>
+        private static void TestFivePlaneDdfLeadInUsesCompleteFetchGroup()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[8];
+            memory[5] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 7]);
+            registers.WriteWord(Bplcon0, 0x5000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x0038);
+            for (int plane = 0; plane < 5; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 2));
+            }
+
+            int[] fetchSlots = { 0x39, 0x3B, 0x3D, 0x3E, 0x3F };
+            foreach (int slot in fetchSlots)
+            {
+                bitplanes.FetchDmaPlaneWord(slot, BitplaneUnit.PalVisibleTop);
+            }
+
+            Check.Equal(-32, bitplanes.PresentationSourceLeft, "Presentation should still preserve the left overscan source while the five-plane data phase is delayed.");
+            Check.Equal(16, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "Five-plane DDF lead-in should wait one chip cycle before presenting the completed fetch group.");
+        }
+
+        /// <summary>
+        /// Verifies that five-plane lowres DMA can fill adjacent display words without vertical gaps.
+        /// </summary>
+        private static void TestFivePlaneWideDdfRendersContinuousWords()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[5 * 4];
+            for (int index = 0; index < memory.Length; index++)
+            {
+                memory[index] = 0xFFFF;
+            }
+
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) % memory.Length]);
+            registers.WriteWord(Bplcon0, 0x5000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x5821);
+            registers.WriteWord(Diwstop, 0x3FF1);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x0048);
+            for (int plane = 0; plane < 5; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 2));
+            }
+
+            const int displayLine = 0x58;
+            for (int beamX = 0x30; beamX < 0x30 + (4 * 8); beamX++)
+            {
+                bitplanes.FetchDmaPlaneWord(beamX, displayLine);
+            }
+
+            for (int x = 8; x < 96; x++)
+            {
+                Check.Equal(31, bitplanes.RenderColorIndex(x, displayLine), "Five-plane wide fetch should not produce a black vertical column at visible X " + x + ".");
+            }
+        }
+
+        /// <summary>
+        /// Verifies that normal $38 lowres five-plane DDF does not show each word before plane 1 arrives.
+        /// </summary>
+        private static void TestFivePlaneStandardDdfWaitsForCompleteFetchGroup()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[5 * 4];
+            for (int index = 0; index < memory.Length; index++)
+            {
+                memory[index] = 0xFFFF;
+            }
+
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) % memory.Length]);
+            registers.WriteWord(Bplcon0, 0x5000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2CC1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0050);
+            for (int plane = 0; plane < 5; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 2));
+            }
+
+            for (int beamX = 0x38; beamX < 0x38 + (4 * 8); beamX++)
+            {
+                bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop);
+            }
+
+            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "The first four hires pixels belong to the fetch-group lead-in.");
+            for (int x = 4; x < 96; x++)
+            {
+                Check.Equal(31, bitplanes.RenderColorIndex(x, BitplaneUnit.PalVisibleTop), "Five-plane standard DDF should not produce a black vertical column at visible X " + x + ".");
+            }
         }
 
         /// <summary>
@@ -2617,7 +2738,7 @@ namespace AmigaEmulator.Tests
             Check.True(System.IO.File.Exists(adfPath), "Amiga Test Kit ADF not found: " + adfPath);
             Check.True(KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo romInfo), "Default Kickstart ROM not found.");
 
-            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Compatible.Clone()))
             {
                 system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
                 system.LoadKickstart(romBytes);

@@ -61,7 +61,7 @@ namespace AmigaEmulator.Core.CustomChips
             int failures = 0;
             failures += RunCase(log, "OCS protected register ranges", TestProtectedRegisterRanges);
             failures += RunCase(log, "BFD waits for blitter when clear", TestBfdWaitsForBlitterWhenClear);
-            failures += RunCase(log, "COPJMP2 rejects system-area targets", TestCopjmp2RejectsSystemAreaTarget);
+            failures += RunCase(log, "COPJMP2 accepts low chip RAM targets", TestCopjmp2AcceptsLowChipRamTarget);
             failures += RunCase(log, "COPJMP1 read strobes copper list 1", TestCopjmp1ReadStrobesCopperList1);
             log.AppendLine(failures == 0 ? "Copper self-test OK" : "Copper self-test FAILED: " + failures);
             return failures;
@@ -152,19 +152,20 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Runs Test Copjmp 2 Rejects System Area Target.
+        /// Runs Test Copjmp 2 Accepts Low Chip Ram Target.
         /// </summary>
-        private static bool TestCopjmp2RejectsSystemAreaTarget()
+        private static bool TestCopjmp2AcceptsLowChipRamTarget()
         {
             var harness = new Harness();
             harness.Registers.WriteWord(Cop2lch, 0x0000);
             harness.Registers.WriteWord(Cop2lcl, 0x0676);
             harness.WriteCopperInstruction(0x0100, 0x008A, 0x0000);
+            harness.WriteCopperInstruction(0x0676, 0x0180, 0x0123);
             harness.Copper.LoadList(0x0100);
 
             harness.Copper.Tick(true, 0, 0);
             harness.Copper.Tick(true, 0, 0);
-            if (harness.Copper.ProgramCounter != 0x0100 || harness.LastKind != CopperInstructionKind.BlockedMove)
+            if (harness.Copper.ProgramCounter != 0x0676 || harness.LastKind != CopperInstructionKind.Jump2)
             {
                 return false;
             }

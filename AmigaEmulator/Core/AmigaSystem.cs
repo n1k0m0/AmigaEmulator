@@ -307,6 +307,34 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
+        /// Returns the current horizontal source window used for PAL presentation.
+        /// </summary>
+        public string GetPresentationDebugInfo()
+        {
+            lock (_syncRoot)
+            {
+                int sourceLeft = PresentationCropLeft + _agnus.Bitplanes.PresentationSourceLeft;
+                sourceLeft = Math.Max(0, Math.Min(sourceLeft, _frameBuffer.Width - 1));
+                int sourceWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
+                sourceWidth = Math.Min(sourceWidth, _frameBuffer.Width - sourceLeft);
+                int trimmedLeft = sourceLeft;
+                int trimmedWidth = sourceWidth;
+                TrimBlankPresentationEdges(ref trimmedLeft, ref trimmedWidth);
+                return string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    "framebuffer:{0}x{1} presented:{2}x{3} source:{4}+{5} trimmed:{6}+{7}",
+                    _frameBuffer.Width,
+                    _frameBuffer.Height,
+                    _presentedFrameBuffer.Width,
+                    _presentedFrameBuffer.Height,
+                    sourceLeft,
+                    sourceWidth,
+                    trimmedLeft,
+                    trimmedWidth);
+            }
+        }
+
+        /// <summary>
         /// Gets Last Trace Sample.
         /// </summary>
         public MachineTraceSample LastTraceSample

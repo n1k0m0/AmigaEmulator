@@ -459,6 +459,24 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
+        /// Returns a compact snapshot of the active blitter pipeline for diagnostics.
+        /// </summary>
+        public string GetDebugInfo()
+        {
+            return "busy:" + Busy +
+                " pending:" + DmaPending +
+                " rem:" + _remainingSlots +
+                " lineMode:" + _lineMode +
+                " width:" + _widthWords +
+                " height:" + _heightLines +
+                " line:" + _currentLine +
+                " word:" + _currentWord +
+                " phase:" + _blockSlotPhase +
+                " slotsPerWord:" + _blockSlotsPerWord +
+                " ABCD:" + (_useA ? "A" : "-") + (_useB ? "B" : "-") + (_useC ? "C" : "-") + (_useD ? "D" : "-");
+        }
+
+        /// <summary>
         /// Attaches Chip Memory to this component.
         /// </summary>
         public void AttachChipMemory(Func<uint, ushort> readChipWord, Action<uint, ushort> writeChipWord)

@@ -222,6 +222,20 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-raw-frame", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_raw_frame.png");
+                int frames = args.Length >= 4 && int.TryParse(args[3], out int parsedSaveFrames) && parsedSaveFrames > 0
+                    ? parsedSaveFrames
+                    : 0;
+                DumpSavestateFrame(savePath, imagePath, frames, ParseModelArgument(args, 4), true);
+                Console.WriteLine("Savestate raw frame written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--checkpoint-savestate-frame", StringComparison.OrdinalIgnoreCase))
             {
                 string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
@@ -250,6 +264,19 @@ namespace AmigaEmulator
                     ? parsedTraceLines
                     : 200;
                 TraceSavestateDisk(savePath, cycles, maxLines, ParseModelArgument(args, 4));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-custom-registers", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedTraceCycles) && parsedTraceCycles > 0
+                    ? parsedTraceCycles
+                    : 200000;
+                int maxChanges = args.Length >= 4 && int.TryParse(args[3], out int parsedMaxChanges) && parsedMaxChanges > 0
+                    ? parsedMaxChanges
+                    : 200;
+                TraceSavestateCustomRegisters(savePath, cycles, maxChanges, ParseModelArgument(args, 4));
                 return;
             }
 
@@ -1791,6 +1818,14 @@ namespace AmigaEmulator
         /// </summary>
         private static void DumpSavestateFrame(string savePath, string imagePath, int framesToRun, AmigaModel model)
         {
+            DumpSavestateFrame(savePath, imagePath, framesToRun, model, false);
+        }
+
+        /// <summary>
+        /// Dumps a frame after restoring an emulator savestate.
+        /// </summary>
+        private static void DumpSavestateFrame(string savePath, string imagePath, int framesToRun, AmigaModel model, bool rawFrameBuffer)
+        {
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
             {
                 SaveStateFile.Load(savePath, system);
@@ -1800,11 +1835,12 @@ namespace AmigaEmulator
                     system.RunChipCycles(frameCycles);
                 }
 
-                SaveFrameBuffer(system.PresentedFrameBuffer, imagePath);
+                SaveFrameBuffer(rawFrameBuffer ? system.FrameBuffer : system.PresentedFrameBuffer, imagePath);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
                 Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                Console.WriteLine("Presentation=" + system.GetPresentationDebugInfo());
                 DumpVideoRegisterSummary(system);
             }
         }
@@ -1835,6 +1871,7 @@ namespace AmigaEmulator
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
                 Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                Console.WriteLine("Presentation=" + system.GetPresentationDebugInfo());
                 DumpVideoRegisterSummary(system);
             }
         }
@@ -4488,6 +4525,7 @@ namespace AmigaEmulator
                 Console.WriteLine("BLTBPT=$" + (((uint)registers.ReadWord(0x04C) << 16) | registers.ReadWord(0x04E)).ToString("X8"));
                 Console.WriteLine("BLTCPT=$" + (((uint)registers.ReadWord(0x048) << 16) | registers.ReadWord(0x04A)).ToString("X8"));
                 Console.WriteLine("BLTDPT=$" + (((uint)registers.ReadWord(0x054) << 16) | registers.ReadWord(0x056)).ToString("X8"));
+                Console.WriteLine("Blitter=" + system.Agnus.Blitter.GetDebugInfo());
                 Console.WriteLine("COPPC=$" + system.Agnus.Copper.ProgramCounter.ToString("X8"));
                 Console.WriteLine("CIAA PRA=$" + system.CiaA.Pra.ToString("X2") + " DDRA=$" + system.CiaA.Ddra.ToString("X2"));
                 Console.WriteLine("CIAA PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
@@ -5771,6 +5809,60 @@ namespace AmigaEmulator
 
                 Console.WriteLine("Changes=" + changes);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                DumpDisplayRegisters(system);
+            }
+        }
+
+        /// <summary>
+        /// Traces custom register changes after restoring an emulator savestate.
+        /// </summary>
+        private static void TraceSavestateCustomRegisters(string savePath, int cycles, int maxChanges, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                var registers = system.Agnus.CustomRegisters;
+                var watched = BuildWatchedCustomRegisterList();
+                ushort[] previous = new ushort[watched.Count];
+                for (int index = 0; index < watched.Count; index++)
+                {
+                    previous[index] = registers.ReadWord(watched[index].Address);
+                }
+
+                int changes = 0;
+                for (int cycle = 0; cycle < cycles && changes < maxChanges; cycle++)
+                {
+                    system.TickChipCycle();
+                    for (int index = 0; index < watched.Count && changes < maxChanges; index++)
+                    {
+                        ushort current = registers.ReadWord(watched[index].Address);
+                        if (current == previous[index])
+                        {
+                            continue;
+                        }
+
+                        MachineTraceSample sample = system.LastTraceSample;
+                        uint pc = sample != null && sample.CpuTrace != null ? sample.CpuTrace.PcBefore : system.Cpu.PC;
+                        Console.WriteLine(string.Format(
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            "{0,9} F{1,4} {2,3},{3,3} PC ${4:X6} {5,-8} ${6:X3}: ${7:X4} -> ${8:X4}",
+                            cycle,
+                            system.FrameCounter,
+                            system.Agnus.Beam.BeamX,
+                            system.Agnus.Beam.BeamY,
+                            pc,
+                            watched[index].Name,
+                            watched[index].Address,
+                            previous[index],
+                            current));
+                        previous[index] = current;
+                        changes++;
+                    }
+                }
+
+                Console.WriteLine("Changes=" + changes);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 DumpDisplayRegisters(system);
             }
         }
