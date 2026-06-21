@@ -690,6 +690,15 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public int RenderColorIndex(int screenX, int beamY)
         {
+            return RenderPixelInfo(screenX, beamY, out _);
+        }
+
+        /// <summary>
+        /// Renders the bitplane color index and raw plane mask using one fetched-bit pass.
+        /// </summary>
+        public int RenderPixelInfo(int screenX, int beamY, out int planeMask)
+        {
+            planeMask = 0;
             if (!_displayActive || !IsInsideDiw(screenX, beamY))
             {
                 return 0;
@@ -701,7 +710,14 @@ namespace AmigaEmulator.Core.CustomChips
                 return 0;
             }
 
-            return ReadColorIndex(displayX, beamY);
+            int row = GetFetchRowKey(beamY);
+            if (row < 0)
+            {
+                return 0;
+            }
+
+            planeMask = ReadPlaneMask(displayX, row);
+            return _dualPlayfield ? ResolveDualPlayfieldColorIndex(planeMask) : planeMask & 0x3F;
         }
 
         /// <summary>
@@ -726,13 +742,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return 0;
             }
 
-            int mask = 0;
-            for (int plane = 0; plane < EnabledPlanes; plane++)
-            {
-                mask |= ReadPlanePixelPair(plane, row, displayX) << plane;
-            }
-
-            return mask & 0x3F;
+            return ReadPlaneMask(displayX, row);
         }
 
         /// <summary>
@@ -831,20 +841,35 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int ReadSinglePlayfieldColorIndex(int displayX, int row)
         {
-            int colorIndex = 0;
+            return ReadPlaneMask(displayX, row) & 0x3F;
+        }
 
+        /// <summary>
+        /// Reads all enabled bitplane bits for one display pixel.
+        /// </summary>
+        private int ReadPlaneMask(int displayX, int row)
+        {
+            int mask = 0;
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
-                colorIndex |= ReadPlanePixelPair(plane, row, displayX) << plane;
+                mask |= ReadPlanePixelPair(plane, row, displayX) << plane;
             }
 
-            return colorIndex & 0x3F;
+            return mask & 0x3F;
         }
 
         /// <summary>
         /// Combines odd and even bitplanes using dual-playfield priority rules.
         /// </summary>
         private int ReadDualPlayfieldColorIndex(int displayX, int row)
+        {
+            return ResolveDualPlayfieldColorIndex(ReadPlaneMask(displayX, row));
+        }
+
+        /// <summary>
+        /// Combines an already-read plane mask using dual-playfield priority rules.
+        /// </summary>
+        private int ResolveDualPlayfieldColorIndex(int planeMask)
         {
             int playfield1 = 0;
             int playfield2 = 0;
@@ -853,7 +878,7 @@ namespace AmigaEmulator.Core.CustomChips
 
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
-                int pixelBit = ReadPlanePixelPair(plane, row, displayX);
+                int pixelBit = (planeMask >> plane) & 1;
                 if ((plane & 1) == 0)
                 {
                     playfield1 |= pixelBit << playfield1Bit;

@@ -188,21 +188,24 @@ namespace AmigaEmulator.Core.CustomChips
                 }
 
                 int screenX = logicalX + pixel;
+                int bitplaneMask = 0;
                 int bitplaneColorIndex = bitplaneActive
-                    ? _bitplanes.RenderColorIndex(screenX, beam.BeamY)
+                    ? _bitplanes.RenderPixelInfo(screenX, beam.BeamY, out bitplaneMask)
                     : 0;
                 uint argb = bitplaneActive
                     ? _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb)
                     : _bitplanes.RenderFallbackPixel(screenX, y, beam.Frame);
-                int spriteMask = spritesActive ? _sprites.RenderSpriteMask(screenX, beam.BeamY) : 0;
+                int spriteMask = 0;
+                uint spriteArgb = 0;
+                int spriteGroup = 0;
+                bool spriteVisible = spritesActive &&
+                    _sprites.TryRenderPixel(screenX, beam.BeamY, out spriteArgb, out spriteGroup, out spriteMask);
                 if (_collisions != null)
                 {
-                    int bitplaneMask = bitplaneActive ? _bitplanes.RenderPlaneMask(screenX, beam.BeamY) : 0;
                     _collisions.ObservePixel(bitplaneMask, spriteMask);
                 }
 
-                if (spritesActive &&
-                    _sprites.TryRenderPixel(screenX, beam.BeamY, out uint spriteArgb, out int spriteGroup) &&
+                if (spriteVisible &&
                     ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex))
                 {
                     argb = spriteArgb;

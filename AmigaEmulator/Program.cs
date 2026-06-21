@@ -18,6 +18,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -110,6 +111,20 @@ namespace AmigaEmulator
                     : 1000000;
                 string profile = args.Length >= 3 ? args[2] : "fast";
                 RunComponentProfile(cycles, profile);
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--profile-savestate", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int frames = args.Length >= 3 && int.TryParse(args[2], out int parsedFrames) && parsedFrames > 0
+                    ? parsedFrames
+                    : 500;
+                int profileFrames = args.Length >= 4 && int.TryParse(args[3], out int parsedProfileFrames) && parsedProfileFrames > 0
+                    ? parsedProfileFrames
+                    : 20;
+                string profile = args.Length >= 5 ? args[4] : "fast";
+                RunSavestateProfile(savePath, frames, profileFrames, profile, ParseModelArgument(args, 5));
                 return;
             }
 
@@ -1664,6 +1679,51 @@ namespace AmigaEmulator
                 AmigaSystemComponentProfile result = system.ProfileChipCycles(cycles);
                 Console.WriteLine("AMIGA COMPONENT PROFILE");
                 Console.WriteLine("Profile=" + accuracyOptions.Name);
+                Console.WriteLine("Cycles=" + result.Cycles);
+                PrintProfileLine("Agnus", result.AgnusTicks, result);
+                PrintProfileLine("Paula", result.PaulaTicks, result);
+                PrintProfileLine("CIA", result.CiaTicks, result);
+                PrintProfileLine("CPU", result.CpuTicks, result);
+                PrintProfileLine("Denise", result.DeniseTicks, result);
+                PrintProfileLine("Trace", result.TraceTicks, result);
+                PrintProfileLine("Total", result.TotalTicks, result);
+            }
+        }
+
+        /// <summary>
+        /// Profiles emulator speed from an existing savestate so game-specific hotspots can be measured.
+        /// </summary>
+        private static void RunSavestateProfile(string savePath, int frames, int profileFrames, string profile, AmigaModel model)
+        {
+            AmigaAccuracyOptions accuracyOptions = ParseBenchmarkAccuracyOptions(profile);
+            AmigaModel activeModel = model ?? AmigaModel.PalA500;
+            int frameCycles = activeModel.ChipCyclesPerLine * activeModel.LinesPerFrame;
+            using (var system = new AmigaSystem(activeModel, accuracyOptions))
+            {
+                SaveStateFile.Load(savePath, system);
+                RunFrames(system, 2);
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                system.RunChipCycles(frameCycles * frames);
+                stopwatch.Stop();
+                double seconds = Math.Max(0.000001, stopwatch.Elapsed.TotalSeconds);
+                double fps = frames / seconds;
+                Console.WriteLine("AMIGA SAVESTATE PROFILE");
+                Console.WriteLine("Profile=" + accuracyOptions.Name);
+                Console.WriteLine("Model=" + activeModel.Name);
+                Console.WriteLine("Save=" + Path.GetFullPath(savePath));
+                Console.WriteLine("Frames=" + frames);
+                Console.WriteLine("ElapsedSeconds=" + seconds.ToString("F6", System.Globalization.CultureInfo.InvariantCulture));
+                Console.WriteLine("FPS=" + fps.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+                Console.WriteLine("HostSpeedPercent=" + ((fps / 50.0) * 100.0).ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+            }
+
+            using (var system = new AmigaSystem(activeModel, accuracyOptions))
+            {
+                SaveStateFile.Load(savePath, system);
+                RunFrames(system, 2);
+                AmigaSystemComponentProfile result = system.ProfileChipCycles(frameCycles * profileFrames);
+                Console.WriteLine("AMIGA SAVESTATE COMPONENT PROFILE");
+                Console.WriteLine("ProfileFrames=" + profileFrames);
                 Console.WriteLine("Cycles=" + result.Cycles);
                 PrintProfileLine("Agnus", result.AgnusTicks, result);
                 PrintProfileLine("Paula", result.PaulaTicks, result);

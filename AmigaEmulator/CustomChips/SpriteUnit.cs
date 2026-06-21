@@ -270,14 +270,25 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public bool TryRenderPixel(int screenX, int beamY, out uint argb, out int spriteGroup)
         {
+            int spriteMask;
+            return TryRenderPixel(screenX, beamY, out argb, out spriteGroup, out spriteMask);
+        }
+
+        /// <summary>
+        /// Attempts to render a sprite pixel while also returning the collision mask for this coordinate.
+        /// </summary>
+        public bool TryRenderPixel(int screenX, int beamY, out uint argb, out int spriteGroup, out int spriteMask)
+        {
             argb = 0;
             spriteGroup = 0;
+            spriteMask = 0;
             if (!HasActiveSprites || _registers == null)
             {
                 return false;
             }
 
             UpdateForBeamY(beamY);
+            bool rendered = false;
 
             for (int sprite = 0; sprite < 8; sprite++)
             {
@@ -289,9 +300,14 @@ namespace AmigaEmulator.Core.CustomChips
                     int color = evenColor | (oddColor << 2);
                     if (color != 0)
                     {
-                        argb = ReadColor(16 + color);
-                        spriteGroup = sprite >> 1;
-                        return true;
+                        spriteMask |= 1 << sprite;
+                        spriteMask |= 1 << (sprite + 1);
+                        if (!rendered)
+                        {
+                            argb = ReadColor(16 + color);
+                            spriteGroup = sprite >> 1;
+                            rendered = true;
+                        }
                     }
 
                     sprite++;
@@ -302,15 +318,19 @@ namespace AmigaEmulator.Core.CustomChips
                 {
                     if (colorIndex != 0)
                     {
-                        int group = sprite >> 1;
-                        argb = ReadColor(16 + (group * 4) + colorIndex);
-                        spriteGroup = group;
-                        return true;
+                        spriteMask |= 1 << sprite;
+                        if (!rendered)
+                        {
+                            int group = sprite >> 1;
+                            argb = ReadColor(16 + (group * 4) + colorIndex);
+                            spriteGroup = group;
+                            rendered = true;
+                        }
                     }
                 }
             }
 
-            return false;
+            return rendered;
         }
 
         /// <summary>
