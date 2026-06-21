@@ -185,6 +185,12 @@ namespace AmigaEmulator.Core.CustomChips
         public void NotifyCustomRegisterWordWrite(uint registerOffset, ushort value, int beamY)
         {
             uint offset = registerOffset & 0x01FEu;
+            if (offset == Dmacon)
+            {
+                RefreshFromRegisters();
+                return;
+            }
+
             if (offset >= SpritePointerBase && offset < SpritePointerBase + 32u)
             {
                 int sprite = (int)((offset - SpritePointerBase) / 4u);

@@ -137,6 +137,7 @@ namespace SharpPixels
             ClientSize = new Size(PresentationWidth * 2, PresentationHeight * 2);
             MinimumSize = new Size(320, 240);
             DoubleBuffered = true;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
             KeyPreview = true;
 
             _timer = new System.Windows.Forms.Timer();
@@ -522,29 +523,34 @@ namespace SharpPixels
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            EnsureBitmap();
-            BitmapData data = _bitmap.LockBits(
-                new Rectangle(0, 0, PixelsWidth, PixelsHeight),
-                ImageLockMode.WriteOnly,
-                PixelFormat.Format32bppArgb);
-            try
-            {
-                Buffer.BlockCopy(Pixels, 0, _paintUploadBuffer, 0, Pixels.Length * sizeof(uint));
-                ApplyPresentationFilter(_paintUploadBuffer, PixelsWidth, PixelsHeight);
-                Marshal.Copy(_paintUploadBuffer, 0, data.Scan0, Pixels.Length);
-            }
-            finally
-            {
-                _bitmap.UnlockBits(data);
-            }
+            EnsurePaintUploadBuffer();
+            Buffer.BlockCopy(Pixels, 0, _paintUploadBuffer, 0, Pixels.Length * sizeof(uint));
+            ApplyPresentationFilter(_paintUploadBuffer, PixelsWidth, PixelsHeight);
 
-            e.Graphics.InterpolationMode = GetInterpolationMode();
+            e.Graphics.CompositingMode = CompositingMode.SourceOver;
+            e.Graphics.CompositingQuality = CompositingQuality.HighSpeed;
+            e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.None;
+            e.Graphics.SmoothingMode = SmoothingMode.None;
             var target = GetPresentationRectangle();
             var source = GetPresentationSourceRectangle();
-            e.Graphics.Clear(Color.Black);
-            e.Graphics.DrawImage(_bitmap, target, source, GraphicsUnit.Pixel);
+            if (target.X > 0 ||
+                target.Y > 0 ||
+                target.Right < ClientSize.Width ||
+                target.Bottom < ClientSize.Height)
+            {
+                e.Graphics.Clear(Color.Black);
+            }
+
+            DrawPresentationDib(e.Graphics, source, target);
             OnRenderOverlay(e.Graphics, target);
+        }
+
+        /// <summary>
+        /// Suppresses WinForms background erasing because the pixel surface repaints the full presentation area every frame.
+        /// </summary>
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
         }
 
         /// <summary>
@@ -554,11 +560,7 @@ namespace SharpPixels
         {
             _running = false;
             _timer.Stop();
-            if (_bitmap != null)
-            {
-                _bitmap.Dispose();
-                _bitmap = null;
-            }
+            DisposeBitmap();
             _paintUploadBuffer = null;
             _filterScratchBuffer = null;
 
@@ -745,17 +747,34 @@ namespace SharpPixels
             for (int y = 0; y < height; y++)
             {
                 int row = y * width;
-                int prevRow = Math.Max(0, y - 1) * width;
-                int nextRow = Math.Min(height - 1, y + 1) * width;
-                for (int x = 0; x < width; x++)
+                int prevRow = (y == 0 ? 0 : y - 1) * width;
+                int nextRow = (y == height - 1 ? height - 1 : y + 1) * width;
+                if (width <= 1)
                 {
-                    int center = _filterScratchBuffer[row + x];
-                    int left = _filterScratchBuffer[row + Math.Max(0, x - 1)];
-                    int right = _filterScratchBuffer[row + Math.Min(width - 1, x + 1)];
-                    int vertical = Blend3(_filterScratchBuffer[prevRow + x], center, _filterScratchBuffer[nextRow + x], 10, 80, 10);
-                    int horizontal = Blend3(left, center, right, 24, 52, 24);
+                    int singleCenter = _filterScratchBuffer[row];
+                    int singleVertical = Blend3(_filterScratchBuffer[prevRow], singleCenter, _filterScratchBuffer[nextRow], 10, 80, 10);
+                    pixels[row] = Blend2(singleVertical, singleCenter, 55, 45);
+                    continue;
+                }
+
+                int center = _filterScratchBuffer[row];
+                int vertical = Blend3(_filterScratchBuffer[prevRow], center, _filterScratchBuffer[nextRow], 10, 80, 10);
+                int horizontal = Blend3(center, center, _filterScratchBuffer[row + 1], 24, 52, 24);
+                pixels[row] = Blend2(vertical, horizontal, 55, 45);
+
+                for (int x = 1; x < width - 1; x++)
+                {
+                    center = _filterScratchBuffer[row + x];
+                    vertical = Blend3(_filterScratchBuffer[prevRow + x], center, _filterScratchBuffer[nextRow + x], 10, 80, 10);
+                    horizontal = Blend3(_filterScratchBuffer[row + x - 1], center, _filterScratchBuffer[row + x + 1], 24, 52, 24);
                     pixels[row + x] = Blend2(vertical, horizontal, 55, 45);
                 }
+
+                int right = width - 1;
+                center = _filterScratchBuffer[row + right];
+                vertical = Blend3(_filterScratchBuffer[prevRow + right], center, _filterScratchBuffer[nextRow + right], 10, 80, 10);
+                horizontal = Blend3(_filterScratchBuffer[row + right - 1], center, center, 24, 52, 24);
+                pixels[row + right] = Blend2(vertical, horizontal, 55, 45);
             }
         }
 
@@ -783,6 +802,80 @@ namespace SharpPixels
             if (_paintUploadBuffer == null || _paintUploadBuffer.Length != Pixels.Length)
             {
                 _paintUploadBuffer = new int[Pixels.Length];
+            }
+        }
+
+        /// <summary>
+        /// Ensures the paint upload buffer exists without creating a GDI+ bitmap.
+        /// </summary>
+        private void EnsurePaintUploadBuffer()
+        {
+            if (_paintUploadBuffer == null || _paintUploadBuffer.Length != Pixels.Length)
+            {
+                _paintUploadBuffer = new int[Pixels.Length];
+            }
+        }
+
+        /// <summary>
+        /// Releases the legacy bitmap buffer when the fast DIB path is used.
+        /// </summary>
+        private void DisposeBitmap()
+        {
+            if (_bitmap != null)
+            {
+                _bitmap.Dispose();
+                _bitmap = null;
+            }
+        }
+
+        /// <summary>
+        /// Draws the current pixel buffer through Win32 StretchDIBits, avoiding slow GDI+ bitmap scaling.
+        /// </summary>
+        private void DrawPresentationDib(Graphics graphics, Rectangle source, Rectangle target)
+        {
+            if (_paintUploadBuffer == null || _paintUploadBuffer.Length < PixelsWidth * PixelsHeight)
+            {
+                return;
+            }
+
+            var info = new BitmapInfo
+            {
+                Header = new BitmapInfoHeader
+                {
+                    Size = Marshal.SizeOf(typeof(BitmapInfoHeader)),
+                    Width = PixelsWidth,
+                    Height = -PixelsHeight,
+                    Planes = 1,
+                    BitCount = 32,
+                    Compression = 0,
+                    SizeImage = PixelsWidth * PixelsHeight * 4
+                }
+            };
+
+            GCHandle handle = GCHandle.Alloc(_paintUploadBuffer, GCHandleType.Pinned);
+            IntPtr hdc = graphics.GetHdc();
+            try
+            {
+                SetStretchBltMode(hdc, ColorOnColorStretchMode);
+                StretchDIBits(
+                    hdc,
+                    target.X,
+                    target.Y,
+                    target.Width,
+                    target.Height,
+                    source.X,
+                    source.Y,
+                    source.Width,
+                    source.Height,
+                    handle.AddrOfPinnedObject(),
+                    ref info,
+                    DibRgbColors,
+                    SrcCopyRasterOperation);
+            }
+            finally
+            {
+                graphics.ReleaseHdc(hdc);
+                handle.Free();
             }
         }
 
@@ -845,6 +938,114 @@ namespace SharpPixels
         /// </summary>
         [DllImport("winmm.dll")]
         private static extern uint timeEndPeriod(uint milliseconds);
+
+        /// <summary>
+        /// Draws a top-down 32-bit DIB into the target device context.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern int StretchDIBits(
+            IntPtr hdc,
+            int xDest,
+            int yDest,
+            int destWidth,
+            int destHeight,
+            int xSrc,
+            int ySrc,
+            int srcWidth,
+            int srcHeight,
+            IntPtr bits,
+            ref BitmapInfo bitmapInfo,
+            uint usage,
+            uint rasterOperation);
+
+        /// <summary>
+        /// Selects the stretch mode for StretchDIBits.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern int SetStretchBltMode(IntPtr hdc, int stretchMode);
+
+        /// <summary>
+        /// Uses direct RGB colors from the DIB header.
+        /// </summary>
+        private const uint DibRgbColors = 0;
+
+        /// <summary>
+        /// Copies source pixels directly to the target.
+        /// </summary>
+        private const uint SrcCopyRasterOperation = 0x00CC0020;
+
+        /// <summary>
+        /// Uses nearest-neighbor stretching for pixel-art output.
+        /// </summary>
+        private const int ColorOnColorStretchMode = 3;
+
+        /// <summary>
+        /// Stores the DIB header passed to StretchDIBits.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BitmapInfoHeader
+        {
+            /// <summary>
+            /// Stores Size.
+            /// </summary>
+            public int Size;
+            /// <summary>
+            /// Stores Width.
+            /// </summary>
+            public int Width;
+            /// <summary>
+            /// Stores Height.
+            /// </summary>
+            public int Height;
+            /// <summary>
+            /// Stores Planes.
+            /// </summary>
+            public ushort Planes;
+            /// <summary>
+            /// Stores Bit Count.
+            /// </summary>
+            public ushort BitCount;
+            /// <summary>
+            /// Stores Compression.
+            /// </summary>
+            public uint Compression;
+            /// <summary>
+            /// Stores Size Image.
+            /// </summary>
+            public int SizeImage;
+            /// <summary>
+            /// Stores X Pixels Per Meter.
+            /// </summary>
+            public int XPelsPerMeter;
+            /// <summary>
+            /// Stores Y Pixels Per Meter.
+            /// </summary>
+            public int YPelsPerMeter;
+            /// <summary>
+            /// Stores Colors Used.
+            /// </summary>
+            public uint ClrUsed;
+            /// <summary>
+            /// Stores Important Colors.
+            /// </summary>
+            public uint ClrImportant;
+        }
+
+        /// <summary>
+        /// Stores the BITMAPINFO wrapper used by StretchDIBits.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BitmapInfo
+        {
+            /// <summary>
+            /// Stores Header.
+            /// </summary>
+            public BitmapInfoHeader Header;
+            /// <summary>
+            /// Stores the first color table slot, unused for 32-bit RGB DIBs.
+            /// </summary>
+            public uint Colors;
+        }
 
         /// <summary>
         /// Stores Native Message data used by the emulator.

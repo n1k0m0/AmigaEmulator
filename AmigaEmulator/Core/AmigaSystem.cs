@@ -35,7 +35,7 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Crops the stable PAL presentation window out of the wider internal Denise raster.
         /// </summary>
-        private const int PresentationCropLeft = 0;
+        private const int PresentationCropLeft = 128;
 
         /// <summary>
         /// Gives Denise enough horizontal room to render wide OCS overscan fetches before presentation.
@@ -172,7 +172,7 @@ namespace AmigaEmulator.Core
                 potgo => _input.ReadPotInp(potgo));
             _bus.AttachCiaAPortAInputProvider(_input.GetCiaAPortAInputMask, _input.GetCiaAPortAInputValue);
             _agnus.AttachChipWordReader(ReadChipRamWord);
-            _denise = new Denise(_frameBuffer, _agnus.Bitplanes, _agnus.Sprites, _agnus.Collisions);
+            _denise = new Denise(_frameBuffer, _agnus.Bitplanes, _agnus.Sprites, _agnus.Collisions, PresentationCropLeft);
             _paula.AttachDisk(
                 _bus.FloppyController,
                 WriteChipRamWord,
@@ -664,15 +664,18 @@ namespace AmigaEmulator.Core
             _denise.Tick(_agnus.Beam);
             if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
             {
+                int sourceLeft = PresentationCropLeft + _agnus.Bitplanes.PresentationSourceLeft;
+                sourceLeft = Math.Max(0, Math.Min(sourceLeft, _frameBuffer.Width - 1));
                 int sourceWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
-                sourceWidth = Math.Min(sourceWidth, _frameBuffer.Width - PresentationCropLeft);
+                sourceWidth = Math.Min(sourceWidth, _frameBuffer.Width - sourceLeft);
+                TrimBlankPresentationEdges(ref sourceLeft, ref sourceWidth);
                 if (sourceWidth > _model.VisibleWidth)
                 {
-                    _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, PresentationCropLeft, 0, sourceWidth, _model.VisibleHeight);
+                    _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, 0, sourceWidth, _model.VisibleHeight);
                 }
                 else
                 {
-                    _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, PresentationCropLeft, 0);
+                    _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, 0);
                 }
 
                 _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
@@ -682,6 +685,78 @@ namespace AmigaEmulator.Core
             {
                 _lastTraceSample = CreateTraceSample(cpuTrace);
             }
+        }
+
+        /// <summary>
+        /// Removes empty outer overscan columns while keeping at least the standard visible width.
+        /// </summary>
+        private void TrimBlankPresentationEdges(ref int sourceLeft, ref int sourceWidth)
+        {
+            int extraWidth = sourceWidth - _model.VisibleWidth;
+            if (extraWidth <= 0)
+            {
+                return;
+            }
+
+            int maxShift = Math.Min(extraWidth, _frameBuffer.Width - sourceLeft - sourceWidth);
+            if (maxShift <= 0)
+            {
+                return;
+            }
+
+            int leftBlankColumns = CountBlankPresentationColumns(sourceLeft, sourceWidth, maxShift, true);
+            if (leftBlankColumns > 0)
+            {
+                sourceLeft += Math.Min(leftBlankColumns, maxShift);
+            }
+
+            extraWidth = sourceWidth - _model.VisibleWidth;
+            if (extraWidth <= 0)
+            {
+                return;
+            }
+
+            int rightBlankColumns = CountBlankPresentationColumns(sourceLeft, sourceWidth, extraWidth, false);
+            if (rightBlankColumns > 0)
+            {
+                sourceWidth -= Math.Min(rightBlankColumns, extraWidth);
+            }
+        }
+
+        /// <summary>
+        /// Counts fully black columns at one edge of a candidate presentation source window.
+        /// </summary>
+        private int CountBlankPresentationColumns(int sourceLeft, int sourceWidth, int maxColumns, bool fromLeft)
+        {
+            uint[] pixels = _frameBuffer.Pixels;
+            int width = _frameBuffer.Width;
+            int height = Math.Min(_model.VisibleHeight, _frameBuffer.Height);
+            int columns = Math.Min(maxColumns, sourceWidth);
+            int blankColumns = 0;
+            for (int x = 0; x < columns; x++)
+            {
+                int sourceX = fromLeft
+                    ? sourceLeft + x
+                    : sourceLeft + sourceWidth - 1 - x;
+                bool blank = true;
+                for (int y = 0; y < height; y++)
+                {
+                    if ((pixels[(y * width) + sourceX] & 0x00FFFFFFu) != 0)
+                    {
+                        blank = false;
+                        break;
+                    }
+                }
+
+                if (!blank)
+                {
+                    break;
+                }
+
+                blankColumns++;
+            }
+
+            return blankColumns;
         }
 
         /// <summary>

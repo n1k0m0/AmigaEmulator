@@ -207,6 +207,24 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--checkpoint-savestate-frame", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_frame_checkpoint.png");
+                string outSavePath = args.Length >= 4
+                    ? args[3]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_frame_checkpoint.amigasav");
+                int frames = args.Length >= 5 && int.TryParse(args[4], out int parsedCheckpointFrames) && parsedCheckpointFrames > 0
+                    ? parsedCheckpointFrames
+                    : 4;
+                CheckpointSavestateFrame(savePath, imagePath, outSavePath, frames, ParseModelArgument(args, 5));
+                Console.WriteLine("Savestate frame checkpoint image written: " + Path.GetFullPath(imagePath));
+                Console.WriteLine("Savestate frame checkpoint written: " + Path.GetFullPath(outSavePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-disk", StringComparison.OrdinalIgnoreCase))
             {
                 string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
@@ -1389,8 +1407,8 @@ namespace AmigaEmulator
                         if (track.ReadWord(word - 1) == AdfTrackStream.SyncWord &&
                             track.ReadWord(word) == AdfTrackStream.SyncWord)
                         {
-                            expectedFirstDmaWord = track.ReadWord(word + 1);
-                            expectedFirstDmaWordIndex = word + 1;
+                            expectedFirstDmaWord = track.ReadWord(word - 1);
+                            expectedFirstDmaWordIndex = word - 1;
                             break;
                         }
                     }
@@ -1414,10 +1432,10 @@ namespace AmigaEmulator
 
                     ushort firstWord = system.Bus.ReadWord(dmaAddress);
                     bool dskSync = (system.Agnus.CustomRegisters.InterruptRequest & (ushort)CustomInterruptSource.DiskSync) != 0;
-                    if (expectedFirstDmaWord == 0 || firstWord == AdfTrackStream.SyncWord || firstWord != expectedFirstDmaWord)
+                    if (expectedFirstDmaWord == 0 || firstWord != expectedFirstDmaWord)
                     {
                         failures++;
-                        Console.WriteLine("FAIL WORDSYNC did not start DMA after sync words. First=$" + firstWord.ToString("X4") + " Expected=$" + expectedFirstDmaWord.ToString("X4"));
+                        Console.WriteLine("FAIL WORDSYNC did not start DMA at the matching sync word. First=$" + firstWord.ToString("X4") + " Expected=$" + expectedFirstDmaWord.ToString("X4"));
                     }
                     else
                     {
@@ -1723,6 +1741,36 @@ namespace AmigaEmulator
                 }
 
                 SaveFrameBuffer(system.PresentedFrameBuffer, imagePath);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Saves a new checkpoint after restoring a savestate and letting the current presentation settle.
+        /// </summary>
+        private static void CheckpointSavestateFrame(string savePath, string imagePath, string outSavePath, int framesToRun, AmigaModel model)
+        {
+            SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                RunFrames(system, framesToRun);
+                SaveFrameBuffer(system.PresentedFrameBuffer, imagePath);
+                SaveStateFile.Write(
+                    outSavePath,
+                    system,
+                    metadata.MountedMedia,
+                    metadata.Kickstart,
+                    metadata.RamProfile,
+                    metadata.AccuracyProfile,
+                    system.PresentedFrameBuffer.Pixels,
+                    system.PresentedFrameBuffer.Width,
+                    system.PresentedFrameBuffer.Height);
+                Console.WriteLine("Frames=" + framesToRun);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());

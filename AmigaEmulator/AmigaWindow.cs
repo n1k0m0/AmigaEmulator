@@ -318,9 +318,19 @@ namespace AmigaEmulator
         private const double BottomOverscanContentMinimumPercent = 0.2;
 
         /// <summary>
-        /// Treats dense colored bottom overscan as a border band that should stay hidden.
+        /// Treats dense but mostly uniform bottom overscan as a border band that should stay hidden.
         /// </summary>
         private const double BottomOverscanContentMaximumPercent = 45.0;
+
+        /// <summary>
+        /// Keeps dense bottom artwork visible when it contains enough horizontal detail to be real content.
+        /// </summary>
+        private const double BottomOverscanHorizontalStructureMinimumPercent = 12.0;
+
+        /// <summary>
+        /// Keeps dense bottom artwork visible when it contains enough vertical detail to be real content.
+        /// </summary>
+        private const double BottomOverscanVerticalStructureMinimumPercent = 18.0;
 
         /// <summary>
         /// Keeps sparse bottom-overscan prompts visible while their text blinks.
@@ -667,7 +677,7 @@ namespace AmigaEmulator
             _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, GetRamProfileForModel(model));
             _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), _settings.CreateAccuracyOptions());
             ApplyPresentationSourceCrop();
-            SetPresentationStretchToClient(true);
+            SetPresentationStretchToClient(_fullscreen);
             ApplyFloppyTiming();
             AttachAudioToSystem();
             _inputPortMode = GetInputPortModeFromSettings(_settings.Port1Mode, _settings.Port2Mode);
@@ -2295,9 +2305,10 @@ namespace AmigaEmulator
 
             _lastTitleUpdateSeconds = now;
             Text = string.Format(
-                "Amiga Emulator {0}{1:F2} MHz - PC:{2:X6} OPC:{3:X4} - FPS:{4} - DF0:{5}",
+                "Amiga Emulator {0}{1:F2} MHz HOST:{2:F0}% - PC:{3:X6} OPC:{4:X4} - FPS:{5} - DF0:{6}",
                 _turboMode ? "TURBO " : string.Empty,
                 _smoothedCpuMhz,
+                _hostSpeedPercent,
                 _system.Cpu.PC,
                 _system.Cpu.CurrentOpcode,
                 FPS,
@@ -2358,7 +2369,7 @@ namespace AmigaEmulator
 
             LoadConfiguredKickstart();
             ScheduleDeferredMediaMount(media);
-            UpdateFrequency = _system.Model.FrameRateHz;
+            UpdateFrequency = GetRenderUpdateFrequency(_renderLimitMode);
             ResetEmulationClock();
         }
 
@@ -3241,13 +3252,19 @@ namespace AmigaEmulator
             GetPreviewCropRectangle(metadata.ScreenshotPixels, metadata.ScreenshotWidth, metadata.ScreenshotHeight, out int cropX, out int cropY, out int cropWidth, out int cropHeight);
             using (var bitmap = new Bitmap(metadata.ScreenshotWidth, metadata.ScreenshotHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
             {
-                for (int py = 0; py < metadata.ScreenshotHeight; py++)
+                var bitmapData = bitmap.LockBits(
+                    new Rectangle(0, 0, metadata.ScreenshotWidth, metadata.ScreenshotHeight),
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                try
                 {
-                    int row = py * metadata.ScreenshotWidth;
-                    for (int px = 0; px < metadata.ScreenshotWidth; px++)
-                    {
-                        bitmap.SetPixel(px, py, Color.FromArgb(unchecked((int)metadata.ScreenshotPixels[row + px])));
-                    }
+                    int[] signedPixels = new int[metadata.ScreenshotWidth * metadata.ScreenshotHeight];
+                    Buffer.BlockCopy(metadata.ScreenshotPixels, 0, signedPixels, 0, signedPixels.Length * sizeof(int));
+                    System.Runtime.InteropServices.Marshal.Copy(signedPixels, 0, bitmapData.Scan0, signedPixels.Length);
+                }
+                finally
+                {
+                    bitmap.UnlockBits(bitmapData);
                 }
 
                 graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
@@ -3262,6 +3279,15 @@ namespace AmigaEmulator
         private static void GetPreviewCropRectangle(uint[] sourcePixels, int sourceWidth, int sourceHeight, out int cropX, out int cropY, out int cropWidth, out int cropHeight)
         {
             uint borderColor = sourcePixels[0];
+            if (!IsPreviewCropBorderColor(borderColor))
+            {
+                cropX = 0;
+                cropY = 0;
+                cropWidth = sourceWidth;
+                cropHeight = sourceHeight;
+                return;
+            }
+
             int left = sourceWidth;
             int top = sourceHeight;
             int right = -1;
@@ -3307,6 +3333,17 @@ namespace AmigaEmulator
             cropY = top;
             cropWidth = detectedWidth;
             cropHeight = detectedHeight;
+        }
+
+        /// <summary>
+        /// Returns true when the preview border color is a synthetic empty border rather than game artwork.
+        /// </summary>
+        private static bool IsPreviewCropBorderColor(uint argb)
+        {
+            int red = (int)((argb >> 16) & 0xFF);
+            int green = (int)((argb >> 8) & 0xFF);
+            int blue = (int)(argb & 0xFF);
+            return red <= 8 && green <= 8 && blue <= 8;
         }
 
         /// <summary>
@@ -3665,6 +3702,12 @@ namespace AmigaEmulator
 
             if (visiblePercent > BottomOverscanContentMaximumPercent)
             {
+                if (HasStructuredBottomOverscanContent(pixels, width, height, cropRows))
+                {
+                    _bottomOverscanContentHoldFrames = BottomOverscanContentHoldFrames;
+                    return 0;
+                }
+
                 _bottomOverscanContentHoldFrames = 0;
                 return PresentationCropPixelsBottom;
             }
@@ -3676,6 +3719,49 @@ namespace AmigaEmulator
             }
 
             return PresentationCropPixelsBottom;
+        }
+
+        /// <summary>
+        /// Returns true when a dense bottom band contains real artwork instead of a flat border color.
+        /// </summary>
+        private static bool HasStructuredBottomOverscanContent(uint[] pixels, int width, int height, int cropRows)
+        {
+            int startY = height - cropRows;
+            int horizontalPairs = 0;
+            int horizontalTransitions = 0;
+            int verticalPairs = 0;
+            int verticalTransitions = 0;
+
+            for (int y = startY; y < height; y++)
+            {
+                int rowOffset = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    uint color = pixels[rowOffset + x];
+                    if (x > 0)
+                    {
+                        horizontalPairs++;
+                        if (color != pixels[rowOffset + x - 1])
+                        {
+                            horizontalTransitions++;
+                        }
+                    }
+
+                    if (y > startY)
+                    {
+                        verticalPairs++;
+                        if (color != pixels[rowOffset + x - width])
+                        {
+                            verticalTransitions++;
+                        }
+                    }
+                }
+            }
+
+            double horizontalPercent = horizontalPairs > 0 ? (horizontalTransitions * 100.0) / horizontalPairs : 0.0;
+            double verticalPercent = verticalPairs > 0 ? (verticalTransitions * 100.0) / verticalPairs : 0.0;
+            return horizontalPercent >= BottomOverscanHorizontalStructureMinimumPercent ||
+                   verticalPercent >= BottomOverscanVerticalStructureMinimumPercent;
         }
 
         /// <summary>
@@ -3779,6 +3865,7 @@ namespace AmigaEmulator
                 FormBorderStyle = FormBorderStyle.Sizable;
                 WindowState = FormWindowState.Normal;
                 _fullscreen = false;
+                SetPresentationStretchToClient(false);
                 _settings.Fullscreen = false;
                 AmigaEmulatorSettingsStore.Save(_settings);
                 _statusText = "WINDOW MODE";
@@ -3788,6 +3875,7 @@ namespace AmigaEmulator
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
             _fullscreen = true;
+            SetPresentationStretchToClient(true);
             _settings.Fullscreen = true;
             AmigaEmulatorSettingsStore.Save(_settings);
             _statusText = "FULLSCREEN";
@@ -3805,6 +3893,7 @@ namespace AmigaEmulator
 
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
+            SetPresentationStretchToClient(true);
         }
 
         /// <summary>

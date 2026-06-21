@@ -1054,7 +1054,11 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Ddfstrt, 0x0030);
             registers.WriteWord(Ddfstop, 0x00D8);
 
-            Check.Equal(672, bitplanes.PresentationSourceWidth, "A $30..$D8 lowres fetch should preserve the right overscan pixels beyond the 640-pixel viewport.");
+            Check.Equal(-32, bitplanes.PresentationSourceLeft, "A $30 DDF start begins 32 hires pixels left of the standard PAL presentation edge.");
+            Check.Equal(704, bitplanes.PresentationSourceWidth, "A $30..$D8 lowres fetch should preserve the complete overscan source instead of subtracting the left lead-in.");
+
+            registers.WriteWord(Ddfstop, 0x00C8);
+            Check.Equal(672, bitplanes.PresentationSourceWidth, "A $30..$C8 fetch must still include the standard right PAL edge when left overscan is visible.");
         }
 
         /// <summary>

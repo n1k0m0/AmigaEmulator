@@ -123,14 +123,19 @@ namespace AmigaEmulator.Core.Video
                 throw new ArgumentNullException(nameof(source));
             }
 
-            Clear(0xFF000000);
             int startX = Math.Max(0, sourceX);
             int startY = Math.Max(0, sourceY);
             int width = Math.Min(Width, source.Width - startX);
             int height = Math.Min(Height, source.Height - startY);
             if (width <= 0 || height <= 0)
             {
+                Clear(0xFF000000);
                 return;
+            }
+
+            if (width < Width || height < Height)
+            {
+                Clear(0xFF000000);
             }
 
             for (int y = 0; y < height; y++)
@@ -154,9 +159,9 @@ namespace AmigaEmulator.Core.Video
                 throw new ArgumentNullException(nameof(source));
             }
 
-            Clear(0xFF000000);
             if (sourceWidth <= 0 || sourceHeight <= 0)
             {
+                Clear(0xFF000000);
                 return;
             }
 
@@ -166,9 +171,11 @@ namespace AmigaEmulator.Core.Video
             int height = Math.Min(sourceHeight, source.Height - startY);
             if (width <= 0 || height <= 0)
             {
+                Clear(0xFF000000);
                 return;
             }
 
+            int[] sourceColumns = BuildScaleMap(Width, width, startX);
             for (int y = 0; y < Height; y++)
             {
                 int sourceRow = startY + ScaleCoordinate(y, Height, height);
@@ -176,10 +183,23 @@ namespace AmigaEmulator.Core.Video
                 int sourceRowOffset = sourceRow * source.Width;
                 for (int x = 0; x < Width; x++)
                 {
-                    int sourceColumn = startX + ScaleCoordinate(x, Width, width);
-                    _pixels[targetRow + x] = source._pixels[sourceRowOffset + sourceColumn];
+                    _pixels[targetRow + x] = source._pixels[sourceRowOffset + sourceColumns[x]];
                 }
             }
+        }
+
+        /// <summary>
+        /// Builds one horizontal source lookup table for nearest-neighbor scaling.
+        /// </summary>
+        private static int[] BuildScaleMap(int destinationSize, int sourceSize, int sourceOffset)
+        {
+            int[] map = new int[destinationSize];
+            for (int index = 0; index < destinationSize; index++)
+            {
+                map[index] = sourceOffset + ScaleCoordinate(index, destinationSize, sourceSize);
+            }
+
+            return map;
         }
 
         /// <summary>

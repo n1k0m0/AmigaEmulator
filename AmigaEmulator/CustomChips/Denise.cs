@@ -46,6 +46,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private readonly CollisionUnit _collisions;
         /// <summary>
+        /// Horizontal host-framebuffer offset used to keep left overscan pixels available for presentation.
+        /// </summary>
+        private readonly int _frameBufferXOffset;
+        /// <summary>
         /// Constant for Pal Lowres Display Start.
         /// </summary>
         private const int PalLowresDisplayStart = 0x3E;
@@ -94,19 +98,28 @@ namespace AmigaEmulator.Core.CustomChips
         /// Initializes a new instance of the Denise class.
         /// </summary>
         public Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions)
-            : this(frameBuffer, bitplanes, sprites, collisions, true)
+            : this(frameBuffer, bitplanes, sprites, collisions, 0)
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the Denise class.
         /// </summary>
-        private Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, bool useSharedSpriteState)
+        public Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, int frameBufferXOffset)
+            : this(frameBuffer, bitplanes, sprites, collisions, true, frameBufferXOffset)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the Denise class.
+        /// </summary>
+        private Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, bool useSharedSpriteState, int frameBufferXOffset)
         {
             _frameBuffer = frameBuffer;
             _bitplanes = bitplanes;
             _sprites = sprites;
             _collisions = collisions;
+            _frameBufferXOffset = frameBufferXOffset;
         }
 
         /// <summary>
@@ -154,8 +167,9 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            int x = (beam.BeamX - PalLowresDisplayStart) * BitplaneUnit.HiresPixelsPerChipCycle;
-            if (x >= _frameBuffer.Width || x + BitplaneUnit.HiresPixelsPerChipCycle <= 0)
+            int logicalX = (beam.BeamX - PalLowresDisplayStart) * BitplaneUnit.HiresPixelsPerChipCycle;
+            int frameX = logicalX + _frameBufferXOffset;
+            if (frameX >= _frameBuffer.Width || frameX + BitplaneUnit.HiresPixelsPerChipCycle <= 0)
             {
                 return;
             }
@@ -164,15 +178,16 @@ namespace AmigaEmulator.Core.CustomChips
             bool spritesActive = _sprites.HasActiveSprites;
             uint[] pixels = _frameBuffer.Pixels;
             int row = y * _frameBuffer.Width;
-            uint previousArgb = screenPreviousColor(row, x);
+            uint previousArgb = screenPreviousColor(row, frameX);
             for (int pixel = 0; pixel < BitplaneUnit.HiresPixelsPerChipCycle; pixel++)
             {
-                int screenX = x + pixel;
-                if (screenX < 0 || screenX >= _frameBuffer.Width)
+                int frameBufferX = frameX + pixel;
+                if (frameBufferX < 0 || frameBufferX >= _frameBuffer.Width)
                 {
                     continue;
                 }
 
+                int screenX = logicalX + pixel;
                 int bitplaneColorIndex = bitplaneActive
                     ? _bitplanes.RenderColorIndex(screenX, beam.BeamY)
                     : 0;
@@ -193,7 +208,7 @@ namespace AmigaEmulator.Core.CustomChips
                     argb = spriteArgb;
                 }
 
-                pixels[row + screenX] = argb;
+                pixels[row + frameBufferX] = argb;
                 previousArgb = argb;
             }
         }

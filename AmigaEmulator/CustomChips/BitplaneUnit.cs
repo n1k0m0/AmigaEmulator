@@ -34,6 +34,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public const int PalVisibleHeight = 256;
         /// <summary>
+        /// Constant for the standard PAL presentation width in hires pixels.
+        /// </summary>
+        public const int PalVisibleWidth = 640;
+        /// <summary>
         /// Constant for Lowres Pixels Per Chip Cycle.
         /// </summary>
         public const int LowresPixelsPerChipCycle = 2;
@@ -249,7 +253,6 @@ namespace AmigaEmulator.Core.CustomChips
         /// Tracks whether six bitplanes select Extra Half-Brite output.
         /// </summary>
         private bool _ehb;
-
         /// <summary>
         /// Initializes a new instance of the BitplaneUnit class.
         /// </summary>
@@ -408,14 +411,24 @@ namespace AmigaEmulator.Core.CustomChips
         public void NotifyCustomRegisterWordWrite(uint registerOffset, ushort value)
         {
             registerOffset &= 0x01FE;
-            if (registerOffset < BplDataBase || registerOffset >= BplDataBase + (MaxPlanes * 2u))
+            if (registerOffset >= BplDataBase && registerOffset < BplDataBase + (MaxPlanes * 2u))
             {
+                int plane = (int)((registerOffset - BplDataBase) >> 1);
+                _dataLatches[plane] = value;
+                _dataLatchValid[plane] = true;
                 return;
             }
 
-            int plane = (int)((registerOffset - BplDataBase) >> 1);
-            _dataLatches[plane] = value;
-            _dataLatchValid[plane] = true;
+            if (registerOffset == Bplcon0 ||
+                registerOffset == Bplcon1 ||
+                registerOffset == Dmacon ||
+                registerOffset == Diwstrt ||
+                registerOffset == Diwstop ||
+                registerOffset == Ddfstrt ||
+                registerOffset == Ddfstop)
+            {
+                RefreshFromRegisters();
+            }
         }
 
         /// <summary>
@@ -430,14 +443,16 @@ namespace AmigaEmulator.Core.CustomChips
             ushort diwStop = Read(Diwstop);
             ushort ddfStart = Read(Ddfstrt);
             ushort ddfStop = Read(Ddfstop);
+            int enabledPlanes = Math.Min(6, (bplcon0 >> 12) & 0x07);
+            bool hasValidDataLatch = HasValidDataLatch(enabledPlanes);
 
-            EnabledPlanes = Math.Min(6, (bplcon0 >> 12) & 0x07);
+            EnabledPlanes = enabledPlanes;
             _hires = (bplcon0 & 0x8000) != 0;
             _ham = (bplcon0 & 0x0800) != 0;
             _dualPlayfield = (bplcon0 & 0x0400) != 0;
             _ehb = !_ham && EnabledPlanes == 6;
             _dmaActive = (dmacon & 0x0200) != 0 && (dmacon & 0x0100) != 0;
-            _displayActive = EnabledPlanes > 0 && (_dmaActive || HasValidDataLatch());
+            _displayActive = EnabledPlanes > 0 && (_dmaActive || hasValidDataLatch);
 
             int rawTop = diwStart == 0 ? PalVisibleTop : (diwStart >> 8) & 0xFF;
             _diwTop = rawTop;
@@ -1124,7 +1139,15 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool HasValidDataLatch()
         {
-            for (int plane = 0; plane < EnabledPlanes; plane++)
+            return HasValidDataLatch(EnabledPlanes);
+        }
+
+        /// <summary>
+        /// Returns whether a direct data latch is valid for the requested plane count.
+        /// </summary>
+        private bool HasValidDataLatch(int enabledPlanes)
+        {
+            for (int plane = 0; plane < enabledPlanes; plane++)
             {
                 if (_dataLatchValid[plane])
                 {
@@ -1231,9 +1254,22 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 RefreshFromRegisters();
-                int left = GetDisplayLeft();
-                int activeRight = _displayFetchWidth + Math.Min(0, left);
-                return Math.Max(0, activeRight);
+                int displayLeft = GetDisplayLeft();
+                int sourceLeft = Math.Min(0, displayLeft);
+                int sourceRight = Math.Max(PalVisibleWidth, displayLeft + _displayFetchWidth);
+                return Math.Max(0, sourceRight - sourceLeft);
+            }
+        }
+
+        /// <summary>
+        /// Gets the viewport-relative source X coordinate used for presentation cropping.
+        /// </summary>
+        public int PresentationSourceLeft
+        {
+            get
+            {
+                RefreshFromRegisters();
+                return Math.Min(0, GetDisplayLeft());
             }
         }
 
