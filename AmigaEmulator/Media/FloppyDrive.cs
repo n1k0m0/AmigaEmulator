@@ -23,7 +23,11 @@ namespace AmigaEmulator.Core.Media
         /// <summary>
         /// Constant for Motor Off Ready Grace Chip Cycles.
         /// </summary>
-        private const int MotorOffReadyGraceChipCycles = 2_000_000;
+        private const int MotorReadySpinUpChipCycles = 18 * 312 * 227;
+        /// <summary>
+        /// Constant for Motor Off Ready Grace Chip Cycles.
+        /// </summary>
+        private const int MotorOffReadyGraceChipCycles = 250 * 312 * 227;
         /// <summary>
         /// Constant for Pal Index Pulse Period Chip Cycles.
         /// </summary>
@@ -38,6 +42,10 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         private bool _selected;
         /// <summary>
+        /// Stores the previous active-low motor control line as seen during the last CIA-B update.
+        /// </summary>
+        private bool _motorLineLow;
+        /// <summary>
         /// Stores write Protected.
         /// </summary>
         private bool _writeProtected = true;
@@ -45,6 +53,14 @@ namespace AmigaEmulator.Core.Media
         /// Stores motor On.
         /// </summary>
         private bool _motorOn;
+        /// <summary>
+        /// Stores motor Ready.
+        /// </summary>
+        private bool _motorReady;
+        /// <summary>
+        /// Stores motor Ready Spin Up Cycles.
+        /// </summary>
+        private int _motorReadySpinUpCycles;
         /// <summary>
         /// Stores motor Off Ready Grace Cycles.
         /// </summary>
@@ -115,7 +131,19 @@ namespace AmigaEmulator.Core.Media
                 }
 
                 _motorOn = value;
-                _motorOffReadyGraceCycles = value ? 0 : MotorOffReadyGraceChipCycles;
+                if (value)
+                {
+                    bool stillSpinning = _motorOffReadyGraceCycles > 0;
+                    _motorReady = HasDisk && stillSpinning;
+                    _motorReadySpinUpCycles = HasDisk && !stillSpinning ? MotorReadySpinUpChipCycles : 0;
+                    _motorOffReadyGraceCycles = 0;
+                }
+                else
+                {
+                    _motorReadySpinUpCycles = 0;
+                    _motorOffReadyGraceCycles = _motorReady ? MotorOffReadyGraceChipCycles : 0;
+                    _motorReady = false;
+                }
             }
         }
 
@@ -141,11 +169,19 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Gets whether the drive is selected, contains media, and is ready for disk data.
+        /// Gets whether the drive is selected, contains media, and can still deliver disk data.
         /// </summary>
         public bool Ready
         {
-            get { return Selected && HasDisk && (MotorOn || _motorOffReadyGraceCycles > 0); }
+            get { return Selected && HasDisk && (_motorReady || _motorOffReadyGraceCycles > 0); }
+        }
+
+        /// <summary>
+        /// Gets whether the physical drive ready signal should be asserted on CIA-A.
+        /// </summary>
+        public bool ReadySignal
+        {
+            get { return Selected && HasDisk && (_motorReady || _motorOffReadyGraceCycles > 0); }
         }
 
         /// <summary>
@@ -154,6 +190,30 @@ namespace AmigaEmulator.Core.Media
         public bool ActivityLedOn
         {
             get { return Selected && MotorOn; }
+        }
+
+        /// <summary>
+        /// Gets the current cached track stream word position for diagnostics.
+        /// </summary>
+        public int StreamWordPosition
+        {
+            get { return _streamWordPosition; }
+        }
+
+        /// <summary>
+        /// Gets the current cached track stream length for diagnostics.
+        /// </summary>
+        public int StreamWordCount
+        {
+            get { return _trackStream != null ? _trackStream.WordCount : 0; }
+        }
+
+        /// <summary>
+        /// Gets the remaining chip cycles until the next index pulse for diagnostics.
+        /// </summary>
+        public int IndexPulseCountdown
+        {
+            get { return _indexPulseCountdown; }
         }
 
         /// <summary>
@@ -183,6 +243,12 @@ namespace AmigaEmulator.Core.Media
             _capturedWriteWords.Clear();
             _decodedWriteSectors = 0;
             IndexPulsePending = false;
+            if (MotorOn)
+            {
+                _motorReady = false;
+                _motorReadySpinUpCycles = MotorReadySpinUpChipCycles;
+                _motorOffReadyGraceCycles = 0;
+            }
         }
 
         /// <summary>
@@ -192,6 +258,21 @@ namespace AmigaEmulator.Core.Media
         {
             Insert(image);
             _writeProtected = writeProtected;
+        }
+
+        /// <summary>
+        /// Restores host media after loading a savestate without changing the saved drive mechanics.
+        /// </summary>
+        public void RestoreMedia(AdfImage image, bool writeProtected)
+        {
+            Image = image;
+            _writeProtected = writeProtected;
+            _trackStream = null;
+            _streamTrack = -1;
+            _streamSide = -1;
+            _capturedWriteWords.Clear();
+            _decodedWriteSectors = 0;
+            IndexPulsePending = false;
         }
 
         /// <summary>
@@ -209,6 +290,9 @@ namespace AmigaEmulator.Core.Media
             _capturedWriteWords.Clear();
             _decodedWriteSectors = 0;
             IndexPulsePending = false;
+            _motorReady = false;
+            _motorReadySpinUpCycles = 0;
+            _motorOffReadyGraceCycles = 0;
         }
 
         /// <summary>
@@ -220,24 +304,24 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
-        /// Applies Selection to the current state.
+        /// Applies the CIA-B select, motor, step, and direction lines to this drive.
         /// </summary>
-        public void ApplySelection(bool selected, bool motorLineLow)
+        public void ApplyControlLines(bool selected, bool motorLineLow, bool stepLineHigh, bool directionIn)
         {
-            if (selected)
+            bool wasSelected = _selected;
+            bool wasStepLineHigh = _stepLineHigh;
+            bool wasMotorLineLow = _motorLineLow;
+
+            if (!wasSelected && selected)
             {
-                MotorOn = motorLineLow;
+                MotorOn = motorLineLow || wasMotorLineLow;
             }
 
             _selected = selected;
-        }
+            _motorLineLow = motorLineLow;
 
-        /// <summary>
-        /// Updates the Step Line.
-        /// </summary>
-        public void SetStepLine(bool high, bool directionIn)
-        {
-            if (_stepLineHigh && !high && Selected)
+            // DSKSTEP is active-low; real drives advance when the low pulse is released.
+            if (!wasStepLineHigh && stepLineHigh && wasSelected)
             {
                 Step(directionIn ? 1 : -1);
                 if (HasDisk)
@@ -246,7 +330,15 @@ namespace AmigaEmulator.Core.Media
                 }
             }
 
-            _stepLineHigh = high;
+            _stepLineHigh = stepLineHigh;
+        }
+
+        /// <summary>
+        /// Applies Selection to the current state.
+        /// </summary>
+        public void ApplySelection(bool selected, bool motorLineLow)
+        {
+            ApplyControlLines(selected, motorLineLow, _stepLineHigh, false);
         }
 
         /// <summary>
@@ -275,6 +367,15 @@ namespace AmigaEmulator.Core.Media
         public void Tick()
         {
             IndexPulsePending = false;
+            if (_motorReadySpinUpCycles > 0)
+            {
+                _motorReadySpinUpCycles--;
+                if (_motorReadySpinUpCycles == 0 && MotorOn && HasDisk)
+                {
+                    _motorReady = true;
+                }
+            }
+
             if (_motorOffReadyGraceCycles > 0)
             {
                 _motorOffReadyGraceCycles--;

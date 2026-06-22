@@ -284,9 +284,9 @@ namespace AmigaEmulator
         private const int MouseDeltaDrainSliceCycles = 4096;
 
         /// <summary>
-        /// Holds a delayed mouse click long enough for frame-polled software to observe it.
+        /// Holds a delayed mouse click only long enough to preserve down/up ordering after buffered motion.
         /// </summary>
-        private const int DeferredMouseButtonHoldCycles = 2000000;
+        private const int DeferredMouseButtonHoldCycles = 30000;
 
         /// <summary>
         /// Keeps host edge-to-edge mouse motion inside the drawable width of a 16-lores-pixel Amiga sprite cursor.

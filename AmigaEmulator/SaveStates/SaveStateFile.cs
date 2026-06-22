@@ -175,7 +175,7 @@ namespace AmigaEmulator.Core.SaveStates
             {
                 ValidateHeader(reader);
                 reader.ReadInt64();
-                ReadMountedMediaInfo(reader);
+                MountedMediaInfo mediaInfo = ReadMountedMediaInfo(reader);
                 reader.ReadInt32();
                 reader.ReadInt32();
                 reader.ReadInt32();
@@ -183,7 +183,29 @@ namespace AmigaEmulator.Core.SaveStates
                 reader.ReadInt32();
                 StateSerializer.ReadUIntArray(reader);
                 system.LoadState(reader);
+                RestoreMountedMedia(system, mediaInfo);
             }
+        }
+
+        /// <summary>
+        /// Reattaches host-side media referenced by savestate metadata after the machine state is restored.
+        /// </summary>
+        private static void RestoreMountedMedia(AmigaSystem system, MountedMediaInfo mediaInfo)
+        {
+            if (mediaInfo == null ||
+                mediaInfo.Kind != MountedMediaKind.Adf ||
+                mediaInfo.Status != MountedMediaStatus.Mounted ||
+                mediaInfo.DriveIndex != 0 ||
+                string.IsNullOrWhiteSpace(mediaInfo.HostPath) ||
+                !File.Exists(mediaInfo.HostPath))
+            {
+                return;
+            }
+
+            system.Bus.FloppyController.RestoreDrive0Media(
+                AdfImage.Load(mediaInfo.HostPath),
+                mediaInfo.IsWriteProtected);
+            system.Bus.RefreshFloppyControlLines();
         }
 
         /// <summary>

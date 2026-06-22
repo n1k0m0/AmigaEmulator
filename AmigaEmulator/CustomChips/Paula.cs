@@ -74,8 +74,8 @@ namespace AmigaEmulator.Core.CustomChips
         // PAL DD disks rotate once per ~709379 chip cycles. A standard ADF
         // track contains 0x1996 MFM words, so one word arrives every ~108 cycles.
         private const int DefaultDiskWordPeriodChipCycles = 108;
-        // The physical disk stream keeps rotating while Paula waits for DMA
-        // slots, so clustered disk slots may need to drain more than one word.
+        // Paula can buffer a short burst between disk slots, but the physical
+        // track keeps rotating even when software or DMA falls behind.
         private const int DiskReadQueueCapacity = 8;
         /// <summary>
         /// Defines the AUDIO CHANNEL COUNT custom register offset or bit mask.
@@ -171,7 +171,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool _waitingForDiskSync;
         /// <summary>
-        /// Stores disk Sync Matched For DMA.
+        /// Stores whether WORDSYNC has matched; retained to keep older savestate field layouts readable.
         /// </summary>
         private bool _diskSyncMatchedForDma;
         /// <summary>
@@ -214,6 +214,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores disk Words Transferred.
         /// </summary>
         private long _diskWordsTransferred;
+        /// <summary>
+        /// Counts physical MFM words observed on the selected drive.
+        /// </summary>
+        private long _diskWordsObserved;
+        /// <summary>
+        /// Counts read-mode MFM words lost because Paula's read queue was full.
+        /// </summary>
+        private long _diskReadQueueOverflows;
         /// <summary>
         /// Stores disk Words Written.
         /// </summary>
@@ -466,6 +474,26 @@ namespace AmigaEmulator.Core.CustomChips
                 "_readDmaControl",
                 "_readAdkControl",
                 "_diskWordPeriodChipCycles");
+
+            NormalizeDiskDmaStateAfterLoad();
+        }
+
+        /// <summary>
+        /// Clears impossible inactive disk-DMA state combinations left by older savestate versions.
+        /// </summary>
+        private void NormalizeDiskDmaStateAfterLoad()
+        {
+            int length = _diskLengthRegister & 0x3FFF;
+            bool inactiveLengthRegister = (_diskLengthRegister & 0x8000) == 0 || length == 0;
+            if (!_diskDmaActive && inactiveLengthRegister)
+            {
+                _diskWriteMode = false;
+                _waitingForDiskSync = false;
+                _diskSyncMatchedForDma = false;
+                _remainingDiskWords = 0;
+                _wordReady = false;
+                _diskReadQueue.Clear();
+            }
         }
 
         /// <summary>
@@ -675,7 +703,7 @@ namespace AmigaEmulator.Core.CustomChips
         public string GetDiskDebugInfo()
         {
             return string.Format(
-                "active:{0} write:{1} ptr:${2:X6} len:${3:X4} remaining:{4} sync:${5:X4} word:${6:X4} ready:{7} equal:{8} q:{9}",
+                "active:{0} write:{1} ptr:${2:X6} len:${3:X4} remaining:{4} sync:${5:X4} word:${6:X4} ready:{7} equal:{8} wordSyncMatched:{9} q:{10}",
                 _diskDmaActive,
                 _diskWriteMode,
                 _diskPointer,
@@ -685,12 +713,15 @@ namespace AmigaEmulator.Core.CustomChips
                 _latestDiskWord,
                 _wordReady,
                 _wordEqual,
+                _diskSyncMatchedForDma,
                 _diskReadQueue.Count) +
             string.Format(
-                " starts:{0} done:{1} words:{2} written:{3} rejected:{4} syncs:{5}",
+                " starts:{0} done:{1} words:{2} observed:{3} overflows:{4} written:{5} rejected:{6} syncs:{7}",
                 _diskDmaStarts,
                 _diskDmaCompletedBlocks,
                 _diskWordsTransferred,
+                _diskWordsObserved,
+                _diskReadQueueOverflows,
                 _diskWordsWritten,
                 _diskWriteRejectedWords,
                 _diskSyncMatches);
@@ -702,14 +733,17 @@ namespace AmigaEmulator.Core.CustomChips
         public string GetDiskShortDebugInfo()
         {
             return string.Format(
-                "active:{0} remaining:{1} starts:{2} done:{3} words:{4} written:{5} syncs:{6} q:{7}",
+                "active:{0} remaining:{1} starts:{2} done:{3} words:{4} observed:{5} overflows:{6} written:{7} syncs:{8} matched:{9} q:{10}",
                 _diskDmaActive,
                 _remainingDiskWords,
                 _diskDmaStarts,
                 _diskDmaCompletedBlocks,
                 _diskWordsTransferred,
+                _diskWordsObserved,
+                _diskReadQueueOverflows,
                 _diskWordsWritten,
                 _diskSyncMatches,
+                _diskSyncMatchedForDma,
                 _diskReadQueue.Count);
         }
 
@@ -754,10 +788,10 @@ namespace AmigaEmulator.Core.CustomChips
         private void WriteDiskLength(ushort value)
         {
             _diskLengthRegister = value;
-            _diskWriteMode = (value & 0x4000) != 0;
             int length = value & 0x3FFF;
             if ((value & 0x8000) == 0 || length == 0)
             {
+                _diskWriteMode = false;
                 _diskDmaActive = false;
                 _diskDmaArmed = false;
                 _waitingForDiskSync = false;
@@ -768,6 +802,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
+            _diskWriteMode = (value & 0x4000) != 0;
             if (!_diskDmaArmed || _armedDiskLengthRegister != value)
             {
                 _armedDiskLengthRegister = value;
@@ -1000,18 +1035,13 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void TickDiskInputStream()
         {
-            FloppyDrive drive = _floppyController != null ? _floppyController.Drive0 : null;
+            FloppyDrive drive = _floppyController != null ? _floppyController.SelectedDrive : null;
             if (drive == null || !drive.Ready)
             {
                 _diskWordDivider = 0;
                 _diskByteReady = false;
                 _nextDiskByteIsLow = false;
                 _diskReadQueue.Clear();
-                return;
-            }
-
-            if (_diskDmaActive && !_diskWriteMode && _diskReadQueue.Count >= DiskReadQueueCapacity)
-            {
                 return;
             }
 
@@ -1053,17 +1083,18 @@ namespace AmigaEmulator.Core.CustomChips
 
             if (_waitingForDiskSync)
             {
-                if (_wordEqual)
-                {
-                    _waitingForDiskSync = false;
-                    _diskSyncMatchedForDma = false;
-                }
-                else if (!_diskSyncMatchedForDma)
+                if (!_wordEqual)
                 {
                     return;
                 }
+
+                _waitingForDiskSync = false;
+                _diskSyncMatchedForDma = true;
+                _wordReady = _diskReadQueue.Count > 0;
+                return;
             }
 
+            _diskSyncMatchedForDma = false;
             TransferDiskWord(word);
             _wordReady = _diskDmaActive && _diskReadQueue.Count > 0;
         }
@@ -1084,13 +1115,21 @@ namespace AmigaEmulator.Core.CustomChips
 
             _latestDiskByte = (byte)_pendingDiskWord;
             _latestDiskWord = _pendingDiskWord;
+            _diskWordsObserved++;
             _wordReady = true;
             _wordEqual = _latestDiskWord == _diskSync;
             _diskByteReady = true;
             _nextDiskByteIsLow = false;
-            if (_diskDmaActive && !_diskWriteMode && _diskReadQueue.Count < DiskReadQueueCapacity)
+            if (_diskDmaActive && !_diskWriteMode)
             {
-                _diskReadQueue.Enqueue(_latestDiskWord);
+                if (_diskReadQueue.Count < DiskReadQueueCapacity)
+                {
+                    _diskReadQueue.Enqueue(_latestDiskWord);
+                }
+                else
+                {
+                    _diskReadQueueOverflows++;
+                }
             }
 
             if (_wordEqual && _requestInterrupt != null)
@@ -1126,7 +1165,7 @@ namespace AmigaEmulator.Core.CustomChips
         private void TransferDiskWriteWord()
         {
             ushort word = _readChipWord != null ? _readChipWord(_diskPointer) : _latestDiskWord;
-            FloppyDrive drive = _floppyController != null ? _floppyController.Drive0 : null;
+            FloppyDrive drive = _floppyController != null ? _floppyController.SelectedDrive : null;
             bool accepted = drive != null && drive.TryCaptureWrittenMfmWord(word);
             if (accepted)
             {

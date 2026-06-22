@@ -21,6 +21,10 @@ namespace AmigaEmulator.Core.Media
     public sealed class FloppyController
     {
         /// <summary>
+        /// Constant for Number Of Drives.
+        /// </summary>
+        private const int DriveCount = 4;
+        /// <summary>
         /// Constant for CIA A Status Mask.
         /// </summary>
         public const byte CiaAStatusMask = 0x3C;
@@ -54,20 +58,22 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         private const byte CiaBSideBit = 0x04;
         /// <summary>
-        /// Constant for CIA B Select 0 Bit.
+        /// Constant for CIA B First Select Bit.
         /// </summary>
-        private const byte CiaBSelect0Bit = 0x08;
+        private const byte CiaBFirstSelectBit = 0x08;
         /// <summary>
         /// Constant for CIA B Motor Bit.
         /// </summary>
         private const byte CiaBMotorBit = 0x80;
-
         /// <summary>
         /// Initializes a new instance of the FloppyController class.
         /// </summary>
         public FloppyController()
         {
             Drive0 = new FloppyDrive();
+            Drive1 = new FloppyDrive();
+            Drive2 = new FloppyDrive();
+            Drive3 = new FloppyDrive();
         }
 
         /// <summary>
@@ -79,6 +85,41 @@ namespace AmigaEmulator.Core.Media
         /// Gets or sets Drive 0.
         /// </summary>
         public FloppyDrive Drive0 { get; private set; }
+
+        /// <summary>
+        /// Gets or sets Drive 1.
+        /// </summary>
+        public FloppyDrive Drive1 { get; private set; }
+
+        /// <summary>
+        /// Gets or sets Drive 2.
+        /// </summary>
+        public FloppyDrive Drive2 { get; private set; }
+
+        /// <summary>
+        /// Gets or sets Drive 3.
+        /// </summary>
+        public FloppyDrive Drive3 { get; private set; }
+
+        /// <summary>
+        /// Gets the first currently selected drive, matching the shared Amiga floppy bus.
+        /// </summary>
+        public FloppyDrive SelectedDrive
+        {
+            get
+            {
+                FloppyDrive[] drives = GetDrives();
+                for (int index = 0; index < drives.Length; index++)
+                {
+                    if (drives[index].Selected)
+                    {
+                        return drives[index];
+                    }
+                }
+
+                return null;
+            }
+        }
 
         /// <summary>
         /// Gets Index Pulse Pending.
@@ -107,6 +148,14 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
+        /// Restores DF0 media after loading a savestate without asserting a new disk-change event.
+        /// </summary>
+        public void RestoreDrive0Media(AdfImage image, bool writeProtected)
+        {
+            Drive0.RestoreMedia(image, writeProtected);
+        }
+
+        /// <summary>
         /// Runs Eject Drive 0.
         /// </summary>
         public void EjectDrive0()
@@ -128,15 +177,18 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void ApplyCiaBPort(byte prb, byte ddrb)
         {
-            bool selected = IsActiveLowOutput(prb, ddrb, CiaBSelect0Bit);
             bool motorLineLow = IsActiveLowOutput(prb, ddrb, CiaBMotorBit);
             bool stepLineHigh = !IsActiveLowOutput(prb, ddrb, CiaBStepBit);
             bool directionIn = !IsHighOutput(prb, ddrb, CiaBDirectionBit);
             bool sideOne = IsActiveLowOutput(prb, ddrb, CiaBSideBit);
 
-            Drive0.ApplySelection(selected, motorLineLow);
-            Drive0.SetSide(sideOne ? 1 : 0);
-            Drive0.SetStepLine(stepLineHigh, directionIn);
+            FloppyDrive[] drives = GetDrives();
+            for (int index = 0; index < drives.Length; index++)
+            {
+                bool selected = IsActiveLowOutput(prb, ddrb, (byte)(CiaBFirstSelectBit << index));
+                drives[index].SetSide(sideOne ? 1 : 0);
+                drives[index].ApplyControlLines(selected, motorLineLow, stepLineHigh, directionIn);
+            }
         }
 
         /// <summary>
@@ -144,7 +196,11 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void Tick()
         {
-            Drive0.Tick();
+            FloppyDrive[] drives = GetDrives();
+            for (int index = 0; index < drives.Length; index++)
+            {
+                drives[index].Tick();
+            }
         }
 
         /// <summary>
@@ -153,24 +209,32 @@ namespace AmigaEmulator.Core.Media
         public byte BuildCiaAStatusBits()
         {
             byte value = CiaAStatusMask;
-            if (Drive0.Selected)
+            FloppyDrive drive = SelectedDrive;
+            if (drive != null)
             {
-                if (!Drive0.HasDisk || Drive0.DiskChanged)
+                int selectedIndex = GetSelectedDriveIndex();
+                bool physicalDrivePresent = selectedIndex == 0 || drive.HasDisk;
+                if (!physicalDrivePresent)
+                {
+                    return value;
+                }
+
+                if ((selectedIndex == 0 && !drive.HasDisk) || drive.DiskChanged)
                 {
                     value = (byte)(value & ~CiaADiskChangeBit);
                 }
 
-                if (Drive0.HasDisk && Drive0.WriteProtected)
+                if (drive.HasDisk && drive.WriteProtected)
                 {
                     value = (byte)(value & ~CiaAWriteProtectBit);
                 }
 
-                if (Drive0.Track0)
+                if (drive.Track0)
                 {
                     value = (byte)(value & ~CiaATrack0Bit);
                 }
 
-                if (Drive0.Ready)
+                if (drive.ReadySignal)
                 {
                     value = (byte)(value & ~CiaAReadyBit);
                 }
@@ -184,19 +248,87 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public string GetDebugInfo()
         {
+            FloppyDrive selectedDrive = SelectedDrive;
+            int selectedIndex = GetSelectedDriveIndex();
             return string.Format(
-                "selected:{0} motor:{1} disk:{2} track:{3} side:{4} ready:{5} wp:{6} changed:{7} writes:{8} decoded:{9} status:${10:X2}",
-                Drive0.Selected,
-                Drive0.MotorOn,
-                Drive0.HasDisk,
-                Drive0.Track,
-                Drive0.Side,
-                Drive0.Ready,
-                Drive0.WriteProtected,
-                Drive0.DiskChanged,
-                Drive0.CapturedWriteWordCount,
-                Drive0.DecodedWriteSectorCount,
-                BuildCiaAStatusBits());
+                "selected:{0} selectedDrive:{1} motor:{2} disk:{3} track:{4} side:{5} ready:{6} ciaReady:{7} wp:{8} changed:{9} writes:{10} decoded:{11} status:${12:X2} stream:{13}/{14} index:{15} df0:{16}",
+                selectedDrive != null,
+                selectedIndex >= 0 ? "DF" + selectedIndex.ToString() : "none",
+                selectedDrive != null && selectedDrive.MotorOn,
+                selectedDrive != null && selectedDrive.HasDisk,
+                selectedDrive != null ? selectedDrive.Track : Drive0.Track,
+                selectedDrive != null ? selectedDrive.Side : Drive0.Side,
+                selectedDrive != null && selectedDrive.Ready,
+                selectedDrive != null && selectedDrive.ReadySignal,
+                selectedDrive != null && selectedDrive.WriteProtected,
+                selectedDrive != null && selectedDrive.DiskChanged,
+                selectedDrive != null ? selectedDrive.CapturedWriteWordCount : 0,
+                selectedDrive != null ? selectedDrive.DecodedWriteSectorCount : 0,
+                BuildCiaAStatusBits(),
+                selectedDrive != null ? selectedDrive.StreamWordPosition : Drive0.StreamWordPosition,
+                selectedDrive != null ? selectedDrive.StreamWordCount : Drive0.StreamWordCount,
+                selectedDrive != null ? selectedDrive.IndexPulseCountdown : Drive0.IndexPulseCountdown,
+                FormatDriveDebug(Drive0));
+        }
+
+        /// <summary>
+        /// Formats a drive's physical state even when a different drive is currently selected.
+        /// </summary>
+        private static string FormatDriveDebug(FloppyDrive drive)
+        {
+            return string.Format(
+                "sel={0},motor={1},disk={2},track={3},side={4},ready={5},wp={6},chg={7},stream={8}/{9},idx={10}",
+                drive.Selected,
+                drive.MotorOn,
+                drive.HasDisk,
+                drive.Track,
+                drive.Side,
+                drive.ReadySignal,
+                drive.WriteProtected,
+                drive.DiskChanged,
+                drive.StreamWordPosition,
+                drive.StreamWordCount,
+                drive.IndexPulseCountdown);
+        }
+
+        /// <summary>
+        /// Returns the currently selected drive index, or -1 if no drive is selected.
+        /// </summary>
+        private int GetSelectedDriveIndex()
+        {
+            FloppyDrive[] drives = GetDrives();
+            for (int index = 0; index < drives.Length; index++)
+            {
+                if (drives[index].Selected)
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Returns the drive array in DF0-DF3 bus order.
+        /// </summary>
+        private FloppyDrive[] GetDrives()
+        {
+            if (Drive1 == null)
+            {
+                Drive1 = new FloppyDrive();
+            }
+
+            if (Drive2 == null)
+            {
+                Drive2 = new FloppyDrive();
+            }
+
+            if (Drive3 == null)
+            {
+                Drive3 = new FloppyDrive();
+            }
+
+            return new[] { Drive0, Drive1, Drive2, Drive3 };
         }
 
         /// <summary>

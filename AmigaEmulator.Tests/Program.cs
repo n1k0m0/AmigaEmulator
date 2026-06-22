@@ -774,6 +774,16 @@ namespace AmigaEmulator.Tests
                 TestWideOverscanFrameScalesIntoPresentation);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "hires pixels are not duplicated like lowres pixels",
+                "Amiga HRM BPLCON0 HIRES mode outputs one bitplane bit per hires pixel",
+                TestHiresBitplanePixelsAreSingleWidth);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "HAM control codes modify the previous RGB component",
+                "Amiga HRM Hold-And-Modify color resolution for HAM6 screens",
+                TestHamControlCodesModifyPreviousColor);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "six-plane EHB halves color bank 0 through plane 6",
                 "Amiga HRM Extra Half-Brite output mode",
                 TestExtraHalfBriteColor);
@@ -1279,6 +1289,47 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that HIRES mode consumes one bitplane bit per hires pixel.
+        /// </summary>
+        private static void TestHiresBitplanePixelsAreSingleWidth()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[4];
+            memory[0] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 3]);
+            registers.WriteWord(Bplcon0, 0x9000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+
+            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "HIRES bit 15 should affect only the first hires pixel.");
+            Check.Equal(0, bitplanes.RenderColorIndex(1, BitplaneUnit.PalVisibleTop), "HIRES must not duplicate the first bit into the second pixel.");
+        }
+
+        /// <summary>
+        /// Verifies HAM6 base colors and component modify operations.
+        /// </summary>
+        private static void TestHamControlCodesModifyPreviousColor()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x6800);
+            registers.WriteWord(Color01, 0x0F00);
+            bitplanes.RefreshFromRegisters();
+
+            Check.Equal(0xFFFF0000u, bitplanes.ResolveColorArgb(0x01, 0xFF112233u), "HAM control 0 should select a base palette color.");
+            Check.Equal(0xFF1122AAu, bitplanes.ResolveColorArgb(0x1A, 0xFF112233u), "HAM control 1 should replace blue with the expanded data nibble.");
+            Check.Equal(0xFFAA2233u, bitplanes.ResolveColorArgb(0x2A, 0xFF112233u), "HAM control 2 should replace red with the expanded data nibble.");
+            Check.Equal(0xFF11AA33u, bitplanes.ResolveColorArgb(0x3A, 0xFF112233u), "HAM control 3 should replace green with the expanded data nibble.");
+        }
+
+        /// <summary>
         /// Verifies Extra Half-Brite color bank behavior.
         /// </summary>
         private static void TestExtraHalfBriteColor()
@@ -1712,9 +1763,14 @@ namespace AmigaEmulator.Tests
                 TestDiskWriteDmaTiming);
             yield return new ChipTestCase(
                 "Paula/Disk",
-                "WORDSYNC read DMA includes the matching sync word as the first transferred word",
+                "inactive DSKLEN stop clears disk write status",
+                "Paula DSKLEN stop semantics and DSKBYTR status polling",
+                TestDiskStopClearsWriteStatus);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "WORDSYNC read DMA starts after the matching sync word",
                 "Paula disk WORDSYNC DMA start behavior used by custom trackloaders",
-                TestWordSyncReadDmaTransfersMatchingSyncWord);
+                TestWordSyncReadDmaStartsAfterMatchingSyncWord);
             yield return new ChipTestCase(
                 "Paula/Disk",
                 "captured MFM write sectors decode back into ADF sectors",
@@ -1735,6 +1791,11 @@ namespace AmigaEmulator.Tests
                 "DF0 steps only while selected and follows CIA-B direction polarity",
                 "Amiga CIA-B floppy STEP and DIR control lines",
                 TestSelectedDriveStepDirection);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "absent external floppy drives leave CIA-A disk status lines inactive",
+                "A500 CIA-A floppy status lines with no DF1-DF3 hardware attached",
+                TestAbsentExternalDriveStatusLines);
             yield return new ChipTestCase(
                 "Paula/Disk",
                 "DF0 media swaps preserve the physical head and CIA control-line state",
@@ -1763,17 +1824,35 @@ namespace AmigaEmulator.Tests
                 Check.Equal(AdfMfmEncoder.GapWord, track.ReadWord(0), "Track should begin with gap words.");
 
                 bool foundPairedSync = false;
+                int firstPairedSync = -1;
+                int pairedSyncs = 0;
+                int previousPairedSync = -1;
                 for (int index = 1; index < track.WordCount; index++)
                 {
                     if (track.ReadWord(index - 1) == AdfMfmEncoder.SyncWord &&
                         track.ReadWord(index) == AdfMfmEncoder.SyncWord)
                     {
                         foundPairedSync = true;
-                        break;
+                        pairedSyncs++;
+                        if (firstPairedSync < 0)
+                        {
+                            firstPairedSync = index - 1;
+                        }
+
+                        if (previousPairedSync >= 0)
+                        {
+                            int spacing = (index - 1) - previousPairedSync;
+                            Check.True(spacing < AdfMfmEncoder.SectorWords + 80, "Generated MFM sector syncs should be distributed through the track.");
+                        }
+
+                        previousPairedSync = index - 1;
+                        index++;
                     }
                 }
 
                 Check.True(foundPairedSync, "Generated MFM track should contain paired Amiga sync words.");
+                Check.True(firstPairedSync >= 2 && firstPairedSync < 80, "Generated MFM track should place the first sector near the index gap instead of after one oversized gap.");
+                Check.Equal(AdfImage.SectorsPerTrack, pairedSyncs, "Generated MFM track should contain one paired sync marker per sector.");
             }
             finally
             {
@@ -1815,18 +1894,26 @@ namespace AmigaEmulator.Tests
 
             controller.ApplyCiaBPort(0xF7, 0xFF);
             Check.True(controller.Drive0.Selected, "DF0 should remain selected while only MOTOR changes.");
-            Check.True(!controller.Drive0.MotorOn, "DF0 motor should turn off while selected when MOTOR returns high.");
+            Check.True(controller.Drive0.MotorOn, "DF0 motor should keep its latched state until SEL0 is reasserted.");
 
             controller.ApplyCiaBPort(0x77, 0xFF);
-            Check.True(controller.Drive0.MotorOn, "DF0 motor should turn back on while the drive remains selected.");
+            Check.True(controller.Drive0.MotorOn, "DF0 motor should remain on while the drive remains selected.");
 
             controller.ApplyCiaBPort(0xFF, 0xFF);
             Check.True(!controller.Drive0.Selected, "DF0 should deselect when CIA-B SEL0 is high.");
             Check.True(controller.Drive0.MotorOn, "A deselected drive should keep its latched motor state.");
 
+            controller.ApplyCiaBPort(0xF7, 0xFF);
+            Check.True(controller.Drive0.Selected, "DF0 should select again when CIA-B SEL0 returns low.");
+            Check.True(!controller.Drive0.MotorOn, "DF0 motor should turn off when SEL0 is reasserted with MOTOR high.");
+
+            controller.ApplyCiaBPort(0xFF, 0xFF);
             controller.ApplyCiaBPort(0x7F, 0xFF);
             Check.True(!controller.Drive0.Selected, "DF0 should stay deselected while only MOTOR changes.");
-            Check.True(controller.Drive0.MotorOn, "A deselected drive should not latch MOTOR changes.");
+            Check.True(!controller.Drive0.MotorOn, "A deselected drive should not latch MOTOR changes.");
+
+            controller.ApplyCiaBPort(0x77, 0xFF);
+            Check.True(controller.Drive0.MotorOn, "DF0 motor should turn on when SEL0 is reasserted after MOTOR went low.");
         }
 
         /// <summary>
@@ -1841,15 +1928,38 @@ namespace AmigaEmulator.Tests
             controller.ApplyCiaBPort(0xFF, 0xFF);
             Check.Equal(0, controller.Drive0.Track, "Unselected DF0 must ignore shared STEP pulses.");
 
-            controller.ApplyCiaBPort(0x75, 0xFF);
             controller.ApplyCiaBPort(0x74, 0xFF);
+            Check.Equal(0, controller.Drive0.Track, "DF0 should wait until the low STEP pulse is released.");
             controller.ApplyCiaBPort(0x75, 0xFF);
             Check.Equal(1, controller.Drive0.Track, "DIR low should move DF0 one track inward.");
 
-            controller.ApplyCiaBPort(0x77, 0xFF);
             controller.ApplyCiaBPort(0x76, 0xFF);
+            Check.Equal(1, controller.Drive0.Track, "DF0 should not step at the start of the outward STEP pulse.");
             controller.ApplyCiaBPort(0x77, 0xFF);
             Check.Equal(0, controller.Drive0.Track, "DIR high should move DF0 one track outward.");
+        }
+
+        /// <summary>
+        /// Verifies that non-present external drives do not actively assert status lines.
+        /// </summary>
+        private static void TestAbsentExternalDriveStatusLines()
+        {
+            var controller = new FloppyController();
+
+            controller.ApplyCiaBPort(0xEF, 0xFF);
+            Check.True(controller.Drive1.Selected, "DF1 should be selected when CIA-B SEL1 is low.");
+            Check.Equal(FloppyController.CiaAStatusMask, controller.BuildCiaAStatusBits(), "Absent DF1 must leave disk status bits inactive.");
+
+            controller.ApplyCiaBPort(0xDF, 0xFF);
+            Check.True(controller.Drive2.Selected, "DF2 should be selected when CIA-B SEL2 is low.");
+            Check.Equal(FloppyController.CiaAStatusMask, controller.BuildCiaAStatusBits(), "Absent DF2 must leave disk status bits inactive.");
+
+            controller.ApplyCiaBPort(0x77, 0xFF);
+            Check.True(controller.Drive0.Selected, "DF0 should still be modeled as the built-in drive.");
+            Check.Equal(
+                FloppyController.CiaAStatusMask & ~FloppyController.CiaADiskChangeBit & ~FloppyController.CiaATrack0Bit,
+                controller.BuildCiaAStatusBits(),
+                "Empty DF0 should still assert disk-change and track-zero.");
         }
 
         /// <summary>
@@ -1911,6 +2021,7 @@ namespace AmigaEmulator.Tests
             {
                 controller.InsertDrive0(AdfImage.Load(tempPath), false);
                 controller.Drive0.ApplySelection(true, true);
+                WaitForDriveReady(controller.Drive0);
                 var chipWords = new ushort[] { 0x4489, 0xAAAA };
                 var paula = new Paula();
                 paula.AttachDisk(controller, null, address => chipWords[(address >> 1) & 1], delegate(CustomInterruptSource _) { }, () => 0x0210, () => 0);
@@ -1938,9 +2049,27 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Verifies that WORDSYNC starts disk DMA on the matching sync word instead of dropping it.
+        /// Verifies that stopping disk DMA clears stale DSKBYTR write-status bits.
         /// </summary>
-        private static void TestWordSyncReadDmaTransfersMatchingSyncWord()
+        private static void TestDiskStopClearsWriteStatus()
+        {
+            var paula = new Paula();
+            ushort status;
+
+            paula.NotifyCustomRegisterWordWrite(0x024, 0xC002);
+            paula.NotifyCustomRegisterWordWrite(0x024, 0xC002);
+            Check.True(paula.TryReadCustomRegisterWord(0x01A, out status), "Paula should expose DSKBYTR.");
+            Check.Equal(0x6000, status & 0x6000, "Active write DMA should set DSKBYTR DMA and write bits.");
+
+            paula.NotifyCustomRegisterWordWrite(0x024, 0x4000);
+            Check.True(paula.TryReadCustomRegisterWord(0x01A, out status), "Paula should expose DSKBYTR after DSKLEN stop.");
+            Check.Equal(0x0000, status & 0x6000, "Inactive DSKLEN stop must clear stale DMA/write status.");
+        }
+
+        /// <summary>
+        /// Verifies that WORDSYNC arms disk DMA on the first sync and transfers the following word.
+        /// </summary>
+        private static void TestWordSyncReadDmaStartsAfterMatchingSyncWord()
         {
             string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_wordsync_read_" + Guid.NewGuid().ToString("N") + ".adf");
             System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
@@ -1949,6 +2078,7 @@ namespace AmigaEmulator.Tests
                 var controller = new FloppyController();
                 controller.InsertDrive0(AdfImage.Load(tempPath), true);
                 controller.Drive0.ApplySelection(true, true);
+                WaitForDriveReady(controller.Drive0);
 
                 var captured = new List<ushort>();
                 var paula = new Paula();
@@ -1964,13 +2094,14 @@ namespace AmigaEmulator.Tests
                 paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
                 paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
 
-                for (int cycle = 0; cycle < 150000 && captured.Count == 0; cycle++)
+                for (int cycle = 0; cycle < 150000 && captured.Count < 2; cycle++)
                 {
                     paula.Tick(true, false);
                 }
 
-                Check.True(captured.Count > 0, "WORDSYNC read DMA should eventually transfer after the first track sync.");
-                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should include the matching sync word in memory.");
+                Check.True(captured.Count > 1, "WORDSYNC read DMA should eventually transfer after the first track sync.");
+                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should start with the paired sync word after the matched sync.");
+                Check.True(captured[1] != AdfMfmEncoder.SyncWord, "WORDSYNC read DMA must not transfer the already matched sync word twice.");
             }
             finally
             {
@@ -2005,6 +2136,7 @@ namespace AmigaEmulator.Tests
                 var drive = new FloppyDrive();
                 drive.Insert(image, false);
                 drive.ApplySelection(true, true);
+                WaitForDriveReady(drive);
                 for (int index = 0; index < words.Length; index++)
                 {
                     Check.True(drive.TryCaptureWrittenMfmWord(words[index]), "Writable selected drive should capture MFM write word " + index + ".");
@@ -2085,6 +2217,19 @@ namespace AmigaEmulator.Tests
             {
             }
         }
+
+        /// <summary>
+        /// Advances a standalone floppy drive until its motor has reached ready speed.
+        /// </summary>
+        private static void WaitForDriveReady(FloppyDrive drive)
+        {
+            for (int cycle = 0; cycle < 2_000_000 && !drive.Ready; cycle++)
+            {
+                drive.Tick();
+            }
+
+            Check.True(drive.Ready, "Selected drive should become ready after motor spin-up.");
+        }
     }
 
     /// <summary>
@@ -2117,6 +2262,11 @@ namespace AmigaEmulator.Tests
                 "2MB Chip RAM plus 8MB Fast RAM profile maps both writable regions",
                 "A500 memory expansion profiles and Zorro II Fast RAM map",
                 TestTwoMbChipEightMbFastRamProfile);
+            yield return new ChipTestCase(
+                "Integration",
+                "all menu RAM profiles expose their advertised memory regions",
+                "Amiga emulator RAM profile menu, Chip RAM, Slow RAM, and Fast RAM maps",
+                TestAllMenuRamProfilesExposeAdvertisedRegions);
             yield return new ChipTestCase(
                 "Integration",
                 "default frontend RAM profile exposes 1MB Chip RAM for OCS game loaders",
@@ -2205,6 +2355,44 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies all RAM profiles offered by the menu catalog against the emulator memory map.
+        /// </summary>
+        private static void TestAllMenuRamProfilesExposeAdvertisedRegions()
+        {
+            CheckRamProfile(AmigaRamProfile.Chip512K, AmigaModel.A500Pal);
+            CheckRamProfile(AmigaRamProfile.Chip512KSlow512K, AmigaModel.A500Pal512Slow512);
+            CheckRamProfile(AmigaRamProfile.Chip1Mb, AmigaModel.A500Pal1MbChip);
+            CheckRamProfile(AmigaRamProfile.Chip2Mb, AmigaModel.A500Pal2MbChip);
+            CheckRamProfile(AmigaRamProfile.Chip2MbFast8Mb, AmigaModel.A500Pal2MbChipFast8Mb);
+        }
+
+        /// <summary>
+        /// Checks one advertised RAM profile against the model and bus implementation.
+        /// </summary>
+        private static void CheckRamProfile(AmigaRamProfile profile, AmigaModel model)
+        {
+            AmigaRamProfileInfo info = AmigaOverlaySettingCatalog.GetRamProfileInfo(profile);
+            Check.Equal(model.ChipRamBytes, info.ChipRamBytes, "Menu Chip RAM label should match the model for " + profile + ".");
+            Check.Equal(model.SlowRamBytes, info.SlowRamBytes, "Menu Slow RAM label should match the model for " + profile + ".");
+            Check.Equal(model.FastRamBytes, info.FastRamBytes, "Menu Fast RAM label should match the model for " + profile + ".");
+
+            var bus = new AmigaBus(model, new CustomRegisterMap(), null, null, null);
+            bus.RomOverlayAtZero = false;
+            Check.Equal(AmigaAddressRegion.ChipRam, bus.GetRegion((uint)model.ChipRamBytes - 1u), "Final Chip RAM byte should be mapped for " + profile + ".");
+            if (model.SlowRamBytes > 0)
+            {
+                Check.Equal(AmigaAddressRegion.SlowRam, bus.GetRegion(MemoryMap.SlowRamStart), "Slow RAM base should be mapped for " + profile + ".");
+                Check.Equal(AmigaAddressRegion.SlowRam, bus.GetRegion(MemoryMap.SlowRamStart + (uint)model.SlowRamBytes - 1u), "Final Slow RAM byte should be mapped for " + profile + ".");
+            }
+
+            if (model.FastRamBytes > 0)
+            {
+                Check.Equal(AmigaAddressRegion.FastRam, bus.GetRegion(MemoryMap.FastRamStart), "Fast RAM base should be mapped for " + profile + ".");
+                Check.Equal(AmigaAddressRegion.FastRam, bus.GetRegion(MemoryMap.FastRamStart + (uint)model.FastRamBytes - 1u), "Final Fast RAM byte should be mapped for " + profile + ".");
+            }
+        }
+
+        /// <summary>
         /// Verifies that the default frontend profile gives OCS loaders the common 1MB Chip RAM map.
         /// </summary>
         private static void TestDefaultRamProfileIsOneMbChip()
@@ -2269,6 +2457,11 @@ namespace AmigaEmulator.Tests
                 "floppy CIA control lines are re-applied after loading a savestate",
                 "A500 CIA-B floppy select, motor, side, and CIA-A ready restore ordering",
                 TestFloppyControlLinesRefreshAfterLoad);
+            yield return new ChipTestCase(
+                "SaveState",
+                "mounted DF0 ADF metadata is reattached when loading a savestate",
+                "Savestate metadata media restore used by multi-disk trackloaders",
+                TestMountedAdfMetadataReattachesOnLoad);
             yield return new ChipTestCase(
                 "SaveState",
                 "flat savestates migrate into mounted-media subdirectories",
@@ -2433,6 +2626,7 @@ namespace AmigaEmulator.Tests
                     system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
                     system.Bus.WriteByte(0x00BFD300, 0xFF);
                     system.Bus.WriteByte(0x00BFD100, 0x73);
+                    system.RunChipCycles(2_000_000);
 
                     Check.True(system.Bus.FloppyController.Drive0.Selected, "DF0 should be selected before saving.");
                     Check.True(system.Bus.FloppyController.Drive0.MotorOn, "DF0 motor should be on before saving.");
@@ -2465,6 +2659,60 @@ namespace AmigaEmulator.Tests
                 try
                 {
                     System.IO.File.Delete(adfPath);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Verifies that SaveStateFile.Load reattaches host ADF media recorded in metadata.
+        /// </summary>
+        private static void TestMountedAdfMetadataReattachesOnLoad()
+        {
+            string adfPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-savestate-mounted-adf-" + Guid.NewGuid().ToString("N") + ".adf");
+            string savePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-savestate-mounted-adf-" + Guid.NewGuid().ToString("N") + ".amigasav");
+            System.IO.File.WriteAllBytes(adfPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                {
+                    system.Bus.FloppyController.Drive0.Step(7);
+                    SaveStateFile.Write(
+                        savePath,
+                        system,
+                        MountedMediaInfo.ForFloppy(0, System.IO.Path.GetFileName(adfPath), adfPath, true),
+                        AmigaKickstart.Auto,
+                        AmigaRamProfile.Chip512K,
+                        AmigaAccuracyProfile.Fast,
+                        Array.Empty<uint>(),
+                        0,
+                        0);
+                }
+
+                using (var restored = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+                {
+                    SaveStateFile.Load(savePath, restored);
+
+                    Check.True(restored.Bus.FloppyController.Drive0.HasDisk, "SaveStateFile.Load should reattach the metadata ADF to DF0.");
+                    Check.True(restored.Bus.FloppyController.Drive0.WriteProtected, "Restored DF0 media should keep metadata write-protection.");
+                    Check.Equal(7, restored.Bus.FloppyController.Drive0.Track, "Reattaching metadata media must not reset the saved drive track.");
+                }
+            }
+            finally
+            {
+                try
+                {
+                    System.IO.File.Delete(adfPath);
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    System.IO.File.Delete(savePath);
                 }
                 catch
                 {
