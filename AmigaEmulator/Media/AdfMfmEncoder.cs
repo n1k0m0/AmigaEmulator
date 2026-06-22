@@ -60,7 +60,7 @@ namespace AmigaEmulator.Core.Media
         /// <summary>
         /// Constant for Standard Track Bytes.
         /// </summary>
-        public const int StandardTrackBytes = 0x332C;
+        public const int StandardTrackBytes = 0x3200;
         /// <summary>
         /// Constant for Standard Track Words.
         /// </summary>

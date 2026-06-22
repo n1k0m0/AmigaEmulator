@@ -72,7 +72,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private const uint Aud3End = 0x0DE;
         // PAL DD disks rotate once per ~709379 chip cycles. A standard ADF
-        // track contains 0x1996 MFM words, so one word arrives every ~108 cycles.
+        // track contains 0x1900 MFM words, so one word arrives every ~108 cycles.
         private const int DefaultDiskWordPeriodChipCycles = 108;
         // Paula can buffer a short burst between disk slots, but the physical
         // track keeps rotating even when software or DMA falls behind.

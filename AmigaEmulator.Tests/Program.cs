@@ -1758,6 +1758,11 @@ namespace AmigaEmulator.Tests
                 TestGeneratedMfmTrackSync);
             yield return new ChipTestCase(
                 "Paula/Disk",
+                "DSKLEN 0x1900 track read can capture every AmigaDOS sector",
+                "Custom trackloaders depend on a full ADF MFM revolution fitting in a 0x1900-word read",
+                TestFullTrackReadCapturesAllSectors);
+            yield return new ChipTestCase(
+                "Paula/Disk",
                 "disk write DMA transfers one chip-memory word per disk DMA slot",
                 "Amiga HRM DSKLEN write mode and Paula disk DMA timing",
                 TestDiskWriteDmaTiming);
@@ -1924,6 +1929,96 @@ namespace AmigaEmulator.Tests
 
             controller.ApplyCiaBPort(0x77, 0xFF);
             Check.True(controller.Drive0.MotorOn, "DF0 motor should turn on when SEL0 is reasserted after MOTOR went low.");
+        }
+
+        /// <summary>
+        /// Verifies that one 0x1900-word custom-loader read covers every sector after WORDSYNC.
+        /// </summary>
+        private static void TestFullTrackReadCapturesAllSectors()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_mfm_fulltrack_" + Guid.NewGuid().ToString("N") + ".adf");
+            byte[] bytes = new byte[AdfImage.StandardSize];
+            for (int index = 0; index < bytes.Length; index++)
+            {
+                bytes[index] = (byte)((index * 37) + (index >> 8));
+            }
+
+            System.IO.File.WriteAllBytes(tempPath, bytes);
+            try
+            {
+                AdfImage image = AdfImage.Load(tempPath);
+                AdfTrackStream track = image.BuildTrackStream(0, 0);
+                Check.Equal(0x1900, track.WordCount, "Generated ADF MFM tracks must fit a standard 0x1900-word trackloader read.");
+
+                var pairedSyncStarts = new List<int>();
+                for (int index = 1; index < track.WordCount; index++)
+                {
+                    if (track.ReadWord(index - 1) == AdfMfmEncoder.SyncWord &&
+                        track.ReadWord(index) == AdfMfmEncoder.SyncWord)
+                    {
+                        pairedSyncStarts.Add(index - 1);
+                        index++;
+                    }
+                }
+
+                Check.Equal(AdfImage.SectorsPerTrack, pairedSyncStarts.Count, "Generated track should expose all sector sync pairs.");
+                int startWord = pairedSyncStarts[4] + 1;
+                ushort[] captured = new ushort[0x1900];
+                for (int index = 0; index < captured.Length; index++)
+                {
+                    captured[index] = track.ReadWord((startWord + index) % track.WordCount);
+                }
+
+                var sectors = new HashSet<int>();
+                for (int index = 0; index + 540 < captured.Length; index++)
+                {
+                    if (captured[index] != AdfMfmEncoder.SyncWord ||
+                        captured[index + 1] == AdfMfmEncoder.SyncWord)
+                    {
+                        continue;
+                    }
+
+                    uint header = AdfMfmEncoder.DecodeOddEvenLong(
+                        ReadMfmLong(captured, index + 1),
+                        ReadMfmLong(captured, index + 3));
+                    if ((byte)(header >> 24) != 0xFF)
+                    {
+                        continue;
+                    }
+
+                    int sector = (byte)(header >> 8);
+                    if (sector < 0 || sector >= AdfImage.SectorsPerTrack)
+                    {
+                        continue;
+                    }
+
+                    uint checksum = AdfMfmEncoder.DecodeOddEvenLong(
+                        ReadMfmLong(captured, index + 25),
+                        ReadMfmLong(captured, index + 27));
+                    for (int longIndex = 0; longIndex < 128; longIndex++)
+                    {
+                        checksum ^= ReadMfmLong(captured, index + 29 + (longIndex * 2));
+                        checksum ^= ReadMfmLong(captured, index + 285 + (longIndex * 2));
+                    }
+
+                    Check.Equal(0u, checksum & 0x55555555u, "Captured sector data checksum should match AmigaDOS MFM data.");
+                    sectors.Add(sector);
+                }
+
+                Check.Equal(AdfImage.SectorsPerTrack, sectors.Count, "A 0x1900-word read after WORDSYNC should capture all 11 sectors.");
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
+            }
+        }
+
+        /// <summary>
+        /// Reads one big-endian MFM long from two captured 16-bit words.
+        /// </summary>
+        private static uint ReadMfmLong(IList<ushort> words, int wordOffset)
+        {
+            return ((uint)words[wordOffset] << 16) | words[wordOffset + 1];
         }
 
         /// <summary>
