@@ -58,6 +58,7 @@ namespace AmigaEmulator.Core.Cpu
             failures += RunSubroutineAndFrameTest(log);
             failures += RunExceptionEntryTest(log);
             failures += RunAddressErrorExceptionTest(log);
+            failures += RunTraceExceptionTest(log);
             failures += RunStopInterruptWakeTest(log);
             failures += RunMaskedInterruptLineLatchTest(log);
             failures += RunRteUserModeStackSwitchTest(log);
@@ -70,6 +71,7 @@ namespace AmigaEmulator.Core.Cpu
             failures += RunTrapInstructionTest(log);
             failures += RunTickDeferredWriteSideEffectTest(log);
             failures += RunTickDeferredReadSideEffectTest(log);
+            failures += RunTickDeferredCiaIcrPreservesLateInterruptBitsTest(log);
 
             log.AppendLine(failures == 0 ? "OK" : "FAILURES=" + failures);
             return failures;
@@ -842,6 +844,35 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
+        /// Runs the Trace Exception Test routine.
+        /// </summary>
+        private static int RunTraceExceptionTest(StringBuilder log)
+        {
+            var bus = CreateBus();
+            WriteResetVectors(bus, 0x1000, 0x0100);
+            bus.WriteLong(9 * 4, 0x00000300);
+            WriteProgram(
+                bus,
+                0x0100,
+                0x007C, 0x8000, // ORI #$8000,SR enables trace for the following instruction.
+                0x4E71,         // NOP, then trace exception should vector.
+                0x4E71);        // Would execute next if trace did not fire.
+
+            M68kCpu cpu = CreateCpu(bus);
+            cpu.Step();
+            bool deferred = cpu.PC == 0x0104 && (cpu.SR & 0x8000) != 0;
+            cpu.Step();
+
+            int failures = 0;
+            failures += Expect(log, "Trace waits until following instruction", deferred, cpu.GetDebugInfo());
+            failures += Expect(log, "Trace vector PC", cpu.PC == 0x0300, cpu.GetDebugInfo());
+            failures += Expect(log, "Trace stacked PC", bus.ReadLong(cpu.A7 + 2) == 0x0106, "stackPC=" + bus.ReadLong(cpu.A7 + 2).ToString("X8"));
+            failures += Expect(log, "Trace stacked SR keeps T", (bus.ReadWord(cpu.A7) & 0x8000) != 0, "stackSR=" + bus.ReadWord(cpu.A7).ToString("X4"));
+            failures += Expect(log, "Trace exception clears live T", (cpu.SR & 0x8000) == 0, cpu.GetDebugInfo());
+            return failures;
+        }
+
+        /// <summary>
         /// Runs the Stop Interrupt Wake Test routine.
         /// </summary>
         private static int RunStopInterruptWakeTest(StringBuilder log)
@@ -1217,6 +1248,35 @@ namespace AmigaEmulator.Core.Cpu
             failures += Expect(log, "deferred read waits until operand slot", ciaA.InterruptRequest != 0, "ICR=" + ciaA.InterruptRequest.ToString("X2"));
             cpu.Tick(true);
             failures += Expect(log, "deferred read clears ICR on operand slot", ciaA.InterruptRequest == 0, "ICR=" + ciaA.InterruptRequest.ToString("X2"));
+            return failures;
+        }
+
+        /// <summary>
+        /// Runs a Tick-based regression test for CIA ICR bits raised after a deferred read is sampled.
+        /// </summary>
+        private static int RunTickDeferredCiaIcrPreservesLateInterruptBitsTest(StringBuilder log)
+        {
+            var ciaA = new Cia8520("CIAA");
+            var bus = new AmigaBus(AmigaModel.A500Pal, new CustomRegisterMap(), null, ciaA, null);
+            bus.RomOverlayAtZero = false;
+            WriteResetVectors(bus, 0x1000, 0x0100);
+            WriteProgram(
+                bus,
+                0x0100,
+                0x1039, 0x00BF, 0xED01, // MOVE.B $00BFED01,D0 ; CIAA ICR
+                0x4E71);
+
+            ciaA.RequestInterrupt(0x10);
+            M68kCpu cpu = CreateCpu(bus);
+            cpu.Tick(true);
+            ciaA.RequestInterrupt(0x01);
+
+            int failures = 0;
+            cpu.Tick(true);
+            cpu.Tick(true);
+            failures += Expect(log, "deferred CIA ICR read preserves late interrupt before operand slot", ciaA.InterruptRequest == 0x11, "ICR=" + ciaA.InterruptRequest.ToString("X2"));
+            cpu.Tick(true);
+            failures += Expect(log, "deferred CIA ICR read clears only sampled bits", ciaA.InterruptRequest == 0x01, "ICR=" + ciaA.InterruptRequest.ToString("X2"));
             return failures;
         }
 

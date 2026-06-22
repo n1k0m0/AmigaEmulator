@@ -1120,7 +1120,15 @@ namespace AmigaEmulator.Core.CustomChips
             _wordEqual = _latestDiskWord == _diskSync;
             _diskByteReady = true;
             _nextDiskByteIsLow = false;
-            if (_diskDmaActive && !_diskWriteMode)
+            bool diskReadDmaEnabled = _diskDmaActive && !_diskWriteMode && IsDiskDmaActuallyEnabled();
+            bool liveWordSyncMatch = diskReadDmaEnabled && _waitingForDiskSync && _wordEqual;
+            if (liveWordSyncMatch)
+            {
+                _waitingForDiskSync = false;
+                _diskSyncMatchedForDma = true;
+                _diskReadQueue.Clear();
+            }
+            else if (diskReadDmaEnabled)
             {
                 if (_diskReadQueue.Count < DiskReadQueueCapacity)
                 {
@@ -1130,6 +1138,10 @@ namespace AmigaEmulator.Core.CustomChips
                 {
                     _diskReadQueueOverflows++;
                 }
+            }
+            else if (_diskDmaActive && !_diskWriteMode)
+            {
+                _diskReadQueue.Clear();
             }
 
             if (_wordEqual && _requestInterrupt != null)

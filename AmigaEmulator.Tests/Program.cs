@@ -1773,6 +1773,16 @@ namespace AmigaEmulator.Tests
                 TestWordSyncReadDmaStartsAfterMatchingSyncWord);
             yield return new ChipTestCase(
                 "Paula/Disk",
+                "WORDSYNC live stream match survives a full DMA queue",
+                "Paula DSKSYNC compares the live disk stream, not only queued DMA words",
+                TestWordSyncLiveMatchSurvivesFullQueue);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "WORDSYNC waits for enabled disk DMA slots",
+                "Paula disk WORDSYNC must not arm read DMA while DMACON.DMAEN or DSKEN is disabled",
+                TestWordSyncWaitsForEnabledDiskDmaSlots);
+            yield return new ChipTestCase(
+                "Paula/Disk",
                 "captured MFM write sectors decode back into ADF sectors",
                 "AmigaDOS MFM sector layout; Paula disk write path",
                 TestCapturedMfmWriteSectorDecodesToAdf);
@@ -2102,6 +2112,106 @@ namespace AmigaEmulator.Tests
                 Check.True(captured.Count > 1, "WORDSYNC read DMA should eventually transfer after the first track sync.");
                 Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should start with the paired sync word after the matched sync.");
                 Check.True(captured[1] != AdfMfmEncoder.SyncWord, "WORDSYNC read DMA must not transfer the already matched sync word twice.");
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that WORDSYNC detects the live stream even when no DMA slot has drained the short read queue.
+        /// </summary>
+        private static void TestWordSyncLiveMatchSurvivesFullQueue()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_wordsync_full_queue_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(tempPath), true);
+                controller.Drive0.ApplySelection(true, true);
+                WaitForDriveReady(controller.Drive0);
+
+                var captured = new List<ushort>();
+                var paula = new Paula();
+                paula.AttachDisk(
+                    controller,
+                    (address, word) => captured.Add(word),
+                    null,
+                    delegate(CustomInterruptSource _) { },
+                    () => 0x0210,
+                    () => 0x0400);
+                paula.NotifyCustomRegisterWordWrite(0x020, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x022, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
+
+                for (int cycle = 0; cycle < 800000; cycle++)
+                {
+                    paula.Tick(false, false);
+                }
+
+                Check.Equal(0, captured.Count, "The setup phase should not transfer without disk DMA slots.");
+                for (int cycle = 0; cycle < 20000 && captured.Count < 2; cycle++)
+                {
+                    paula.Tick(true, false);
+                }
+
+                Check.True(captured.Count > 0, "WORDSYNC should have armed DMA from the live stream despite a previously full queue.");
+                Check.True(captured[0] != AdfMfmEncoder.GapWord, "DMA should resume with post-sync stream data, not stale pre-sync gap words.");
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that an active DSKLEN block does not consume WORDSYNC while disk DMA is disabled.
+        /// </summary>
+        private static void TestWordSyncWaitsForEnabledDiskDmaSlots()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_wordsync_dmacon_gate_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(tempPath), true);
+                controller.Drive0.ApplySelection(true, true);
+                WaitForDriveReady(controller.Drive0);
+
+                ushort dmacon = 0x0000;
+                var captured = new List<ushort>();
+                var paula = new Paula();
+                paula.AttachDisk(
+                    controller,
+                    (address, word) => captured.Add(word),
+                    null,
+                    delegate(CustomInterruptSource _) { },
+                    () => dmacon,
+                    () => 0x0400);
+                paula.NotifyCustomRegisterWordWrite(0x020, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x022, 0x0000);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
+                paula.NotifyCustomRegisterWordWrite(0x024, 0x8004);
+
+                for (int cycle = 0; cycle < 800000; cycle++)
+                {
+                    paula.Tick(false, false);
+                }
+
+                Check.Equal(0, captured.Count, "Disabled disk DMA must not transfer any queued words.");
+                Check.True(!paula.GetDiskDebugInfo().Contains("wordSyncMatched:True"), "Disabled disk DMA must not consume the WORDSYNC match.");
+
+                dmacon = 0x0210;
+                for (int cycle = 0; cycle < 800000 && captured.Count < 2; cycle++)
+                {
+                    paula.Tick(true, false);
+                }
+
+                Check.True(captured.Count > 0, "Enabling disk DMA should let the next WORDSYNC start the block.");
+                Check.True(captured[0] != AdfMfmEncoder.GapWord, "DMA should start with post-sync data rather than stale disabled-DMA gap words.");
             }
             finally
             {

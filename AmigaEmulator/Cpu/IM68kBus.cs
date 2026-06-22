@@ -46,6 +46,14 @@ namespace AmigaEmulator.Core.Cpu
     }
 
     /// <summary>
+    /// Lets the CPU retire a deferred CIA ICR read without clearing interrupt bits that arrived after the sampled value.
+    /// </summary>
+    public interface IM68kDeferredCiaBus : IM68kPeekableBus
+    {
+        bool RetireCiaIcrRead(uint address, int size, uint sampledValue);
+    }
+
+    /// <summary>
     /// Allows the CPU to ask whether a pending bus operation is contended by custom-chip DMA.
     /// </summary>
     public interface IM68kBusArbitration

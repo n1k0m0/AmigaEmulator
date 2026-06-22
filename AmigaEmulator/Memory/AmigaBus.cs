@@ -27,7 +27,7 @@ namespace AmigaEmulator.Core.Memory
     /// <summary>
     /// Routes 68000 memory accesses between Chip RAM, Slow RAM, CIA chips, custom registers, and Kickstart ROM.
     /// </summary>
-    public sealed class AmigaBus : IM68kPeekableBus, IM68kBusArbitration, IM68kResetVectorProvider
+    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider
     {
         /// <summary>
         /// Stores chip RAM.
@@ -512,6 +512,38 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
+        /// Clears only the CIA ICR bits that were visible to a previously sampled deferred CPU read.
+        /// </summary>
+        public bool RetireCiaIcrRead(uint address, int size, uint sampledValue)
+        {
+            uint normalized = MemoryMap.Normalize(address);
+            if (size == 1)
+            {
+                bool retired = RetireCiaIcrByteRead(normalized, (byte)sampledValue);
+                if (retired)
+                {
+                    NotifyReadObserved(normalized, 1, sampledValue & 0xFFu, GetRegion(normalized));
+                }
+
+                return retired;
+            }
+
+            if (size == 2)
+            {
+                bool high = RetireCiaIcrByteRead(normalized, (byte)(sampledValue >> 8));
+                bool low = RetireCiaIcrByteRead(normalized + 1, (byte)sampledValue);
+                if (high || low)
+                {
+                    NotifyReadObserved(normalized, 2, sampledValue & 0xFFFFu, GetRegion(normalized));
+                }
+
+                return high || low;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Writes one byte to the normalized Amiga address map and dispatches device side effects.
         /// </summary>
         public void WriteByte(uint address, byte value)
@@ -701,6 +733,33 @@ namespace AmigaEmulator.Core.Memory
         private static bool IsCiaBByteLane(uint address)
         {
             return (address & 1u) == 0;
+        }
+
+        /// <summary>
+        /// Clears sampled ICR bits for the CIA byte lane addressed by one CPU bus byte.
+        /// </summary>
+        private bool RetireCiaIcrByteRead(uint address, byte sampledValue)
+        {
+            uint normalized = MemoryMap.Normalize(address);
+            if (((normalized >> 8) & 0x0Fu) != 13u)
+            {
+                return false;
+            }
+
+            AmigaAddressRegion region = GetRegion(normalized);
+            if (region == AmigaAddressRegion.CiaA && IsCiaAByteLane(normalized) && _ciaA != null)
+            {
+                _ciaA.ClearInterruptRequest(sampledValue);
+                return true;
+            }
+
+            if (region == AmigaAddressRegion.CiaB && IsCiaBByteLane(normalized) && _ciaB != null)
+            {
+                _ciaB.ClearInterruptRequest(sampledValue);
+                return true;
+            }
+
+            return false;
         }
     }
 }

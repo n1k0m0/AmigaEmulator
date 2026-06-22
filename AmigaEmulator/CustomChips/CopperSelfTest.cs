@@ -61,6 +61,7 @@ namespace AmigaEmulator.Core.CustomChips
             int failures = 0;
             failures += RunCase(log, "OCS protected register ranges", TestProtectedRegisterRanges);
             failures += RunCase(log, "BFD waits for blitter when clear", TestBfdWaitsForBlitterWhenClear);
+            failures += RunCase(log, "Masked frame-end WAIT stops copper list", TestMaskedFrameEndWaitStopsCopperList);
             failures += RunCase(log, "COPJMP2 accepts low chip RAM targets", TestCopjmp2AcceptsLowChipRamTarget);
             failures += RunCase(log, "COPJMP1 read strobes copper list 1", TestCopjmp1ReadStrobesCopperList1);
             log.AppendLine(failures == 0 ? "Copper self-test OK" : "Copper self-test FAILED: " + failures);
@@ -149,6 +150,27 @@ namespace AmigaEmulator.Core.CustomChips
             harness.Copper.Tick(true, 0, 0);
             harness.Copper.Tick(true, 0, 0);
             return harness.Copper.ProgramCounter == 0x0204;
+        }
+
+        /// <summary>
+        /// Runs Test Masked Frame End Wait Stops Copper List.
+        /// </summary>
+        private static bool TestMaskedFrameEndWaitStopsCopperList()
+        {
+            var harness = new Harness();
+            harness.WriteCopperInstruction(0x0300, 0xFFFF, 0xFF7E);
+            harness.WriteCopperInstruction(0x0304, 0x0180, 0x0F00);
+            harness.Copper.LoadList(0x0300);
+
+            harness.Copper.Tick(true, 0x7E, 0xFF);
+            harness.Copper.Tick(true, 0x7E, 0xFF);
+            for (int i = 0; i < 1024; i++)
+            {
+                harness.Copper.Tick(true, i & 0xFE, i % 312);
+            }
+
+            return harness.Copper.ProgramCounter == 0x0300
+                && harness.Registers.ReadWord(Color00) == 0;
         }
 
         /// <summary>

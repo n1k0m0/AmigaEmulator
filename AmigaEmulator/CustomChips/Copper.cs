@@ -469,11 +469,14 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Returns whether Frame End Wait is true.
+        /// Returns whether the WAIT instruction is a Copper end-of-list sentinel.
         /// </summary>
         private static bool IsFrameEndWait(ushort instruction, ushort mask)
         {
-            return mask == 0xFFFE && instruction == 0xFFFF;
+            return instruction == 0xFFFF
+                && (mask & 0x0001) == 0
+                && (mask & 0xFF00) == 0xFF00
+                && (instruction & 0x00FE) == 0x00FE;
         }
 
         /// <summary>

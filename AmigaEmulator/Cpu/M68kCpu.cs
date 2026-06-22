@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using AmigaEmulator.Core.Memory;
 using AmigaEmulator.Core.SaveStates;
 
 namespace AmigaEmulator.Core.Cpu
@@ -72,6 +73,10 @@ namespace AmigaEmulator.Core.Cpu
         /// Constant for Flag X.
         /// </summary>
         private const ushort FlagX = 0x0010;
+        /// <summary>
+        /// Constant for Flag T.
+        /// </summary>
+        private const ushort FlagT = 0x8000;
         /// <summary>
         /// Constant for Flag S.
         /// </summary>
@@ -165,6 +170,10 @@ namespace AmigaEmulator.Core.Cpu
         /// Tracks whether write side effects should be delayed until their scheduled bus micro-operation retires.
         /// </summary>
         private bool _deferBusSideEffects;
+        /// <summary>
+        /// Tracks whether the instruction being executed has already taken an exception.
+        /// </summary>
+        private bool _exceptionEnteredDuringInstruction;
 
         /// <summary>
         /// Stores Ea Location data used by the emulator.
@@ -372,6 +381,7 @@ namespace AmigaEmulator.Core.Cpu
             _currentReadModifyWriteMicroOps = 0;
             _pendingBusOperations.Clear();
             _deferBusSideEffects = false;
+            _exceptionEnteredDuringInstruction = false;
             _lastInstructionCycles = 0;
             _lastInstruction = "RESET";
             _currentInstructionAddress = initialProgramCounter;
@@ -487,6 +497,8 @@ namespace AmigaEmulator.Core.Cpu
             _opcodeFetchInProgress = false;
             _readModifyWriteInProgress = false;
             _lastReadLocationValid = false;
+            _exceptionEnteredDuringInstruction = false;
+            bool traceWasEnabled = (srBefore & FlagT) != 0;
 
             if (TryEnterPendingInterrupt())
             {
@@ -512,6 +524,14 @@ namespace AmigaEmulator.Core.Cpu
                 _opcodeFetchInProgress = false;
                 _state.CurrentOpcode = opcode;
                 instruction = ExecuteOpcode(opcode);
+                if (traceWasEnabled &&
+                    !_exceptionEnteredDuringInstruction &&
+                    _state.ExecutionState != M68kExecutionState.Stopped)
+                {
+                    EnterException(9, 0);
+                    instruction += " + TRACE";
+                }
+
                 _lastInstruction = instruction;
                 _state.ExecutionState = _state.ExecutionState == M68kExecutionState.Stopped
                     ? M68kExecutionState.Stopped
@@ -2742,12 +2762,14 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private byte ReadByte(uint address)
         {
-            RecordBusMicroOps(M68kTraceAccessType.Read, address, 1, 0, false);
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
-                return peekableBus.PeekByte(address & AddressMask);
+                byte value = peekableBus.PeekByte(address & AddressMask);
+                RecordBusMicroOps(M68kTraceAccessType.Read, address, 1, value, false, true);
+                return value;
             }
 
+            RecordBusMicroOps(M68kTraceAccessType.Read, address, 1, 0, false, true);
             return _bus.ReadByte(address & AddressMask);
         }
 
@@ -2757,12 +2779,15 @@ namespace AmigaEmulator.Core.Cpu
         private ushort ReadWord(uint address)
         {
             CheckAlignedAccess(address, 2, false);
-            RecordBusMicroOps(_opcodeFetchInProgress ? M68kTraceAccessType.OpcodeFetch : M68kTraceAccessType.Read, address, 2, 0, false);
+            M68kTraceAccessType accessType = _opcodeFetchInProgress ? M68kTraceAccessType.OpcodeFetch : M68kTraceAccessType.Read;
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
-                return peekableBus.PeekWord(address & AddressMask);
+                ushort value = peekableBus.PeekWord(address & AddressMask);
+                RecordBusMicroOps(accessType, address, 2, value, false, true);
+                return value;
             }
 
+            RecordBusMicroOps(accessType, address, 2, 0, false, true);
             return _bus.ReadWord(address & AddressMask);
         }
 
@@ -2772,12 +2797,14 @@ namespace AmigaEmulator.Core.Cpu
         private uint ReadLong(uint address)
         {
             CheckAlignedAccess(address, 4, false);
-            RecordBusMicroOps(M68kTraceAccessType.Read, address, 4, 0, false);
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
-                return peekableBus.PeekLong(address & AddressMask);
+                uint value = peekableBus.PeekLong(address & AddressMask);
+                RecordBusMicroOps(M68kTraceAccessType.Read, address, 4, value, false, true);
+                return value;
             }
 
+            RecordBusMicroOps(M68kTraceAccessType.Read, address, 4, 0, false, true);
             return _bus.ReadLong(address & AddressMask);
         }
 
@@ -2807,7 +2834,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private void WriteByte(uint address, byte value)
         {
-            RecordBusMicroOps(M68kTraceAccessType.Write, address, 1, value, true);
+            RecordBusMicroOps(M68kTraceAccessType.Write, address, 1, value, true, true);
             if (_deferBusSideEffects)
             {
                 return;
@@ -2822,7 +2849,7 @@ namespace AmigaEmulator.Core.Cpu
         private void WriteWord(uint address, ushort value)
         {
             CheckAlignedAccess(address, 2, true);
-            RecordBusMicroOps(M68kTraceAccessType.Write, address, 2, value, true);
+            RecordBusMicroOps(M68kTraceAccessType.Write, address, 2, value, true, true);
             if (_deferBusSideEffects)
             {
                 return;
@@ -2837,7 +2864,7 @@ namespace AmigaEmulator.Core.Cpu
         private void WriteLong(uint address, uint value)
         {
             CheckAlignedAccess(address, 4, true);
-            RecordBusMicroOps(M68kTraceAccessType.Write, address, 4, value, true);
+            RecordBusMicroOps(M68kTraceAccessType.Write, address, 4, value, true, true);
             if (_deferBusSideEffects)
             {
                 return;
@@ -2849,7 +2876,7 @@ namespace AmigaEmulator.Core.Cpu
         /// <summary>
         /// Records how many 68000 bus micro-operations are needed for one logical access.
         /// </summary>
-        private void RecordBusMicroOps(M68kTraceAccessType accessType, uint address, int size, uint value, bool write)
+        private void RecordBusMicroOps(M68kTraceAccessType accessType, uint address, int size, uint value, bool write, bool queueDeferredSideEffect)
         {
             int microOps = size >= 4 ? 2 : 1;
             _currentInstructionBusMicroOps += microOps;
@@ -2870,10 +2897,38 @@ namespace AmigaEmulator.Core.Cpu
                 _currentOperandReadMicroOps += microOps;
             }
 
-            if (_deferBusSideEffects)
+            if (_deferBusSideEffects && queueDeferredSideEffect)
             {
                 EnqueueBusOperation(accessType, address, size, value, write);
             }
+        }
+
+        /// <summary>
+        /// Returns whether a CPU read targets the CIA interrupt-control register, which clears on read.
+        /// </summary>
+        private static bool IsCiaIcrRead(uint address, int size)
+        {
+            uint normalized = address & AddressMask;
+            if (size > 1)
+            {
+                for (int offset = 0; offset < size; offset++)
+                {
+                    if (IsCiaIcrRead(normalized + (uint)offset, 1))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            bool ciaB = normalized >= MemoryMap.CiaBStart &&
+                normalized <= MemoryMap.CiaBEnd &&
+                (normalized & 1u) == 0;
+            bool ciaA = normalized >= MemoryMap.CiaAStart &&
+                normalized <= MemoryMap.CiaAEnd &&
+                (normalized & 1u) != 0;
+            return (ciaA || ciaB) && (((normalized >> 8) & 0x0Fu) == 13u);
         }
 
         /// <summary>
@@ -2926,6 +2981,12 @@ namespace AmigaEmulator.Core.Cpu
             PendingBusOperation operation = _pendingBusOperations.Dequeue();
             if (!operation.Write)
             {
+                if (IsCiaIcrRead(operation.Address, operation.Size) && _bus is IM68kDeferredCiaBus deferredCiaBus)
+                {
+                    deferredCiaBus.RetireCiaIcrRead(operation.Address, operation.Size, operation.Value);
+                    return;
+                }
+
                 if (operation.Size == 1)
                 {
                     _bus.ReadByte(operation.Address);
@@ -3068,7 +3129,7 @@ namespace AmigaEmulator.Core.Cpu
         private void PushExceptionWordUnchecked(ushort value)
         {
             SetA(7, _state.A[7] - 2);
-            RecordBusMicroOps(M68kTraceAccessType.Write, _state.A[7], 2, value, true);
+            RecordBusMicroOps(M68kTraceAccessType.Write, _state.A[7], 2, value, true, true);
             if (_deferBusSideEffects)
             {
                 return;
@@ -3083,7 +3144,7 @@ namespace AmigaEmulator.Core.Cpu
         private void PushExceptionLongUnchecked(uint value)
         {
             SetA(7, _state.A[7] - 4);
-            RecordBusMicroOps(M68kTraceAccessType.Write, _state.A[7], 4, value, true);
+            RecordBusMicroOps(M68kTraceAccessType.Write, _state.A[7], 4, value, true, true);
             if (_deferBusSideEffects)
             {
                 return;
@@ -3147,9 +3208,10 @@ namespace AmigaEmulator.Core.Cpu
             SetSupervisor(true);
             PushLong(stackedPc & AddressMask);
             PushWord(oldSr);
-            ushort newSr = (ushort)((_state.SR & unchecked((ushort)~InterruptMask)) | FlagS | interruptMask);
+            ushort newSr = (ushort)((_state.SR & unchecked((ushort)~(FlagT | InterruptMask))) | FlagS | interruptMask);
             SetStatusRegister(newSr);
             uint targetPc = ReadLong((uint)(vectorNumber * 4)) & AddressMask;
+            _exceptionEnteredDuringInstruction = true;
             Action<int, uint, ushort, uint, ushort, uint> handler = ExceptionEntered;
             if (handler != null)
             {
@@ -3176,9 +3238,10 @@ namespace AmigaEmulator.Core.Cpu
             PushExceptionWordUnchecked(instruction);
             PushExceptionLongUnchecked(stackedPc);
             PushExceptionWordUnchecked(oldSr);
-            ushort newSr = (ushort)((_state.SR & unchecked((ushort)~InterruptMask)) | FlagS | (_state.SR & InterruptMask));
+            ushort newSr = (ushort)((_state.SR & unchecked((ushort)~(FlagT | InterruptMask))) | FlagS | (_state.SR & InterruptMask));
             SetStatusRegister(newSr);
             uint targetPc = ReadLong(3u * 4u) & AddressMask;
+            _exceptionEnteredDuringInstruction = true;
             Action<int, uint, ushort, uint, ushort, uint> handler = ExceptionEntered;
             if (handler != null)
             {

@@ -489,6 +489,25 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
+        /// Clears selected latched ICR request bits after a delayed CPU read retires.
+        /// </summary>
+        public void ClearInterruptRequest(byte mask)
+        {
+            byte cleared = (byte)(mask & 0x1F);
+            if (cleared == 0)
+            {
+                return;
+            }
+
+            byte oldIcr = BuildIcrValue();
+            _interruptRequest = (byte)(_interruptRequest & ~cleared);
+            if (BuildIcrValue() != oldIcr)
+            {
+                RaiseInterruptChanged();
+            }
+        }
+
+        /// <summary>
         /// Loads Serial Input Byte into emulator state.
         /// </summary>
         public void LoadSerialInputByte(byte value)
