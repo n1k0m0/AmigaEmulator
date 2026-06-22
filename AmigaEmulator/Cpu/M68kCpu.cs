@@ -174,6 +174,18 @@ namespace AmigaEmulator.Core.Cpu
         /// Tracks whether the instruction being executed has already taken an exception.
         /// </summary>
         private bool _exceptionEnteredDuringInstruction;
+        /// <summary>
+        /// Stores whether the sequential instruction prefetch word is valid.
+        /// </summary>
+        private bool _prefetchValid;
+        /// <summary>
+        /// Stores the bus address of the prefetched instruction word.
+        /// </summary>
+        private uint _prefetchAddress;
+        /// <summary>
+        /// Stores the prefetched instruction word.
+        /// </summary>
+        private ushort _prefetchWord;
 
         /// <summary>
         /// Stores Ea Location data used by the emulator.
@@ -382,6 +394,9 @@ namespace AmigaEmulator.Core.Cpu
             _pendingBusOperations.Clear();
             _deferBusSideEffects = false;
             _exceptionEnteredDuringInstruction = false;
+            _prefetchValid = false;
+            _prefetchAddress = 0;
+            _prefetchWord = 0;
             _lastInstructionCycles = 0;
             _lastInstruction = "RESET";
             _currentInstructionAddress = initialProgramCounter;
@@ -439,7 +454,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         public void SetProgramCounter(uint pc)
         {
-            _state.PC = pc & AddressMask;
+            SetProgramCounterInternal(pc);
         }
 
         /// <summary>
@@ -1142,7 +1157,7 @@ namespace AmigaEmulator.Core.Cpu
                     ExecuteRte();
                     return "RTE";
                 case 0x4E75:
-                    _state.PC = PopLong() & AddressMask;
+                    SetProgramCounterInternal(PopLong());
                     return "RTS";
                 case 0x4E76:
                     if ((_state.SR & FlagV) != 0)
@@ -1165,7 +1180,7 @@ namespace AmigaEmulator.Core.Cpu
                     return "ILLEGAL JMP";
                 }
 
-                _state.PC = GetEffectiveAddress(mode, register, 4, true) & AddressMask;
+                SetProgramCounterInternal(GetEffectiveAddress(mode, register, 4, true));
                 return "JMP " + FormatEa(mode, register, 4);
             }
 
@@ -1181,7 +1196,7 @@ namespace AmigaEmulator.Core.Cpu
 
                 uint target = GetEffectiveAddress(mode, register, 4, true);
                 PushLong(_state.PC);
-                _state.PC = target & AddressMask;
+                SetProgramCounterInternal(target);
                 return "JSR " + FormatEa(mode, register, 4);
             }
 
@@ -1245,13 +1260,13 @@ namespace AmigaEmulator.Core.Cpu
             if (condition == 1)
             {
                 PushLong(returnAddress);
-                _state.PC = (uint)((int)displacementBase + displacement) & AddressMask;
+                SetProgramCounterInternal((uint)((int)displacementBase + displacement));
                 return "BSR";
             }
 
             if (EvaluateCondition(condition))
             {
-                _state.PC = (uint)((int)displacementBase + displacement) & AddressMask;
+                SetProgramCounterInternal((uint)((int)displacementBase + displacement));
             }
 
             return condition == 0 ? "BRA" : "B" + ConditionName(condition);
@@ -1272,7 +1287,7 @@ namespace AmigaEmulator.Core.Cpu
                 _state.D[register] = (_state.D[register] & 0xFFFF0000u) | counter;
                 if (counter != 0xFFFF)
                 {
-                    _state.PC = (uint)((int)displacementBase + displacement) & AddressMask;
+                    SetProgramCounterInternal((uint)((int)displacementBase + displacement));
                 }
             }
 
@@ -2418,9 +2433,60 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private ushort FetchWord()
         {
-            ushort value = ReadWord(_state.PC);
+            uint address = _state.PC & AddressMask;
+            ushort value;
+            if (_prefetchValid && _prefetchAddress == address)
+            {
+                value = _prefetchWord;
+                M68kTraceAccessType accessType = _opcodeFetchInProgress ? M68kTraceAccessType.OpcodeFetch : M68kTraceAccessType.Read;
+                RecordBusMicroOps(accessType, address, 2, value, false, true);
+            }
+            else
+            {
+                value = ReadWord(address);
+            }
+
             _state.PC = (_state.PC + 2) & AddressMask;
+            PrefetchSequentialWord();
             return value;
+        }
+
+        /// <summary>
+        /// Captures the next sequential instruction word before deferred writes retire.
+        /// </summary>
+        private void PrefetchSequentialWord()
+        {
+            uint address = _state.PC & AddressMask;
+            _prefetchAddress = address;
+            if (_bus is IM68kPeekableBus peekableBus)
+            {
+                _prefetchWord = peekableBus.PeekWord(address);
+            }
+            else
+            {
+                _prefetchWord = _bus.ReadWord(address);
+            }
+
+            _prefetchValid = true;
+        }
+
+        /// <summary>
+        /// Drops prefetched fall-through words after an explicit control-flow change.
+        /// </summary>
+        private void InvalidatePrefetch()
+        {
+            _prefetchValid = false;
+            _prefetchAddress = 0;
+            _prefetchWord = 0;
+        }
+
+        /// <summary>
+        /// Updates the PC for non-sequential control flow and drops the fall-through prefetch word.
+        /// </summary>
+        private void SetProgramCounterInternal(uint pc)
+        {
+            _state.PC = pc & AddressMask;
+            InvalidatePrefetch();
         }
 
         /// <summary>
@@ -3183,7 +3249,7 @@ namespace AmigaEmulator.Core.Cpu
             uint newPc = ReadLong(frameAddress + 2) & AddressMask;
             SetA(7, frameAddress + 6);
             SetStatusRegister(newSr);
-            _state.PC = newPc;
+            SetProgramCounterInternal(newPc);
         }
 
         /// <summary>
@@ -3218,7 +3284,7 @@ namespace AmigaEmulator.Core.Cpu
                 handler(vectorNumber, stackedPc & AddressMask, oldSr, _currentInstructionAddress & AddressMask, _state.CurrentOpcode, targetPc);
             }
 
-            _state.PC = targetPc;
+            SetProgramCounterInternal(targetPc);
             _state.ExecutionState = M68kExecutionState.FetchOpcode;
         }
 
@@ -3248,7 +3314,7 @@ namespace AmigaEmulator.Core.Cpu
                 handler(3, stackedPc, oldSr, _currentInstructionAddress & AddressMask, instruction, targetPc);
             }
 
-            _state.PC = targetPc;
+            SetProgramCounterInternal(targetPc);
             _state.ExecutionState = M68kExecutionState.FetchOpcode;
         }
 

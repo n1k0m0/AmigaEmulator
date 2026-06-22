@@ -2668,6 +2668,16 @@ namespace AmigaEmulator.Tests
                 "Savestate metadata media restore used by multi-disk trackloaders",
                 TestMountedAdfMetadataReattachesOnLoad);
             yield return new ChipTestCase(
+                "CPU",
+                "68000 prefetched instruction word survives savestate restore",
+                "Self-modifying trackloaders depend on the 68000 sequential instruction prefetch",
+                TestCpuPrefetchSurvivesSavestateRestore);
+            yield return new ChipTestCase(
+                "CPU",
+                "68000 control flow invalidates stale fall-through prefetch",
+                "Jumps, returns, and exceptions must not consume a prefetched fall-through word at the target PC",
+                TestCpuControlFlowInvalidatesPrefetch);
+            yield return new ChipTestCase(
                 "SaveState",
                 "flat savestates migrate into mounted-media subdirectories",
                 "C64-style savestate browser groups timestamped saves by mounted media",
@@ -2922,6 +2932,77 @@ namespace AmigaEmulator.Tests
                 catch
                 {
                 }
+            }
+        }
+
+        /// <summary>
+        /// Verifies that savestates keep the 68000 instruction prefetch used by self-modifying code.
+        /// </summary>
+        private static void TestCpuPrefetchSurvivesSavestateRestore()
+        {
+            byte[] stateBytes;
+            using (var system = new AmigaSystem(AmigaModel.A500Pal1MbChip, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.Bus.RomOverlayAtZero = false;
+                system.Bus.WriteWord(0x000100, 0x33FC); // MOVE.W #$FFFF,$00000108
+                system.Bus.WriteWord(0x000102, 0xFFFF);
+                system.Bus.WriteWord(0x000104, 0x0000);
+                system.Bus.WriteWord(0x000106, 0x0108);
+                system.Bus.WriteWord(0x000108, 0x4E71); // NOP prefetched before the write retires.
+                system.Bus.WriteWord(0x00010A, 0x7007); // MOVEQ #7,D0
+                system.Cpu.SetProgramCounter(0x000100);
+
+                system.Cpu.Step();
+                Check.Equal(0xFFFF, system.Bus.ReadWord(0x000108), "Self-modifying setup should overwrite the next instruction in RAM.");
+
+                using (var stream = new MemoryStream())
+                using (var writer = new BinaryWriter(stream))
+                {
+                    system.SaveState(writer);
+                    writer.Flush();
+                    stateBytes = stream.ToArray();
+                }
+            }
+
+            using (var restored = new AmigaSystem(AmigaModel.A500Pal1MbChip, AmigaAccuracyOptions.Fast.Clone()))
+            using (var stream = new MemoryStream(stateBytes))
+            using (var reader = new BinaryReader(stream))
+            {
+                restored.LoadState(reader);
+                restored.Cpu.Step();
+                Check.Equal(0x00010Au, restored.Cpu.PC, "Restored CPU should execute the prefetched NOP instead of the overwritten $FFFF word.");
+
+                restored.Cpu.Step();
+                Check.Equal(7u, restored.Cpu.D0, "Execution should continue after the restored prefetched instruction.");
+            }
+        }
+
+        /// <summary>
+        /// Verifies that explicit control flow rereads the target instruction instead of reusing fall-through prefetch data.
+        /// </summary>
+        private static void TestCpuControlFlowInvalidatesPrefetch()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal1MbChip, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                system.Bus.RomOverlayAtZero = false;
+                system.Bus.WriteWord(0x000100, 0x33FC); // MOVE.W #$7007,$0000010E
+                system.Bus.WriteWord(0x000102, 0x7007);
+                system.Bus.WriteWord(0x000104, 0x0000);
+                system.Bus.WriteWord(0x000106, 0x010E);
+                system.Bus.WriteWord(0x000108, 0x4EF9); // JMP $0000010E
+                system.Bus.WriteWord(0x00010A, 0x0000);
+                system.Bus.WriteWord(0x00010C, 0x010E);
+                system.Bus.WriteWord(0x00010E, 0x4E71); // stale fall-through prefetch before the write retires
+                system.Cpu.SetProgramCounter(0x000100);
+
+                system.Cpu.Step();
+                Check.Equal(0x7007, system.Bus.ReadWord(0x00010E), "Self-modifying setup should overwrite the future jump target.");
+
+                system.Cpu.Step();
+                Check.Equal(0x00010Eu, system.Cpu.PC, "JMP should land on the overwritten target address.");
+
+                system.Cpu.Step();
+                Check.Equal(7u, system.Cpu.D0, "Control-flow target should be fetched from RAM, not from stale prefetched NOP data.");
             }
         }
     }
