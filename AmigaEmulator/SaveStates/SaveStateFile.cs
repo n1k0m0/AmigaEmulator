@@ -195,14 +195,16 @@ namespace AmigaEmulator.Core.SaveStates
             if (mediaInfo == null ||
                 mediaInfo.Kind != MountedMediaKind.Adf ||
                 mediaInfo.Status != MountedMediaStatus.Mounted ||
-                mediaInfo.DriveIndex != 0 ||
+                mediaInfo.DriveIndex < 0 ||
+                mediaInfo.DriveIndex > 3 ||
                 string.IsNullOrWhiteSpace(mediaInfo.HostPath) ||
                 !File.Exists(mediaInfo.HostPath))
             {
                 return;
             }
 
-            system.Bus.FloppyController.RestoreDrive0Media(
+            system.Bus.FloppyController.RestoreDriveMedia(
+                mediaInfo.DriveIndex,
                 AdfImage.Load(mediaInfo.HostPath),
                 mediaInfo.IsWriteProtected);
             system.Bus.RefreshFloppyControlLines();

@@ -1127,7 +1127,6 @@ namespace AmigaEmulator.Core.CustomChips
                 _waitingForDiskSync = false;
                 _diskSyncMatchedForDma = true;
                 _diskReadQueue.Clear();
-                _diskReadQueue.Enqueue(_latestDiskWord);
             }
             else if (diskReadDmaEnabled)
             {

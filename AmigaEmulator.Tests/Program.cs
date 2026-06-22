@@ -1859,6 +1859,16 @@ namespace AmigaEmulator.Tests
                 TestAbsentExternalDriveStatusLines);
             yield return new ChipTestCase(
                 "Paula/Disk",
+                "external floppy media can be mounted and selected through CIA-B",
+                "DF1-DF3 use the same shared Amiga floppy bus signals as DF0",
+                TestExternalDriveMediaSelection);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "external selected drives raise the shared CIAB index pulse",
+                "The Amiga floppy INDEX line is selected-drive bus state, not a DF0-only signal",
+                TestExternalDriveIndexPulseReachesController);
+            yield return new ChipTestCase(
+                "Paula/Disk",
                 "DF0 media swaps preserve the physical head and CIA control-line state",
                 "Amiga floppy media change mechanics for multi-disk trackloaders",
                 TestMediaSwapPreservesDriveMechanics);
@@ -2239,6 +2249,67 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that externally mounted floppy media participates in the shared drive bus.
+        /// </summary>
+        private static void TestExternalDriveMediaSelection()
+        {
+            string adfPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_df1_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(adfPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive(1, AdfImage.Load(adfPath), true);
+
+                controller.ApplyCiaBPort(0x6F, 0xFF);
+                Check.True(controller.Drive1.Selected, "DF1 should be selected when CIA-B SEL1 is low.");
+                Check.True(controller.Drive1.MotorOn, "DF1 motor should follow the shared MOTOR line.");
+                Check.True(controller.Drive1.HasDisk, "DF1 should contain the mounted external media.");
+                Check.True(!controller.Drive0.Selected, "DF0 must remain deselected while DF1 is selected.");
+                Check.Equal(controller.Drive1, controller.SelectedDrive, "The selected-drive bus view should expose DF1.");
+                Check.Equal(
+                    FloppyController.CiaAStatusMask & ~FloppyController.CiaADiskChangeBit & ~FloppyController.CiaAWriteProtectBit & ~FloppyController.CiaATrack0Bit,
+                    controller.BuildCiaAStatusBits(),
+                    "Freshly mounted write-protected DF1 should assert disk-change, write-protect, and track-zero.");
+            }
+            finally
+            {
+                TryDeleteFile(adfPath);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that external drives can trigger the shared CIAB FLAG/index pulse.
+        /// </summary>
+        private static void TestExternalDriveIndexPulseReachesController()
+        {
+            string adfPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_df1_index_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(adfPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive(1, AdfImage.Load(adfPath), true);
+                controller.ApplyCiaBPort(0x6F, 0xFF);
+
+                bool sawIndex = false;
+                for (int cycle = 0; cycle < 800000; cycle++)
+                {
+                    controller.Tick();
+                    if (controller.IndexPulsePending)
+                    {
+                        sawIndex = true;
+                        break;
+                    }
+                }
+
+                Check.True(sawIndex, "A selected rotating DF1 must expose its index pulse on the shared floppy bus.");
+            }
+            finally
+            {
+                TryDeleteFile(adfPath);
+            }
+        }
+
+        /// <summary>
         /// Verifies that replacing a disk does not reset the physical drive head or CIA lines.
         /// </summary>
         private static void TestMediaSwapPreservesDriveMechanics()
@@ -2377,8 +2448,8 @@ namespace AmigaEmulator.Tests
                 }
 
                 Check.True(captured.Count > 1, "WORDSYNC read DMA should eventually transfer after the first track sync.");
-                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should start with the matched sync word.");
-                Check.Equal(AdfMfmEncoder.SyncWord, captured[1], "WORDSYNC read DMA should preserve the paired sync word after the matched sync.");
+                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should start with the word after the matched sync, preserving the paired sync.");
+                Check.True(captured[1] != AdfMfmEncoder.SyncWord, "WORDSYNC read DMA must not include the matched sync word before the paired sync.");
             }
             finally
             {
@@ -2840,7 +2911,7 @@ namespace AmigaEmulator.Tests
                 TestFloppyControlLinesRefreshAfterLoad);
             yield return new ChipTestCase(
                 "SaveState",
-                "mounted DF0 ADF metadata is reattached when loading a savestate",
+                "mounted ADF metadata is reattached to the recorded floppy drive",
                 "Savestate metadata media restore used by multi-disk trackloaders",
                 TestMountedAdfMetadataReattachesOnLoad);
             yield return new ChipTestCase(
@@ -3069,11 +3140,11 @@ namespace AmigaEmulator.Tests
             {
                 using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
                 {
-                    system.Bus.FloppyController.Drive0.Step(7);
+                    system.Bus.FloppyController.GetDrive(1).Step(7);
                     SaveStateFile.Write(
                         savePath,
                         system,
-                        MountedMediaInfo.ForFloppy(0, System.IO.Path.GetFileName(adfPath), adfPath, true),
+                        MountedMediaInfo.ForFloppy(1, System.IO.Path.GetFileName(adfPath), adfPath, true),
                         AmigaKickstart.Auto,
                         AmigaRamProfile.Chip512K,
                         AmigaAccuracyProfile.Fast,
@@ -3086,9 +3157,10 @@ namespace AmigaEmulator.Tests
                 {
                     SaveStateFile.Load(savePath, restored);
 
-                    Check.True(restored.Bus.FloppyController.Drive0.HasDisk, "SaveStateFile.Load should reattach the metadata ADF to DF0.");
-                    Check.True(restored.Bus.FloppyController.Drive0.WriteProtected, "Restored DF0 media should keep metadata write-protection.");
-                    Check.Equal(7, restored.Bus.FloppyController.Drive0.Track, "Reattaching metadata media must not reset the saved drive track.");
+                    Check.True(!restored.Bus.FloppyController.Drive0.HasDisk, "SaveStateFile.Load should not reattach DF1 metadata to DF0.");
+                    Check.True(restored.Bus.FloppyController.Drive1.HasDisk, "SaveStateFile.Load should reattach the metadata ADF to DF1.");
+                    Check.True(restored.Bus.FloppyController.Drive1.WriteProtected, "Restored DF1 media should keep metadata write-protection.");
+                    Check.Equal(7, restored.Bus.FloppyController.Drive1.Track, "Reattaching metadata media must not reset the saved drive track.");
                 }
             }
             finally

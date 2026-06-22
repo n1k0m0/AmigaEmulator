@@ -126,7 +126,32 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public bool IndexPulsePending
         {
-            get { return Drive0.IndexPulsePending; }
+            get
+            {
+                FloppyDrive[] drives = GetDrives();
+                for (int index = 0; index < drives.Length; index++)
+                {
+                    if (drives[index].Selected && drives[index].IndexPulsePending)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns a drive by Amiga drive index.
+        /// </summary>
+        public FloppyDrive GetDrive(int driveIndex)
+        {
+            if (driveIndex < 0 || driveIndex >= DriveCount)
+            {
+                throw new System.ArgumentOutOfRangeException(nameof(driveIndex));
+            }
+
+            return GetDrives()[driveIndex];
         }
 
         /// <summary>
@@ -134,8 +159,7 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void InsertDrive0(AdfImage image)
         {
-            Drive0.Insert(image);
-            RaiseMediaChanged();
+            InsertDrive(0, image);
         }
 
         /// <summary>
@@ -143,7 +167,23 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void InsertDrive0(AdfImage image, bool writeProtected)
         {
-            Drive0.Insert(image, writeProtected);
+            InsertDrive(0, image, writeProtected);
+        }
+
+        /// <summary>
+        /// Inserts media into the requested drive.
+        /// </summary>
+        public void InsertDrive(int driveIndex, AdfImage image)
+        {
+            InsertDrive(driveIndex, image, true);
+        }
+
+        /// <summary>
+        /// Inserts media into the requested drive.
+        /// </summary>
+        public void InsertDrive(int driveIndex, AdfImage image, bool writeProtected)
+        {
+            GetDrive(driveIndex).Insert(image, writeProtected);
             RaiseMediaChanged();
         }
 
@@ -152,7 +192,15 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void RestoreDrive0Media(AdfImage image, bool writeProtected)
         {
-            Drive0.RestoreMedia(image, writeProtected);
+            RestoreDriveMedia(0, image, writeProtected);
+        }
+
+        /// <summary>
+        /// Restores media after loading a savestate without asserting a new disk-change event.
+        /// </summary>
+        public void RestoreDriveMedia(int driveIndex, AdfImage image, bool writeProtected)
+        {
+            GetDrive(driveIndex).RestoreMedia(image, writeProtected);
         }
 
         /// <summary>
@@ -160,7 +208,15 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void EjectDrive0()
         {
-            Drive0.Eject();
+            EjectDrive(0);
+        }
+
+        /// <summary>
+        /// Ejects media from the requested drive.
+        /// </summary>
+        public void EjectDrive(int driveIndex)
+        {
+            GetDrive(driveIndex).Eject();
             RaiseMediaChanged();
         }
 
@@ -169,7 +225,15 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void FlushDrive0()
         {
-            Drive0.FlushImage();
+            FlushDrive(0);
+        }
+
+        /// <summary>
+        /// Flushes dirty writable floppy media in the requested drive.
+        /// </summary>
+        public void FlushDrive(int driveIndex)
+        {
+            GetDrive(driveIndex).FlushImage();
         }
 
         /// <summary>
@@ -251,7 +315,7 @@ namespace AmigaEmulator.Core.Media
             FloppyDrive selectedDrive = SelectedDrive;
             int selectedIndex = GetSelectedDriveIndex();
             return string.Format(
-                "selected:{0} selectedDrive:{1} motor:{2} disk:{3} track:{4} side:{5} ready:{6} ciaReady:{7} wp:{8} changed:{9} writes:{10} decoded:{11} status:${12:X2} stream:{13}/{14} index:{15} df0:{16}",
+                "selected:{0} selectedDrive:{1} motor:{2} disk:{3} track:{4} side:{5} ready:{6} ciaReady:{7} wp:{8} changed:{9} writes:{10} decoded:{11} status:${12:X2} stream:{13}/{14} index:{15} df0:{16} df1:{17} df2:{18} df3:{19}",
                 selectedDrive != null,
                 selectedIndex >= 0 ? "DF" + selectedIndex.ToString() : "none",
                 selectedDrive != null && selectedDrive.MotorOn,
@@ -268,7 +332,10 @@ namespace AmigaEmulator.Core.Media
                 selectedDrive != null ? selectedDrive.StreamWordPosition : Drive0.StreamWordPosition,
                 selectedDrive != null ? selectedDrive.StreamWordCount : Drive0.StreamWordCount,
                 selectedDrive != null ? selectedDrive.IndexPulseCountdown : Drive0.IndexPulseCountdown,
-                FormatDriveDebug(Drive0));
+                FormatDriveDebug(Drive0),
+                FormatDriveDebug(Drive1),
+                FormatDriveDebug(Drive2),
+                FormatDriveDebug(Drive3));
         }
 
         /// <summary>

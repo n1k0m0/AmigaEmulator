@@ -569,7 +569,7 @@ namespace AmigaEmulator
                 string outSavePath = args.Length >= 6
                     ? args[5]
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_swap_checkpoint.amigasav");
-                CheckpointSavestateSwap(savePath, adfPath, cycles, imagePath, outSavePath, ParseSavestateModelArgument(args, 6, savePath), ParseIntOption(args, "--floppy-period", 0), ParseIntOption(args, "--eject-cycles", 0));
+                CheckpointSavestateSwap(savePath, adfPath, cycles, imagePath, outSavePath, ParseSavestateModelArgument(args, 6, savePath), ParseIntOption(args, "--floppy-period", 0), ParseIntOption(args, "--eject-cycles", 0), ParseDriveOption(args, "--drive", 0));
                 Console.WriteLine("Savestate swap checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate swap checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -1624,8 +1624,8 @@ namespace AmigaEmulator
                         if (track.ReadWord(word - 1) == AdfTrackStream.SyncWord &&
                             track.ReadWord(word) == AdfTrackStream.SyncWord)
                         {
-                            expectedFirstDmaWord = track.ReadWord(word - 1);
-                            expectedFirstDmaWordIndex = word - 1;
+                            expectedFirstDmaWord = track.ReadWord(word);
+                            expectedFirstDmaWordIndex = word;
                             break;
                         }
                     }
@@ -1652,7 +1652,7 @@ namespace AmigaEmulator
                     if (expectedFirstDmaWord == 0 || firstWord != expectedFirstDmaWord)
                     {
                         failures++;
-                        Console.WriteLine("FAIL WORDSYNC did not start DMA at the matching sync word. First=$" + firstWord.ToString("X4") + " Expected=$" + expectedFirstDmaWord.ToString("X4"));
+                        Console.WriteLine("FAIL WORDSYNC did not start DMA after the matching sync word. First=$" + firstWord.ToString("X4") + " Expected=$" + expectedFirstDmaWord.ToString("X4"));
                     }
                     else
                     {
@@ -2418,7 +2418,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Saves a new checkpoint after restoring a savestate and replacing DF0 with another ADF.
         /// </summary>
-        private static void CheckpointSavestateSwap(string savePath, string adfPath, int cycles, string imagePath, string outSavePath, AmigaModel model, int diskWordPeriodChipCycles = 0, int ejectCycles = 0)
+        private static void CheckpointSavestateSwap(string savePath, string adfPath, int cycles, string imagePath, string outSavePath, AmigaModel model, int diskWordPeriodChipCycles = 0, int ejectCycles = 0, int driveIndex = 0)
         {
             if (string.IsNullOrWhiteSpace(adfPath) || !File.Exists(adfPath))
             {
@@ -2433,15 +2433,15 @@ namespace AmigaEmulator
                 ApplyDiagnosticFloppyPeriod(system, diskWordPeriodChipCycles);
                 if (ejectCycles > 0)
                 {
-                    system.Bus.FloppyController.EjectDrive0();
+                    system.Bus.FloppyController.EjectDrive(driveIndex);
                     system.RunChipCycles(ejectCycles);
-                    Console.WriteLine("Diagnostic eject cycles=" + ejectCycles);
+                    Console.WriteLine("Diagnostic eject cycles=" + ejectCycles + " drive=DF" + driveIndex);
                 }
 
-                MountedMediaInfo media = MountAdfInDf0(system, adfPath);
+                MountedMediaInfo media = MountAdfInDrive(system, adfPath, driveIndex);
                 system.RunChipCycles(cycles);
                 SaveCheckpoint(system, media, imagePath, outSavePath, model ?? AmigaModel.PalA500);
-                Console.WriteLine("ADF=" + Path.GetFileName(adfPath) + " Cycles=" + cycles);
+                Console.WriteLine("ADF=" + Path.GetFileName(adfPath) + " Drive=DF" + driveIndex + " Cycles=" + cycles);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
@@ -3171,8 +3171,16 @@ namespace AmigaEmulator
         /// </summary>
         private static MountedMediaInfo MountAdfInDf0(AmigaSystem system, string adfPath)
         {
-            system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
-            return MountedMediaInfo.ForFloppy(0, Path.GetFileName(adfPath), Path.GetFullPath(adfPath), true);
+            return MountAdfInDrive(system, adfPath, 0);
+        }
+
+        /// <summary>
+        /// Mounts an ADF in the requested floppy drive and returns overlay-compatible savestate metadata.
+        /// </summary>
+        private static MountedMediaInfo MountAdfInDrive(AmigaSystem system, string adfPath, int driveIndex)
+        {
+            system.Bus.FloppyController.InsertDrive(driveIndex, AdfImage.Load(adfPath), true);
+            return MountedMediaInfo.ForFloppy(driveIndex, Path.GetFileName(adfPath), Path.GetFullPath(adfPath), true);
         }
 
         /// <summary>
@@ -8700,6 +8708,25 @@ namespace AmigaEmulator
             }
 
             return defaultValue;
+        }
+
+        /// <summary>
+        /// Parses a floppy drive option and clamps it to DF0-DF3.
+        /// </summary>
+        private static int ParseDriveOption(string[] args, string name, int defaultValue)
+        {
+            int value = ParseIntOption(args, name, defaultValue);
+            if (value < 0)
+            {
+                return 0;
+            }
+
+            if (value > 3)
+            {
+                return 3;
+            }
+
+            return value;
         }
 
         /// <summary>
