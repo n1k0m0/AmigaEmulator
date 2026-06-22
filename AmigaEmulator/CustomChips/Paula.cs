@@ -1036,7 +1036,7 @@ namespace AmigaEmulator.Core.CustomChips
         private void TickDiskInputStream()
         {
             FloppyDrive drive = _floppyController != null ? _floppyController.SelectedDrive : null;
-            if (drive == null || !drive.Ready)
+            if (drive == null || !drive.CanReadFlux)
             {
                 _diskWordDivider = 0;
                 _diskByteReady = false;
@@ -1127,6 +1127,7 @@ namespace AmigaEmulator.Core.CustomChips
                 _waitingForDiskSync = false;
                 _diskSyncMatchedForDma = true;
                 _diskReadQueue.Clear();
+                _diskReadQueue.Enqueue(_latestDiskWord);
             }
             else if (diskReadDmaEnabled)
             {

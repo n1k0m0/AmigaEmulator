@@ -13,6 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+using System;
+
 namespace AmigaEmulator.Core.Media
 {
     /// <summary>
@@ -32,6 +34,10 @@ namespace AmigaEmulator.Core.Media
         /// Constant for Pal Index Pulse Period Chip Cycles.
         /// </summary>
         private const int PalIndexPulsePeriodChipCycles = 709_379;
+        /// <summary>
+        /// Constant for the emulated MFM stream word period in chip cycles.
+        /// </summary>
+        private const int MfmWordPeriodChipCycles = 108;
 
         /// <summary>
         /// Stores step Line High.
@@ -85,6 +91,11 @@ namespace AmigaEmulator.Core.Media
         /// Stores stream Word Position.
         /// </summary>
         private int _streamWordPosition;
+        /// <summary>
+        /// Accumulates fractional chip cycles for physical MFM stream rotation.
+        /// </summary>
+        [NonSerialized]
+        private int _streamRotationCycleAccumulator;
         /// <summary>
         /// Tracks captured MFM words written by Paula disk-write DMA.
         /// </summary>
@@ -174,6 +185,14 @@ namespace AmigaEmulator.Core.Media
         public bool Ready
         {
             get { return Selected && HasDisk && (_motorReady || _motorOffReadyGraceCycles > 0); }
+        }
+
+        /// <summary>
+        /// Gets whether the selected drive can present flux words to Paula.
+        /// </summary>
+        public bool CanReadFlux
+        {
+            get { return Selected && HasDisk && (MotorOn || _motorOffReadyGraceCycles > 0); }
         }
 
         /// <summary>
@@ -312,9 +331,9 @@ namespace AmigaEmulator.Core.Media
             bool wasStepLineHigh = _stepLineHigh;
             bool wasMotorLineLow = _motorLineLow;
 
-            if (!wasSelected && selected)
+            if (selected && (!wasSelected || wasMotorLineLow != motorLineLow))
             {
-                MotorOn = motorLineLow || wasMotorLineLow;
+                MotorOn = motorLineLow;
             }
 
             _selected = selected;
@@ -376,16 +395,20 @@ namespace AmigaEmulator.Core.Media
                 }
             }
 
+            bool wasInMotorOffGrace = _motorOffReadyGraceCycles > 0;
             if (_motorOffReadyGraceCycles > 0)
             {
                 _motorOffReadyGraceCycles--;
             }
 
-            if (!HasDisk || !MotorOn)
+            bool rotating = MotorOn || wasInMotorOffGrace;
+            if (!HasDisk || !rotating)
             {
                 _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
                 return;
             }
+
+            AdvanceStreamRotation();
 
             _indexPulseCountdown--;
             if (_indexPulseCountdown <= 0)
@@ -400,19 +423,13 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public ushort ReadNextMfmWord()
         {
-            if (!Ready || Image == null)
+            if (!CanReadFlux || Image == null)
             {
                 return 0xAAAA;
             }
 
             EnsureTrackStream();
             ushort word = _trackStream != null ? _trackStream.ReadWord(_streamWordPosition) : (ushort)0xAAAA;
-            _streamWordPosition++;
-            if (_trackStream != null && _trackStream.WordCount > 0 && _streamWordPosition >= _trackStream.WordCount)
-            {
-                _streamWordPosition %= _trackStream.WordCount;
-            }
-
             return word;
         }
 
@@ -522,6 +539,29 @@ namespace AmigaEmulator.Core.Media
                 if (_streamWordPosition < 0)
                 {
                     _streamWordPosition += _trackStream.WordCount;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Advances physical disk rotation independently of whether Paula is currently sampling it.
+        /// </summary>
+        private void AdvanceStreamRotation()
+        {
+            EnsureTrackStream();
+            if (_trackStream == null || _trackStream.WordCount <= 0)
+            {
+                return;
+            }
+
+            _streamRotationCycleAccumulator++;
+            while (_streamRotationCycleAccumulator >= MfmWordPeriodChipCycles)
+            {
+                _streamRotationCycleAccumulator -= MfmWordPeriodChipCycles;
+                _streamWordPosition++;
+                if (_streamWordPosition >= _trackStream.WordCount)
+                {
+                    _streamWordPosition = 0;
                 }
             }
         }

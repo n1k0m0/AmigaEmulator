@@ -224,7 +224,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 4 && int.TryParse(args[3], out int parsedSaveFrames) && parsedSaveFrames > 0
                     ? parsedSaveFrames
                     : 0;
-                DumpSavestateFrame(savePath, imagePath, frames, ParseModelArgument(args, 4), ParseIntOption(args, "--floppy-period", 0));
+                DumpSavestateFrame(savePath, imagePath, frames, ParseSavestateModelArgument(args, 4, savePath), ParseIntOption(args, "--floppy-period", 0));
                 Console.WriteLine("Savestate frame written: " + Path.GetFullPath(imagePath));
                 return;
             }
@@ -238,7 +238,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 4 && int.TryParse(args[3], out int parsedSaveFrames) && parsedSaveFrames > 0
                     ? parsedSaveFrames
                     : 0;
-                DumpSavestateFrame(savePath, imagePath, frames, ParseModelArgument(args, 4), true);
+                DumpSavestateFrame(savePath, imagePath, frames, ParseSavestateModelArgument(args, 4, savePath), true);
                 Console.WriteLine("Savestate raw frame written: " + Path.GetFullPath(imagePath));
                 return;
             }
@@ -255,7 +255,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 5 && int.TryParse(args[4], out int parsedCheckpointFrames) && parsedCheckpointFrames > 0
                     ? parsedCheckpointFrames
                     : 4;
-                CheckpointSavestateFrame(savePath, imagePath, outSavePath, frames, ParseModelArgument(args, 5));
+                CheckpointSavestateFrame(savePath, imagePath, outSavePath, frames, ParseSavestateModelArgument(args, 5, savePath));
                 Console.WriteLine("Savestate frame checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate frame checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -270,7 +270,7 @@ namespace AmigaEmulator
                 int maxLines = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceLines) && parsedTraceLines > 0
                     ? parsedTraceLines
                     : 200;
-                TraceSavestateDisk(savePath, cycles, maxLines, ParseModelArgument(args, 4));
+                TraceSavestateDisk(savePath, cycles, maxLines, ParseSavestateModelArgument(args, 4, savePath));
                 return;
             }
 
@@ -283,7 +283,7 @@ namespace AmigaEmulator
                 int intervalCycles = args.Length >= 4 && int.TryParse(args[3], out int parsedIntervalCycles) && parsedIntervalCycles > 0
                     ? parsedIntervalCycles
                     : 2000000;
-                SummarizeSavestateDisk(savePath, cycles, intervalCycles, ParseModelArgument(args, 4), ParseIntOption(args, "--floppy-period", 0));
+                SummarizeSavestateDisk(savePath, cycles, intervalCycles, ParseSavestateModelArgument(args, 4, savePath), ParseIntOption(args, "--floppy-period", 0));
                 return;
             }
 
@@ -296,7 +296,7 @@ namespace AmigaEmulator
                 int maxChanges = args.Length >= 4 && int.TryParse(args[3], out int parsedMaxChanges) && parsedMaxChanges > 0
                     ? parsedMaxChanges
                     : 200;
-                TraceSavestateCustomRegisters(savePath, cycles, maxChanges, ParseModelArgument(args, 4));
+                TraceSavestateCustomRegisters(savePath, cycles, maxChanges, ParseSavestateModelArgument(args, 4, savePath));
                 return;
             }
 
@@ -311,7 +311,7 @@ namespace AmigaEmulator
                     : 64;
                 uint filterStart = args.Length >= 5 ? Convert.ToUInt32(args[4].Replace("$", string.Empty), 16) : 0u;
                 uint filterEnd = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0x00FFFFFFu;
-                TraceSavestatePc(savePath, cycles, maxLines, filterStart, filterEnd, ParseModelArgument(args, 6));
+                TraceSavestatePc(savePath, cycles, maxLines, filterStart, filterEnd, ParseSavestateModelArgument(args, 6, savePath));
                 return;
             }
 
@@ -329,7 +329,7 @@ namespace AmigaEmulator
                 long startCycle = args.Length >= 7 && long.TryParse(args[6], out long parsedTraceStartCycle) && parsedTraceStartCycle > 0
                     ? parsedTraceStartCycle
                     : 0;
-                TraceSavestateWrites(savePath, start, end, cycles, maxWrites, startCycle, ParseModelArgument(args, 7));
+                TraceSavestateWrites(savePath, start, end, cycles, maxWrites, startCycle, ParseSavestateModelArgument(args, 7, savePath));
                 return;
             }
 
@@ -347,7 +347,7 @@ namespace AmigaEmulator
                 long startCycle = args.Length >= 7 && long.TryParse(args[6], out long parsedTraceStartCycle) && parsedTraceStartCycle > 0
                     ? parsedTraceStartCycle
                     : 0;
-                TraceSavestateReads(savePath, start, end, cycles, maxReads, startCycle, ParseModelArgument(args, 7));
+                TraceSavestateReads(savePath, start, end, cycles, maxReads, startCycle, ParseSavestateModelArgument(args, 7, savePath));
                 return;
             }
 
@@ -364,7 +364,7 @@ namespace AmigaEmulator
                 int hit = args.Length >= 6 && int.TryParse(args[5], out int parsedTraceHit) && parsedTraceHit > 0
                     ? parsedTraceHit
                     : 1;
-                TraceSavestateBeforePc(savePath, pc, cycles, samples, hit, ParseModelArgument(args, 6));
+                TraceSavestateBeforePc(savePath, pc, cycles, samples, hit, ParseSavestateModelArgument(args, 6, savePath));
                 return;
             }
 
@@ -378,7 +378,7 @@ namespace AmigaEmulator
                 int cycles = args.Length >= 5 && int.TryParse(args[4], out int parsedCycles) && parsedCycles > 0
                     ? parsedCycles
                     : 0;
-                DumpSavestateBusWords(savePath, address, words, cycles, ParseModelArgument(args, 5));
+                DumpSavestateBusWords(savePath, address, words, cycles, ParseSavestateModelArgument(args, 5, savePath));
                 return;
             }
 
@@ -394,7 +394,7 @@ namespace AmigaEmulator
                 int cycles = args.Length >= 5 && int.TryParse(args[4], out int parsedScanCycles) && parsedScanCycles > 0
                     ? parsedScanCycles
                     : 0;
-                ScanSavestateAscii(savePath, minLength, maxLines, cycles, ParseModelArgument(args, 5));
+                ScanSavestateAscii(savePath, minLength, maxLines, cycles, ParseSavestateModelArgument(args, 5, savePath));
                 return;
             }
 
@@ -415,7 +415,7 @@ namespace AmigaEmulator
                     modelArgumentStart = 5;
                 }
 
-                TraceSavestateExceptions(savePath, cycles, maxLines, filterVector, ParseModelArgument(args, modelArgumentStart));
+                TraceSavestateExceptions(savePath, cycles, maxLines, filterVector, ParseSavestateModelArgument(args, modelArgumentStart, savePath));
                 return;
             }
 
@@ -430,7 +430,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedSaveMouseFrames) && parsedSaveMouseFrames > 0
                     ? parsedSaveMouseFrames
                     : 4;
-                DumpSavestateMouse(savePath, imagePath, mouseDx, mouseDy, frames, ParseModelArgument(args, 6));
+                DumpSavestateMouse(savePath, imagePath, mouseDx, mouseDy, frames, ParseSavestateModelArgument(args, 6, savePath));
                 Console.WriteLine("Savestate mouse frame written: " + Path.GetFullPath(imagePath));
                 return;
             }
@@ -450,7 +450,7 @@ namespace AmigaEmulator
                 int planes = args.Length >= 8 && int.TryParse(args[7], out int parsedPlanarPlanes) && parsedPlanarPlanes > 0 ? parsedPlanarPlanes : 4;
                 int wordsPerLine = args.Length >= 9 && int.TryParse(args[8], out int parsedPlanarWords) && parsedPlanarWords > 0 ? parsedPlanarWords : 20;
                 int lines = args.Length >= 10 && int.TryParse(args[9], out int parsedPlanarLines) && parsedPlanarLines > 0 ? parsedPlanarLines : 200;
-                DumpSavestateMousePlanar(savePath, imagePath, mouseDx, mouseDy, frames, baseAddress, planes, wordsPerLine, lines, ParseModelArgument(args, 10));
+                DumpSavestateMousePlanar(savePath, imagePath, mouseDx, mouseDy, frames, baseAddress, planes, wordsPerLine, lines, ParseSavestateModelArgument(args, 10, savePath));
                 Console.WriteLine("Savestate planar image written: " + Path.GetFullPath(imagePath));
                 return;
             }
@@ -466,7 +466,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedClickFrames) && parsedClickFrames > 0
                     ? parsedClickFrames
                     : 50;
-                DumpSavestateClick(savePath, imagePath, mouseDx, mouseDy, frames, ParseModelArgument(args, 6));
+                DumpSavestateClick(savePath, imagePath, mouseDx, mouseDy, frames, ParseSavestateModelArgument(args, 6, savePath));
                 Console.WriteLine("Savestate click frame written: " + Path.GetFullPath(imagePath));
                 return;
             }
@@ -485,7 +485,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 7 && int.TryParse(args[6], out int parsedCheckpointClickFrames) && parsedCheckpointClickFrames > 0
                     ? parsedCheckpointClickFrames
                     : 50;
-                CheckpointSavestateClick(savePath, imagePath, outSavePath, mouseDx, mouseDy, frames, ParseModelArgument(args, 7), ParseIntOption(args, "--click-hold-cycles", 30000));
+                CheckpointSavestateClick(savePath, imagePath, outSavePath, mouseDx, mouseDy, frames, ParseSavestateModelArgument(args, 7, savePath), ParseIntOption(args, "--click-hold-cycles", 30000));
                 Console.WriteLine("Savestate click checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate click checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -505,7 +505,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 7 && int.TryParse(args[6], out int parsedCheckpointMouseFrames) && parsedCheckpointMouseFrames > 0
                     ? parsedCheckpointMouseFrames
                     : 50;
-                CheckpointSavestateMouseMove(savePath, imagePath, outSavePath, mouseDx, mouseDy, frames, ParseModelArgument(args, 7));
+                CheckpointSavestateMouseMove(savePath, imagePath, outSavePath, mouseDx, mouseDy, frames, ParseSavestateModelArgument(args, 7, savePath));
                 Console.WriteLine("Savestate mouse-move checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate mouse-move checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -526,7 +526,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedCheckpointKeyFrames) && parsedCheckpointKeyFrames > 0
                     ? parsedCheckpointKeyFrames
                     : 50;
-                CheckpointSavestateKey(savePath, imagePath, outSavePath, rawKey, frames, ParseModelArgument(args, 6));
+                CheckpointSavestateKey(savePath, imagePath, outSavePath, rawKey, frames, ParseSavestateModelArgument(args, 6, savePath));
                 Console.WriteLine("Savestate key checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate key checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -550,7 +550,7 @@ namespace AmigaEmulator
                 int frames = args.Length >= 7 && int.TryParse(args[6], out int parsedCheckpointButtonFrames) && parsedCheckpointButtonFrames > 0
                     ? parsedCheckpointButtonFrames
                     : 50;
-                CheckpointSavestateButton(savePath, imagePath, outSavePath, port, button, frames, ParseModelArgument(args, 7));
+                CheckpointSavestateButton(savePath, imagePath, outSavePath, port, button, frames, ParseSavestateModelArgument(args, 7, savePath));
                 Console.WriteLine("Savestate button checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate button checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -569,7 +569,7 @@ namespace AmigaEmulator
                 string outSavePath = args.Length >= 6
                     ? args[5]
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_swap_checkpoint.amigasav");
-                CheckpointSavestateSwap(savePath, adfPath, cycles, imagePath, outSavePath, ParseModelArgument(args, 6), ParseIntOption(args, "--floppy-period", 0), ParseIntOption(args, "--eject-cycles", 0));
+                CheckpointSavestateSwap(savePath, adfPath, cycles, imagePath, outSavePath, ParseSavestateModelArgument(args, 6, savePath), ParseIntOption(args, "--floppy-period", 0), ParseIntOption(args, "--eject-cycles", 0));
                 Console.WriteLine("Savestate swap checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate swap checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -589,7 +589,7 @@ namespace AmigaEmulator
                 string outSavePath = args.Length >= 7
                     ? args[6]
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_poke_checkpoint.amigasav");
-                CheckpointSavestatePokeWord(savePath, address, value, frames, imagePath, outSavePath, ParseModelArgument(args, 7));
+                CheckpointSavestatePokeWord(savePath, address, value, frames, imagePath, outSavePath, ParseSavestateModelArgument(args, 7, savePath));
                 Console.WriteLine("Savestate poke checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate poke checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -2396,6 +2396,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void CheckpointSavestateButton(string savePath, string imagePath, string outSavePath, AmigaControlPort port, AmigaJoystickButtons button, int framesToRun, AmigaModel model)
         {
+            SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
             {
                 SaveStateFile.Load(savePath, system);
@@ -2406,7 +2407,7 @@ namespace AmigaEmulator
                 system.Input.SetMouseButton(port, button, false);
                 system.Input.SetJoystickButton(port, button, false);
                 RunFrames(system, framesToRun);
-                WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500);
+                WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500, metadata.MountedMedia);
                 Console.WriteLine("Port=" + port + " Button=" + button + " Frames=" + framesToRun);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
@@ -2454,12 +2455,13 @@ namespace AmigaEmulator
         /// </summary>
         private static void CheckpointSavestatePokeWord(string savePath, uint address, ushort value, int framesToRun, string imagePath, string outSavePath, AmigaModel model)
         {
+            SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
             {
                 SaveStateFile.Load(savePath, system);
                 system.Bus.WriteWord(address, value);
                 RunFrames(system, framesToRun);
-                WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500);
+                WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500, metadata.MountedMedia);
                 Console.WriteLine("PokeWord=$" + address.ToString("X6") + " <= $" + value.ToString("X4") + " Frames=" + framesToRun);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
@@ -8571,6 +8573,52 @@ namespace AmigaEmulator
         {
             uint address = system.Cpu.GetA(7);
                 DumpWords(system, address, words, "SP");
+        }
+
+        /// <summary>
+        /// Uses the savestate RAM profile unless the caller explicitly supplied --model.
+        /// </summary>
+        private static AmigaModel ParseSavestateModelArgument(string[] args, int startIndex, string savePath)
+        {
+            if (HasOption(args, "--model"))
+            {
+                return ParseModelArgument(args, startIndex);
+            }
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(savePath) && File.Exists(savePath))
+                {
+                    SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
+                    return GetModelForRamProfile(metadata.RamProfile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+
+            return AmigaModel.PalA500;
+        }
+
+        /// <summary>
+        /// Converts savestate RAM-profile metadata back to the matching emulator model.
+        /// </summary>
+        private static AmigaModel GetModelForRamProfile(AmigaRamProfile profile)
+        {
+            switch (profile)
+            {
+                case AmigaRamProfile.Chip512KSlow512K:
+                    return AmigaModel.A500Pal512Slow512;
+                case AmigaRamProfile.Chip1Mb:
+                    return AmigaModel.A500Pal1MbChip;
+                case AmigaRamProfile.Chip2Mb:
+                    return AmigaModel.A500Pal2MbChip;
+                case AmigaRamProfile.Chip2MbFast8Mb:
+                    return AmigaModel.A500Pal2MbChipFast8Mb;
+                default:
+                    return AmigaModel.PalA500;
+            }
         }
 
         /// <summary>

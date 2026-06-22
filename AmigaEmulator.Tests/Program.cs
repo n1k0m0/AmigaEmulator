@@ -764,6 +764,11 @@ namespace AmigaEmulator.Tests
                 TestSparseTopOverscanArtifactsAreCleared);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "wide sparse top overscan artifacts are cleared from the presented frame",
+                "PAL monitor presentation should suppress wider first-line transition noise without cropping artwork",
+                TestWideSparseTopOverscanArtifactsAreCleared);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "dense top-edge artwork is preserved in the presented frame",
                 "PAL monitor presentation cleanup must not crop real title or HUD artwork",
                 TestDenseTopArtworkIsPreserved);
@@ -1254,6 +1259,32 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that wider first-line transition noise is still treated as border garbage.
+        /// </summary>
+        private static void TestWideSparseTopOverscanArtifactsAreCleared()
+        {
+            var frame = new AmigaFrameBuffer(640, 256);
+            frame.Clear(0xFF0060AA);
+            for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 360; x++)
+                {
+                    frame.SetPixel(x, y, (x & 1) == 0 ? 0xFFFFFFFFu : 0xFF000000u);
+                }
+            }
+
+            frame.ClearSparseTopBorderArtifacts(24, 6000);
+
+            for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 360; x++)
+                {
+                    Check.Equal(0xFF0060AAu, frame.Pixels[(y * frame.Width) + x], "Wide sparse top-border transition pixels should be restored to the dominant border color.");
+                }
+            }
+        }
+
+        /// <summary>
         /// Verifies that real top-edge artwork is not mistaken for sparse overscan noise.
         /// </summary>
         private static void TestDenseTopArtworkIsPreserved()
@@ -1268,7 +1299,7 @@ namespace AmigaEmulator.Tests
                 }
             }
 
-            frame.ClearSparseTopBorderArtifacts(10, 512);
+            frame.ClearSparseTopBorderArtifacts(24, 6000);
 
             Check.Equal(0xFF4422EEu, frame.Pixels[(5 * frame.Width) + 320], "Dense top-edge artwork should survive sparse overscan cleanup.");
         }
@@ -1803,6 +1834,21 @@ namespace AmigaEmulator.Tests
                 TestSelectedDriveFollowsMotorLine);
             yield return new ChipTestCase(
                 "Paula/Disk",
+                "disk flux is available before CIA ready asserts",
+                "Paula DSKBYTR/DSKLEN see the selected drive flux stream independently of the CIA-A RDY status bit",
+                TestDiskFluxBeforeReadySignal);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "motor-off grace keeps the floppy stream rotating",
+                "Real drives keep spinning briefly after MOTOR is released; trackloaders can still see flux and index timing",
+                TestMotorOffGraceKeepsFluxAndIndexRunning);
+            yield return new ChipTestCase(
+                "Paula/Disk",
+                "deselected running drive keeps its MFM phase rotating",
+                "Floppy rotation is physical drive state, not a side effect of Paula sampling a selected drive",
+                TestDeselectedRunningDriveKeepsMfmPhaseRotating);
+            yield return new ChipTestCase(
+                "Paula/Disk",
                 "DF0 steps only while selected and follows CIA-B direction polarity",
                 "Amiga CIA-B floppy STEP and DIR control lines",
                 TestSelectedDriveStepDirection);
@@ -1909,10 +1955,10 @@ namespace AmigaEmulator.Tests
 
             controller.ApplyCiaBPort(0xF7, 0xFF);
             Check.True(controller.Drive0.Selected, "DF0 should remain selected while only MOTOR changes.");
-            Check.True(controller.Drive0.MotorOn, "DF0 motor should keep its latched state until SEL0 is reasserted.");
+            Check.True(!controller.Drive0.MotorOn, "DF0 motor should follow MOTOR high while selected.");
 
             controller.ApplyCiaBPort(0x77, 0xFF);
-            Check.True(controller.Drive0.MotorOn, "DF0 motor should remain on while the drive remains selected.");
+            Check.True(controller.Drive0.MotorOn, "DF0 motor should relatch on while the drive remains selected.");
 
             controller.ApplyCiaBPort(0xFF, 0xFF);
             Check.True(!controller.Drive0.Selected, "DF0 should deselect when CIA-B SEL0 is high.");
@@ -1929,6 +1975,131 @@ namespace AmigaEmulator.Tests
 
             controller.ApplyCiaBPort(0x77, 0xFF);
             Check.True(controller.Drive0.MotorOn, "DF0 motor should turn on when SEL0 is reasserted after MOTOR went low.");
+        }
+
+        /// <summary>
+        /// Verifies that the raw MFM stream is not gated by the separate CIA-A ready signal.
+        /// </summary>
+        private static void TestDiskFluxBeforeReadySignal()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_flux_before_ready_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(path, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(path), true);
+                controller.ApplyCiaBPort(0x73, 0xFF);
+
+                Check.True(controller.Drive0.Selected, "DF0 should be selected.");
+                Check.True(controller.Drive0.MotorOn, "DF0 motor should be running.");
+                Check.True(!controller.Drive0.ReadySignal, "Freshly inserted DF0 should not assert CIA-A RDY until spin-up completes.");
+                bool foundSync = false;
+                for (int cycle = 0; cycle < 800000; cycle++)
+                {
+                    controller.Tick();
+                    if (controller.Drive0.ReadNextMfmWord() == 0x4489)
+                    {
+                        foundSync = true;
+                        break;
+                    }
+                }
+
+                Check.True(foundSync, "Paula should still see the rotating MFM stream before CIA-A RDY asserts.");
+            }
+            finally
+            {
+                TryDeleteFile(path);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that a deselected motor-off grace period still advances the physical disk stream.
+        /// </summary>
+        private static void TestMotorOffGraceKeepsFluxAndIndexRunning()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_motor_grace_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(path, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(path), true);
+                controller.ApplyCiaBPort(0x73, 0xFF);
+                WaitForDriveReady(controller.Drive0);
+
+                for (int cycle = 0; cycle < 512; cycle++)
+                {
+                    controller.Tick();
+                }
+
+                int streamBeforeStop = controller.Drive0.StreamWordPosition;
+                int indexBeforeStop = controller.Drive0.IndexPulseCountdown;
+                Check.True(streamBeforeStop > 0, "The selected running drive should advance physical MFM phase before MOTOR is released.");
+
+                controller.ApplyCiaBPort(0xFF, 0xFF);
+                controller.ApplyCiaBPort(0xF7, 0xFF);
+                Check.True(!controller.Drive0.MotorOn, "DF0 motor should turn off when selected with CIA-B MOTOR high.");
+                Check.True(controller.Drive0.CanReadFlux, "DF0 should continue to expose flux during motor-off grace.");
+                Check.True(controller.Drive0.ReadySignal, "DF0 RDY should remain asserted during motor-off grace.");
+
+                for (int cycle = 0; cycle < 512; cycle++)
+                {
+                    controller.Tick();
+                }
+
+                controller.Drive0.ReadNextMfmWord();
+                Check.True(controller.Drive0.StreamWordPosition != streamBeforeStop, "The stream position should advance during motor-off grace.");
+                Check.True(controller.Drive0.IndexPulseCountdown < indexBeforeStop, "The index countdown should keep running while the disk is coasting.");
+            }
+            finally
+            {
+                TryDeleteFile(path);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that deselecting a still-running drive does not freeze its disk angular phase.
+        /// </summary>
+        private static void TestDeselectedRunningDriveKeepsMfmPhaseRotating()
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_deselect_rotation_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(path, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(path), true);
+                controller.ApplyCiaBPort(0x73, 0xFF);
+                WaitForDriveReady(controller.Drive0);
+
+                for (int cycle = 0; cycle < 1024; cycle++)
+                {
+                    controller.Tick();
+                }
+
+                int selectedPosition = controller.Drive0.StreamWordPosition;
+                controller.ApplyCiaBPort(0xFF, 0xFF);
+                Check.True(!controller.Drive0.Selected, "DF0 should be deselected.");
+                Check.True(controller.Drive0.MotorOn, "DF0 should keep its latched motor state while deselected.");
+
+                for (int cycle = 0; cycle < 4096; cycle++)
+                {
+                    controller.Tick();
+                }
+
+                int deselectedPosition = controller.Drive0.StreamWordPosition;
+                Check.True(deselectedPosition != selectedPosition, "A deselected but running DF0 must keep advancing the physical MFM phase.");
+
+                controller.ApplyCiaBPort(0x77, 0xFF);
+                Check.True(controller.Drive0.Selected, "DF0 should be reselected before Paula samples flux.");
+                ushort sampledBefore = controller.Drive0.ReadNextMfmWord();
+                int positionBeforeSample = controller.Drive0.StreamWordPosition;
+                ushort sampledAgain = controller.Drive0.ReadNextMfmWord();
+                Check.Equal(sampledBefore, sampledAgain, "Sampling the same physical phase twice should return the same word.");
+                Check.Equal(positionBeforeSample, controller.Drive0.StreamWordPosition, "ReadNextMfmWord should sample the current phase without advancing rotation.");
+            }
+            finally
+            {
+                TryDeleteFile(path);
+            }
         }
 
         /// <summary>
@@ -2201,12 +2372,13 @@ namespace AmigaEmulator.Tests
 
                 for (int cycle = 0; cycle < 150000 && captured.Count < 2; cycle++)
                 {
+                    controller.Tick();
                     paula.Tick(true, false);
                 }
 
                 Check.True(captured.Count > 1, "WORDSYNC read DMA should eventually transfer after the first track sync.");
-                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should start with the paired sync word after the matched sync.");
-                Check.True(captured[1] != AdfMfmEncoder.SyncWord, "WORDSYNC read DMA must not transfer the already matched sync word twice.");
+                Check.Equal(AdfMfmEncoder.SyncWord, captured[0], "WORDSYNC read DMA should start with the matched sync word.");
+                Check.Equal(AdfMfmEncoder.SyncWord, captured[1], "WORDSYNC read DMA should preserve the paired sync word after the matched sync.");
             }
             finally
             {
@@ -2244,12 +2416,14 @@ namespace AmigaEmulator.Tests
 
                 for (int cycle = 0; cycle < 800000; cycle++)
                 {
+                    controller.Tick();
                     paula.Tick(false, false);
                 }
 
                 Check.Equal(0, captured.Count, "The setup phase should not transfer without disk DMA slots.");
                 for (int cycle = 0; cycle < 20000 && captured.Count < 2; cycle++)
                 {
+                    controller.Tick();
                     paula.Tick(true, false);
                 }
 
@@ -2293,6 +2467,7 @@ namespace AmigaEmulator.Tests
 
                 for (int cycle = 0; cycle < 800000; cycle++)
                 {
+                    controller.Tick();
                     paula.Tick(false, false);
                 }
 
@@ -2302,6 +2477,7 @@ namespace AmigaEmulator.Tests
                 dmacon = 0x0210;
                 for (int cycle = 0; cycle < 800000 && captured.Count < 2; cycle++)
                 {
+                    controller.Tick();
                     paula.Tick(true, false);
                 }
 

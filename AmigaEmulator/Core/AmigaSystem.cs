@@ -45,12 +45,12 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Scans the top overscan rows for isolated transition artifacts before presentation.
         /// </summary>
-        private const int TopOverscanArtifactRows = 10;
+        private const int TopOverscanArtifactRows = 24;
 
         /// <summary>
         /// Keeps the cleanup narrow enough that real top-edge artwork is preserved.
         /// </summary>
-        private const int MaxTopOverscanArtifactPixels = 512;
+        private const int MaxTopOverscanArtifactPixels = 6000;
 
         /// <summary>
         /// Runs object.
