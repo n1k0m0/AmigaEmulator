@@ -125,18 +125,14 @@ namespace AmigaEmulator.Core.Media
 
             ushort[] words = new ushort[StandardTrackWords];
             int writeIndex = 0;
-            int baseGapWords = TrackGapWords / AdfImage.SectorsPerTrack;
-            int extraGapWords = TrackGapWords % AdfImage.SectorsPerTrack;
+            for (; writeIndex < TrackGapWords; writeIndex++)
+            {
+                words[writeIndex] = GapWord;
+            }
 
             byte[] sectorData = new byte[AdfImage.SectorSize];
             for (int sector = 0; sector < AdfImage.SectorsPerTrack; sector++)
             {
-                int gapWords = baseGapWords + (sector < extraGapWords ? 1 : 0);
-                for (int gapIndex = 0; gapIndex < gapWords; gapIndex++)
-                {
-                    words[writeIndex++] = GapWord;
-                }
-
                 Array.Clear(sectorData, 0, sectorData.Length);
                 image.ReadSector(cylinder, side, sector, sectorData, 0);
 
@@ -169,11 +165,10 @@ namespace AmigaEmulator.Core.Media
             }
 
             var words = new List<ushort>(SectorWords);
-            int previousDataBit = 0;
-            AddRawMfmWord(words, GapWord, ref previousDataBit);
-            AddRawMfmWord(words, GapWord, ref previousDataBit);
-            AddRawMfmWord(words, SyncWord, ref previousDataBit);
-            AddRawMfmWord(words, SyncWord, ref previousDataBit);
+            words.Add(GapWord);
+            words.Add(GapWord);
+            words.Add(SyncWord);
+            words.Add(SyncWord);
 
             uint headerLong =
                 ((uint)AmigaDosFormatByte << 24) |
@@ -183,15 +178,15 @@ namespace AmigaEmulator.Core.Media
 
             var headerWords = new List<ushort>(20);
             uint headerChecksum = 0;
-            AppendOddEvenLong(headerWords, headerLong, ref headerChecksum, ref previousDataBit);
+            AppendOddEvenLong(headerWords, headerLong, ref headerChecksum);
 
             byte[] label = new byte[16];
-            AppendOddEvenBlock(headerWords, label, ref headerChecksum, ref previousDataBit);
+            AppendOddEvenBlock(headerWords, label, ref headerChecksum);
             headerChecksum &= MfmDataMask;
 
             var dataWords = new List<ushort>(AdfImage.SectorSize);
             uint dataChecksum = 0;
-            AppendOddEvenBlock(dataWords, sectorData, ref dataChecksum, ref previousDataBit);
+            AppendOddEvenBlock(dataWords, sectorData, ref dataChecksum);
             dataChecksum &= MfmDataMask;
 
             foreach (ushort word in headerWords)
@@ -200,9 +195,9 @@ namespace AmigaEmulator.Core.Media
             }
 
             uint ignoredChecksum = 0;
-            AppendOddEvenLong(words, headerChecksum, ref ignoredChecksum, ref previousDataBit);
+            AppendOddEvenLong(words, headerChecksum, ref ignoredChecksum);
             ignoredChecksum = 0;
-            AppendOddEvenLong(words, dataChecksum, ref ignoredChecksum, ref previousDataBit);
+            AppendOddEvenLong(words, dataChecksum, ref ignoredChecksum);
 
             foreach (ushort word in dataWords)
             {
@@ -303,7 +298,7 @@ namespace AmigaEmulator.Core.Media
         /// <summary>
         /// Runs Append Odd Even Block.
         /// </summary>
-        private static void AppendOddEvenBlock(List<ushort> destination, byte[] bytes, ref uint checksum, ref int previousDataBit)
+        private static void AppendOddEvenBlock(List<ushort> destination, byte[] bytes, ref uint checksum)
         {
             int longCount = bytes.Length / 4;
             uint[] oddBits = new uint[longCount];
@@ -318,30 +313,30 @@ namespace AmigaEmulator.Core.Media
 
             for (int index = 0; index < longCount; index++)
             {
-                AppendEncodedMaskedLong(destination, oddBits[index], ref checksum, ref previousDataBit);
+                AppendEncodedMaskedLong(destination, oddBits[index], ref checksum);
             }
 
             for (int index = 0; index < longCount; index++)
             {
-                AppendEncodedMaskedLong(destination, evenBits[index], ref checksum, ref previousDataBit);
+                AppendEncodedMaskedLong(destination, evenBits[index], ref checksum);
             }
         }
 
         /// <summary>
         /// Runs Append Odd Even Long.
         /// </summary>
-        private static void AppendOddEvenLong(List<ushort> destination, uint value, ref uint checksum, ref int previousDataBit)
+        private static void AppendOddEvenLong(List<ushort> destination, uint value, ref uint checksum)
         {
-            AppendEncodedMaskedLong(destination, (value >> 1) & MfmDataMask, ref checksum, ref previousDataBit);
-            AppendEncodedMaskedLong(destination, value & MfmDataMask, ref checksum, ref previousDataBit);
+            AppendEncodedMaskedLong(destination, (value >> 1) & MfmDataMask, ref checksum);
+            AppendEncodedMaskedLong(destination, value & MfmDataMask, ref checksum);
         }
 
         /// <summary>
         /// Runs Append Encoded Masked Long.
         /// </summary>
-        private static void AppendEncodedMaskedLong(List<ushort> destination, uint dataBits, ref uint checksum, ref int previousDataBit)
+        private static void AppendEncodedMaskedLong(List<ushort> destination, uint dataBits, ref uint checksum)
         {
-            uint encoded = EncodeMaskedLong(dataBits, ref previousDataBit);
+            uint encoded = EncodeMaskedLong(dataBits);
             checksum ^= encoded & MfmDataMask;
             destination.Add((ushort)(encoded >> 16));
             destination.Add((ushort)encoded);
@@ -350,31 +345,11 @@ namespace AmigaEmulator.Core.Media
         /// <summary>
         /// Encodes Masked Long for Amiga-compatible use.
         /// </summary>
-        private static uint EncodeMaskedLong(uint dataBits, ref int previousDataBit)
+        private static uint EncodeMaskedLong(uint dataBits)
         {
             dataBits &= MfmDataMask;
-            uint encoded = dataBits;
-            for (int shift = 30; shift >= 0; shift -= 2)
-            {
-                int dataBit = (int)((dataBits >> shift) & 1u);
-                if (previousDataBit == 0 && dataBit == 0)
-                {
-                    encoded |= 1u << (shift + 1);
-                }
-
-                previousDataBit = dataBit;
-            }
-
-            return encoded & (MfmDataMask | MfmClockMask);
-        }
-
-        /// <summary>
-        /// Appends a raw MFM word and advances the data-bit history used by following clock cells.
-        /// </summary>
-        private static void AddRawMfmWord(List<ushort> destination, ushort word, ref int previousDataBit)
-        {
-            destination.Add(word);
-            previousDataBit = word & 1;
+            uint clocks = (~(dataBits << 1) & ~(dataBits >> 1)) & MfmClockMask;
+            return dataBits | clocks;
         }
 
         /// <summary>

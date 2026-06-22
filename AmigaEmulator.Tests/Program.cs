@@ -1842,7 +1842,7 @@ namespace AmigaEmulator.Tests
                         if (previousPairedSync >= 0)
                         {
                             int spacing = (index - 1) - previousPairedSync;
-                            Check.True(spacing < AdfMfmEncoder.SectorWords + 80, "Generated MFM sector syncs should be distributed through the track.");
+                            Check.Equal(AdfMfmEncoder.SectorWords, spacing, "Generated MFM sectors should keep the standard AmigaDOS sector spacing.");
                         }
 
                         previousPairedSync = index - 1;
@@ -1851,7 +1851,7 @@ namespace AmigaEmulator.Tests
                 }
 
                 Check.True(foundPairedSync, "Generated MFM track should contain paired Amiga sync words.");
-                Check.True(firstPairedSync >= 2 && firstPairedSync < 80, "Generated MFM track should place the first sector near the index gap instead of after one oversized gap.");
+                Check.Equal(AdfMfmEncoder.TrackGapWords + 2, firstPairedSync, "Generated MFM track should leave a stable lead-in gap before the first sector sync.");
                 Check.Equal(AdfImage.SectorsPerTrack, pairedSyncs, "Generated MFM track should contain one paired sync marker per sector.");
             }
             finally
