@@ -550,7 +550,17 @@ namespace AmigaEmulator
                 int frames = args.Length >= 7 && int.TryParse(args[6], out int parsedCheckpointButtonFrames) && parsedCheckpointButtonFrames > 0
                     ? parsedCheckpointButtonFrames
                     : 50;
-                CheckpointSavestateButton(savePath, imagePath, outSavePath, port, button, frames, ParseSavestateModelArgument(args, 7, savePath));
+                CheckpointSavestateButton(
+                    savePath,
+                    imagePath,
+                    outSavePath,
+                    port,
+                    button,
+                    frames,
+                    ParseSavestateModelArgument(args, 7, savePath),
+                    ParseIntOption(args, "--button-pre-cycles", 0),
+                    ParseIntOption(args, "--button-hold-cycles", 2000000),
+                    HasOption(args, "--hold-through-frames"));
                 Console.WriteLine("Savestate button checkpoint image written: " + Path.GetFullPath(imagePath));
                 Console.WriteLine("Savestate button checkpoint written: " + Path.GetFullPath(outSavePath));
                 return;
@@ -2394,21 +2404,36 @@ namespace AmigaEmulator
         /// <summary>
         /// Saves a new checkpoint after restoring a savestate and pressing one emulated control-port button.
         /// </summary>
-        private static void CheckpointSavestateButton(string savePath, string imagePath, string outSavePath, AmigaControlPort port, AmigaJoystickButtons button, int framesToRun, AmigaModel model)
+        private static void CheckpointSavestateButton(string savePath, string imagePath, string outSavePath, AmigaControlPort port, AmigaJoystickButtons button, int framesToRun, AmigaModel model, int buttonPreCycles, int buttonHoldCycles, bool holdThroughFrames)
         {
             SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
             {
                 SaveStateFile.Load(savePath, system);
+                if (buttonPreCycles > 0)
+                {
+                    system.RunChipCycles(buttonPreCycles);
+                }
+
                 system.Input.SetMouseButton(port, button, true);
                 system.Input.SetJoystickButton(port, button, true);
                 Console.WriteLine("ButtonDown Port=" + port + " Button=" + button + " JOY0DAT=$" + system.Bus.ReadWord(0x00DFF00A).ToString("X4") + " JOY1DAT=$" + system.Bus.ReadWord(0x00DFF00C).ToString("X4") + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2") + " POTINP=$" + system.Bus.ReadWord(0x00DFF016).ToString("X4"));
-                system.RunChipCycles(2000000);
-                system.Input.SetMouseButton(port, button, false);
-                system.Input.SetJoystickButton(port, button, false);
+                system.RunChipCycles(Math.Max(1, buttonHoldCycles));
+                if (!holdThroughFrames)
+                {
+                    system.Input.SetMouseButton(port, button, false);
+                    system.Input.SetJoystickButton(port, button, false);
+                }
+
                 RunFrames(system, framesToRun);
+                if (holdThroughFrames)
+                {
+                    system.Input.SetMouseButton(port, button, false);
+                    system.Input.SetJoystickButton(port, button, false);
+                }
+
                 WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500, metadata.MountedMedia);
-                Console.WriteLine("Port=" + port + " Button=" + button + " Frames=" + framesToRun);
+                Console.WriteLine("Port=" + port + " Button=" + button + " Frames=" + framesToRun + " PreCycles=" + Math.Max(0, buttonPreCycles) + " HoldCycles=" + Math.Max(1, buttonHoldCycles) + " HoldThroughFrames=" + holdThroughFrames);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
