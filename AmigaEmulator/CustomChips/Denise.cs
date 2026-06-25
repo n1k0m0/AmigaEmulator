@@ -50,6 +50,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private readonly int _frameBufferXOffset;
         /// <summary>
+        /// Vertical host-framebuffer offset used to keep top/bottom overscan pixels available for presentation.
+        /// </summary>
+        private readonly int _frameBufferYOffset;
+        /// <summary>
         /// Constant for Pal Lowres Display Start.
         /// </summary>
         private const int PalLowresDisplayStart = 0x3E;
@@ -106,20 +110,29 @@ namespace AmigaEmulator.Core.CustomChips
         /// Initializes a new instance of the Denise class.
         /// </summary>
         public Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, int frameBufferXOffset)
-            : this(frameBuffer, bitplanes, sprites, collisions, true, frameBufferXOffset)
+            : this(frameBuffer, bitplanes, sprites, collisions, frameBufferXOffset, 0)
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the Denise class.
         /// </summary>
-        private Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, bool useSharedSpriteState, int frameBufferXOffset)
+        public Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, int frameBufferXOffset, int frameBufferYOffset)
+            : this(frameBuffer, bitplanes, sprites, collisions, true, frameBufferXOffset, frameBufferYOffset)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the Denise class.
+        /// </summary>
+        private Denise(AmigaFrameBuffer frameBuffer, BitplaneUnit bitplanes, SpriteUnit sprites, CollisionUnit collisions, bool useSharedSpriteState, int frameBufferXOffset, int frameBufferYOffset)
         {
             _frameBuffer = frameBuffer;
             _bitplanes = bitplanes;
             _sprites = sprites;
             _collisions = collisions;
             _frameBufferXOffset = frameBufferXOffset;
+            _frameBufferYOffset = frameBufferYOffset;
         }
 
         /// <summary>
@@ -161,7 +174,7 @@ namespace AmigaEmulator.Core.CustomChips
         {
             _bitplanes.RefreshFromRegisters();
             _sprites.RefreshFromRegisters();
-            int y = beam.BeamY - BitplaneUnit.PalVisibleTop;
+            int y = beam.BeamY - BitplaneUnit.PalVisibleTop + _frameBufferYOffset;
             if (y < 0 || y >= _frameBuffer.Height)
             {
                 return;

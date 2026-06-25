@@ -491,12 +491,13 @@ namespace AmigaEmulator.Core.CustomChips
                 _diwBottom += 256;
             }
 
-            int fetchMask = _hires ? ~0x03 : ~0x07;
-            _ddfStart = ddfStart == 0 ? 0x38 : (ddfStart & 0x00FE) & fetchMask;
-            _ddfStop = ddfStop == 0 ? 0xD0 : (ddfStop & 0x00FE) & fetchMask;
+            _ddfStart = NormalizeDdfStart(ddfStart);
+            _ddfStop = NormalizeDdfStop(ddfStop);
+            int fetchUnit = GetFetchUnit();
+            int fetchStart = GetFetchStart();
             int span = _ddfStop - _ddfStart;
-            int lowresFetchGroups = span < 0 ? 0 : (span / 8) + 1;
-            _wordsPerFetchedLine = _hires ? lowresFetchGroups * 2 : lowresFetchGroups;
+            int fetchGroups = span < 0 ? 0 : ((span + fetchUnit - 1) / fetchUnit) + 1;
+            _wordsPerFetchedLine = fetchGroups * fetchUnit / fetchStart;
             int bitplaneBits = _wordsPerFetchedLine * 16;
             _displayFetchWidth = _hires ? bitplaneBits : bitplaneBits * 2;
             _scrollEven = bplcon1 & 0x000F;
@@ -1113,7 +1114,39 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetFetchStep()
         {
+            return GetFetchStart();
+        }
+
+        /// <summary>
+        /// Returns the indivisible OCS DDF block size in color clocks.
+        /// </summary>
+        private static int GetFetchUnit()
+        {
+            return 8;
+        }
+
+        /// <summary>
+        /// Returns the distance before the same bitplane can be fetched again.
+        /// </summary>
+        private int GetFetchStart()
+        {
             return _hires ? 4 : 8;
+        }
+
+        /// <summary>
+        /// Applies the A500 OCS DDFSTRT mask and default value.
+        /// </summary>
+        private static int NormalizeDdfStart(ushort value)
+        {
+            return value == 0 ? 0x38 : value & 0x00FC;
+        }
+
+        /// <summary>
+        /// Applies the A500 OCS DDFSTOP mask and default value.
+        /// </summary>
+        private static int NormalizeDdfStop(ushort value)
+        {
+            return value == 0 ? 0xD0 : value & 0x00FC;
         }
 
         /// <summary>
@@ -1252,7 +1285,7 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 ushort value = Read(Ddfstrt);
-                return value == 0 ? 0x38 : value & 0x00FE;
+                return NormalizeDdfStart(value);
             }
         }
 
@@ -1264,7 +1297,7 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 ushort value = Read(Ddfstop);
-                return value == 0 ? 0xD0 : value & 0x00FE;
+                return NormalizeDdfStop(value);
             }
         }
 
@@ -1311,6 +1344,32 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 RefreshFromRegisters();
                 return Math.Min(0, GetRawDisplayLeft());
+            }
+        }
+
+        /// <summary>
+        /// Gets the beam-relative source Y coordinate used for presentation.
+        /// </summary>
+        public int PresentationSourceTop
+        {
+            get
+            {
+                RefreshFromRegisters();
+                return Math.Min(PalVisibleTop, _diwTop);
+            }
+        }
+
+        /// <summary>
+        /// Gets the source height needed to keep DIW-programmed vertical overscan visible.
+        /// </summary>
+        public int PresentationSourceHeight
+        {
+            get
+            {
+                RefreshFromRegisters();
+                int sourceTop = Math.Min(PalVisibleTop, _diwTop);
+                int sourceBottom = Math.Max(PalVisibleTop + PalVisibleHeight, _diwBottom);
+                return Math.Max(1, sourceBottom - sourceTop);
             }
         }
 

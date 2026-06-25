@@ -120,6 +120,11 @@ namespace AmigaEmulator.Core.Cpu
                 return Simple(M68kInstructionKind.Clr, "CLR", 2, 4);
             }
 
+            if ((opcode & 0xFFC0) == 0x4AC0)
+            {
+                return Simple(M68kInstructionKind.Tas, "TAS", EstimateSizeBytes(opcode, 1), 4);
+            }
+
             if ((opcode & 0xFF00) == 0x4A00)
             {
                 return Simple(M68kInstructionKind.Tst, "TST", 2, 4);

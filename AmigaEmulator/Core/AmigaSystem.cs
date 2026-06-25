@@ -156,7 +156,7 @@ namespace AmigaEmulator.Core
         {
             _model = model ?? AmigaModel.A500Pal;
             _accuracyOptions = (accuracyOptions ?? AmigaAccuracyOptions.Compatible).Clone();
-            _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft + HorizontalOverscanPixels, _model.VisibleHeight);
+            _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft + HorizontalOverscanPixels, _model.LinesPerFrame);
             _presentedFrameBuffer = new AmigaFrameBuffer(_model.VisibleWidth, _model.VisibleHeight);
             _paula = new Paula(_model.ChipRamBytes);
             _ciaA = new Cia8520("CIA-A");
@@ -172,7 +172,7 @@ namespace AmigaEmulator.Core
                 potgo => _input.ReadPotInp(potgo));
             _bus.AttachCiaAPortAInputProvider(_input.GetCiaAPortAInputMask, _input.GetCiaAPortAInputValue);
             _agnus.AttachChipWordReader(ReadChipRamWord);
-            _denise = new Denise(_frameBuffer, _agnus.Bitplanes, _agnus.Sprites, _agnus.Collisions, PresentationCropLeft);
+            _denise = new Denise(_frameBuffer, _agnus.Bitplanes, _agnus.Sprites, _agnus.Collisions, PresentationCropLeft, BitplaneUnit.PalVisibleTop);
             _paula.AttachDisk(
                 _bus.FloppyController,
                 WriteChipRamWord,
@@ -313,24 +313,18 @@ namespace AmigaEmulator.Core
         {
             lock (_syncRoot)
             {
-                int sourceLeft = PresentationCropLeft + _agnus.Bitplanes.PresentationSourceLeft;
-                sourceLeft = Math.Max(0, Math.Min(sourceLeft, _frameBuffer.Width - 1));
-                int sourceWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
-                sourceWidth = Math.Min(sourceWidth, _frameBuffer.Width - sourceLeft);
-                int trimmedLeft = sourceLeft;
-                int trimmedWidth = sourceWidth;
-                TrimBlankPresentationEdges(ref trimmedLeft, ref trimmedWidth);
+                GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
                 return string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
-                    "framebuffer:{0}x{1} presented:{2}x{3} source:{4}+{5} trimmed:{6}+{7}",
+                    "framebuffer:{0}x{1} presented:{2}x{3} source:{4},{5}+{6}x{7}",
                     _frameBuffer.Width,
                     _frameBuffer.Height,
                     _presentedFrameBuffer.Width,
                     _presentedFrameBuffer.Height,
                     sourceLeft,
+                    sourceTop,
                     sourceWidth,
-                    trimmedLeft,
-                    trimmedWidth);
+                    sourceHeight);
             }
         }
 
@@ -692,18 +686,14 @@ namespace AmigaEmulator.Core
             _denise.Tick(_agnus.Beam);
             if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
             {
-                int sourceLeft = PresentationCropLeft + _agnus.Bitplanes.PresentationSourceLeft;
-                sourceLeft = Math.Max(0, Math.Min(sourceLeft, _frameBuffer.Width - 1));
-                int sourceWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
-                sourceWidth = Math.Min(sourceWidth, _frameBuffer.Width - sourceLeft);
-                TrimBlankPresentationEdges(ref sourceLeft, ref sourceWidth);
-                if (sourceWidth > _model.VisibleWidth)
+                GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
+                if (sourceWidth > _model.VisibleWidth || sourceHeight > _model.VisibleHeight)
                 {
-                    _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, 0, sourceWidth, _model.VisibleHeight);
+                    _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
                 }
                 else
                 {
-                    _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, 0);
+                    _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop);
                 }
 
                 _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
@@ -716,75 +706,18 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Removes empty outer overscan columns while keeping at least the standard visible width.
+        /// Resolves the source window selected by the emulated display registers for host presentation.
         /// </summary>
-        private void TrimBlankPresentationEdges(ref int sourceLeft, ref int sourceWidth)
+        private void GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight)
         {
-            int extraWidth = sourceWidth - _model.VisibleWidth;
-            if (extraWidth <= 0)
-            {
-                return;
-            }
-
-            int maxShift = Math.Min(extraWidth, _frameBuffer.Width - sourceLeft - sourceWidth);
-            if (maxShift <= 0)
-            {
-                return;
-            }
-
-            int leftBlankColumns = CountBlankPresentationColumns(sourceLeft, sourceWidth, maxShift, true);
-            if (leftBlankColumns > 0)
-            {
-                sourceLeft += Math.Min(leftBlankColumns, maxShift);
-            }
-
-            extraWidth = sourceWidth - _model.VisibleWidth;
-            if (extraWidth <= 0)
-            {
-                return;
-            }
-
-            int rightBlankColumns = CountBlankPresentationColumns(sourceLeft, sourceWidth, extraWidth, false);
-            if (rightBlankColumns > 0)
-            {
-                sourceWidth -= Math.Min(rightBlankColumns, extraWidth);
-            }
-        }
-
-        /// <summary>
-        /// Counts fully black columns at one edge of a candidate presentation source window.
-        /// </summary>
-        private int CountBlankPresentationColumns(int sourceLeft, int sourceWidth, int maxColumns, bool fromLeft)
-        {
-            uint[] pixels = _frameBuffer.Pixels;
-            int width = _frameBuffer.Width;
-            int height = Math.Min(_model.VisibleHeight, _frameBuffer.Height);
-            int columns = Math.Min(maxColumns, sourceWidth);
-            int blankColumns = 0;
-            for (int x = 0; x < columns; x++)
-            {
-                int sourceX = fromLeft
-                    ? sourceLeft + x
-                    : sourceLeft + sourceWidth - 1 - x;
-                bool blank = true;
-                for (int y = 0; y < height; y++)
-                {
-                    if ((pixels[(y * width) + sourceX] & 0x00FFFFFFu) != 0)
-                    {
-                        blank = false;
-                        break;
-                    }
-                }
-
-                if (!blank)
-                {
-                    break;
-                }
-
-                blankColumns++;
-            }
-
-            return blankColumns;
+            int requestedLeft = PresentationCropLeft + _agnus.Bitplanes.PresentationSourceLeft;
+            int requestedWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
+            int requestedTop = _agnus.Bitplanes.PresentationSourceTop;
+            int requestedHeight = Math.Max(_model.VisibleHeight, _agnus.Bitplanes.PresentationSourceHeight);
+            sourceLeft = Math.Max(0, Math.Min(requestedLeft, _frameBuffer.Width - 1));
+            sourceWidth = Math.Max(1, Math.Min(requestedWidth, _frameBuffer.Width - sourceLeft));
+            sourceTop = Math.Max(0, Math.Min(requestedTop, _frameBuffer.Height - 1));
+            sourceHeight = Math.Max(1, Math.Min(requestedHeight, _frameBuffer.Height - sourceTop));
         }
 
         /// <summary>

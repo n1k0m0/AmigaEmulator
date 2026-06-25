@@ -315,6 +315,107 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-pc-window", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int skipCycles = args.Length >= 3 && int.TryParse(args[2], out int parsedTraceSkipCycles) && parsedTraceSkipCycles > 0
+                    ? parsedTraceSkipCycles
+                    : 0;
+                int cycles = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceWindowCycles) && parsedTraceWindowCycles > 0
+                    ? parsedTraceWindowCycles
+                    : 2000000;
+                int maxLines = args.Length >= 5 && int.TryParse(args[4], out int parsedTraceWindowLines) && parsedTraceWindowLines > 0
+                    ? parsedTraceWindowLines
+                    : 64;
+                uint filterStart = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0u;
+                uint filterEnd = args.Length >= 7 ? Convert.ToUInt32(args[6].Replace("$", string.Empty), 16) : 0x00FFFFFFu;
+                TraceSavestatePcWindow(savePath, skipCycles, cycles, maxLines, filterStart, filterEnd, ParseSavestateModelArgument(args, 7, savePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-pc-outside", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                uint rangeStart = args.Length >= 3 ? Convert.ToUInt32(args[2].Replace("$", string.Empty), 16) : 0u;
+                uint rangeEnd = args.Length >= 4 ? Convert.ToUInt32(args[3].Replace("$", string.Empty), 16) : 0x00FFFFFFu;
+                int cycles = args.Length >= 5 && int.TryParse(args[4], out int parsedTraceOutsideCycles) && parsedTraceOutsideCycles > 0
+                    ? parsedTraceOutsideCycles
+                    : 2000000;
+                int samples = args.Length >= 6 && int.TryParse(args[5], out int parsedTraceOutsideSamples) && parsedTraceOutsideSamples > 0
+                    ? parsedTraceOutsideSamples
+                    : 80;
+                TraceSavestatePcOutside(savePath, rangeStart, rangeEnd, cycles, samples, ParseSavestateModelArgument(args, 6, savePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-before-stop", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedTraceStopCycles) && parsedTraceStopCycles > 0
+                    ? parsedTraceStopCycles
+                    : 2000000;
+                int samples = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceStopSamples) && parsedTraceStopSamples > 0
+                    ? parsedTraceStopSamples
+                    : 80;
+                uint filterStart = args.Length >= 5 ? Convert.ToUInt32(args[4].Replace("$", string.Empty), 16) : 0u;
+                uint filterEnd = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0x00BFFFFFu;
+                int skipCycles = args.Length >= 7 && int.TryParse(args[6], out int parsedTraceStopSkipCycles) && parsedTraceStopSkipCycles > 0
+                    ? parsedTraceStopSkipCycles
+                    : 0;
+                TraceSavestateBeforeStop(savePath, cycles, samples, filterStart, filterEnd, skipCycles, ParseSavestateModelArgument(args, 7, savePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-runtime-calls", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedRuntimeCycles) && parsedRuntimeCycles > 0
+                    ? parsedRuntimeCycles
+                    : 20000000;
+                int maxLines = args.Length >= 4 && int.TryParse(args[3], out int parsedRuntimeLines) && parsedRuntimeLines > 0
+                    ? parsedRuntimeLines
+                    : 200;
+                int skipCycles = args.Length >= 5 && int.TryParse(args[4], out int parsedRuntimeSkipCycles) && parsedRuntimeSkipCycles > 0
+                    ? parsedRuntimeSkipCycles
+                    : 0;
+                TraceSavestateRuntimeCalls(savePath, cycles, maxLines, skipCycles, ParseSavestateModelArgument(args, 5, savePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-adf-runtime-calls", StringComparison.OrdinalIgnoreCase))
+            {
+                string adfPath = args.Length >= 2 ? args[1] : string.Empty;
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedAdfRuntimeCycles) && parsedAdfRuntimeCycles > 0
+                    ? parsedAdfRuntimeCycles
+                    : 120000000;
+                int maxLines = args.Length >= 4 && int.TryParse(args[3], out int parsedAdfRuntimeLines) && parsedAdfRuntimeLines > 0
+                    ? parsedAdfRuntimeLines
+                    : 500;
+                int skipCycles = args.Length >= 5 && int.TryParse(args[4], out int parsedAdfRuntimeSkipCycles) && parsedAdfRuntimeSkipCycles > 0
+                    ? parsedAdfRuntimeSkipCycles
+                    : 0;
+                TraceAdfRuntimeCalls(adfPath, cycles, maxLines, skipCycles, ParseModelArgument(args, 5));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-adf-user-calls", StringComparison.OrdinalIgnoreCase))
+            {
+                string adfPath = args.Length >= 2 ? args[1] : string.Empty;
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedAdfUserCallCycles) && parsedAdfUserCallCycles > 0
+                    ? parsedAdfUserCallCycles
+                    : 20000000;
+                int maxLines = args.Length >= 4 && int.TryParse(args[3], out int parsedAdfUserCallLines) && parsedAdfUserCallLines > 0
+                    ? parsedAdfUserCallLines
+                    : 300;
+                int skipCycles = args.Length >= 5 && int.TryParse(args[4], out int parsedAdfUserCallSkipCycles) && parsedAdfUserCallSkipCycles > 0
+                    ? parsedAdfUserCallSkipCycles
+                    : 0;
+                uint filterStart = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0x00C00000u;
+                uint filterEnd = args.Length >= 7 ? Convert.ToUInt32(args[6].Replace("$", string.Empty), 16) : 0x00C7FFFFu;
+                TraceAdfUserCalls(adfPath, cycles, maxLines, skipCycles, filterStart, filterEnd, ParseModelArgument(args, 7));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-writes", StringComparison.OrdinalIgnoreCase))
             {
                 string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
@@ -532,6 +633,40 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-key", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                byte rawKey = args.Length >= 3
+                    ? Convert.ToByte(args[2].Replace("$", string.Empty), 16)
+                    : (byte)0x44;
+                int cycles = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceKeyCycles) && parsedTraceKeyCycles > 0
+                    ? parsedTraceKeyCycles
+                    : 1000000;
+                int interval = args.Length >= 5 && int.TryParse(args[4], out int parsedTraceKeyInterval) && parsedTraceKeyInterval > 0
+                    ? parsedTraceKeyInterval
+                    : 50000;
+                TraceSavestateKey(savePath, rawKey, cycles, interval, ParseSavestateModelArgument(args, 5, savePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-key-pc-window", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                byte rawKey = args.Length >= 3
+                    ? Convert.ToByte(args[2].Replace("$", string.Empty), 16)
+                    : (byte)0x44;
+                int cycles = args.Length >= 4 && int.TryParse(args[3], out int parsedTraceKeyWindowCycles) && parsedTraceKeyWindowCycles > 0
+                    ? parsedTraceKeyWindowCycles
+                    : 1000000;
+                int maxLines = args.Length >= 5 && int.TryParse(args[4], out int parsedTraceKeyWindowLines) && parsedTraceKeyWindowLines > 0
+                    ? parsedTraceKeyWindowLines
+                    : 128;
+                uint filterStart = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0u;
+                uint filterEnd = args.Length >= 7 ? Convert.ToUInt32(args[6].Replace("$", string.Empty), 16) : 0x00FFFFFFu;
+                TraceSavestateKeyPcWindow(savePath, rawKey, cycles, maxLines, filterStart, filterEnd, ParseSavestateModelArgument(args, 7, savePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--checkpoint-savestate-button", StringComparison.OrdinalIgnoreCase))
             {
                 string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
@@ -695,6 +830,34 @@ namespace AmigaEmulator
                     : 0;
                 bool click = args.Length >= 9 ? !string.Equals(args[8], "noclick", StringComparison.OrdinalIgnoreCase) : postCycles > 0;
                 CheckpointAdf(adfPath, preCycles, imagePath, savePath, mouseDx, mouseDy, postCycles, click, ParseModelArgument(args, 9));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--checkpoint-adf-clicks", StringComparison.OrdinalIgnoreCase))
+            {
+                string adfPath = args.Length >= 2 ? args[1] : string.Empty;
+                int preCycles = args.Length >= 3 && int.TryParse(args[2], out int parsedClicksPreCycles) && parsedClicksPreCycles > 0
+                    ? parsedClicksPreCycles
+                    : 60000000;
+                int mouseDx = args.Length >= 4 && int.TryParse(args[3], out int parsedClicksMouseDx)
+                    ? parsedClicksMouseDx
+                    : 0;
+                int mouseDy = args.Length >= 5 && int.TryParse(args[4], out int parsedClicksMouseDy)
+                    ? parsedClicksMouseDy
+                    : 0;
+                int clicks = args.Length >= 6 && int.TryParse(args[5], out int parsedClicks) && parsedClicks > 0
+                    ? parsedClicks
+                    : 1;
+                int postCycles = args.Length >= 7 && int.TryParse(args[6], out int parsedClicksPostCycles) && parsedClicksPostCycles > 0
+                    ? parsedClicksPostCycles
+                    : 60000000;
+                string imagePath = args.Length >= 8
+                    ? args[7]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_checkpoint_clicks.png");
+                string savePath = args.Length >= 9
+                    ? args[8]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_checkpoint_clicks.amigasav");
+                CheckpointAdfClicks(adfPath, preCycles, mouseDx, mouseDy, clicks, postCycles, imagePath, savePath, ParseModelArgument(args, 9));
                 return;
             }
 
@@ -1382,6 +1545,27 @@ namespace AmigaEmulator
                     ? parsedAdfTraceBeforeHit
                     : 1;
                 TraceAdfBeforePc(adfPath, pc, cycles, samples, hit, ParseModelArgument(args, 6));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-adf-pc-bursts", StringComparison.OrdinalIgnoreCase))
+            {
+                string adfPath = args.Length >= 2 ? args[1] : string.Empty;
+                int cycles = args.Length >= 3 && int.TryParse(args[2], out int parsedBurstCycles) && parsedBurstCycles > 0
+                    ? parsedBurstCycles
+                    : 100000000;
+                int maxBursts = args.Length >= 4 && int.TryParse(args[3], out int parsedMaxBursts) && parsedMaxBursts > 0
+                    ? parsedMaxBursts
+                    : 40;
+                int samples = args.Length >= 5 && int.TryParse(args[4], out int parsedBurstSamples) && parsedBurstSamples > 0
+                    ? parsedBurstSamples
+                    : 40;
+                uint filterStart = args.Length >= 6 ? Convert.ToUInt32(args[5].Replace("$", string.Empty), 16) : 0x000010u;
+                uint filterEnd = args.Length >= 7 ? Convert.ToUInt32(args[6].Replace("$", string.Empty), 16) : 0x00C7FFFFu;
+                int startCycle = args.Length >= 8 && !string.Equals(args[7], "--model", StringComparison.OrdinalIgnoreCase) && int.TryParse(args[7], out int parsedBurstStartCycle) && parsedBurstStartCycle > 0
+                    ? parsedBurstStartCycle
+                    : 0;
+                TraceAdfPcBursts(adfPath, cycles, maxBursts, samples, filterStart, filterEnd, startCycle, ParseModelArgument(args, startCycle > 0 ? 8 : 7));
                 return;
             }
 
@@ -2402,6 +2586,89 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Traces CIA and interrupt state while injecting one keyboard raw key into a restored savestate.
+        /// </summary>
+        private static void TraceSavestateKey(string savePath, byte rawKey, int cycles, int interval, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                Console.WriteLine("KeyDown raw=$" + rawKey.ToString("X2"));
+                system.Input.KeyboardKeyDown(rawKey);
+                for (int cycle = 0; cycle < cycles; cycle++)
+                {
+                    if (cycle == cycles / 2)
+                    {
+                        Console.WriteLine("KeyUp raw=$" + rawKey.ToString("X2") + " at localCycle=" + cycle);
+                        system.Input.KeyboardKeyUp(rawKey);
+                    }
+
+                    system.TickChipCycle();
+                    if (cycle % interval == 0)
+                    {
+                        Console.WriteLine(
+                            cycle.ToString().PadLeft(8) +
+                            " " + FormatCompactMachineState(system) +
+                            " CIAA=" + system.CiaA.GetDebugInfo() +
+                            " INTENA=$" + system.Agnus.CustomRegisters.InterruptEnable.ToString("X4") +
+                            " INTREQ=$" + system.Agnus.CustomRegisters.InterruptRequest.ToString("X4") +
+                            " LEVEL=" + system.Agnus.CustomRegisters.ActiveInterruptLevel);
+                    }
+                }
+
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("CIAA=" + system.CiaA.GetDebugInfo());
+                Console.WriteLine("CIAB=" + system.CiaB.GetDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Traces PC changes in one address window while injecting one keyboard raw key into a restored savestate.
+        /// </summary>
+        private static void TraceSavestateKeyPcWindow(string savePath, byte rawKey, int cycles, int maxLines, uint filterStart, uint filterEnd, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                Console.WriteLine("KeyDown raw=$" + rawKey.ToString("X2"));
+                system.Input.KeyboardKeyDown(rawKey);
+                uint lastPc = uint.MaxValue;
+                int lines = 0;
+                for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
+                {
+                    if (cycle == cycles / 2)
+                    {
+                        Console.WriteLine("KeyUp raw=$" + rawKey.ToString("X2") + " at localCycle=" + cycle);
+                        system.Input.KeyboardKeyUp(rawKey);
+                    }
+
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress & MemoryMap.AddressMask;
+                    if (pc == lastPc || pc < filterStart || pc > filterEnd)
+                    {
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    lines++;
+                    Console.WriteLine(
+                        cycle.ToString().PadLeft(8) +
+                        " " + FormatCompactMachineState(system) +
+                        " CIAA=" + system.CiaA.GetDebugInfo() +
+                        " INTENA=$" + system.Agnus.CustomRegisters.InterruptEnable.ToString("X4") +
+                        " INTREQ=$" + system.Agnus.CustomRegisters.InterruptRequest.ToString("X4") +
+                        " LEVEL=" + system.Agnus.CustomRegisters.ActiveInterruptLevel);
+                }
+
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("CIAA=" + system.CiaA.GetDebugInfo());
+                Console.WriteLine("CIAB=" + system.CiaB.GetDebugInfo());
+            }
+        }
+
+        /// <summary>
         /// Saves a new checkpoint after restoring a savestate and pressing one emulated control-port button.
         /// </summary>
         private static void CheckpointSavestateButton(string savePath, string imagePath, string outSavePath, AmigaControlPort port, AmigaJoystickButtons button, int framesToRun, AmigaModel model, int buttonPreCycles, int buttonHoldCycles, bool holdThroughFrames)
@@ -2527,6 +2794,14 @@ namespace AmigaEmulator
         /// </summary>
         private static void TraceSavestatePc(string savePath, int cycles, int maxLines, uint filterStart, uint filterEnd, AmigaModel model)
         {
+            TraceSavestatePcWindow(savePath, 0, cycles, maxLines, filterStart, filterEnd, model);
+        }
+
+        /// <summary>
+        /// Traces compact CPU and chipset status from a savestate after skipping an initial diagnostic window.
+        /// </summary>
+        private static void TraceSavestatePcWindow(string savePath, int skipCycles, int cycles, int maxLines, uint filterStart, uint filterEnd, AmigaModel model)
+        {
             if (filterEnd < filterStart)
             {
                 uint swap = filterStart;
@@ -2537,6 +2812,11 @@ namespace AmigaEmulator
             using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
             {
                 SaveStateFile.Load(savePath, system);
+                for (int cycle = 0; cycle < skipCycles; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
                 uint lastPc = 0xFFFFFFFFu;
                 int lines = 0;
                 for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
@@ -2554,6 +2834,7 @@ namespace AmigaEmulator
                 }
 
                 Console.WriteLine("TraceLines=" + lines);
+                Console.WriteLine("SkippedCycles=" + skipCycles);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("OverlayAtZero=" + system.Bus.RomOverlayAtZero);
@@ -2562,6 +2843,537 @@ namespace AmigaEmulator
                 Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
                 Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
             }
+        }
+
+        /// <summary>
+        /// Traces recent unique PCs until execution leaves a diagnostic address range.
+        /// </summary>
+        private static void TraceSavestatePcOutside(string savePath, uint rangeStart, uint rangeEnd, int cycles, int samplesToKeep, AmigaModel model)
+        {
+            if (rangeEnd < rangeStart)
+            {
+                uint swap = rangeStart;
+                rangeStart = rangeEnd;
+                rangeEnd = swap;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                var samples = new Queue<string>();
+                uint lastPc = 0xFFFFFFFFu;
+                for (int cycle = 0; cycle < cycles; cycle++)
+                {
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress;
+                    if (pc == lastPc)
+                    {
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    string line = FormatCompactMachineState(system);
+                    if (samples.Count == samplesToKeep)
+                    {
+                        samples.Dequeue();
+                    }
+
+                    samples.Enqueue(line);
+                    if (pc < rangeStart || pc > rangeEnd)
+                    {
+                        Console.WriteLine("PC left $" + rangeStart.ToString("X6") + "-$" + rangeEnd.ToString("X6") + " at cycle=" + system.Agnus.Beam.GlobalChipCycle);
+                        foreach (string sample in samples)
+                        {
+                            Console.WriteLine(sample);
+                        }
+
+                        Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                        Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                        Console.WriteLine("OverlayAtZero=" + system.Bus.RomOverlayAtZero);
+                        Console.WriteLine("CIAA " + system.CiaA.GetDebugInfo() + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
+                        Console.WriteLine("CIAB " + system.CiaB.GetDebugInfo() + " PRB(read)=$" + system.Bus.ReadByte(0x00BFD100).ToString("X2"));
+                        Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                        Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                        DumpStackWords(system, 12);
+                        return;
+                    }
+                }
+
+                Console.WriteLine("PC stayed within $" + rangeStart.ToString("X6") + "-$" + rangeEnd.ToString("X6") + " for " + cycles + " cycles.");
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Traces recent non-ROM PCs until a restored savestate reaches CPU STOP.
+        /// </summary>
+        private static void TraceSavestateBeforeStop(string savePath, int cycles, int samplesToKeep, uint filterStart, uint filterEnd, int skipCycles, AmigaModel model)
+        {
+            if (filterEnd < filterStart)
+            {
+                uint swap = filterStart;
+                filterStart = filterEnd;
+                filterEnd = swap;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                for (int cycle = 0; cycle < skipCycles; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                var samples = new Queue<string>();
+                uint lastPc = 0xFFFFFFFFu;
+                bool wasStopped = system.Cpu.IsStopped;
+                for (int cycle = 0; cycle < cycles; cycle++)
+                {
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress;
+                    if (pc != lastPc && pc >= filterStart && pc <= filterEnd)
+                    {
+                        lastPc = pc;
+                        if (samples.Count == samplesToKeep)
+                        {
+                            samples.Dequeue();
+                        }
+
+                        samples.Enqueue(FormatCompactMachineState(system));
+                    }
+
+                    bool isStopped = system.Cpu.IsStopped;
+                    if (!wasStopped && isStopped)
+                    {
+                        Console.WriteLine("CPU reached STOP at cycle=" + system.Agnus.Beam.GlobalChipCycle);
+                        foreach (string sample in samples)
+                        {
+                            Console.WriteLine(sample);
+                        }
+
+                        Console.WriteLine("SkippedCycles=" + skipCycles);
+                        Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                        Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                        Console.WriteLine("OverlayAtZero=" + system.Bus.RomOverlayAtZero);
+                        Console.WriteLine("CIAA " + system.CiaA.GetDebugInfo() + " PRA(read)=$" + system.Bus.ReadByte(0x00BFE001).ToString("X2"));
+                        Console.WriteLine("CIAB " + system.CiaB.GetDebugInfo() + " PRB(read)=$" + system.Bus.ReadByte(0x00BFD100).ToString("X2"));
+                        Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                        Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                        DumpCpuRegisters(system);
+                        DumpStackWords(system, 12);
+                        return;
+                    }
+
+                    wasStopped = isStopped;
+                }
+
+                Console.WriteLine("CPU did not newly reach STOP within " + cycles + " cycles. AlreadyStopped=" + system.Cpu.IsStopped);
+                foreach (string sample in samples)
+                {
+                    Console.WriteLine(sample);
+                }
+
+                Console.WriteLine("SkippedCycles=" + skipCycles);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Traces runtime call and return sites after restoring a savestate.
+        /// </summary>
+        private static void TraceSavestateRuntimeCalls(string savePath, int cycles, int maxLines, int skipCycles, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                for (int cycle = 0; cycle < skipCycles; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                int lines = 0;
+                uint lastPc = 0xFFFFFFFFu;
+                for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
+                {
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress & MemoryMap.AddressMask;
+                    if (pc == lastPc)
+                    {
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    ushort opcode = system.Bus.PeekWord(pc);
+                    if (!IsRuntimeCallTraceOpcode(opcode, pc))
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine(FormatRuntimeCallTrace(system, pc, opcode));
+                    lines++;
+                }
+
+                Console.WriteLine("RuntimeCallLines=" + lines + " SkippedCycles=" + skipCycles);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Traces runtime call and return sites while booting an ADF.
+        /// </summary>
+        private static void TraceAdfRuntimeCalls(string adfPath, int cycles, int maxLines, int skipCycles, AmigaModel model)
+        {
+            if (string.IsNullOrWhiteSpace(adfPath) || !File.Exists(adfPath))
+            {
+                Console.WriteLine("ADF not found: " + adfPath);
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
+                {
+                    system.LoadKickstart(romBytes);
+                }
+
+                for (int cycle = 0; cycle < skipCycles; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                int lines = 0;
+                uint lastPc = 0xFFFFFFFFu;
+                for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
+                {
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress & MemoryMap.AddressMask;
+                    if (pc == lastPc)
+                    {
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    ushort opcode = system.Bus.PeekWord(pc);
+                    if (!IsRuntimeCallTraceOpcode(opcode, pc))
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine(FormatRuntimeCallTrace(system, pc, opcode));
+                    lines++;
+                }
+
+                Console.WriteLine("RuntimeCallLines=" + lines + " SkippedCycles=" + skipCycles);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Traces library calls from loaded user code while booting an ADF.
+        /// </summary>
+        private static void TraceAdfUserCalls(string adfPath, int cycles, int maxLines, int skipCycles, uint filterStart, uint filterEnd, AmigaModel model)
+        {
+            if (string.IsNullOrWhiteSpace(adfPath) || !File.Exists(adfPath))
+            {
+                Console.WriteLine("ADF not found: " + adfPath);
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+                if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
+                {
+                    system.LoadKickstart(romBytes);
+                }
+
+                for (int cycle = 0; cycle < skipCycles; cycle++)
+                {
+                    system.TickChipCycle();
+                }
+
+                int lines = 0;
+                uint lastPc = 0xFFFFFFFFu;
+                for (int cycle = 0; cycle < cycles && lines < maxLines; cycle++)
+                {
+                    system.TickChipCycle();
+                    uint pc = system.Cpu.CurrentInstructionAddress & MemoryMap.AddressMask;
+                    if (pc == lastPc || pc < filterStart || pc > filterEnd)
+                    {
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    ushort opcode = system.Bus.PeekWord(pc);
+                    if (!IsUserLibraryCallOpcode(opcode))
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine(FormatRuntimeCallTrace(system, pc, opcode));
+                    lines++;
+                }
+
+                Console.WriteLine("UserCallLines=" + lines + " SkippedCycles=" + skipCycles + " Filter=$" + filterStart.ToString("X6") + "-$" + filterEnd.ToString("X6"));
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                DumpCpuRegisters(system);
+            }
+        }
+
+        /// <summary>
+        /// Returns whether an opcode is a likely Amiga library call from user code.
+        /// </summary>
+        private static bool IsUserLibraryCallOpcode(ushort opcode)
+        {
+            return opcode == 0x4EAE || opcode == 0x4EEE || opcode == 0x4EB9 || opcode == 0x4EF9 ||
+                (opcode & 0xFFF8) == 0x4E90 ||
+                (opcode & 0xFFF8) == 0x4ED0;
+        }
+
+        /// <summary>
+        /// Returns whether an opcode is useful for loader/runtime diagnostics.
+        /// </summary>
+        private static bool IsRuntimeCallTraceOpcode(ushort opcode, uint pc)
+        {
+            if (opcode == 0x4E72)
+            {
+                return pc >= 0x00C00000u && pc <= 0x00C7FFFFu;
+            }
+
+            if (opcode == 0x4EAE || opcode == 0x4EEE || opcode == 0x4EB9 || opcode == 0x4EF9)
+            {
+                return true;
+            }
+
+            return (opcode & 0xFFF8) == 0x4E90 || (opcode & 0xFFF8) == 0x4ED0;
+        }
+
+        /// <summary>
+        /// Formats one runtime call trace line.
+        /// </summary>
+        private static string FormatRuntimeCallTrace(AmigaSystem system, uint pc, ushort opcode)
+        {
+            var builder = new StringBuilder();
+            builder.Append(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0,10} F{1,5} {2,3},{3,3} PC ${4:X6} OP ${5:X4} {6,-10}",
+                system.Agnus.Beam.GlobalChipCycle,
+                system.FrameCounter,
+                system.Agnus.Beam.BeamX,
+                system.Agnus.Beam.BeamY,
+                pc,
+                opcode,
+                system.Cpu.LastInstruction ?? string.Empty));
+
+            if (opcode == 0x4EAE || opcode == 0x4EEE)
+            {
+                short displacement = (short)system.Bus.PeekWord(pc + 2u);
+                uint target = (system.Cpu.GetA(6) + (uint)displacement) & MemoryMap.AddressMask;
+                builder.Append(" d16(A6)=");
+                builder.Append(displacement.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                builder.Append(" A6=$");
+                builder.Append(system.Cpu.GetA(6).ToString("X8"));
+                builder.Append(" target=$");
+                builder.Append(target.ToString("X6"));
+                builder.Append(" vec=");
+                AppendWords(builder, system, target, 3);
+            }
+            else if (opcode == 0x4EB9 || opcode == 0x4EF9)
+            {
+                uint target = system.Bus.PeekLong(pc + 2u) & MemoryMap.AddressMask;
+                builder.Append(" abs=$");
+                builder.Append(target.ToString("X6"));
+                builder.Append(" vec=");
+                AppendWords(builder, system, target, 3);
+            }
+            else if ((opcode & 0xFFF8) == 0x4E90 || (opcode & 0xFFF8) == 0x4ED0)
+            {
+                int register = opcode & 7;
+                uint target = system.Cpu.GetA(register) & MemoryMap.AddressMask;
+                builder.Append(" A");
+                builder.Append(register.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                builder.Append("=$");
+                builder.Append(target.ToString("X6"));
+                builder.Append(" vec=");
+                AppendWords(builder, system, target, 3);
+            }
+
+            builder.Append(" D0=$").Append(system.Cpu.GetD(0).ToString("X8"));
+            builder.Append(" D1=$").Append(system.Cpu.GetD(1).ToString("X8"));
+            builder.Append(" D2=$").Append(system.Cpu.GetD(2).ToString("X8"));
+            builder.Append(" A0=$").Append(system.Cpu.GetA(0).ToString("X8"));
+            builder.Append(" A1=$").Append(system.Cpu.GetA(1).ToString("X8"));
+            builder.Append(" A7=$").Append(system.Cpu.GetA(7).ToString("X8"));
+            builder.Append(" STK=");
+            AppendLongs(builder, system, system.Cpu.GetA(7), 5);
+            for (int stackIndex = 0; stackIndex < 5; stackIndex++)
+            {
+                uint stackValue = system.Bus.PeekLong(system.Cpu.GetA(7) + (uint)(stackIndex * 4));
+                AppendPointerPreview(builder, system, "S" + stackIndex.ToString(System.Globalization.CultureInfo.InvariantCulture), stackValue);
+            }
+
+            AppendPointerPreview(builder, system, "D1", system.Cpu.GetD(1));
+            AppendPointerPreview(builder, system, "D2", system.Cpu.GetD(2));
+            AppendPointerPreview(builder, system, "A0", system.Cpu.GetA(0));
+            AppendPointerPreview(builder, system, "A1", system.Cpu.GetA(1));
+            AppendPointerPreview(builder, system, "A7", system.Cpu.GetA(7));
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Appends a short word preview from memory.
+        /// </summary>
+        private static void AppendWords(StringBuilder builder, AmigaSystem system, uint address, int count)
+        {
+            builder.Append("[");
+            for (int index = 0; index < count; index++)
+            {
+                if (index != 0)
+                {
+                    builder.Append(",");
+                }
+
+                builder.Append("$").Append(system.Bus.PeekWord(address + (uint)(index * 2)).ToString("X4"));
+            }
+
+            builder.Append("]");
+        }
+
+        /// <summary>
+        /// Appends a short longword preview from memory.
+        /// </summary>
+        private static void AppendLongs(StringBuilder builder, AmigaSystem system, uint address, int count)
+        {
+            builder.Append("[");
+            for (int index = 0; index < count; index++)
+            {
+                if (index != 0)
+                {
+                    builder.Append(",");
+                }
+
+                builder.Append("$").Append(system.Bus.PeekLong(address + (uint)(index * 4)).ToString("X8"));
+            }
+
+            builder.Append("]");
+        }
+
+        /// <summary>
+        /// Appends likely string interpretations for pointer-like register values.
+        /// </summary>
+        private static void AppendPointerPreview(StringBuilder builder, AmigaSystem system, string label, uint value)
+        {
+            uint address = value & MemoryMap.AddressMask;
+            string cString = ReadPrintableCString(system, address, 44);
+            if (!string.IsNullOrEmpty(cString))
+            {
+                builder.Append(" ").Append(label).Append("C=\"").Append(cString).Append("\"");
+            }
+
+            string bString = ReadPrintableBString(system, address, 44);
+            if (!string.IsNullOrEmpty(bString))
+            {
+                builder.Append(" ").Append(label).Append("B=\"").Append(bString).Append("\"");
+            }
+
+            if (value <= 0x003FFFFFu)
+            {
+                uint bptrAddress = (value << 2) & MemoryMap.AddressMask;
+                string bptrString = ReadPrintableBString(system, bptrAddress, 44);
+                if (!string.IsNullOrEmpty(bptrString))
+                {
+                    builder.Append(" ").Append(label).Append("BPTR=$").Append(bptrAddress.ToString("X6")).Append(":\"").Append(bptrString).Append("\"");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads a printable zero-terminated string preview.
+        /// </summary>
+        private static string ReadPrintableCString(AmigaSystem system, uint address, int maxLength)
+        {
+            if (!IsReadablePointer(system, address))
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder();
+            for (int index = 0; index < maxLength; index++)
+            {
+                byte value = system.Bus.PeekByte(address + (uint)index);
+                if (value == 0)
+                {
+                    break;
+                }
+
+                if (value < 32 || value > 126)
+                {
+                    return string.Empty;
+                }
+
+                builder.Append((char)value);
+            }
+
+            return builder.Length >= 3 ? builder.ToString() : string.Empty;
+        }
+
+        /// <summary>
+        /// Reads a printable AmigaDOS BSTR preview.
+        /// </summary>
+        private static string ReadPrintableBString(AmigaSystem system, uint address, int maxLength)
+        {
+            if (!IsReadablePointer(system, address))
+            {
+                return string.Empty;
+            }
+
+            int length = system.Bus.PeekByte(address);
+            if (length < 3 || length > maxLength)
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder();
+            for (int index = 0; index < length; index++)
+            {
+                byte value = system.Bus.PeekByte(address + 1u + (uint)index);
+                if (value < 32 || value > 126)
+                {
+                    return string.Empty;
+                }
+
+                builder.Append((char)value);
+            }
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Returns whether a pointer targets regular memory that can be inspected safely.
+        /// </summary>
+        private static bool IsReadablePointer(AmigaSystem system, uint address)
+        {
+            AmigaAddressRegion region = system.Bus.GetRegion(address);
+            return region == AmigaAddressRegion.ChipRam ||
+                region == AmigaAddressRegion.SlowRam ||
+                region == AmigaAddressRegion.FastRam ||
+                region == AmigaAddressRegion.KickstartRom;
         }
 
         /// <summary>
@@ -2694,7 +3506,7 @@ namespace AmigaEmulator
         {
             return string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
-                "{0,10} F{1,5} {2,3},{3,3} PC ${4:X6} OP ${5:X4} SR ${6:X4} D0 ${7:X8} D1 ${8:X8} A0 ${9:X8} A7 ${10:X8} {11,-10} OVL {12} PRA ${13:X2} PRB ${14:X2} DF0 {15}",
+                "{0,10} F{1,5} {2,3},{3,3} PC ${4:X6} OP ${5:X4} SR ${6:X4} D0 ${7:X8} D1 ${8:X8} D2 ${9:X8} D3 ${10:X8} D4 ${11:X8} D5 ${12:X8} D6 ${13:X8} D7 ${14:X8} A0 ${15:X8} A1 ${16:X8} A2 ${17:X8} A3 ${18:X8} A4 ${19:X8} A5 ${20:X8} A6 ${21:X8} A7 ${22:X8} {23,-10} OVL {24} PRA ${25:X2} PRB ${26:X2} DF0 {27}",
                 system.Agnus.Beam.GlobalChipCycle,
                 system.FrameCounter,
                 system.Agnus.Beam.BeamX,
@@ -2704,7 +3516,19 @@ namespace AmigaEmulator
                 system.Cpu.SR,
                 system.Cpu.GetD(0),
                 system.Cpu.GetD(1),
+                system.Cpu.GetD(2),
+                system.Cpu.GetD(3),
+                system.Cpu.GetD(4),
+                system.Cpu.GetD(5),
+                system.Cpu.GetD(6),
+                system.Cpu.GetD(7),
                 system.Cpu.GetA(0),
+                system.Cpu.GetA(1),
+                system.Cpu.GetA(2),
+                system.Cpu.GetA(3),
+                system.Cpu.GetA(4),
+                system.Cpu.GetA(5),
+                system.Cpu.GetA(6),
                 system.Cpu.GetA(7),
                 system.Cpu.LastInstruction ?? string.Empty,
                 system.Bus.RomOverlayAtZero ? "ON" : "OFF",
@@ -3154,6 +3978,54 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Boots an ADF, moves the mouse once, emits multiple left-button clicks, then writes a PNG and savestate.
+        /// </summary>
+        private static void CheckpointAdfClicks(string adfPath, int preCycles, int mouseDx, int mouseDy, int clicks, int postCycles, string imagePath, string savePath, AmigaModel model)
+        {
+            if (string.IsNullOrWhiteSpace(adfPath) || !File.Exists(adfPath))
+            {
+                Console.WriteLine("ADF not found: " + adfPath);
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                MountedMediaInfo media = MountAdfInDf0(system, adfPath);
+                if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
+                {
+                    system.LoadKickstart(romBytes);
+                }
+
+                system.RunChipCycles(preCycles);
+                if (mouseDx != 0 || mouseDy != 0)
+                {
+                    MoveMouseGradually(system, AmigaControlPort.Port0, mouseDx, mouseDy, 120000);
+                    system.RunChipCycles(200000);
+                }
+
+                for (int click = 0; click < clicks; click++)
+                {
+                    system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, true);
+                    system.RunChipCycles(240000);
+                    system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, false);
+                    system.RunChipCycles(360000);
+                }
+
+                if (postCycles > 0)
+                {
+                    system.RunChipCycles(postCycles);
+                }
+
+                SaveCheckpoint(system, media, imagePath, savePath, model ?? AmigaModel.PalA500);
+                DumpAdfBootDiagnostics(system, adfPath, preCycles + postCycles);
+                Console.WriteLine("Clicks=" + clicks + " MouseDx=" + mouseDx + " MouseDy=" + mouseDy);
+                Console.WriteLine("Checkpoint image written: " + Path.GetFullPath(imagePath));
+                Console.WriteLine("Checkpoint savestate written: " + Path.GetFullPath(savePath));
+            }
+        }
+
+        /// <summary>
         /// Boots one ADF, swaps DF0 to a second ADF, then writes a PNG and savestate.
         /// </summary>
         private static void CheckpointAdfSwap(string firstAdfPath, int firstCycles, string secondAdfPath, int secondCycles, string imagePath, string savePath, AmigaModel model)
@@ -3403,6 +4275,7 @@ namespace AmigaEmulator
                 Console.WriteLine("CurrentDmaStart=$" + system.Paula.CurrentDiskBlockStart.ToString("X8") + " DmaDumpStart=$" + dmaStart.ToString("X8") + " DmaDumpWords=" + dmaWords);
                 DumpDmaWords(system, dmaStart, 64, "DMA");
                 PrintMfmCandidates(system, dmaStart, Math.Min((uint)system.Model.ChipRamBytes - dmaStart, 0x4000u), 12);
+                PrintDecodedMfmSectors(system, dmaStart, Math.Min((uint)system.Model.ChipRamBytes - dmaStart, 0x4000u), 24, "DMA-MFM");
                 PrintRawWordPattern(system, dmaStart, Math.Min((uint)system.Model.ChipRamBytes - dmaStart, 0x4000u), new ushort[] { 0x552A, 0xAAA5, 0x552A, 0xAAA9 }, "S0 header");
                 ScanMfmBootblockRange(system, bootblock, 0, (uint)system.Model.ChipRamBytes, "CHIP-MFM");
                 if (system.Model.SlowRamBytes > 0)
@@ -3493,6 +4366,52 @@ namespace AmigaEmulator
             if (printed == 0)
             {
                 Console.WriteLine("MFM candidate none in $" + start.ToString("X8") + "..$" + (start + length).ToString("X8"));
+            }
+        }
+
+        /// <summary>
+        /// Prints every checksum-valid AmigaDOS sector found in a captured DMA range.
+        /// </summary>
+        private static void PrintDecodedMfmSectors(AmigaSystem system, uint start, uint length, int maxSectors, string label)
+        {
+            if (length < AdfMfmEncoder.SectorWords * 2)
+            {
+                Console.WriteLine(label + " no range");
+                return;
+            }
+
+            int printed = 0;
+            uint end = start + length - (uint)(AdfMfmEncoder.SectorWords * 2);
+            for (uint address = start; address <= end && printed < maxSectors; address += 2)
+            {
+                uint headerAddress = address;
+                bool hasSync = system.Bus.ReadWord(address) == AdfTrackStream.SyncWord &&
+                    system.Bus.ReadWord(address + 2u) == AdfTrackStream.SyncWord;
+                if (hasSync)
+                {
+                    headerAddress = address + 4u;
+                }
+
+                if (!TryDecodeAmigaDosSector(
+                    offset => system.Bus.ReadWord(headerAddress + (uint)(offset * 2)),
+                    out byte logicalTrack,
+                    out byte sector,
+                    out byte[] data))
+                {
+                    continue;
+                }
+
+                Console.WriteLine(label + " sector @" + headerAddress.ToString("X8") +
+                    " sync=" + hasSync +
+                    " track=" + logicalTrack +
+                    " sector=" + sector +
+                    " data[0..7]=" + FormatBytes(data, 0, 8));
+                printed++;
+            }
+
+            if (printed == 0)
+            {
+                Console.WriteLine(label + " decoded sectors none");
             }
         }
 
@@ -8027,6 +8946,141 @@ namespace AmigaEmulator
                 Console.WriteLine("PC=$" + pc.ToString("X6") + " hit=" + requestedHit + " not reached within " + maxCycles + " cycles. hits=" + hits);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
             }
+        }
+
+        /// <summary>
+        /// Traces compact execution bursts in RAM while booting an ADF.
+        /// </summary>
+        private static void TraceAdfPcBursts(string adfPath, int maxCycles, int maxBursts, int samplesToKeep, uint filterStart, uint filterEnd, int startCycle, AmigaModel model)
+        {
+            if (string.IsNullOrWhiteSpace(adfPath) || !File.Exists(adfPath))
+            {
+                Console.WriteLine("ADF not found: " + adfPath);
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            if (filterEnd < filterStart)
+            {
+                uint swap = filterStart;
+                filterStart = filterEnd;
+                filterEnd = swap;
+            }
+
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
+                {
+                    system.LoadKickstart(romBytes);
+                }
+
+                system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
+
+                var samples = new Queue<string>();
+                uint lastPc = 0xFFFFFFFFu;
+                bool inBurst = false;
+                long burstStartCycle = 0;
+                uint burstStartPc = 0;
+                int bursts = 0;
+                int burstInstructionCount = 0;
+                int quietCycles = 0;
+                const int quietThresholdCycles = 20000;
+
+                for (int cycle = 0; cycle < maxCycles && bursts < maxBursts; cycle++)
+                {
+                    system.TickChipCycle();
+                    if (cycle < startCycle)
+                    {
+                        lastPc = system.Cpu.CurrentInstructionAddress & MemoryMap.AddressMask;
+                        continue;
+                    }
+
+                    uint pc = system.Cpu.CurrentInstructionAddress & MemoryMap.AddressMask;
+                    if (pc == lastPc)
+                    {
+                        if (inBurst && (pc < filterStart || pc > filterEnd))
+                        {
+                            quietCycles++;
+                        }
+
+                        if (inBurst && quietCycles >= quietThresholdCycles)
+                        {
+                            PrintAdfPcBurst(system, bursts + 1, burstStartCycle, burstStartPc, burstInstructionCount, samples);
+                            bursts++;
+                            samples.Clear();
+                            inBurst = false;
+                            burstInstructionCount = 0;
+                        }
+
+                        continue;
+                    }
+
+                    lastPc = pc;
+                    bool inFilter = pc >= filterStart && pc <= filterEnd;
+                    if (inFilter)
+                    {
+                        if (!inBurst)
+                        {
+                            inBurst = true;
+                            burstStartCycle = system.Agnus.Beam.GlobalChipCycle;
+                            burstStartPc = pc;
+                            burstInstructionCount = 0;
+                            quietCycles = 0;
+                            samples.Clear();
+                        }
+
+                        quietCycles = 0;
+                        burstInstructionCount++;
+                        if (samples.Count == samplesToKeep)
+                        {
+                            samples.Dequeue();
+                        }
+
+                        samples.Enqueue(FormatCompactMachineState(system));
+                    }
+                    else if (inBurst)
+                    {
+                        quietCycles++;
+                        if (quietCycles >= quietThresholdCycles)
+                        {
+                            PrintAdfPcBurst(system, bursts + 1, burstStartCycle, burstStartPc, burstInstructionCount, samples);
+                            bursts++;
+                            samples.Clear();
+                            inBurst = false;
+                            burstInstructionCount = 0;
+                        }
+                    }
+                }
+
+                if (inBurst && bursts < maxBursts)
+                {
+                    PrintAdfPcBurst(system, bursts + 1, burstStartCycle, burstStartPc, burstInstructionCount, samples);
+                    bursts++;
+                }
+
+                Console.WriteLine("AdfPcBursts=" + bursts + " MaxCycles=" + maxCycles + " StartCycle=" + startCycle);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("OverlayAtZero=" + system.Bus.RomOverlayAtZero);
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Prints one collected RAM execution burst.
+        /// </summary>
+        private static void PrintAdfPcBurst(AmigaSystem system, int burstNumber, long startCycle, uint startPc, int instructionCount, Queue<string> samples)
+        {
+            Console.WriteLine("BURST " + burstNumber + " startCycle=" + startCycle + " startPC=$" + startPc.ToString("X6") + " instructions=" + instructionCount);
+            foreach (string sample in samples)
+            {
+                Console.WriteLine(sample);
+            }
+
+            Console.WriteLine("END BURST " + burstNumber + " cycle=" + system.Agnus.Beam.GlobalChipCycle + " CPU=" + system.GetCpuDebugInfo());
+            Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+            Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
         }
 
         /// <summary>

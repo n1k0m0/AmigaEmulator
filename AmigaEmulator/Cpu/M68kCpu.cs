@@ -616,12 +616,24 @@ namespace AmigaEmulator.Core.Cpu
         public string GetDebugInfo()
         {
             return string.Format(
-                "PC {0:X6} SR {1:X4} D0 {2:X8} D1 {3:X8} A0 {4:X8} A7 {5:X8} {6}",
+                "PC {0:X6} SR {1:X4} D0 {2:X8} D1 {3:X8} D2 {4:X8} D3 {5:X8} D4 {6:X8} D5 {7:X8} D6 {8:X8} D7 {9:X8} A0 {10:X8} A1 {11:X8} A2 {12:X8} A3 {13:X8} A4 {14:X8} A5 {15:X8} A6 {16:X8} A7 {17:X8} {18}",
                 _state.PC,
                 _state.SR,
                 _state.D[0],
                 _state.D[1],
+                _state.D[2],
+                _state.D[3],
+                _state.D[4],
+                _state.D[5],
+                _state.D[6],
+                _state.D[7],
                 _state.A[0],
+                _state.A[1],
+                _state.A[2],
+                _state.A[3],
+                _state.A[4],
+                _state.A[5],
+                _state.A[6],
                 _state.A[7],
                 _lastInstruction);
         }
@@ -1109,6 +1121,11 @@ namespace AmigaEmulator.Core.Cpu
             if ((opcode & 0xFF00) == 0x4200)
             {
                 return ExecuteClr(opcode);
+            }
+
+            if ((opcode & 0xFFC0) == 0x4AC0)
+            {
+                return ExecuteTas(opcode);
             }
 
             if ((opcode & 0xFF00) == 0x4A00)
@@ -1991,6 +2008,26 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
+        /// Executes TAS by testing the original byte value and then setting bit 7 in the target.
+        /// </summary>
+        private string ExecuteTas(ushort opcode)
+        {
+            int mode = (opcode >> 3) & 7;
+            int register = opcode & 7;
+            if (!IsDataAlterableEa(mode, register))
+            {
+                EnterException(4);
+                return "ILLEGAL TAS";
+            }
+
+            EaLocation target = ResolveEaLocation(mode, register, 1, true);
+            uint value = ReadLocation(target) & 0xFFu;
+            SetLogicFlags(value, 1);
+            WriteLocation(target, value | 0x80u);
+            return "TAS " + FormatEa(mode, register, 1);
+        }
+
+        /// <summary>
         /// Runs Execute Negx.
         /// </summary>
         private string ExecuteNegx(ushort opcode)
@@ -2830,7 +2867,7 @@ namespace AmigaEmulator.Core.Cpu
         {
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
-                byte value = peekableBus.PeekByte(address & AddressMask);
+                byte value = (byte)ReadWithPendingWriteForwarding(peekableBus, address & AddressMask, 1);
                 RecordBusMicroOps(M68kTraceAccessType.Read, address, 1, value, false, true);
                 return value;
             }
@@ -2848,7 +2885,7 @@ namespace AmigaEmulator.Core.Cpu
             M68kTraceAccessType accessType = _opcodeFetchInProgress ? M68kTraceAccessType.OpcodeFetch : M68kTraceAccessType.Read;
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
-                ushort value = peekableBus.PeekWord(address & AddressMask);
+                ushort value = (ushort)ReadWithPendingWriteForwarding(peekableBus, address & AddressMask, 2);
                 RecordBusMicroOps(accessType, address, 2, value, false, true);
                 return value;
             }
@@ -2865,7 +2902,7 @@ namespace AmigaEmulator.Core.Cpu
             CheckAlignedAccess(address, 4, false);
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
-                uint value = peekableBus.PeekLong(address & AddressMask);
+                uint value = ReadWithPendingWriteForwarding(peekableBus, address & AddressMask, 4);
                 RecordBusMicroOps(M68kTraceAccessType.Read, address, 4, value, false, true);
                 return value;
             }
@@ -3032,6 +3069,58 @@ namespace AmigaEmulator.Core.Cpu
                 Size = size,
                 Value = value & (size == 1 ? 0xFFu : 0xFFFFu)
             });
+        }
+
+        /// <summary>
+        /// Reads through pending CPU writes so exception vector fetches see earlier ordered bus stores.
+        /// </summary>
+        private uint ReadWithPendingWriteForwarding(IM68kPeekableBus peekableBus, uint address, int size)
+        {
+            address &= AddressMask;
+            uint value;
+            if (size == 1)
+            {
+                value = peekableBus.PeekByte(address);
+            }
+            else if (size == 2)
+            {
+                value = peekableBus.PeekWord(address);
+            }
+            else
+            {
+                value = peekableBus.PeekLong(address);
+            }
+
+            foreach (PendingBusOperation operation in _pendingBusOperations)
+            {
+                if (operation.Write)
+                {
+                    ApplyPendingWriteForwarding(address, size, operation, ref value);
+                }
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Merges one pending big-endian write into an overlapping CPU read value.
+        /// </summary>
+        private static void ApplyPendingWriteForwarding(uint readAddress, int readSize, PendingBusOperation operation, ref uint readValue)
+        {
+            for (int writeOffset = 0; writeOffset < operation.Size; writeOffset++)
+            {
+                uint byteAddress = (operation.Address + (uint)writeOffset) & AddressMask;
+                uint delta = (byteAddress - readAddress) & AddressMask;
+                if (delta >= (uint)readSize)
+                {
+                    continue;
+                }
+
+                int writeShift = (operation.Size - 1 - writeOffset) * 8;
+                uint byteValue = (operation.Value >> writeShift) & 0xFFu;
+                int readShift = (readSize - 1 - (int)delta) * 8;
+                readValue = (readValue & ~(0xFFu << readShift)) | (byteValue << readShift);
+            }
         }
 
         /// <summary>

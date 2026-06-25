@@ -73,6 +73,10 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         Tst,
         /// <summary>
+        /// Represents Tas.
+        /// </summary>
+        Tas,
+        /// <summary>
         /// Represents Ori.
         /// </summary>
         Ori,

@@ -298,19 +298,19 @@ namespace AmigaEmulator
         /// </summary>
         private const int DeferredMediaMountChipCycles = 16000000;
         /// <summary>
-        /// Hides the measured left overscan border before scaling the North & South presentation.
+        /// Keeps the full emulator-provided source visible; DIW/DDF define the viewport in the core.
         /// </summary>
         private const int PresentationCropPixelsLeft = 0;
 
         /// <summary>
-        /// Hides the measured right overscan border so the active North & South image reaches the window edge.
+        /// Keeps the full emulator-provided source visible; DIW/DDF define the viewport in the core.
         /// </summary>
         private const int PresentationCropPixelsRight = 0;
 
         /// <summary>
-        /// Hides uniform bottom overscan, but can be relaxed when software draws text or prompts there.
+        /// Keeps bottom overscan visible so disk prompts and game HUDs are not host-cropped.
         /// </summary>
-        private const int PresentationCropPixelsBottom = 56;
+        private const int PresentationCropPixelsBottom = 0;
 
         /// <summary>
         /// Treats sparse colored pixels in the bottom overscan as real content rather than a border fill.
@@ -713,7 +713,6 @@ namespace AmigaEmulator
             if (_system.FrameCounter != _lastFrame)
             {
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
-                UpdateAdaptivePresentationCrop();
                 _lastFrame = _system.FrameCounter;
             }
 
@@ -1908,7 +1907,6 @@ namespace AmigaEmulator
                 SaveStateFile.Load(slot.Path, _system);
                 ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
-                UpdateAdaptivePresentationCrop();
                 _mountedMedia = slot.MountedMedia ?? MountedMediaInfo.None;
                 _lastLoadedSaveStatePath = slot.Path;
                 SaveMountedMediaSettings();

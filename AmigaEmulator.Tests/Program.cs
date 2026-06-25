@@ -754,6 +754,11 @@ namespace AmigaEmulator.Tests
                 TestWideDdfOverscanReportsPresentationSourceWidth);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "vertical DIW overscan reports the full presentation source height",
+                "Amiga HRM DIWSTRT/DIWSTOP can open the display window above the standard PAL view",
+                TestVerticalDiwOverscanReportsPresentationSourceHeight);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
                 "Amiga HRM bitplane DMA reloads display data every frame",
                 TestFrameStartInvalidatesFetchedRows);
@@ -782,6 +787,11 @@ namespace AmigaEmulator.Tests
                 "hires pixels are not duplicated like lowres pixels",
                 "Amiga HRM BPLCON0 HIRES mode outputs one bitplane bit per hires pixel",
                 TestHiresBitplanePixelsAreSingleWidth);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "misaligned hires DDF fetches the complete OCS block",
+                "A500 OCS DDFSTRT/DDFSTOP use fetch blocks, so $3C..$D0 still fetches forty 2-plane hires words",
+                TestMisalignedHiresDdfFetchesCompleteBlock);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "HAM control codes modify the previous RGB component",
@@ -1198,6 +1208,24 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that DIW top overscan is reported to the presenter instead of being host-cropped away.
+        /// </summary>
+        private static void TestVerticalDiwOverscanReportsPresentationSourceHeight()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0x4000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2081);
+            registers.WriteWord(Diwstop, 0xFFC1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x00D0);
+
+            Check.Equal(32, bitplanes.PresentationSourceTop, "A DIW start above the standard PAL top must remain part of the presentation source.");
+            Check.Equal(268, bitplanes.PresentationSourceHeight, "The presentation source must include top overscan while still preserving the standard bottom edge.");
+        }
+
+        /// <summary>
         /// Verifies that fetched bitplane words from a previous frame cannot leak into the next frame.
         /// </summary>
         private static void TestFrameStartInvalidatesFetchedRows()
@@ -1341,6 +1369,37 @@ namespace AmigaEmulator.Tests
 
             Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "HIRES bit 15 should affect only the first hires pixel.");
             Check.Equal(0, bitplanes.RenderColorIndex(1, BitplaneUnit.PalVisibleTop), "HIRES must not duplicate the first bit into the second pixel.");
+        }
+
+        /// <summary>
+        /// Verifies that an unaligned OCS hires DDF range still consumes the complete fetch block.
+        /// </summary>
+        private static void TestMisalignedHiresDdfFetchesCompleteBlock()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[160];
+            memory[39] = 0x0001;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) % memory.Length]);
+            registers.WriteWord(Bplcon0, 0xA000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C00);
+            registers.WriteWord(Diwstop, 0x2DFF);
+            registers.WriteWord(Ddfstrt, 0x003C);
+            registers.WriteWord(Ddfstop, 0x00D0);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+            registers.WriteWord(Bpl2pth, 0x0000);
+            registers.WriteWord(Bpl2ptl, 0x0100);
+
+            for (int beamX = 0x3C; beamX < 0xDC; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, BitplaneUnit.PalVisibleTop))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop);
+                }
+            }
+
+            Check.Equal(1, bitplanes.RenderColorIndex(655, BitplaneUnit.PalVisibleTop), "The final word of a $3C..$D0 two-plane hires fetch must not be dropped.");
         }
 
         /// <summary>

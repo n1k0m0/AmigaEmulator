@@ -45,6 +45,7 @@ namespace AmigaEmulator.Core.Cpu
             failures += RunReadModifyWriteExtensionTest(log);
             failures += RunWordDisplacementBaseTest(log);
             failures += RunLogicalMemoryDestinationTest(log);
+            failures += RunTasInstructionTest(log);
             failures += RunSetConditionTest(log);
             failures += RunExtendDataRegisterTest(log);
             failures += RunDivideInstructionTest(log);
@@ -59,6 +60,8 @@ namespace AmigaEmulator.Core.Cpu
             failures += RunExceptionEntryTest(log);
             failures += RunAddressErrorExceptionTest(log);
             failures += RunTraceExceptionTest(log);
+            failures += RunRteTraceRestoreTest(log);
+            failures += RunTraceVectorSeesPriorWriteTest(log);
             failures += RunStopInterruptWakeTest(log);
             failures += RunMaskedInterruptLineLatchTest(log);
             failures += RunRteUserModeStackSwitchTest(log);
@@ -559,6 +562,36 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
+        /// Runs the TAS instruction regression test.
+        /// </summary>
+        private static int RunTasInstructionTest(StringBuilder log)
+        {
+            var bus = CreateBus();
+            WriteResetVectors(bus, 0x1000, 0x0100);
+            bus.WriteByte(0x0200, 0x12);
+            WriteProgram(
+                bus,
+                0x0100,
+                0x7200,                 // MOVEQ #0,D1
+                0x4AC1,                 // TAS D1
+                0x207C, 0x0000, 0x0200, // MOVEA.L #$200,A0
+                0x4AD0);                // TAS (A0)
+
+            M68kCpu cpu = CreateCpu(bus);
+            cpu.Step();
+            cpu.Step();
+            bool registerTas = (cpu.GetD(1) & 0xFF) == 0x80 && (cpu.SR & 0x0004) != 0 && (cpu.SR & 0x0008) == 0;
+            cpu.Step();
+            cpu.Step();
+
+            int failures = 0;
+            failures += Expect(log, "TAS Dn sets byte and tests original zero", registerTas, cpu.GetDebugInfo());
+            failures += Expect(log, "TAS memory sets high bit", bus.ReadByte(0x0200) == 0x92, "mem=" + bus.ReadByte(0x0200).ToString("X2"));
+            failures += Expect(log, "TAS memory tests original positive nonzero", (cpu.SR & 0x000C) == 0, cpu.GetDebugInfo());
+            return failures;
+        }
+
+        /// <summary>
         /// Runs the Extend Data Register Test routine.
         /// </summary>
         private static int RunExtendDataRegisterTest(StringBuilder log)
@@ -869,6 +902,59 @@ namespace AmigaEmulator.Core.Cpu
             failures += Expect(log, "Trace stacked PC", bus.ReadLong(cpu.A7 + 2) == 0x0106, "stackPC=" + bus.ReadLong(cpu.A7 + 2).ToString("X8"));
             failures += Expect(log, "Trace stacked SR keeps T", (bus.ReadWord(cpu.A7) & 0x8000) != 0, "stackSR=" + bus.ReadWord(cpu.A7).ToString("X4"));
             failures += Expect(log, "Trace exception clears live T", (cpu.SR & 0x8000) == 0, cpu.GetDebugInfo());
+            return failures;
+        }
+
+        /// <summary>
+        /// Verifies that RTE restoring the trace bit arms tracing for the restored instruction.
+        /// </summary>
+        private static int RunRteTraceRestoreTest(StringBuilder log)
+        {
+            var bus = CreateBus();
+            WriteResetVectors(bus, 0x1000, 0x0300);
+            bus.WriteLong(9 * 4, 0x00000400);
+            bus.WriteWord(0x1000, 0xA000); // Supervisor + trace enabled for the restored context.
+            bus.WriteLong(0x1002, 0x00000100);
+            WriteProgram(bus, 0x0100, 0x4E71, 0x4E71); // First NOP should execute before trace vectors.
+            WriteProgram(bus, 0x0300, 0x4E73);         // RTE
+
+            M68kCpu cpu = CreateCpu(bus);
+            cpu.Step();
+            bool rteDidNotTraceItself = cpu.PC == 0x0100 && (cpu.SR & 0x8000) != 0;
+            cpu.Step();
+
+            int failures = 0;
+            failures += Expect(log, "RTE restored trace waits for restored instruction", rteDidNotTraceItself, cpu.GetDebugInfo());
+            failures += Expect(log, "RTE restored trace vector PC", cpu.PC == 0x0400, cpu.GetDebugInfo());
+            failures += Expect(log, "RTE restored trace stacked PC", bus.ReadLong(cpu.A7 + 2) == 0x0102, "stackPC=" + bus.ReadLong(cpu.A7 + 2).ToString("X8"));
+            failures += Expect(log, "RTE restored trace stacked SR keeps T", (bus.ReadWord(cpu.A7) & 0x8000) != 0, "stackSR=" + bus.ReadWord(cpu.A7).ToString("X4"));
+            failures += Expect(log, "RTE restored trace clears live T", (cpu.SR & 0x8000) == 0, cpu.GetDebugInfo());
+            return failures;
+        }
+
+        /// <summary>
+        /// Ensures trace exception vector fetches observe writes completed by the traced instruction.
+        /// </summary>
+        private static int RunTraceVectorSeesPriorWriteTest(StringBuilder log)
+        {
+            var bus = CreateBus();
+            WriteResetVectors(bus, 0x1000, 0x0100);
+            bus.WriteLong(9 * 4, 0x00000300);
+            WriteProgram(
+                bus,
+                0x0100,
+                0x007C, 0x8000,             // Enable trace for the following instruction.
+                0x5CB9, 0x0000, 0x0024,     // ADDQ.L #6,($24).L updates vector 9 before trace vectors.
+                0x4E71);
+
+            M68kCpu cpu = CreateCpu(bus);
+            cpu.Step();
+            cpu.Step();
+
+            int failures = 0;
+            failures += Expect(log, "Trace vector write visible", cpu.PC == 0x0306, cpu.GetDebugInfo());
+            failures += Expect(log, "Trace vector memory updated", bus.ReadLong(9 * 4) == 0x00000306, "vector9=" + bus.ReadLong(9 * 4).ToString("X8"));
+            failures += Expect(log, "Trace vector stacked PC after writer", bus.ReadLong(cpu.A7 + 2) == 0x010A, "stackPC=" + bus.ReadLong(cpu.A7 + 2).ToString("X8"));
             return failures;
         }
 
