@@ -28,6 +28,8 @@ namespace AmigaEmulator.Core
             Name = "Fast",
             EnableDmaSlotTrace = false,
             EnableCpuTrace = false,
+            // The fast frontend profile keeps chip-bus contention relaxed until the
+            // CPU/custom-chip timing model is fully cycle-exact for mid-line updates.
             StrictChipBusArbitration = false
         };
 

@@ -188,6 +188,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool _hasPointerRegisterSnapshot;
         /// <summary>
+        /// Forces the next fetched line to reload BPLxPT after one deferred partial rewrite.
+        /// </summary>
+        private bool _reloadPointersAfterDeferredPartialRewrite;
+        /// <summary>
         /// Preserves older savestate layouts that stored the former split-fetch display-delay flag.
         /// </summary>
 #pragma warning disable 0169, 0414
@@ -356,6 +360,7 @@ namespace AmigaEmulator.Core.CustomChips
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
             _hasPointerRegisterSnapshot = false;
+            _reloadPointersAfterDeferredPartialRewrite = false;
             _paletteDirty = true;
             for (int word = 0; word < MaxFetchedWords; word++)
             {
@@ -370,6 +375,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// Invalidates per-frame fetch buffers before the first display DMA slots of a new frame.
         /// </summary>
         public void BeginFrame()
+        {
+            ResetDmaLineTracking();
+        }
+
+        /// <summary>
+        /// Clears transient line-fetch bookkeeping while keeping register and latch state intact.
+        /// </summary>
+        private void ResetDmaLineTracking()
         {
             for (int plane = 0; plane < MaxPlanes; plane++)
             {
@@ -389,6 +402,7 @@ namespace AmigaEmulator.Core.CustomChips
             _activeDmaRow = int.MinValue;
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
+            _reloadPointersAfterDeferredPartialRewrite = false;
         }
 
         /// <summary>
@@ -969,8 +983,11 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            bool pointerRegistersChanged = HavePointerRegistersChanged();
-            bool continuesPreviousLine = row == _activeDmaRow + 1 && _completedDmaLine && !pointerRegistersChanged;
+            bool forcePointerReload = _reloadPointersAfterDeferredPartialRewrite;
+            bool pointerRegistersChanged = forcePointerReload || HavePointerRegistersChanged();
+            bool sequentialLine = row == _activeDmaRow + 1 && _completedDmaLine;
+            bool partialPointerRewrite = !forcePointerReload && pointerRegistersChanged && sequentialLine && !HaveAllEnabledPointerRegistersChanged();
+            bool continuesPreviousLine = sequentialLine && !forcePointerReload && (!pointerRegistersChanged || partialPointerRewrite);
             _activeDmaRow = row;
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
@@ -984,6 +1001,11 @@ namespace AmigaEmulator.Core.CustomChips
                 }
 
                 CapturePointerRegisterSnapshot();
+                _reloadPointersAfterDeferredPartialRewrite = false;
+            }
+            else if (partialPointerRewrite)
+            {
+                _reloadPointersAfterDeferredPartialRewrite = true;
             }
 
             if (wordIndex > 0)
@@ -1064,6 +1086,27 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns true only after every enabled bitplane pointer register has been rewritten.
+        /// </summary>
+        private bool HaveAllEnabledPointerRegistersChanged()
+        {
+            if (!_hasPointerRegisterSnapshot)
+            {
+                return true;
+            }
+
+            for (int plane = 0; plane < EnabledPlanes; plane++)
+            {
+                if (GetBitplanePointer(plane) == _lastPointerRegisterValues[plane])
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>

@@ -467,6 +467,11 @@ namespace AmigaEmulator.Tests
                 TestFixedOcsSlotTable);
             yield return new ChipTestCase(
                 "Agnus",
+                "bitplane DMA cannot steal fixed audio, disk, or sprite slots",
+                "Amiga HRM OCS fixed-slot priority before display DMA",
+                TestBitplanesDoNotStealFixedSlots);
+            yield return new ChipTestCase(
+                "Agnus",
                 "BLTPRI lets the Blitter take otherwise CPU-available slots",
                 "Amiga HRM DMACON BLTPRI bus priority behavior",
                 TestBlitterPrioritySlot);
@@ -560,6 +565,32 @@ namespace AmigaEmulator.Tests
             Check.Equal(DmaOwner.Sprite, spriteSlot.Owner, "Slot 20 should be sprite DMA when sprite DMA is enabled.");
             Check.Equal(0, spriteSlot.SpriteIndex, "Slot 20 should address sprite 0.");
             Check.Equal(0, spriteSlot.SpriteSlotPhase, "Slot 20 should be the first word of sprite 0.");
+        }
+
+        /// <summary>
+        /// Runs Test Bitplanes Do Not Steal Fixed Slots.
+        /// </summary>
+        private static void TestBitplanesDoNotStealFixedSlots()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers);
+            var scheduler = new DmaScheduler(registers, bitplanes);
+            registers.WriteWord(Dmacon, 0x833F);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0010);
+            registers.WriteWord(Ddfstop, 0x0020);
+            bitplanes.NotifyCustomRegisterWordWrite(Dmacon, 0x833F);
+            bitplanes.NotifyCustomRegisterWordWrite(Bplcon0, 0x1000);
+            bitplanes.NotifyCustomRegisterWordWrite(Diwstrt, 0x2C81);
+            bitplanes.NotifyCustomRegisterWordWrite(Diwstop, 0x2D81);
+            bitplanes.NotifyCustomRegisterWordWrite(Ddfstrt, 0x0010);
+            bitplanes.NotifyCustomRegisterWordWrite(Ddfstop, 0x0020);
+            scheduler.AttachDiskDmaStatus(() => true);
+
+            Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, 16, BitplaneUnit.PalVisibleTop).Owner, "Bitplane fetch timing must not override the fixed disk DMA slot.");
+            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 20, BitplaneUnit.PalVisibleTop).Owner, "Bitplane fetch timing must not override the fixed sprite DMA slot.");
         }
 
         /// <summary>
@@ -747,6 +778,11 @@ namespace AmigaEmulator.Tests
                 "five-plane standard DDF waits for the complete fetch group",
                 "Amiga OCS five-plane lowres DMA still needs the full fetch-group delay at the normal DDF start",
                 TestFivePlaneStandardDdfWaitsForCompleteFetchGroup);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "partial mid-line BPL pointer rewrites wait for a complete plane set",
+                "OCS bitplane DMA must not render a scanline from mixed old and new BPLxPT bases",
+                TestPartialMidLineBitplanePointerRewriteWaitsForCompleteSet);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "wide DDF overscan reports the full presentation source width",
@@ -1184,6 +1220,59 @@ namespace AmigaEmulator.Tests
             {
                 Check.Equal(31, bitplanes.RenderColorIndex(x, BitplaneUnit.PalVisibleTop), "Five-plane standard DDF should not produce a black vertical column at visible X " + x + ".");
             }
+        }
+
+        /// <summary>
+        /// Verifies that a scanline cannot be built from a partially rewritten BPL pointer set.
+        /// </summary>
+        private static void TestPartialMidLineBitplanePointerRewriteWaitsForCompleteSet()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[0x100];
+            const int newBaseWord = 0x40;
+            for (int plane = 0; plane < 5; plane++)
+            {
+                memory[newBaseWord + plane] = 0xFFFF;
+            }
+
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) % memory.Length]);
+            registers.WriteWord(Bplcon0, 0x5000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2FC1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            for (int plane = 0; plane < 5; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 2));
+            }
+
+            for (int beamX = 0x38; beamX < 0x40; beamX++)
+            {
+                bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop);
+            }
+
+            registers.WriteWord(Bpl1ptl, (ushort)(newBaseWord * 2));
+            registers.WriteWord(Bpl2ptl, (ushort)((newBaseWord + 1) * 2));
+            for (int beamX = 0x38; beamX < 0x40; beamX++)
+            {
+                bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop + 1);
+            }
+
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop + 1), "A partial BPL1/BPL2 rewrite must not leak a mixed pointer row into the display.");
+
+            for (int plane = 2; plane < 5; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)((newBaseWord + plane) * 2));
+            }
+
+            for (int beamX = 0x38; beamX < 0x40; beamX++)
+            {
+                bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop + 2);
+            }
+
+            Check.Equal(31, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop + 2), "A complete BPL pointer rewrite should become visible on the following fetched row.");
         }
 
         /// <summary>
@@ -2770,6 +2859,11 @@ namespace AmigaEmulator.Tests
                 TestBusArbitrationRegions);
             yield return new ChipTestCase(
                 "Integration",
+                "fast accuracy keeps chip-bus arbitration relaxed",
+                "Frontend compatibility profile used for games with sensitive mid-scanline bitplane updates",
+                TestFastAccuracyKeepsChipBusRelaxed);
+            yield return new ChipTestCase(
+                "Integration",
                 "2MB Chip RAM plus 8MB Fast RAM profile maps both writable regions",
                 "A500 memory expansion profiles and Zorro II Fast RAM map",
                 TestTwoMbChipEightMbFastRamProfile);
@@ -2841,6 +2935,18 @@ namespace AmigaEmulator.Tests
 
             var slowBus = new AmigaBus(AmigaModel.A500Pal512Slow512, new CustomRegisterMap(), null, null, null);
             Check.True(slowBus.RequiresChipBus(MemoryMap.SlowRamStart, 2), "Trapdoor Slow RAM should use chip-bus timing even though chipset DMA cannot target it directly.");
+        }
+
+        /// <summary>
+        /// Verifies that the interactive Fast profile remains the compatibility-oriented timing mode.
+        /// </summary>
+        private static void TestFastAccuracyKeepsChipBusRelaxed()
+        {
+            AmigaAccuracyOptions options = AmigaAccuracyOptions.Fast.Clone();
+
+            Check.True(!options.StrictChipBusArbitration, "Fast accuracy should leave strict chip-bus contention to Compatible and Strict.");
+            Check.True(!options.EnableCpuTrace, "Fast accuracy should not enable CPU trace overhead.");
+            Check.True(!options.EnableDmaSlotTrace, "Fast accuracy should not enable DMA slot trace overhead.");
         }
 
         /// <summary>

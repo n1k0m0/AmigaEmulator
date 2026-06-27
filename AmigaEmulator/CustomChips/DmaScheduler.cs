@@ -228,11 +228,6 @@ namespace AmigaEmulator.Core.CustomChips
                 return DmaOwner.Refresh;
             }
 
-            if (bitplaneDma && _bitplanes.IsPlaneFetchSlot(beamX, beamY))
-            {
-                return DmaOwner.Bitplane;
-            }
-
             if (baseSlot.Owner == DmaOwner.Audio)
             {
                 return audioDma ? DmaOwner.Audio : DmaOwner.Cpu;
@@ -246,6 +241,11 @@ namespace AmigaEmulator.Core.CustomChips
             if (baseSlot.Owner == DmaOwner.Sprite)
             {
                 return spriteDma ? DmaOwner.Sprite : DmaOwner.Cpu;
+            }
+
+            if (bitplaneDma && _bitplanes.IsPlaneFetchSlot(beamX, beamY))
+            {
+                return DmaOwner.Bitplane;
             }
 
             if (copperDma && copperNeedsBus && IsCopperSlot(beamX))

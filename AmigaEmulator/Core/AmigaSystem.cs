@@ -132,6 +132,10 @@ namespace AmigaEmulator.Core
         /// Counts down the chip-cycle delay before the sampled interrupt level reaches IPL pins.
         /// </summary>
         private int _cpuInterruptDelayCycles;
+        /// <summary>
+        /// Keeps the saved presented image visible until one partial post-load frame has been discarded.
+        /// </summary>
+        private bool _suppressNextPresentationAfterLoad;
 
         /// <summary>
         /// Initializes a new instance of the AmigaSystem class.
@@ -380,6 +384,7 @@ namespace AmigaEmulator.Core
                 _cpuVisibleInterruptLevel = 0;
                 _cpuPendingInterruptLevel = 0;
                 _cpuInterruptDelayCycles = 0;
+                _suppressNextPresentationAfterLoad = false;
                 _cpu.Reset();
                 _lastTraceSample = CreateTraceSample(null);
             }
@@ -461,6 +466,7 @@ namespace AmigaEmulator.Core
                 }
 
                 _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
+                _suppressNextPresentationAfterLoad = true;
                 _lastTraceSample = CreateTraceSample(null);
             }
         }
@@ -686,17 +692,24 @@ namespace AmigaEmulator.Core
             _denise.Tick(_agnus.Beam);
             if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
             {
-                GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
-                if (sourceWidth > _model.VisibleWidth || sourceHeight > _model.VisibleHeight)
+                if (_suppressNextPresentationAfterLoad)
                 {
-                    _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
+                    _suppressNextPresentationAfterLoad = false;
                 }
                 else
                 {
-                    _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop);
-                }
+                    GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
+                    if (sourceWidth > _model.VisibleWidth || sourceHeight > _model.VisibleHeight)
+                    {
+                        _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
+                    }
+                    else
+                    {
+                        _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop);
+                    }
 
-                _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
+                    _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
+                }
             }
 
             if (_accuracyOptions.EnableCpuTrace || _accuracyOptions.EnableDmaSlotTrace)
