@@ -633,6 +633,25 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--checkpoint-savestate-text", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_text_checkpoint.png");
+                string outSavePath = args.Length >= 4
+                    ? args[3]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_text_checkpoint.amigasav");
+                string text = args.Length >= 5 ? args[4].Replace("\\r", "\r").Replace("\\n", "\n") : string.Empty;
+                int frames = args.Length >= 6 && int.TryParse(args[5], out int parsedCheckpointTextFrames) && parsedCheckpointTextFrames > 0
+                    ? parsedCheckpointTextFrames
+                    : 50;
+                CheckpointSavestateText(savePath, imagePath, outSavePath, text, frames, ParseSavestateModelArgument(args, 6, savePath));
+                Console.WriteLine("Savestate text checkpoint image written: " + Path.GetFullPath(imagePath));
+                Console.WriteLine("Savestate text checkpoint written: " + Path.GetFullPath(outSavePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-key", StringComparison.OrdinalIgnoreCase))
             {
                 string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
@@ -2582,6 +2601,128 @@ namespace AmigaEmulator
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Saves a new checkpoint after restoring a savestate and typing a host ASCII string as Amiga raw keys.
+        /// </summary>
+        private static void CheckpointSavestateText(string savePath, string imagePath, string outSavePath, string text, int framesToRun, AmigaModel model)
+        {
+            SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                TypeAmigaText(system, text ?? string.Empty);
+                RunFrames(system, framesToRun);
+                WriteSavestateCheckpoint(system, imagePath, outSavePath, model ?? AmigaModel.PalA500, metadata.MountedMedia);
+                Console.WriteLine("Text=\"" + (text ?? string.Empty).Replace("\r", "\\r").Replace("\n", "\\n") + "\" Frames=" + framesToRun);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+            }
+        }
+
+        /// <summary>
+        /// Types ASCII through the Amiga keyboard matrix, including shift-modified punctuation needed by AmigaDOS.
+        /// </summary>
+        private static void TypeAmigaText(AmigaSystem system, string text)
+        {
+            const byte leftShiftRawKey = 0x60;
+            foreach (char character in text)
+            {
+                if (!TryMapAsciiToAmigaKey(character, out byte rawKey, out bool shifted))
+                {
+                    continue;
+                }
+
+                if (shifted)
+                {
+                    system.Input.KeyboardKeyDown(leftShiftRawKey);
+                    system.RunChipCycles(120000);
+                }
+
+                system.Input.KeyboardKeyDown(rawKey);
+                system.RunChipCycles(160000);
+                system.Input.KeyboardKeyUp(rawKey);
+                system.RunChipCycles(160000);
+
+                if (shifted)
+                {
+                    system.Input.KeyboardKeyUp(leftShiftRawKey);
+                    system.RunChipCycles(120000);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Maps host ASCII characters to Amiga raw keys and a left-shift modifier.
+        /// </summary>
+        private static bool TryMapAsciiToAmigaKey(char character, out byte rawKey, out bool shifted)
+        {
+            shifted = false;
+            rawKey = 0;
+
+            if (character >= 'a' && character <= 'z')
+            {
+                string topRow = "qwertyuiop";
+                string homeRow = "asdfghjkl";
+                string bottomRow = "zxcvbnm";
+                int topIndex = topRow.IndexOf(character);
+                int homeIndex = homeRow.IndexOf(character);
+                int bottomIndex = bottomRow.IndexOf(character);
+                if (topIndex >= 0)
+                {
+                    rawKey = (byte)(0x10 + topIndex);
+                }
+                else if (homeIndex >= 0)
+                {
+                    rawKey = (byte)(0x20 + homeIndex);
+                }
+                else if (bottomIndex >= 0)
+                {
+                    rawKey = (byte)(0x31 + bottomIndex);
+                }
+                else
+                {
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (character >= 'A' && character <= 'Z')
+            {
+                shifted = true;
+                return TryMapAsciiToAmigaKey(char.ToLowerInvariant(character), out rawKey, out _);
+            }
+
+            if (character >= '1' && character <= '9')
+            {
+                rawKey = (byte)(0x01 + (character - '1'));
+                return true;
+            }
+
+            switch (character)
+            {
+                case '0': rawKey = 0x0A; return true;
+                case ' ': rawKey = 0x40; return true;
+                case '\r':
+                case '\n': rawKey = 0x44; return true;
+                case '-': rawKey = 0x0B; return true;
+                case '=': rawKey = 0x0C; return true;
+                case '[': rawKey = 0x1A; return true;
+                case ']': rawKey = 0x1B; return true;
+                case ';': rawKey = 0x29; return true;
+                case ':': rawKey = 0x29; shifted = true; return true;
+                case '\'': rawKey = 0x2A; return true;
+                case '"': rawKey = 0x2A; shifted = true; return true;
+                case ',': rawKey = 0x38; return true;
+                case '.': rawKey = 0x39; return true;
+                case '/': rawKey = 0x3A; return true;
+                case '?': rawKey = 0x3A; shifted = true; return true;
+                case '_': rawKey = 0x0B; shifted = true; return true;
+                default: return false;
             }
         }
 
