@@ -53,6 +53,11 @@ namespace AmigaEmulator.Core
         private const int MaxTopOverscanArtifactPixels = 6000;
 
         /// <summary>
+        /// Keeps transient black frames from collapsing the presentation source to a line or two.
+        /// </summary>
+        private const int MinimumTrimmedPresentationHeight = 64;
+
+        /// <summary>
         /// Runs object.
         /// </summary>
         private readonly object _syncRoot = new object();
@@ -699,7 +704,7 @@ namespace AmigaEmulator.Core
                 else
                 {
                     GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
-                    if (sourceWidth > _model.VisibleWidth || sourceHeight > _model.VisibleHeight)
+                    if (sourceWidth != _model.VisibleWidth || sourceHeight != _model.VisibleHeight)
                     {
                         _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
                     }
@@ -731,6 +736,56 @@ namespace AmigaEmulator.Core
             sourceWidth = Math.Max(1, Math.Min(requestedWidth, _frameBuffer.Width - sourceLeft));
             sourceTop = Math.Max(0, Math.Min(requestedTop, _frameBuffer.Height - 1));
             sourceHeight = Math.Max(1, Math.Min(requestedHeight, _frameBuffer.Height - sourceTop));
+            TrimBlackLetterboxRows(sourceLeft, ref sourceTop, sourceWidth, ref sourceHeight);
+        }
+
+        /// <summary>
+        /// Removes solid black letterbox rows from the presentation source without cropping colored playfields.
+        /// </summary>
+        private void TrimBlackLetterboxRows(int sourceLeft, ref int sourceTop, int sourceWidth, ref int sourceHeight)
+        {
+            int trimmedTop = sourceTop;
+            int trimmedHeight = sourceHeight;
+            while (trimmedHeight > 1 && IsSolidBlackSourceRow(sourceLeft, trimmedTop, sourceWidth))
+            {
+                trimmedTop++;
+                trimmedHeight--;
+            }
+
+            while (trimmedHeight > 1 && IsSolidBlackSourceRow(sourceLeft, trimmedTop + trimmedHeight - 1, sourceWidth))
+            {
+                trimmedHeight--;
+            }
+
+            if (trimmedHeight >= MinimumTrimmedPresentationHeight)
+            {
+                sourceTop = trimmedTop;
+                sourceHeight = trimmedHeight;
+            }
+        }
+
+        /// <summary>
+        /// Returns whether every pixel in a source row is black border/letterbox color.
+        /// </summary>
+        private bool IsSolidBlackSourceRow(int sourceLeft, int sourceY, int sourceWidth)
+        {
+            if (sourceY < 0 || sourceY >= _frameBuffer.Height)
+            {
+                return false;
+            }
+
+            int width = Math.Max(0, Math.Min(sourceWidth, _frameBuffer.Width - sourceLeft));
+            int row = sourceY * _frameBuffer.Width;
+            uint[] pixels = _frameBuffer.Pixels;
+            for (int x = 0; x < width; x++)
+            {
+                if ((pixels[row + sourceLeft + x] & 0x00FFFFFFu) != 0)
+                {
+                    return false;
+                }
+            }
+
+            return width > 0;
         }
 
         /// <summary>
