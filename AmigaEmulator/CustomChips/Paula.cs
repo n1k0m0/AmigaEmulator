@@ -1144,10 +1144,13 @@ namespace AmigaEmulator.Core.CustomChips
                 _diskReadQueue.Clear();
             }
 
-            if (_wordEqual && _requestInterrupt != null)
+            if (_wordEqual)
             {
                 _diskSyncMatches++;
-                _requestInterrupt(CustomInterruptSource.DiskSync);
+                if (liveWordSyncMatch && _requestInterrupt != null)
+                {
+                    _requestInterrupt(CustomInterruptSource.DiskSync);
+                }
             }
         }
 

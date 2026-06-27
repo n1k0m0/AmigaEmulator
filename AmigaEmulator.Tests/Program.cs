@@ -1967,6 +1967,11 @@ namespace AmigaEmulator.Tests
                 TestWordSyncWaitsForEnabledDiskDmaSlots);
             yield return new ChipTestCase(
                 "Paula/Disk",
+                "passive disk sync words do not raise DSKSYN interrupts",
+                "Paula exposes sync matches for polling, but the level-5 DSKSYN IRQ belongs to active WORDSYNC DMA",
+                TestPassiveDiskSyncDoesNotRaiseDiskSyncInterrupt);
+            yield return new ChipTestCase(
+                "Paula/Disk",
                 "captured MFM write sectors decode back into ADF sectors",
                 "AmigaDOS MFM sector layout; Paula disk write path",
                 TestCapturedMfmWriteSectorDecodesToAdf);
@@ -2702,6 +2707,51 @@ namespace AmigaEmulator.Tests
 
                 Check.True(captured.Count > 0, "Enabling disk DMA should let the next WORDSYNC start the block.");
                 Check.True(captured[0] != AdfMfmEncoder.GapWord, "DMA should start with post-sync data rather than stale disabled-DMA gap words.");
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that passive sync words on the disk stream do not create stale level-5 interrupts.
+        /// </summary>
+        private static void TestPassiveDiskSyncDoesNotRaiseDiskSyncInterrupt()
+        {
+            string tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga_tests_passive_dsksyn_" + Guid.NewGuid().ToString("N") + ".adf");
+            System.IO.File.WriteAllBytes(tempPath, new byte[AdfImage.StandardSize]);
+            try
+            {
+                var controller = new FloppyController();
+                controller.InsertDrive0(AdfImage.Load(tempPath), true);
+                controller.Drive0.ApplySelection(true, true);
+                WaitForDriveReady(controller.Drive0);
+
+                int diskSyncInterrupts = 0;
+                var paula = new Paula();
+                paula.AttachDisk(
+                    controller,
+                    delegate(uint _, ushort __) { },
+                    null,
+                    source =>
+                    {
+                        if (source == CustomInterruptSource.DiskSync)
+                        {
+                            diskSyncInterrupts++;
+                        }
+                    },
+                    () => 0x0000,
+                    () => 0x0000);
+
+                for (int cycle = 0; cycle < 800000; cycle++)
+                {
+                    controller.Tick();
+                    paula.Tick(false, false);
+                }
+
+                Check.True(paula.GetDiskDebugInfo().Contains("syncs:"), "The disk stream should still be observed for polling diagnostics.");
+                Check.Equal(0, diskSyncInterrupts, "Passive DSKSYNC matches must not raise level-5 DSKSYN interrupts.");
             }
             finally
             {
