@@ -60,6 +60,7 @@ namespace AmigaEmulator.Core.CustomChips
         {
             int failures = 0;
             failures += RunCase(log, "OCS protected register ranges", TestProtectedRegisterRanges);
+            failures += RunCase(log, "Dangerous MOVE stops copper execution", TestDangerousMoveStopsCopperExecution);
             failures += RunCase(log, "BFD waits for blitter when clear", TestBfdWaitsForBlitterWhenClear);
             failures += RunCase(log, "Masked frame-end WAIT stops copper list", TestMaskedFrameEndWaitStopsCopperList);
             failures += RunCase(log, "COPJMP2 accepts low chip RAM targets", TestCopjmp2AcceptsLowChipRamTarget);
@@ -117,6 +118,28 @@ namespace AmigaEmulator.Core.CustomChips
             harness.Registers.WriteWord(Copcon, 0x0000);
             harness.RunMove(Color00, 0x0444);
             return harness.Registers.ReadWord(Color00) == 0x0444 && harness.LastKind == CopperInstructionKind.Move;
+        }
+
+        /// <summary>
+        /// Verifies that a forbidden Copper MOVE halts the current list instead of executing following memory.
+        /// </summary>
+        private static bool TestDangerousMoveStopsCopperExecution()
+        {
+            var harness = new Harness();
+            harness.WriteCopperInstruction(0x0100, 0x0000, 0x0000);
+            harness.WriteCopperInstruction(0x0104, 0x0180, 0x0ABC);
+            harness.Copper.LoadList(0x0100);
+
+            harness.Copper.Tick(true, 0, 0);
+            harness.Copper.Tick(true, 0, 0);
+            for (int i = 0; i < 32; i++)
+            {
+                harness.Copper.Tick(true, i & 0xFE, 0);
+            }
+
+            return harness.Copper.ProgramCounter == 0x0100
+                && harness.Registers.ReadWord(Color00) == 0
+                && harness.LastKind == CopperInstructionKind.BlockedMove;
         }
 
         /// <summary>

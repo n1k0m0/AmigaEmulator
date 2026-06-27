@@ -568,7 +568,8 @@ namespace AmigaEmulator.Core.CustomChips
             if (IsProtectedRegister(registerOffset))
             {
                 EmitTrace(globalChipCycle, beamX, beamY, pcBefore, instruction, value, CopperInstructionKind.BlockedMove, registerOffset, value, 0, false);
-                return false;
+                StopOnDangerousMove();
+                return true;
             }
 
             if (registerOffset == Copjmp1)
@@ -594,6 +595,16 @@ namespace AmigaEmulator.Core.CustomChips
             EmitTrace(globalChipCycle, beamX, beamY, pcBefore, instruction, value, CopperInstructionKind.Move, registerOffset, value, 0, false);
             ProgramCounter = _dmaAddress.Add(ProgramCounter, 4u);
             return true;
+        }
+
+        /// <summary>
+        /// Stops Copper execution after a forbidden MOVE, matching the OCS dangerous-register guard.
+        /// </summary>
+        private void StopOnDangerousMove()
+        {
+            _programCounterLoaded = false;
+            _waiting = false;
+            _firstWordLatched = false;
         }
 
         /// <summary>
