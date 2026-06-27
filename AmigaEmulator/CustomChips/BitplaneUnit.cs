@@ -491,19 +491,8 @@ namespace AmigaEmulator.Core.CustomChips
             _dmaActive = (dmacon & 0x0200) != 0 && (dmacon & 0x0100) != 0;
             _displayActive = EnabledPlanes > 0 && (_dmaActive || hasValidDataLatch);
 
-            int rawTop = diwStart == 0 ? PalVisibleTop : (diwStart >> 8) & 0xFF;
-            _diwTop = rawTop;
-            _diwBottom = diwStop == 0 ? rawTop + PalVisibleHeight : (diwStop >> 8) & 0xFF;
-            if (rawTop < PalVisibleTop && _diwBottom <= PalVisibleTop + 32)
-            {
-                _diwTop = PalVisibleTop;
-                _diwBottom = PalVisibleTop + PalVisibleHeight;
-            }
-
-            if (_diwBottom <= rawTop)
-            {
-                _diwBottom += 256;
-            }
+            _diwTop = CalculateDiwTop(diwStart);
+            _diwBottom = CalculateDiwBottom(diwStart, diwStop);
 
             _ddfStart = NormalizeDdfStart(ddfStart);
             _ddfStop = NormalizeDdfStop(ddfStop);
@@ -1288,10 +1277,7 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 ushort value = Read(Diwstrt);
-                ushort stop = Read(Diwstop);
-                int top = value == 0 ? PalVisibleTop : (value >> 8) & 0xFF;
-                int bottom = stop == 0 ? top + PalVisibleHeight : (stop >> 8) & 0xFF;
-                return top < PalVisibleTop && bottom <= PalVisibleTop + 32 ? PalVisibleTop : top;
+                return CalculateDiwTop(value);
             }
         }
 
@@ -1304,20 +1290,31 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 ushort start = Read(Diwstrt);
                 ushort stop = Read(Diwstop);
-                int top = start == 0 ? PalVisibleTop : (start >> 8) & 0xFF;
-                int bottom = stop == 0 ? top + PalVisibleHeight : (stop >> 8) & 0xFF;
-                if (top < PalVisibleTop && bottom <= PalVisibleTop + 32)
-                {
-                    return PalVisibleTop + PalVisibleHeight;
-                }
-
-                if (bottom <= top)
-                {
-                    bottom += 256;
-                }
-
-                return bottom;
+                return CalculateDiwBottom(start, stop);
             }
+        }
+
+        /// <summary>
+        /// Decodes the vertical DIW start line from the OCS display-window registers.
+        /// </summary>
+        private static int CalculateDiwTop(ushort diwStart)
+        {
+            return diwStart == 0 ? PalVisibleTop : (diwStart >> 8) & 0xFF;
+        }
+
+        /// <summary>
+        /// Decodes the vertical DIW stop line, including the PAL wrap used by top overscan screens.
+        /// </summary>
+        private static int CalculateDiwBottom(ushort diwStart, ushort diwStop)
+        {
+            int top = CalculateDiwTop(diwStart);
+            int bottom = diwStop == 0 ? top + PalVisibleHeight : (diwStop >> 8) & 0xFF;
+            if (bottom <= top || (top < PalVisibleTop && bottom <= PalVisibleTop + 32))
+            {
+                bottom += 256;
+            }
+
+            return bottom;
         }
 
         /// <summary>
