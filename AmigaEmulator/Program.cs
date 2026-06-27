@@ -165,6 +165,24 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-savestate-register-value", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string registerName = args.Length >= 3 ? args[2] : "D3";
+                uint value = args.Length >= 4 ? Convert.ToUInt32(args[3].Replace("$", string.Empty), 16) : 0xFFFFFFFFu;
+                int cycles = args.Length >= 5 && int.TryParse(args[4], out int parsedRegisterCycles) && parsedRegisterCycles > 0
+                    ? parsedRegisterCycles
+                    : 12000000;
+                int maxHits = args.Length >= 6 && int.TryParse(args[5], out int parsedRegisterHits) && parsedRegisterHits > 0
+                    ? parsedRegisterHits
+                    : 20;
+                long startCycle = args.Length >= 7 && long.TryParse(args[6], out long parsedRegisterStart) && parsedRegisterStart > 0
+                    ? parsedRegisterStart
+                    : 0;
+                TraceSavestateRegisterValue(savePath, registerName, value, cycles, maxHits, startCycle, ParseSavestateModelArgument(args, 7, savePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-until-fault", StringComparison.OrdinalIgnoreCase))
             {
                 int cycles = args.Length >= 2 && int.TryParse(args[1], out int parsedFaultCycles) && parsedFaultCycles > 0
@@ -7123,6 +7141,59 @@ namespace AmigaEmulator
                 Console.WriteLine("RegisterHits=" + hits + " " + registerName.ToUpperInvariant() + "=$" + watchedValue.ToString("X8"));
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 DumpDisplayRegisters(system);
+            }
+        }
+
+        /// <summary>
+        /// Traces the first instructions that change a register to the requested value after restoring a savestate.
+        /// </summary>
+        private static void TraceSavestateRegisterValue(string savePath, string registerName, uint watchedValue, int cycles, int maxHits, long startCycle, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+
+                uint previous = ReadCpuRegister(system.Cpu, registerName);
+                uint lastInstructionAddress = system.Cpu.CurrentInstructionAddress;
+                int hits = 0;
+                for (int cycle = 0; cycle < cycles && hits < maxHits; cycle++)
+                {
+                    system.TickChipCycle();
+                    if (system.Cpu.CurrentInstructionAddress == lastInstructionAddress)
+                    {
+                        continue;
+                    }
+
+                    lastInstructionAddress = system.Cpu.CurrentInstructionAddress;
+                    uint current = ReadCpuRegister(system.Cpu, registerName);
+                    if (system.Agnus.Beam.GlobalChipCycle >= startCycle && current == watchedValue && previous != watchedValue)
+                    {
+                        Console.WriteLine(string.Format(
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            "{0,10} F{1,5} {2,3},{3,3} PC ${4:X6} IP ${5:X6} OP ${6:X4} {7}=${8:X8} {9}",
+                            system.Agnus.Beam.GlobalChipCycle,
+                            system.FrameCounter,
+                            system.Agnus.Beam.BeamX,
+                            system.Agnus.Beam.BeamY,
+                            system.Cpu.PC,
+                            system.Cpu.CurrentInstructionAddress,
+                            system.Cpu.CurrentOpcode,
+                            registerName.ToUpperInvariant(),
+                            current,
+                            system.Cpu.LastInstruction ?? string.Empty));
+                        PrintTraceRegisterContext(system);
+                        hits++;
+                    }
+
+                    previous = current;
+                }
+
+                Console.WriteLine("SavestateRegisterHits=" + hits + " " + registerName.ToUpperInvariant() + "=$" + watchedValue.ToString("X8"));
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DF0=" + system.Bus.FloppyController.GetDebugInfo());
+                Console.WriteLine("PaulaDisk=" + system.Paula.GetDiskDebugInfo());
+                DumpStackWords(system, 8);
             }
         }
 

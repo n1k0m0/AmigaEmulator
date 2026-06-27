@@ -1067,7 +1067,7 @@ namespace AmigaEmulator.Core.Cpu
                     return "ILLEGAL LEA";
                 }
 
-                SetA(addressRegister, GetEffectiveAddress(mode, register, 4, true));
+                SetA(addressRegister, GetEffectiveAddress(mode, register, 4, true, true));
                 return "LEA " + FormatEa(mode, register, 4) + ",A" + addressRegister;
             }
 
@@ -1109,7 +1109,7 @@ namespace AmigaEmulator.Core.Cpu
                     return "ILLEGAL PEA";
                 }
 
-                PushLong(GetEffectiveAddress(mode, register, 4, true));
+                PushLong(GetEffectiveAddress(mode, register, 4, true, true));
                 return "PEA " + FormatEa(mode, register, 4);
             }
 
@@ -2776,42 +2776,64 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private uint GetEffectiveAddress(int mode, int register, int size, bool forWrite)
         {
+            return GetEffectiveAddress(mode, register, size, forWrite, false);
+        }
+
+        /// <summary>
+        /// Returns the effective address, optionally preserving the full 32-bit 68000 address value for LEA/PEA.
+        /// </summary>
+        private uint GetEffectiveAddress(int mode, int register, int size, bool forWrite, bool preserveFullAddress)
+        {
             switch (mode)
             {
                 case 2:
-                    return _state.A[register] & AddressMask;
+                    return preserveFullAddress ? _state.A[register] : _state.A[register] & AddressMask;
                 case 3:
                     {
-                        uint address = _state.A[register] & AddressMask;
+                        uint fullAddress = _state.A[register];
                         SetA(register, _state.A[register] + AddressIncrement(register, size));
-                        return address;
+                        return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
                     }
                 case 4:
                     {
-                        uint address = _state.A[register] - AddressIncrement(register, size);
-                        SetA(register, address);
-                        return address & AddressMask;
+                        uint fullAddress = _state.A[register] - AddressIncrement(register, size);
+                        SetA(register, fullAddress);
+                        return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
                     }
                 case 5:
-                    return (uint)((int)_state.A[register] + (short)FetchWord()) & AddressMask;
+                    {
+                        uint fullAddress = (uint)((int)_state.A[register] + (short)FetchWord());
+                        return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
+                    }
                 case 6:
-                    return (uint)((int)_state.A[register] + DecodeIndexExtension()) & AddressMask;
+                    {
+                        uint fullAddress = (uint)((int)_state.A[register] + DecodeIndexExtension());
+                        return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
+                    }
                 case 7:
                     switch (register)
                     {
                         case 0:
-                            return (uint)(int)(short)FetchWord() & AddressMask;
+                            {
+                                uint fullAddress = (uint)(int)(short)FetchWord();
+                                return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
+                            }
                         case 1:
-                            return FetchLong() & AddressMask;
+                            {
+                                uint fullAddress = FetchLong();
+                                return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
+                            }
                         case 2:
                             {
                                 uint extensionPc = _state.PC;
-                                return (uint)((int)extensionPc + (short)FetchWord()) & AddressMask;
+                                uint fullAddress = (uint)((int)extensionPc + (short)FetchWord());
+                                return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
                             }
                         case 3:
                             {
                                 uint extensionPc = _state.PC;
-                                return (uint)((int)extensionPc + DecodeIndexExtension()) & AddressMask;
+                                uint fullAddress = (uint)((int)extensionPc + DecodeIndexExtension());
+                                return preserveFullAddress ? fullAddress : fullAddress & AddressMask;
                             }
                         default:
                             if (!forWrite && register == 4)

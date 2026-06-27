@@ -51,6 +51,7 @@ namespace AmigaEmulator.Core.Cpu
             failures += RunDivideInstructionTest(log);
             failures += RunMoveUspDirectionTest(log);
             failures += RunAddressRegisterFullWidthTest(log);
+            failures += RunFullWidthEffectiveAddressValueTest(log);
             failures += RunRegisterShiftZeroCountTest(log);
             failures += RunExecAllocatorArithmeticPatternTest(log);
             failures += RunBootRelevantCpuFamilyTest(log);
@@ -695,6 +696,30 @@ namespace AmigaEmulator.Core.Cpu
             failures += Expect(log, "A-register full width MOVEA", cpu.GetA(1) == 0x13000204, "A1=" + cpu.GetA(1).ToString("X8"));
             failures += Expect(log, "USP full width", cpu.USP == 0x13000204, "USP=" + cpu.USP.ToString("X8"));
             failures += Expect(log, "A-register access still uses 24-bit bus", cpu.GetD(0) == 0xAABBCCDD, "D0=" + cpu.GetD(0).ToString("X8"));
+            return failures;
+        }
+
+        /// <summary>
+        /// Runs the Full Width Effective Address Value Test routine.
+        /// </summary>
+        private static int RunFullWidthEffectiveAddressValueTest(StringBuilder log)
+        {
+            var bus = CreateBus();
+            WriteResetVectors(bus, 0x1000, 0x0100);
+            WriteProgram(
+                bus,
+                0x0100,
+                0x4878, 0xFFFF,             // PEA $FFFF.W pushes the sign-extended 32-bit effective address.
+                0x41F8, 0xFFFF,             // LEA $FFFF.W,A0 preserves the same full 32-bit value.
+                0x43F9, 0x1234, 0x5678);    // LEA $12345678.L,A1 preserves the full long address operand.
+
+            M68kCpu cpu = CreateCpu(bus);
+            Step(cpu, 3);
+
+            int failures = 0;
+            failures += Expect(log, "PEA absolute short sign extends", bus.ReadLong(0x0FFC) == 0xFFFFFFFF, "stack=" + bus.ReadLong(0x0FFC).ToString("X8"));
+            failures += Expect(log, "LEA absolute short sign extends", cpu.GetA(0) == 0xFFFFFFFF, "A0=" + cpu.GetA(0).ToString("X8"));
+            failures += Expect(log, "LEA absolute long preserves high byte", cpu.GetA(1) == 0x12345678, "A1=" + cpu.GetA(1).ToString("X8"));
             return failures;
         }
 
