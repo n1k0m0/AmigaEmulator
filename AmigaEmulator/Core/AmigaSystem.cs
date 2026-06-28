@@ -58,6 +58,11 @@ namespace AmigaEmulator.Core
         private const int MinimumTrimmedPresentationHeight = 64;
 
         /// <summary>
+        /// Crops tiny PAL overscan height differences instead of vertically resampling HUD lines.
+        /// </summary>
+        private const int SmallVerticalOverscanCropTolerance = 8;
+
+        /// <summary>
         /// Runs object.
         /// </summary>
         private readonly object _syncRoot = new object();
@@ -737,6 +742,7 @@ namespace AmigaEmulator.Core
             sourceTop = Math.Max(0, Math.Min(requestedTop, _frameBuffer.Height - 1));
             sourceHeight = Math.Max(1, Math.Min(requestedHeight, _frameBuffer.Height - sourceTop));
             TrimBlackLetterboxRows(sourceLeft, ref sourceTop, sourceWidth, ref sourceHeight);
+            CropSmallVerticalOverscan(ref sourceTop, ref sourceHeight);
         }
 
         /// <summary>
@@ -762,6 +768,22 @@ namespace AmigaEmulator.Core
                 sourceTop = trimmedTop;
                 sourceHeight = trimmedHeight;
             }
+        }
+
+        /// <summary>
+        /// Avoids row-drop artifacts when a game opens DIW only one or two PAL lines beyond the stable view.
+        /// </summary>
+        private void CropSmallVerticalOverscan(ref int sourceTop, ref int sourceHeight)
+        {
+            int extraRows = sourceHeight - _model.VisibleHeight;
+            if (extraRows <= 0 || extraRows > SmallVerticalOverscanCropTolerance)
+            {
+                return;
+            }
+
+            int cropTop = extraRows / 2;
+            sourceTop = Math.Min(sourceTop + cropTop, _frameBuffer.Height - _model.VisibleHeight);
+            sourceHeight = _model.VisibleHeight;
         }
 
         /// <summary>

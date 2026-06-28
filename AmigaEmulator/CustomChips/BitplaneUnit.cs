@@ -1138,7 +1138,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetRawDisplayLeft()
         {
-            return (_ddfStart - 0x38) * HiresPixelsPerChipCycle;
+            int standardDdfStart = _hires ? 0x3C : 0x38;
+            return (_ddfStart - standardDdfStart) * HiresPixelsPerChipCycle;
         }
 
         /// <summary>

@@ -790,9 +790,19 @@ namespace AmigaEmulator.Tests
                 TestWideDdfOverscanReportsPresentationSourceWidth);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "standard HIRES DDF keeps PAL presentation width",
+                "OCS hires fetches start at $3C on a normal PAL screen and must not be horizontally resampled",
+                TestStandardHiresDdfReportsStablePresentationWidth);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "vertical DIW overscan reports the full presentation source height",
                 "Amiga HRM DIWSTRT/DIWSTOP can open the display window above the standard PAL view",
                 TestVerticalDiwOverscanReportsPresentationSourceHeight);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "small vertical overscan crops instead of resampling HUD rows",
+                "PAL monitor presentation should avoid row-drop artifacts for two-line overscan screens",
+                TestSmallVerticalOverscanCropsInsteadOfScaling);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
@@ -1297,6 +1307,24 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
+        /// Verifies that normal PAL hires fetches are not treated as horizontal overscan.
+        /// </summary>
+        private static void TestStandardHiresDdfReportsStablePresentationWidth()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Bplcon0, 0xA000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2DC1);
+            registers.WriteWord(Ddfstrt, 0x003C);
+            registers.WriteWord(Ddfstop, 0x00D4);
+
+            Check.Equal(0, bitplanes.PresentationSourceLeft, "A standard hires DDF start at $3C is the normal PAL left edge.");
+            Check.Equal(640, bitplanes.PresentationSourceWidth, "A standard $3C..$D4 hires fetch should map directly to the stable PAL presentation width.");
+        }
+
+        /// <summary>
         /// Verifies that DIW top overscan is reported to the presenter instead of being host-cropped away.
         /// </summary>
         private static void TestVerticalDiwOverscanReportsPresentationSourceHeight()
@@ -1312,6 +1340,26 @@ namespace AmigaEmulator.Tests
 
             Check.Equal(32, bitplanes.PresentationSourceTop, "A DIW start above the standard PAL top must remain part of the presentation source.");
             Check.Equal(268, bitplanes.PresentationSourceHeight, "The presentation source must include top overscan while still preserving the standard bottom edge.");
+        }
+
+        /// <summary>
+        /// Verifies that tiny vertical overscan differences are cropped rather than vertically resampled.
+        /// </summary>
+        private static void TestSmallVerticalOverscanCropsInsteadOfScaling()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Bplcon0, 0x2200);
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Diwstrt, 0x2B8E);
+                registers.WriteWord(Diwstop, 0x2DB3);
+                registers.WriteWord(Ddfstrt, 0x0038);
+                registers.WriteWord(Ddfstop, 0x00D0);
+
+                string info = system.GetPresentationDebugInfo();
+                Check.True(info.IndexOf("source:128,44+640x256", StringComparison.Ordinal) >= 0, "Two-line vertical overscan should crop to the stable PAL presentation window instead of scaling. " + info);
+            }
         }
 
         /// <summary>
@@ -1449,12 +1497,12 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Dmacon, 0x8300);
             registers.WriteWord(Diwstrt, 0x2C81);
             registers.WriteWord(Diwstop, 0x2D81);
-            registers.WriteWord(Ddfstrt, 0x0038);
-            registers.WriteWord(Ddfstop, 0x0038);
+            registers.WriteWord(Ddfstrt, 0x003C);
+            registers.WriteWord(Ddfstop, 0x003C);
             registers.WriteWord(Bpl1pth, 0x0000);
             registers.WriteWord(Bpl1ptl, 0x0000);
 
-            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+            bitplanes.FetchDmaWords(0x3C, BitplaneUnit.PalVisibleTop);
 
             Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "HIRES bit 15 should affect only the first hires pixel.");
             Check.Equal(0, bitplanes.RenderColorIndex(1, BitplaneUnit.PalVisibleTop), "HIRES must not duplicate the first bit into the second pixel.");
@@ -1488,7 +1536,7 @@ namespace AmigaEmulator.Tests
                 }
             }
 
-            Check.Equal(1, bitplanes.RenderColorIndex(655, BitplaneUnit.PalVisibleTop), "The final word of a $3C..$D0 two-plane hires fetch must not be dropped.");
+            Check.Equal(1, bitplanes.RenderColorIndex(639, BitplaneUnit.PalVisibleTop), "The final word of a $3C..$D0 two-plane hires fetch must not be dropped.");
         }
 
         /// <summary>
