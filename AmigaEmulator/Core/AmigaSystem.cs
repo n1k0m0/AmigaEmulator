@@ -750,6 +750,11 @@ namespace AmigaEmulator.Core
         /// </summary>
         private void TrimBlackLetterboxRows(int sourceLeft, ref int sourceTop, int sourceWidth, ref int sourceHeight)
         {
+            if (sourceHeight <= _model.VisibleHeight)
+            {
+                return;
+            }
+
             int trimmedTop = sourceTop;
             int trimmedHeight = sourceHeight;
             while (trimmedHeight > 1 && IsSolidBlackSourceRow(sourceLeft, trimmedTop, sourceWidth))

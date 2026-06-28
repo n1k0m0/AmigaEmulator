@@ -805,6 +805,11 @@ namespace AmigaEmulator.Tests
                 TestSmallVerticalOverscanCropsInsteadOfScaling);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "standard PAL black backgrounds are not letterbox-cropped",
+                "Black title-screen rows inside a normal 640x256 PAL display are scene content, not host letterbox bars",
+                TestStandardPalBlackBackgroundIsNotLetterboxCropped);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
                 "Amiga HRM bitplane DMA reloads display data every frame",
                 TestFrameStartInvalidatesFetchedRows);
@@ -1359,6 +1364,34 @@ namespace AmigaEmulator.Tests
 
                 string info = system.GetPresentationDebugInfo();
                 Check.True(info.IndexOf("source:128,44+640x256", StringComparison.Ordinal) >= 0, "Two-line vertical overscan should crop to the stable PAL presentation window instead of scaling. " + info);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that black rows in a normal-height PAL title screen are preserved as artwork/background.
+        /// </summary>
+        private static void TestStandardPalBlackBackgroundIsNotLetterboxCropped()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Bplcon0, 0x5200);
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Diwstrt, 0x2C81);
+                registers.WriteWord(Diwstop, 0xF4C1);
+                registers.WriteWord(Ddfstrt, 0x0038);
+                registers.WriteWord(Ddfstop, 0x00D0);
+
+                for (int y = 100; y < 200; y++)
+                {
+                    for (int x = 160; x < 736; x++)
+                    {
+                        system.FrameBuffer.Pixels[(y * system.FrameBuffer.Width) + x] = 0xFFFFFFFFu;
+                    }
+                }
+
+                string info = system.GetPresentationDebugInfo();
+                Check.True(info.IndexOf("source:128,44+640x256", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens must preserve black background rows instead of vertically stretching the artwork. " + info);
             }
         }
 
