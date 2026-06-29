@@ -38,6 +38,16 @@ namespace AmigaEmulator.Core
         private const int PresentationCropLeft = 128;
 
         /// <summary>
+        /// Fixed PAL monitor viewport width used for host presentation, including common horizontal overscan.
+        /// </summary>
+        public const int PresentationViewportWidth = 704;
+
+        /// <summary>
+        /// Fixed PAL monitor viewport height used for host presentation, including common vertical overscan.
+        /// </summary>
+        public const int PresentationViewportHeight = 288;
+
+        /// <summary>
         /// Gives Denise enough horizontal room to render wide OCS overscan fetches before presentation.
         /// </summary>
         private const int HorizontalOverscanPixels = 128;
@@ -51,11 +61,6 @@ namespace AmigaEmulator.Core
         /// Keeps the cleanup narrow enough that real top-edge artwork is preserved.
         /// </summary>
         private const int MaxTopOverscanArtifactPixels = 6000;
-
-        /// <summary>
-        /// Keeps transient black frames from collapsing the presentation source to a line or two.
-        /// </summary>
-        private const int MinimumTrimmedPresentationHeight = 64;
 
         /// <summary>
         /// Crops tiny PAL overscan height differences instead of vertically resampling HUD lines.
@@ -171,7 +176,7 @@ namespace AmigaEmulator.Core
             _model = model ?? AmigaModel.A500Pal;
             _accuracyOptions = (accuracyOptions ?? AmigaAccuracyOptions.Compatible).Clone();
             _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft + HorizontalOverscanPixels, _model.LinesPerFrame);
-            _presentedFrameBuffer = new AmigaFrameBuffer(_model.VisibleWidth, _model.VisibleHeight);
+            _presentedFrameBuffer = new AmigaFrameBuffer(PresentationViewportWidth, PresentationViewportHeight);
             _paula = new Paula(_model.ChipRamBytes);
             _ciaA = new Cia8520("CIA-A");
             _ciaB = new Cia8520("CIA-B");
@@ -709,13 +714,14 @@ namespace AmigaEmulator.Core
                 else
                 {
                     GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
-                    if (sourceWidth != _model.VisibleWidth || sourceHeight != _model.VisibleHeight)
+                    _presentedFrameBuffer.Clear(0xFF000000);
+                    if (sourceWidth != PresentationViewportWidth || sourceHeight != PresentationViewportHeight)
                     {
                         _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
                     }
                     else
                     {
-                        _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop);
+                        _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop, 0, 0, sourceWidth, sourceHeight);
                     }
 
                     _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
@@ -741,38 +747,9 @@ namespace AmigaEmulator.Core
             sourceWidth = Math.Max(1, Math.Min(requestedWidth, _frameBuffer.Width - sourceLeft));
             sourceTop = Math.Max(0, Math.Min(requestedTop, _frameBuffer.Height - 1));
             sourceHeight = Math.Max(1, Math.Min(requestedHeight, _frameBuffer.Height - sourceTop));
-            TrimBlackLetterboxRows(sourceLeft, ref sourceTop, sourceWidth, ref sourceHeight);
             CropSmallVerticalOverscan(ref sourceTop, ref sourceHeight);
-        }
-
-        /// <summary>
-        /// Removes solid black letterbox rows from the presentation source without cropping colored playfields.
-        /// </summary>
-        private void TrimBlackLetterboxRows(int sourceLeft, ref int sourceTop, int sourceWidth, ref int sourceHeight)
-        {
-            if (sourceHeight <= _model.VisibleHeight)
-            {
-                return;
-            }
-
-            int trimmedTop = sourceTop;
-            int trimmedHeight = sourceHeight;
-            while (trimmedHeight > 1 && IsSolidBlackSourceRow(sourceLeft, trimmedTop, sourceWidth))
-            {
-                trimmedTop++;
-                trimmedHeight--;
-            }
-
-            while (trimmedHeight > 1 && IsSolidBlackSourceRow(sourceLeft, trimmedTop + trimmedHeight - 1, sourceWidth))
-            {
-                trimmedHeight--;
-            }
-
-            if (trimmedHeight >= MinimumTrimmedPresentationHeight)
-            {
-                sourceTop = trimmedTop;
-                sourceHeight = trimmedHeight;
-            }
+            FitToPresentationViewport(ref sourceLeft, ref sourceWidth, PresentationViewportWidth, _frameBuffer.Width);
+            FitToPresentationViewport(ref sourceTop, ref sourceHeight, PresentationViewportHeight, _frameBuffer.Height);
         }
 
         /// <summary>
@@ -792,27 +769,28 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Returns whether every pixel in a source row is black border/letterbox color.
+        /// Expands or crops the register-selected window to the fixed monitor viewport without content analysis.
         /// </summary>
-        private bool IsSolidBlackSourceRow(int sourceLeft, int sourceY, int sourceWidth)
+        private static void FitToPresentationViewport(ref int sourceStart, ref int sourceLength, int viewportLength, int frameBufferLength)
         {
-            if (sourceY < 0 || sourceY >= _frameBuffer.Height)
+            int targetLength = Math.Min(viewportLength, frameBufferLength);
+            if (sourceLength < targetLength)
             {
-                return false;
+                int expandedStart = sourceStart - ((targetLength - sourceLength) / 2);
+                sourceStart = Math.Max(0, Math.Min(expandedStart, frameBufferLength - targetLength));
+                sourceLength = targetLength;
+                return;
             }
 
-            int width = Math.Max(0, Math.Min(sourceWidth, _frameBuffer.Width - sourceLeft));
-            int row = sourceY * _frameBuffer.Width;
-            uint[] pixels = _frameBuffer.Pixels;
-            for (int x = 0; x < width; x++)
+            if (sourceLength > targetLength)
             {
-                if ((pixels[row + sourceLeft + x] & 0x00FFFFFFu) != 0)
-                {
-                    return false;
-                }
+                int cropStart = sourceStart + ((sourceLength - targetLength) / 2);
+                sourceStart = Math.Max(0, Math.Min(cropStart, frameBufferLength - targetLength));
+                sourceLength = targetLength;
+                return;
             }
 
-            return width > 0;
+            sourceStart = Math.Max(0, Math.Min(sourceStart, frameBufferLength - targetLength));
         }
 
         /// <summary>

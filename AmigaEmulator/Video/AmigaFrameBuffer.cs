@@ -150,6 +150,38 @@ namespace AmigaEmulator.Core.Video
         }
 
         /// <summary>
+        /// Copies a bounded source window into this framebuffer at a target offset.
+        /// </summary>
+        public void CopyWindowFrom(AmigaFrameBuffer source, int sourceX, int sourceY, int targetX, int targetY, int copyWidth, int copyHeight)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            int startX = Math.Max(0, sourceX);
+            int startY = Math.Max(0, sourceY);
+            int destX = Math.Max(0, targetX);
+            int destY = Math.Max(0, targetY);
+            int width = Math.Min(copyWidth, Math.Min(source.Width - startX, Width - destX));
+            int height = Math.Min(copyHeight, Math.Min(source.Height - startY, Height - destY));
+            if (width <= 0 || height <= 0)
+            {
+                return;
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                Array.Copy(
+                    source._pixels,
+                    ((startY + y) * source.Width) + startX,
+                    _pixels,
+                    ((destY + y) * Width) + destX,
+                    width);
+            }
+        }
+
+        /// <summary>
         /// Copies a source window into this framebuffer, scaling it to the destination size.
         /// </summary>
         public void CopyScaledWindowFrom(AmigaFrameBuffer source, int sourceX, int sourceY, int sourceWidth, int sourceHeight)

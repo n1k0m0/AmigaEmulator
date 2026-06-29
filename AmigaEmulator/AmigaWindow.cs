@@ -171,6 +171,21 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Lists host monitor aperture modes.
+        /// </summary>
+        private enum MonitorApertureMode
+        {
+            /// <summary>
+            /// Hides common PAL overscan border areas like a CRT monitor.
+            /// </summary>
+            Crt,
+            /// <summary>
+            /// Shows the complete PAL overscan presentation for diagnostics.
+            /// </summary>
+            Overscan
+        }
+
+        /// <summary>
         /// Lists the supported Paula Filter Mode values.
         /// </summary>
         private enum PaulaFilterMode
@@ -298,14 +313,14 @@ namespace AmigaEmulator
         /// </summary>
         private const int DeferredMediaMountChipCycles = 16000000;
         /// <summary>
-        /// Keeps the full emulator-provided source visible; DIW/DDF define the viewport in the core.
+        /// Leaves horizontal aperture clipping to the core monitor viewport.
         /// </summary>
-        private const int PresentationCropPixelsLeft = 0;
+        private const int CrtApertureCropPixelsLeft = 0;
 
         /// <summary>
-        /// Keeps the full emulator-provided source visible; DIW/DDF define the viewport in the core.
+        /// Leaves horizontal aperture clipping to the core monitor viewport.
         /// </summary>
-        private const int PresentationCropPixelsRight = 0;
+        private const int CrtApertureCropPixelsRight = 0;
 
         /// <summary>
         /// Keeps bottom overscan visible so disk prompts and game HUDs are not host-cropped.
@@ -399,6 +414,10 @@ namespace AmigaEmulator
         /// Stores video Upscale Mode.
         /// </summary>
         private VideoUpscaleMode _videoUpscaleMode = VideoUpscaleMode.None;
+        /// <summary>
+        /// Stores monitor Aperture Mode.
+        /// </summary>
+        private MonitorApertureMode _monitorApertureMode = MonitorApertureMode.Crt;
         /// <summary>
         /// Stores paula Filter Mode.
         /// </summary>
@@ -657,15 +676,16 @@ namespace AmigaEmulator
         /// </summary>
         public AmigaWindow(AmigaModel model, string title)
             : base(
-                model.VisibleWidth,
-                model.VisibleHeight,
-                model.VisibleWidth / 2,
-                model.VisibleHeight,
+                AmigaSystem.PresentationViewportWidth,
+                AmigaSystem.PresentationViewportHeight,
+                AmigaSystem.PresentationViewportWidth / 2,
+                AmigaSystem.PresentationViewportHeight,
                 title)
         {
             _settings = AmigaEmulatorSettingsStore.Load();
             _videoFilterMode = GetVideoFilterFromSettings(_settings.VideoFilter);
             _videoUpscaleMode = GetVideoUpscaleFromSettings(_settings.UpscaleMode);
+            _monitorApertureMode = GetMonitorApertureFromSettings(_settings.MonitorAperture);
             _renderLimitMode = GetRenderLimitFromSettings(_settings.RenderFps);
             _paulaFilterMode = GetPaulaFilterFromSettings(_settings.PaulaFilter);
             _floppySpeedMode = GetFloppySpeedFromSettings(_settings.FloppySpeed);
@@ -1348,9 +1368,9 @@ namespace AmigaEmulator
         {
             switch (_overlayMode)
             {
-                case OverlayMode.Settings: return 17;
+                case OverlayMode.Settings: return 18;
                 case OverlayMode.MainMenu: return _mainMenuItems.Length;
-                case OverlayMode.Display: return 5;
+                case OverlayMode.Display: return 6;
                 case OverlayMode.Media: return Math.Max(1, _mediaEntries.Count + 3);
                 case OverlayMode.Machine: return 8;
                 case OverlayMode.Roms: return Math.Max(1, _romEntries.Count + 3);
@@ -1490,18 +1510,19 @@ namespace AmigaEmulator
                 case 2: ApplyPaulaFilterMode(CycleEnum(_paulaFilterMode, direction)); break;
                 case 3: ApplyVideoFilterMode(CycleEnum(_videoFilterMode, direction)); break;
                 case 4: ApplyVideoUpscaleMode(CycleEnum(_videoUpscaleMode, direction)); break;
-                case 5: CycleRenderLimit(); break;
-                case 6: ToggleFullscreen(); break;
-                case 7: ToggleTurboMode(); break;
-                case 8: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;
-                case 9: _inputPortMode = CycleEnum(_inputPortMode, direction); ApplyInputPortMode(); break;
-                case 10: ApplyRamProfile(CycleEnum(_ramProfile, direction)); break;
-                case 11: _debugOverlayVisible = !_debugOverlayVisible; break;
-                case 12: ToggleDriveOverlay(); break;
-                case 13: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
-                case 14: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
-                case 15: ApplyResetMode(CycleEnum(_resetMode, direction)); break;
-                case 16: ShowOverlay(OverlayMode.Reset); break;
+                case 5: ApplyMonitorApertureMode(CycleEnum(_monitorApertureMode, direction)); break;
+                case 6: CycleRenderLimit(); break;
+                case 7: ToggleFullscreen(); break;
+                case 8: ToggleTurboMode(); break;
+                case 9: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;
+                case 10: _inputPortMode = CycleEnum(_inputPortMode, direction); ApplyInputPortMode(); break;
+                case 11: ApplyRamProfile(CycleEnum(_ramProfile, direction)); break;
+                case 12: _debugOverlayVisible = !_debugOverlayVisible; break;
+                case 13: ToggleDriveOverlay(); break;
+                case 14: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
+                case 15: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
+                case 16: ApplyResetMode(CycleEnum(_resetMode, direction)); break;
+                case 17: ShowOverlay(OverlayMode.Reset); break;
             }
         }
 
@@ -1514,9 +1535,10 @@ namespace AmigaEmulator
             {
                 case 0: ApplyVideoFilterMode(CycleEnum(_videoFilterMode, direction)); break;
                 case 1: ApplyVideoUpscaleMode(CycleEnum(_videoUpscaleMode, direction)); break;
-                case 2: CycleRenderLimit(); break;
-                case 3: ToggleFullscreen(); break;
-                case 4: _debugOverlayVisible = !_debugOverlayVisible; break;
+                case 2: ApplyMonitorApertureMode(CycleEnum(_monitorApertureMode, direction)); break;
+                case 3: CycleRenderLimit(); break;
+                case 4: ToggleFullscreen(); break;
+                case 5: _debugOverlayVisible = !_debugOverlayVisible; break;
             }
         }
 
@@ -2931,6 +2953,7 @@ namespace AmigaEmulator
                 MenuLine("PAULA FILTER", FormatPaulaFilter(_paulaFilterMode)),
                 MenuLine("VIDEO FILTER", FormatVideoFilter(_videoFilterMode)),
                 MenuLine("VIDEO UPSCALE", FormatVideoUpscale(_videoUpscaleMode)),
+                MenuLine("MONITOR", FormatMonitorAperture(_monitorApertureMode)),
                 MenuLine("RENDER FPS", FormatRenderLimit(_renderLimitMode)),
                 MenuLine("DISPLAY", _fullscreen ? "FULLSCREEN" : "WINDOW"),
                 MenuLine("TURBO", _turboMode ? "ON" : "OFF"),
@@ -2979,6 +3002,7 @@ namespace AmigaEmulator
             {
                 MenuLine("VIDEO FILTER", FormatVideoFilter(_videoFilterMode)),
                 MenuLine("VIDEO UPSCALE", FormatVideoUpscale(_videoUpscaleMode)),
+                MenuLine("MONITOR", FormatMonitorAperture(_monitorApertureMode)),
                 MenuLine("RENDER FPS", FormatRenderLimit(_renderLimitMode)),
                 MenuLine("WINDOW", _fullscreen ? "FULLSCREEN" : "WINDOW"),
                 MenuLine("DEBUG OVERLAY", _debugOverlayVisible ? "ON" : "OFF")
@@ -3639,11 +3663,31 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Applies Monitor Aperture Mode to the current presentation.
+        /// </summary>
+        private void ApplyMonitorApertureMode(MonitorApertureMode mode)
+        {
+            _monitorApertureMode = mode;
+            _settings.MonitorAperture = GetSettingsMonitorAperture(mode);
+            AmigaEmulatorSettingsStore.Save(_settings);
+            ApplyPresentationSourceCrop();
+            _statusText = "MONITOR " + FormatMonitorAperture(mode);
+        }
+
+        /// <summary>
         /// Applies the current source crop to the host presentation.
         /// </summary>
         private void ApplyPresentationSourceCrop()
         {
-            SetPresentationSourceCrop(PresentationCropPixelsLeft, 0, PresentationCropPixelsRight, _presentationCropBottom);
+            int left = 0;
+            int right = 0;
+            if (_monitorApertureMode == MonitorApertureMode.Crt)
+            {
+                left = CrtApertureCropPixelsLeft;
+                right = CrtApertureCropPixelsRight;
+            }
+
+            SetPresentationSourceCrop(left, 0, right, _presentationCropBottom);
         }
 
         /// <summary>
@@ -4176,6 +4220,18 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Formats the host monitor aperture mode.
+        /// </summary>
+        private static string FormatMonitorAperture(MonitorApertureMode mode)
+        {
+            switch (mode)
+            {
+                case MonitorApertureMode.Overscan: return "OVERSCAN";
+                default: return "CRT";
+            }
+        }
+
+        /// <summary>
         /// Runs Format Paula Filter.
         /// </summary>
         private static string FormatPaulaFilter(PaulaFilterMode mode)
@@ -4278,6 +4334,30 @@ namespace AmigaEmulator
                 case VideoUpscaleMode.Xbrz: return AmigaUpscaleMode.Xbrz;
                 case VideoUpscaleMode.Clean4: return AmigaUpscaleMode.Clean4;
                 default: return AmigaUpscaleMode.None;
+            }
+        }
+
+        /// <summary>
+        /// Returns the monitor aperture mode from settings.
+        /// </summary>
+        private static MonitorApertureMode GetMonitorApertureFromSettings(AmigaMonitorAperture mode)
+        {
+            switch (mode)
+            {
+                case AmigaMonitorAperture.Overscan: return MonitorApertureMode.Overscan;
+                default: return MonitorApertureMode.Crt;
+            }
+        }
+
+        /// <summary>
+        /// Returns the settings monitor aperture value.
+        /// </summary>
+        private static AmigaMonitorAperture GetSettingsMonitorAperture(MonitorApertureMode mode)
+        {
+            switch (mode)
+            {
+                case MonitorApertureMode.Overscan: return AmigaMonitorAperture.Overscan;
+                default: return AmigaMonitorAperture.Crt;
             }
         }
 

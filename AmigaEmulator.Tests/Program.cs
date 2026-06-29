@@ -518,20 +518,23 @@ namespace AmigaEmulator.Tests
             agnus.CustomRegisters.WriteWord(Bpl2pth, 0x0000);
             agnus.CustomRegisters.WriteWord(Bpl2ptl, 0x0002);
 
-            int cyclesToFirstFetch = (BitplaneUnit.PalVisibleTop * AmigaModel.A500Pal.ChipCyclesPerLine) + 0x38;
+            int cyclesToFirstFetch = (BitplaneUnit.PalVisibleTop * AmigaModel.A500Pal.ChipCyclesPerLine) + 0x39;
             for (int index = 0; index < cyclesToFirstFetch; index++)
             {
                 agnus.Tick();
             }
 
             agnus.Tick();
-            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $38 should fetch BPL2 in a two-plane display.");
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $39 should fetch BPL2 in a two-plane display.");
             Check.Equal(0, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "First split slot must not expose an incomplete two-plane fetch group.");
 
-            agnus.Tick();
+            for (int index = 0; index < 2; index++)
+            {
+                agnus.Tick();
+            }
 
-            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $39 should fetch BPL1 and complete the group.");
-            Check.Equal(3, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After both split slots commit, the first fetched pixel should remain visible at the left edge.");
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $3B should fetch BPL1 and complete the group.");
+            Check.Equal(3, agnus.Bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "After both split slots commit, the first fetched pixel should remain visible after the OCS lowres fetch lead-in.");
         }
 
         /// <summary>
@@ -720,6 +723,11 @@ namespace AmigaEmulator.Tests
                 TestSplitBitplanePrefetchGroup);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "three-plane lowres DMA uses the compact OCS fetch group",
+                "OCS lowres screens with up to four bitplanes use the compact 4-cycle fetch group",
+                TestThreePlaneLowresUsesCompactFetchGroup);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "OCS lowres six-plane DMA follows hardware fetch slot order",
                 "WinUAE/HRM OCS lowres bitplane DMA sequence 8,4,6,2,7,3,5,1",
                 TestOcsLowresSixPlaneFetchSequence);
@@ -748,6 +756,11 @@ namespace AmigaEmulator.Tests
                 "standard DDF renders the final fetched lowres word at the right edge",
                 "Amiga HRM DDFSTRT/DDFSTOP inclusive fetch range and bitplane shifter output width",
                 TestStandardDdfRendersFinalWordAtRightEdge);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "four-plane lowres DDF advances by the visible OCS fetch span",
+                "OCS 4-plane lowres DMA advances one 20-word standard DDF span per bitplane scanline",
+                TestFourPlaneLowresDdfAdvancesByVisibleFetchSpan);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "delayed bitplane DMA starts at BPLxPT instead of skipped DIW rows",
@@ -790,6 +803,11 @@ namespace AmigaEmulator.Tests
                 TestWideDdfOverscanReportsPresentationSourceWidth);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "wide PAL overscan is copied into a fixed monitor viewport",
+                "PAL overscan screens such as Settlers must not be vertically downsampled into the standard 640x256 buffer",
+                TestWidePalOverscanUsesFixedMonitorViewport);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "standard HIRES DDF keeps PAL presentation width",
                 "OCS hires fetches start at $3C on a normal PAL screen and must not be horizontally resampled",
                 TestStandardHiresDdfReportsStablePresentationWidth);
@@ -808,6 +826,11 @@ namespace AmigaEmulator.Tests
                 "standard PAL black backgrounds are not letterbox-cropped",
                 "Black title-screen rows inside a normal 640x256 PAL display are scene content, not host letterbox bars",
                 TestStandardPalBlackBackgroundIsNotLetterboxCropped);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "PAL vertical overscan crops to the fixed monitor viewport",
+                "Moderate vertical overscan at normal PAL width must use stable monitor geometry instead of content-cropping based on black rows",
+                TestPalVerticalOverscanKeepsRegisterSelectedSourceWindowStable);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
@@ -891,7 +914,7 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Bpl1pth, 0x0000);
             registers.WriteWord(Bpl1ptl, 0x0000);
             bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
-            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Fetched DMA word bit 15 should render color index 1.");
+            Check.Equal(1, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "Fetched DMA word bit 15 should render after the OCS lowres fetch lead-in.");
         }
 
         /// <summary>
@@ -915,11 +938,43 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Bpl2pth, 0x0000);
             registers.WriteWord(Bpl2ptl, 0x0002);
 
-            bitplanes.FetchDmaPlaneWord(0x38, BitplaneUnit.PalVisibleTop);
+            bitplanes.FetchDmaPlaneWord(0x39, BitplaneUnit.PalVisibleTop);
             Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "A half-fetched split group must not become visible.");
 
+            bitplanes.FetchDmaPlaneWord(0x3B, BitplaneUnit.PalVisibleTop);
+            Check.Equal(3, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "After both plane words commit, the group should be visible after the OCS lowres fetch lead-in.");
+        }
+
+        /// <summary>
+        /// Verifies that 3-plane lowres displays use the compact OCS fetch slots required by split-screen game HUDs.
+        /// </summary>
+        private static void TestThreePlaneLowresUsesCompactFetchGroup()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[6];
+            memory[0] = 0x8000;
+            memory[1] = 0x8000;
+            memory[2] = 0x8000;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) % memory.Length]);
+            registers.WriteWord(Bplcon0, 0x3000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2D81);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            for (int plane = 0; plane < 3; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 2));
+            }
+
             bitplanes.FetchDmaPlaneWord(0x39, BitplaneUnit.PalVisibleTop);
-            Check.Equal(3, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After both plane words commit, the group should be visible at the left edge without shrinking the right edge.");
+            bitplanes.FetchDmaPlaneWord(0x3A, BitplaneUnit.PalVisibleTop);
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "A 3-plane word must not render until all compact OCS fetch slots have arrived.");
+            bitplanes.FetchDmaPlaneWord(0x3B, BitplaneUnit.PalVisibleTop);
+
+            Check.True(!bitplanes.IsPlaneFetchSlot(0x3F, BitplaneUnit.PalVisibleTop), "Slot $3F belongs to the 6-plane lowres sequence and must stay idle for a 3-plane compact group.");
+            Check.Equal(7, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "The completed 3-plane compact fetch group should render all three bitplane bits after the OCS lead-in.");
         }
 
         /// <summary>
@@ -1049,8 +1104,52 @@ namespace AmigaEmulator.Tests
                 }
             }
 
-            Check.Equal(1, bitplanes.RenderColorIndex(638, BitplaneUnit.PalVisibleTop), "The final fetched DDF word must reach the rightmost lowres pixel pair.");
-            Check.Equal(1, bitplanes.RenderColorIndex(639, BitplaneUnit.PalVisibleTop), "The duplicated lowres pixel must also reach the final hires pixel.");
+            Check.Equal(1, bitplanes.RenderColorIndex(642, BitplaneUnit.PalVisibleTop), "The final fetched DDF word must reach the rightmost lowres pixel pair after the fetch lead-in.");
+            Check.Equal(1, bitplanes.RenderColorIndex(643, BitplaneUnit.PalVisibleTop), "The duplicated lowres pixel must also reach the final hires pixel after the fetch lead-in.");
+        }
+
+        /// <summary>
+        /// Verifies that 4-plane lowres DMA advances by the standard 20-word DDF span.
+        /// </summary>
+        private static void TestFourPlaneLowresDdfAdvancesByVisibleFetchSpan()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[0x400];
+            memory[0] = 0xFFFF;
+            memory[20] = 0x0000;
+            memory[40] = 0xFFFF;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 0x3FF]);
+            registers.WriteWord(Bplcon0, 0x4000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x2EC1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x00D0);
+            for (int plane = 0; plane < 4; plane++)
+            {
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), (ushort)(plane * 0x100));
+            }
+
+            for (int beamX = 0x38; beamX < 0xD8; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, BitplaneUnit.PalVisibleTop))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop);
+                }
+            }
+
+            Check.Equal(1, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "The first line should render the first visible word after the lowres fetch lead-in.");
+
+            for (int beamX = 0x38; beamX < 0xD8; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, BitplaneUnit.PalVisibleTop + 1))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop + 1);
+                }
+            }
+
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop + 1), "The second line should start after the 20-word standard lowres fetch span, not skip ahead to word 40.");
         }
 
         /// <summary>
@@ -1074,7 +1173,7 @@ namespace AmigaEmulator.Tests
 
             bitplanes.FetchDmaWords(0x38, 0xBD);
 
-            Check.Equal(1, bitplanes.RenderColorIndex(0, 0xBD), "The first active DMA line must fetch from BPL1PT, not from an offset for skipped DIW rows.");
+            Check.Equal(1, bitplanes.RenderColorIndex(4, 0xBD), "The first active DMA line must fetch from BPL1PT, not from an offset for skipped DIW rows.");
         }
 
         /// <summary>
@@ -1096,15 +1195,15 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Bpl1pth, 0x0000);
             registers.WriteWord(Bpl1ptl, 0x0000);
 
-            bitplanes.FetchDmaPlaneWord(0x39, 0x30);
-            Check.Equal(1, bitplanes.RenderColorIndex(0, 0x30), "The first fetched line should render the first memory word.");
+            bitplanes.FetchDmaPlaneWord(0x3B, 0x30);
+            Check.Equal(1, bitplanes.RenderColorIndex(4, 0x30), "The first fetched line should render the first memory word after the OCS lowres fetch lead-in.");
 
             registers.WriteWord(Diwstrt, 0x2081);
             registers.WriteWord(Diwstop, 0x5081);
-            bitplanes.FetchDmaPlaneWord(0x39, 0x31);
+            bitplanes.FetchDmaPlaneWord(0x3B, 0x31);
 
-            Check.Equal(0, bitplanes.RenderColorIndex(0, 0x31), "The second physical beam line must not refetch the first word after DIWSTRT changes.");
-            Check.Equal(1, bitplanes.RenderColorIndex(2, 0x31), "The second physical beam line should continue to the next DMA word.");
+            Check.Equal(0, bitplanes.RenderColorIndex(4, 0x31), "The second physical beam line must not refetch the first word after DIWSTRT changes.");
+            Check.Equal(1, bitplanes.RenderColorIndex(6, 0x31), "The second physical beam line should continue to the next DMA word.");
         }
 
         /// <summary>
@@ -1129,7 +1228,7 @@ namespace AmigaEmulator.Tests
             bitplanes.FetchDmaWords(0x30, BitplaneUnit.PalVisibleTop);
             bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
 
-            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Visible X zero should show the word fetched after the offscreen DDF lead-in.");
+            Check.Equal(1, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "The first post-lead-in visible pixel should show the word fetched after the offscreen DDF lead-in.");
         }
 
         /// <summary>
@@ -1159,7 +1258,7 @@ namespace AmigaEmulator.Tests
                 bitplanes.FetchDmaPlaneWord(slot, BitplaneUnit.PalVisibleTop);
             }
 
-            Check.Equal(-32, bitplanes.PresentationSourceLeft, "Presentation should still preserve the left overscan source while the five-plane data phase is delayed.");
+            Check.Equal(-28, bitplanes.PresentationSourceLeft, "Presentation should still preserve the left overscan source while accounting for the OCS lowres fetch lead-in.");
             Check.Equal(16, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "Five-plane DDF lead-in should wait one chip cycle before presenting the completed fetch group.");
         }
 
@@ -1304,11 +1403,32 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Ddfstrt, 0x0030);
             registers.WriteWord(Ddfstop, 0x00D8);
 
-            Check.Equal(-32, bitplanes.PresentationSourceLeft, "A $30 DDF start begins 32 hires pixels left of the standard PAL presentation edge.");
+            Check.Equal(-28, bitplanes.PresentationSourceLeft, "A $30 DDF start begins 32 hires pixels left of the standard PAL presentation edge plus the OCS lowres fetch lead-in.");
             Check.Equal(704, bitplanes.PresentationSourceWidth, "A $30..$D8 lowres fetch should preserve the complete overscan source instead of subtracting the left lead-in.");
 
             registers.WriteWord(Ddfstop, 0x00C8);
-            Check.Equal(672, bitplanes.PresentationSourceWidth, "A $30..$C8 fetch must still include the standard right PAL edge when left overscan is visible.");
+            Check.Equal(668, bitplanes.PresentationSourceWidth, "A $30..$C8 fetch must still include the standard right PAL edge when left overscan is visible.");
+        }
+
+        /// <summary>
+        /// Verifies that a large PAL overscan window is preserved in the fixed monitor viewport.
+        /// </summary>
+        private static void TestWidePalOverscanUsesFixedMonitorViewport()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Bplcon0, 0x0200);
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Diwstrt, 0x1871);
+                registers.WriteWord(Diwstop, 0x31D1);
+                registers.WriteWord(Ddfstrt, 0x002C);
+                registers.WriteWord(Ddfstop, 0x00D1);
+
+                string info = system.GetPresentationDebugInfo();
+                Check.True(info.IndexOf("presented:704x288", StringComparison.Ordinal) >= 0, "PAL monitor presentation should use the fixed overscan viewport. " + info);
+                Check.True(info.IndexOf("source:84,21+704x288", StringComparison.Ordinal) >= 0, "Wide PAL overscan should be copied with border rows into the fixed monitor viewport. " + info);
+            }
         }
 
         /// <summary>
@@ -1363,7 +1483,7 @@ namespace AmigaEmulator.Tests
                 registers.WriteWord(Ddfstop, 0x00D0);
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:128,44+640x256", StringComparison.Ordinal) >= 0, "Two-line vertical overscan should crop to the stable PAL presentation window instead of scaling. " + info);
+                Check.True(info.IndexOf("source:100,24+704x288", StringComparison.Ordinal) >= 0, "Two-line vertical overscan should fit the stable PAL monitor viewport instead of scaling. " + info);
             }
         }
 
@@ -1391,7 +1511,36 @@ namespace AmigaEmulator.Tests
                 }
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:128,44+640x256", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens must preserve black background rows instead of vertically stretching the artwork. " + info);
+                Check.True(info.IndexOf("source:100,24+704x288", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens must preserve black background rows inside the stable monitor viewport. " + info);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that normal-width vertical overscan is not cropped based on framebuffer contents.
+        /// </summary>
+        private static void TestPalVerticalOverscanKeepsRegisterSelectedSourceWindowStable()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Bplcon0, 0x4302);
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Diwstrt, 0x0581);
+                registers.WriteWord(Diwstop, 0x40C1);
+                registers.WriteWord(Ddfstrt, 0x0038);
+                registers.WriteWord(Ddfstop, 0x00D0);
+                system.FrameBuffer.Clear(0xFF000000u);
+
+                for (int y = 100; y < 170; y++)
+                {
+                    for (int x = 256; x < 640; x++)
+                    {
+                        system.FrameBuffer.Pixels[(y * system.FrameBuffer.Width) + x] = 0xFFFFFFFFu;
+                    }
+                }
+
+                string info = system.GetPresentationDebugInfo();
+                Check.True(info.IndexOf("source:100,14+704x288", StringComparison.Ordinal) >= 0, "Moderate normal-width PAL overscan should crop to the fixed monitor viewport instead of moving when black rows change. " + info);
             }
         }
 
@@ -1414,14 +1563,14 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Bpl1ptl, 0x0000);
 
             bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
-            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "The first frame should render the fetched bit.");
+            Check.Equal(1, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "The first frame should render the fetched bit after the OCS lowres fetch lead-in.");
 
             memory[0] = 0x0000;
             bitplanes.BeginFrame();
-            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Before the next frame fetches, previous-frame row data must be invalid.");
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "Before the next frame fetches, previous-frame row data must be invalid.");
 
             bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
-            Check.Equal(0, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "After the next fetch, the new frame should render the updated word.");
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "After the next fetch, the new frame should render the updated word.");
         }
 
         /// <summary>
@@ -3147,7 +3296,8 @@ namespace AmigaEmulator.Tests
         {
             var settings = new AmigaEmulatorSettings();
             Check.Equal(AmigaRamProfile.Chip1Mb, settings.RamProfile, "New settings should default to the 1MB Chip RAM profile.");
-            Check.Equal(4, settings.Version, "Settings version should track the 1MB Chip RAM default migration.");
+            Check.Equal(5, settings.Version, "Settings version should track the monitor aperture default migration.");
+            Check.Equal(AmigaMonitorAperture.Crt, settings.MonitorAperture, "New settings should default to the CRT monitor aperture.");
         }
 
         /// <summary>

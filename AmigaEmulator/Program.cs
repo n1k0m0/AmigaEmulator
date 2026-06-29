@@ -1105,6 +1105,17 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-bitplane-memory-image", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_bitplanes.png");
+                DumpSavestateBitplaneMemoryImage(savePath, imagePath, ParseSavestateModelArgument(args, 3, savePath));
+                Console.WriteLine("Savestate bitplane memory image written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-core-state", StringComparison.OrdinalIgnoreCase))
             {
                 int cycles = args.Length >= 2 && int.TryParse(args[1], out int parsedStateCycles) && parsedStateCycles > 0
@@ -6002,6 +6013,85 @@ namespace AmigaEmulator
                     oddModulo,
                     evenModulo));
             }
+        }
+
+        /// <summary>
+        /// Dumps the image implied directly by the bitplane pointers in a restored savestate.
+        /// </summary>
+        private static void DumpSavestateBitplaneMemoryImage(string savePath, string imagePath, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                DumpCurrentBitplaneMemoryImage(system, imagePath);
+            }
+        }
+
+        /// <summary>
+        /// Dumps a direct planar-memory reconstruction from the current custom registers.
+        /// </summary>
+        private static void DumpCurrentBitplaneMemoryImage(AmigaSystem system, string imagePath)
+        {
+            var registers = system.Agnus.CustomRegisters;
+            ushort bplcon0 = registers.ReadWord(0x100);
+            int planes = Math.Min(6, (bplcon0 >> 12) & 0x07);
+            ushort ddfStart = registers.ReadWord(0x092);
+            ushort ddfStop = registers.ReadWord(0x094);
+            int start = ddfStart == 0 ? 0x38 : ddfStart & 0x00FE;
+            int stop = ddfStop == 0 ? 0xD0 : ddfStop & 0x00FE;
+            int wordsPerLine = Math.Max(1, ((stop - start) / 8) + 1);
+            int width = Math.Min(system.FrameBuffer.Width, wordsPerLine * 16);
+            int height = system.FrameBuffer.Height;
+            int oddModulo = (short)registers.ReadWord(0x108);
+            int evenModulo = (short)registers.ReadWord(0x10A);
+            uint[] pointers = new uint[6];
+            for (int plane = 0; plane < pointers.Length; plane++)
+            {
+                pointers[plane] = ReadCustomPointer(registers, 0x0E0 + ((uint)plane * 4u));
+            }
+
+            string directory = Path.GetDirectoryName(Path.GetFullPath(imagePath));
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            using (var bitmap = new Bitmap(system.FrameBuffer.Width, system.FrameBuffer.Height, PixelFormat.Format32bppArgb))
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < system.FrameBuffer.Width; x++)
+                    {
+                        int colorIndex = 0;
+                        if (x < width)
+                        {
+                            int wordIndex = x >> 4;
+                            int bit = 15 - (x & 0x0F);
+                            for (int plane = 0; plane < planes; plane++)
+                            {
+                                int modulo = (plane & 1) == 0 ? oddModulo : evenModulo;
+                                uint address = (uint)((int)pointers[plane] + (y * ((wordsPerLine * 2) + modulo)) + (wordIndex * 2)) & 0x00FFFFFEu;
+                                ushort word = address + 1 < system.Model.ChipRamBytes ? system.Bus.ReadWord(address) : (ushort)0;
+                                colorIndex |= ((word >> bit) & 1) << plane;
+                            }
+                        }
+
+                        bitmap.SetPixel(x, y, Color.FromArgb(unchecked((int)ReadColorRegister(registers, colorIndex))));
+                    }
+                }
+
+                bitmap.Save(imagePath, ImageFormat.Png);
+            }
+
+            Console.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "Planes={0} WordsPerLine={1} BPL1=${2:X6} BPL2=${3:X6} MOD {4}/{5}",
+                planes,
+                wordsPerLine,
+                pointers[0],
+                pointers[1],
+                oddModulo,
+                evenModulo));
         }
 
         /// <summary>

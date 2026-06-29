@@ -105,6 +105,21 @@ namespace AmigaEmulator.Core
     }
 
     /// <summary>
+    /// Lists host monitor aperture models for mapping the raw PAL signal to a window.
+    /// </summary>
+    public enum AmigaMonitorAperture
+    {
+        /// <summary>
+        /// Shows a CRT-like monitor aperture that hides common PAL overscan border areas.
+        /// </summary>
+        Crt,
+        /// <summary>
+        /// Shows the complete emulator PAL overscan presentation for diagnostics.
+        /// </summary>
+        Overscan
+    }
+
+    /// <summary>
     /// Lists memory layouts commonly selected from the overlay.
     /// </summary>
     public enum AmigaRamProfile

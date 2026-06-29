@@ -29,7 +29,7 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Gets or sets Version.
         /// </summary>
-        public int Version { get; set; } = 4;
+        public int Version { get; set; } = 5;
 
         /// <summary>
         /// Gets or sets Video Filter.
@@ -45,6 +45,11 @@ namespace AmigaEmulator.Core
         /// Gets or sets Render Fps.
         /// </summary>
         public AmigaRenderFps RenderFps { get; set; } = AmigaRenderFps.Native;
+
+        /// <summary>
+        /// Gets or sets the monitor aperture used for host presentation.
+        /// </summary>
+        public AmigaMonitorAperture MonitorAperture { get; set; } = AmigaMonitorAperture.Crt;
 
         /// <summary>
         /// Gets or sets RAM Profile.
@@ -251,6 +256,12 @@ namespace AmigaEmulator.Core
                 }
 
                 settings.Version = 4;
+            }
+
+            if (settings.Version < 5)
+            {
+                settings.MonitorAperture = AmigaMonitorAperture.Crt;
+                settings.Version = 5;
             }
         }
     }

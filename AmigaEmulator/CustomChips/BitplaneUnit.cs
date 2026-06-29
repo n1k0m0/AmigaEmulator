@@ -115,11 +115,6 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private static readonly int[] s_hiresFetchSequence = { 4, 2, 3, 1 };
         /// <summary>
-        /// OCS two-plane bitplane DMA slot order inside one fetch unit.
-        /// </summary>
-        private static readonly int[] s_twoPlaneFetchSequence = { 2, 1 };
-
-        /// <summary>
         /// Stores registers.
         /// </summary>
         private readonly CustomRegisterMap _registers;
@@ -529,7 +524,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int registerWidth = (rawRight - rawLeft) * HiresPixelsPerChipCycle;
-            _diwRight = Math.Max(registerWidth, _displayFetchWidth);
+            _diwRight = Math.Max(registerWidth, GetDisplayLeft() + _displayFetchWidth);
         }
 
         /// <summary>
@@ -649,6 +644,28 @@ namespace AmigaEmulator.Core.CustomChips
             int fetchStep = GetFetchStep();
             int fetchOffset = beamX - _ddfStart;
             int wordIndex = fetchOffset / fetchStep;
+            if (!_hires && EnabledPlanes <= 4)
+            {
+                int slot = fetchOffset % fetchStep;
+                int[] sequence = GetFetchSequence();
+                int finalSlot = -1;
+                for (int index = sequence.Length - 1; index >= 0; index--)
+                {
+                    if (sequence[index] - 1 < EnabledPlanes)
+                    {
+                        finalSlot = index;
+                        break;
+                    }
+                }
+
+                if (slot == finalSlot)
+                {
+                    FetchDmaWords(beamX - slot, beamY);
+                }
+
+                return;
+            }
+
             int plane = GetFetchPlaneForSlot(fetchOffset % fetchStep);
             if (wordIndex < 0 || wordIndex >= MaxFetchedWords || plane < 0 || plane >= EnabledPlanes)
             {
@@ -1125,7 +1142,7 @@ namespace AmigaEmulator.Core.CustomChips
         private int GetDisplayLeft()
         {
             int fetchLeadIn = GetRawDisplayLeft();
-            if (_dmaActive && !_hires && EnabledPlanes > 4)
+            if (_dmaActive && !_hires)
             {
                 fetchLeadIn += HiresPixelsPerChipCycle;
             }
@@ -1201,11 +1218,6 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int[] GetFetchSequence()
         {
-            if (EnabledPlanes <= 2)
-            {
-                return s_twoPlaneFetchSequence;
-            }
-
             if (_hires || EnabledPlanes <= 4)
             {
                 return s_hiresFetchSequence;
@@ -1369,9 +1381,11 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 RefreshFromRegisters();
-                int displayLeft = GetRawDisplayLeft();
+                int displayLeft = GetDisplayLeft();
                 int sourceLeft = Math.Min(0, displayLeft);
-                int sourceRight = Math.Max(PalVisibleWidth, displayLeft + _displayFetchWidth);
+                int sourceRight = displayLeft > 0
+                    ? PalVisibleWidth
+                    : Math.Max(PalVisibleWidth, displayLeft + _displayFetchWidth);
                 return Math.Max(0, sourceRight - sourceLeft);
             }
         }
@@ -1384,7 +1398,8 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 RefreshFromRegisters();
-                return Math.Min(0, GetRawDisplayLeft());
+                int displayLeft = GetDisplayLeft();
+                return displayLeft > 0 ? displayLeft : Math.Min(0, displayLeft);
             }
         }
 
