@@ -199,3 +199,8 @@ remains the explicit tracing profile.
 CIA serial regressions cover completion after 16 Timer-A underflows, buffered
 SDR output, input/output direction changes, stopped clocks, reset, and transfer
 phase restoration from new and legacy savestates.
+
+CPU tests also cover zero-count shift/rotation flags (including modulo-64
+counts) and instruction-emulation handlers for illegal/Line-A/Line-F opcodes.
+Both direct Step and deferred Tick execution must stack the original opcode
+address, allow the handler to inspect/skip it, and resume with RTE.

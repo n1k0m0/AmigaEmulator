@@ -607,7 +607,12 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         public void EnterException(int vectorNumber)
         {
-            EnterException(vectorNumber, 0);
+            // Instruction emulators inspect the faulting opcode via the stacked
+            // PC. TRAP, divide/CHK and trace exceptions instead resume after it.
+            uint stackedPc = vectorNumber == 4 || vectorNumber == 10 || vectorNumber == 11
+                ? _currentInstructionAddress
+                : _state.PC;
+            EnterException(vectorNumber, 0, stackedPc);
         }
 
         /// <summary>
@@ -2132,6 +2137,10 @@ namespace AmigaEmulator.Core.Cpu
             uint value = ReadDataRegister(register, size);
             if (count == 0)
             {
+                // A zero register count still recomputes N/Z and clears V. X is
+                // preserved; ROX copies X to C, while other shifts clear C.
+                bool carryFromExtend = kind == 2 && (_state.SR & FlagX) != 0;
+                SetShiftRotateFlags(value, size, carryFromExtend, false, false);
                 return ShiftRotateName(kind, left) + "." + SizeSuffix(size) + " " + ((opcode & 0x0020) != 0 ? "D" + countRegister : "#" + count) + ",D" + register;
             }
 

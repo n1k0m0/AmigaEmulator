@@ -3,6 +3,56 @@
 The sweep covers 18 local boot entries, including the SELECTOR utility and a
 compilation. **All games reaching glitch-free gameplay is not yet established.**
 Evidence is in [tmp/gameplay-optimization](../../../tmp/gameplay-optimization).
+Follow-up evidence is in [tmp/gameplay-debug](../../../tmp/gameplay-debug).
+
+## Follow-up after commit 467879f — 2026-10-08
+
+- Fixed the 68000 stacked PC for illegal, Line-A and Line-F instruction
+  exceptions. It now identifies the opcode, so software instruction handlers
+  can inspect it and advance it themselves. Ordinary TRAP/interrupt/trace
+  return addresses retain their existing behavior.
+- Speedball 2 intentionally uses both Line-F and ILLEGAL handlers. Its handler
+  adds two to the stacked PC; the old core had already added two, causing a
+  skipped instruction and the later invalid-address cascade. The same saved
+  loading transition now reaches SELECT GAME. A fresh boot also reaches this
+  menu; an animated demo match renders players, scrolling pitch and HUD.
+  Direct player control still needs separate confirmation: a match screenshot
+  or advancing score alone can also be produced by the demo AI.
+- Corrected zero-count register shifts/rotations: recompute N/Z, clear V,
+  preserve X, and set C from X only for ROX (otherwise clear C).
+  The previous self-test incorrectly required all CCR flags to be unchanged.
+- CPU regression coverage includes all four shift/rotation kinds, both
+  directions, byte/word/long operands, register counts 0 and 64, positive/zero/
+  negative operands and both X states. Instruction-emulation handlers now
+  inspect and skip the original opcode then return via RTE, under both Step
+  and deferred Tick execution, for vectors 4, 10 and 11.
+- Release build: no warnings/errors; standard tests 118/118 and complete local
+  smoke set 132/132 pass again. Logs: `verified-build.log`,
+  `verified-standard.log`, `verified-full.log` in the follow-up directory.
+- The old Moonstone test swapped to Disk 2 during the publisher animation,
+  before a confirmed disk request. In that run its decompressor reads
+  `1E000000` as a length at `C67134`, builds end pointer `1EC67134`, then overruns
+  the intended destination while comparing full 32-bit pointers. This is a
+  symptom, not a justification for masking CPU address registers or forcing a
+  game-specific length. The origin of the header/pointer mismatch needs further
+  investigation if reproduced with the correct disk sequence. A fresh boot
+  keeping Disk 1 inserted instead reaches a clean moon animation and the later
+  illustrated ritual sequence. The early-swap corruption therefore does not
+  establish an outstanding renderer defect. The subsequent real "Please insert
+  Disk B" prompt was reached and Disk 2 accepted: the clean title/loading screen
+  appears. The loader does not reach the menu in the reviewed interval; DF0
+  reaches track 79 and the CPU repeatedly visits the CIA-A Timer-A delay at
+  C1A7B8/C1A7C0. The timer is running (CRA=09, latch=0864) and is restarted during
+  the run, so this does not establish a stuck CIA timer. Disk-loader/media
+  compatibility and the actual gameplay transition remain unresolved.
+
+Behavior follows [Motorola's programmer reference](https://www.nxp.com/docs/en/reference-manual/M68000PM.pdf)
+and [68000 user's manual](https://www.nxp.com/docs/en/reference-manual/MC68000UM.pdf).
+Speedball evidence: `trap-games`, `speedball-cold`, `speedball-controls`.
+Moonstone: clean `moonstone-disk1`, `moonstone-intro`, `moonstone-menu`,
+`moonstone-diskb` and `moonstone-start` screenshots, versus
+early-swap traces `moonstone-entry.txt`, `moonstone-length.txt`,
+`moonstone-unpack.txt`. Rejected/diagnostic runs are retained separately.
 
 ## Retained changes
 
@@ -47,13 +97,13 @@ cold-boot walkthrough. All test ADFs were mounted read-only.
 | Lotus | Actual split-screen race | Longer race and controls |
 | Maniac Mansion | Gameplay from boot after kid selection/opening sequence; existing-save gameplay also checked | Longer play and transitions |
 | Mega lo Mania | Compatible advances into animated introduction | Start playable island |
-| Moonstone | Disk B accepted; serial wait resolved; a resumed later stage displays corrupt graphics | Subsequent load/display fault, playable battle |
+| Moonstone | Serial wait resolved; clean moon/ritual intro, actual Disk B request, Disk 2 accepted and title/loading screen | Diagnose loader delay at track 79 and reach gameplay; the old premature Disk 2 swap corrupted data |
 | North & South | Language selection and main menu | Play selection, map/battle |
 | Oh No More Lemmings | Main menu in Compatible | Scripted selection, playable level |
 | PDREMS21 | Compilation menu/course-disk request | Intended game and matching media |
 | SELECTOR | Cortex Floppy Emulator utility, Floppy error | Utility-specific investigation; not a game |
 | Die Siedler | Intro and copy-protection symbol query from boot; gameplay from existing local save | Symbol query/new-map path, longer gameplay |
-| Speedball 2 | Credits and Loading Game; blank output after a later load transition (PC 220005, ADDRESS ERROR) | Diagnose failed game transition and reach a match |
+| Speedball 2 | Loading crash fixed; SELECT GAME from fresh boot; fixture/gym menus and animated demo match | Confirm a manually started match and player controls; longer play |
 | Turrican III | Disk 2 accepted; title/intro | Playable level |
 | Zak McKracken | Opening story and request for Disk 2; swapping Zak2.adf and Return leaves the request visible | Diagnose disk/input acceptance, finish intro and inspect gameplay |
 

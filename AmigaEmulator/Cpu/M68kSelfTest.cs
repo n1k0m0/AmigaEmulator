@@ -728,23 +728,36 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private static int RunRegisterShiftZeroCountTest(StringBuilder log)
         {
-            var bus = CreateBus();
-            WriteResetVectors(bus, 0x1000, 0x0100);
-            WriteProgram(
-                bus,
-                0x0100,
-                0x7000,       // MOVEQ #0,D0
-                0x123C, 0x01, // MOVE.B #1,D1
-                0x023C, 0x0000, // ANDI #0,CCR
-                0x003C, 0x001B, // ORI #$1B,CCR
-                0xE029);      // LSR.B D0,D1, zero register count leaves value and CCR unchanged
-
-            M68kCpu cpu = CreateCpu(bus);
-            Step(cpu, 5);
-
             int failures = 0;
-            failures += Expect(log, "register shift zero count value", (cpu.GetD(1) & 0xFF) == 0x01, "D1=" + cpu.GetD(1).ToString("X8"));
-            failures += Expect(log, "register shift zero count preserves CCR", (cpu.SR & 0x001F) == 0x001B, "SR=" + cpu.SR.ToString("X4"));
+            // Motorola M68000PM: zero-count shifts update NZVC; only X is
+            // unchanged. ROX sets C to X. Counts are reduced modulo 64.
+            foreach (int kind in new[] { 0, 1, 2, 3 })
+            foreach (int direction in new[] { 0, 1 })
+            foreach (int sizeCode in new[] { 0, 1, 2 })
+            foreach (ushort count in new ushort[] { 0, 64 })
+            foreach (uint value in new uint[] { 0x12340000, 0x89ABCDEF })
+            foreach (ushort initialCcr in new ushort[] { 0x000F, 0x001A })
+            {
+                var bus = CreateBus();
+                WriteResetVectors(bus, 0x1000, 0x0100);
+                ushort opcode = (ushort)(0xE021 | (direction << 8) | (sizeCode << 6) | (kind << 3));
+                WriteProgram(bus, 0x0100,
+                    0x203C, 0, count,                    // MOVE.L #count,D0
+                    0x223C, (ushort)(value >> 16), (ushort)value,
+                    0x023C, 0, 0x003C, initialCcr, opcode);
+                M68kCpu cpu = CreateCpu(bus);
+                Step(cpu, 5);
+
+                uint mask = sizeCode == 0 ? 0xFFu : sizeCode == 1 ? 0xFFFFu : 0xFFFFFFFFu;
+                uint sign = sizeCode == 0 ? 0x80u : sizeCode == 1 ? 0x8000u : 0x80000000u;
+                uint operand = value & mask;
+                ushort expected = (ushort)((initialCcr & 0x10) | (operand == 0 ? 4 : 0) |
+                    ((operand & sign) != 0 ? 8 : 0) | (kind == 2 && (initialCcr & 0x10) != 0 ? 1 : 0));
+                failures += Expect(log, "zero-count shift " + opcode.ToString("X4") + " count=" + count +
+                    " value=" + value.ToString("X8") + " CCR=" + initialCcr.ToString("X2"),
+                    cpu.GetD(1) == value && (cpu.SR & 0x1F) == expected,
+                    "expected CCR=" + expected.ToString("X2") + " " + cpu.GetDebugInfo());
+            }
             return failures;
         }
 
@@ -1238,17 +1251,37 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private static int RunLineTrapTest(StringBuilder log)
         {
-            var bus = CreateBus();
-            WriteResetVectors(bus, 0x1000, 0x0100);
-            bus.WriteLong(11 * 4, 0x00000340);
-            WriteProgram(bus, 0x0100, 0xFFFF);
-
-            M68kCpu cpu = CreateCpu(bus);
-            cpu.Step();
-
             int failures = 0;
-            failures += Expect(log, "Line-F vector PC", cpu.PC == 0x0340, cpu.GetDebugInfo());
-            failures += Expect(log, "Line-F stacked PC", bus.ReadLong(cpu.A7 + 2) == 0x0102, "stackPC=" + bus.ReadLong(cpu.A7 + 2).ToString("X8"));
+            foreach (ushort opcode in new ushort[] { 0xA123, 0xF123, 0x4AFC })
+            foreach (bool ticking in new[] { false, true })
+            {
+                var bus = CreateBus();
+                WriteResetVectors(bus, 0x1000, 0x0100);
+                int vector = opcode == 0xA123 ? 10 : opcode == 0xF123 ? 11 : 4;
+                bus.WriteLong((uint)(vector * 4), 0x00000340);
+                WriteProgram(bus, 0x0100, opcode, 0x702A); // trapped opcode; MOVEQ #42,D0
+                WriteProgram(bus, 0x0340,
+                    0x206F, 0x0002, // MOVEA.L 2(A7),A0: inspect the original instruction
+                    0x3210,         // MOVE.W (A0),D1
+                    0x54AF, 0x0002, // ADDQ.L #2,2(A7): skip the emulated opcode
+                    0x4E73);        // RTE
+                M68kCpu cpu = CreateCpu(bus);
+                if (ticking)
+                {
+                    for (int cycle = 0; cycle < 2000 && cpu.PC != 0x0104; cycle++) cpu.Tick(true);
+                }
+                else
+                {
+                    cpu.Step();
+                    failures += Expect(log, "instruction emulator stacked PC " + opcode.ToString("X4"),
+                        cpu.PC == 0x0340 && bus.ReadLong(cpu.A7 + 2) == 0x0100,
+                        "stackPC=" + bus.ReadLong(cpu.A7 + 2).ToString("X8"));
+                    Step(cpu, 5);
+                }
+                failures += Expect(log, "instruction emulator resume " + opcode.ToString("X4") + (ticking ? " Tick" : " Step"),
+                    cpu.PC == 0x0104 && cpu.A7 == 0x1000 && cpu.GetD(0) == 42 && cpu.GetD(1) == opcode,
+                    cpu.GetDebugInfo());
+            }
             return failures;
         }
 
