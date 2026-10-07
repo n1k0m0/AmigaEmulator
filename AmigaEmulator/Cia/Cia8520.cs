@@ -195,6 +195,9 @@ namespace AmigaEmulator.Core.Cia
         /// Tracks remaining serial bits before SDR is full.
         /// </summary>
         private int _serialBitsRemaining;
+        // Timer A supplies two underflows per outgoing CNT pulse, eight pulses per byte.
+        private int _serialOutputHalfClocks;
+        private bool _serialOutputBufferPending;
 
         /// <summary>
         /// Initializes a new instance of the Cia8520 class.
@@ -236,7 +239,13 @@ namespace AmigaEmulator.Core.Cia
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
+            // Old snapshots had no serial-output bookkeeping. Recover an in-flight
+            // output-mode transfer from their saved SDR/timer state.
+            _serialOutputHalfClocks = -1;
+            _serialOutputBufferPending = false;
             StateSerializer.ReadObjectFields(reader, this);
+            if (_serialOutputHalfClocks < 0)
+                _serialOutputHalfClocks = SerialOutputMode && TimerStarted(RegisterCra) && (_interruptRequest & InterruptSerial) == 0 ? 16 : 0;
         }
 
         /// <summary>
@@ -348,7 +357,7 @@ namespace AmigaEmulator.Core.Cia
         /// </summary>
         public bool IsSerialInputPending
         {
-            get { return (_interruptRequest & InterruptSerial) != 0 || _serialBitsRemaining > 0 || _serialInputQueue.Count > 0; }
+            get { return SerialOutputMode || (_interruptRequest & InterruptSerial) != 0 || _serialBitsRemaining > 0 || _serialInputQueue.Count > 0; }
         }
 
         /// <summary>
@@ -423,6 +432,8 @@ namespace AmigaEmulator.Core.Cia
             _serialInputQueue.Clear();
             _serialShiftByte = 0;
             _serialBitsRemaining = 0;
+            _serialOutputHalfClocks = 0;
+            _serialOutputBufferPending = false;
             _lastOverlayAtZero = OverlayAtZero;
             RaiseOverlayChanged(_lastOverlayAtZero);
             RaiseInterruptChanged();
@@ -458,7 +469,11 @@ namespace AmigaEmulator.Core.Cia
                 TickTimer(RegisterCrb, ref _timerBCounter, _timerBLatch, InterruptTimerB);
             }
 
-            TickSerialInput();
+            if (SerialOutputMode)
+            {
+                if (timerAUnderflow) TickSerialOutput();
+            }
+            else TickSerialInput();
         }
 
         /// <summary>
@@ -702,8 +717,20 @@ namespace AmigaEmulator.Core.Cia
             {
                 WriteIcr(value);
             }
+            else if (index == RegisterSdr && SerialOutputMode)
+            {
+                // SDR is the one-byte holding buffer; writing while busy queues
+                // the following byte instead of restarting the current transfer.
+                _serialOutputBufferPending = true;
+            }
             else if (index == RegisterCra)
             {
+                if (((previousValue ^ value) & 0x40) != 0)
+                {
+                    _serialBitsRemaining = 0;
+                    _serialOutputHalfClocks = 0;
+                    _serialOutputBufferPending = false;
+                }
                 WriteControl(RegisterCra, ref _timerACounter, _timerALatch, value);
             }
             else if (index == RegisterCrb)
@@ -855,7 +882,23 @@ namespace AmigaEmulator.Core.Cia
         }
 
         /// <summary>
-        /// Advances the external serial input shift register.
+        /// Selects the direction of the CIA serial shift register.
+        /// </summary>
+        private bool SerialOutputMode => (_registers[RegisterCra] & 0x40) != 0;
+
+        private void TickSerialOutput()
+        {
+            if (_serialOutputHalfClocks == 0)
+            {
+                if (!_serialOutputBufferPending) return;
+                _serialOutputBufferPending = false;
+                _serialOutputHalfClocks = 16;
+            }
+            if (--_serialOutputHalfClocks == 0) RequestInterrupt(InterruptSerial);
+        }
+
+        /// <summary>
+        /// Advances the externally clocked input byte while CRA selects input mode.
         /// </summary>
         private void TickSerialInput()
         {

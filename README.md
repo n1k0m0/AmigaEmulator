@@ -23,7 +23,7 @@ Implemented or partially implemented:
 - Kickstart ROM resolver and ROM selection through the overlay UI.
 - Real Kickstart 1.3 insert-disk path through ROM code, Copper, Blitter,
   bitplane DMA, Chip RAM, and Denise output.
-- Standard 880 KiB AmigaDOS ADF loading.
+- Standard 880 KiB AmigaDOS ADF loading and writable-sector DMA with explicit flush.
 - Paula disk and audio path with MFM track streams, disk activity status, and
   audio output.
 - CIA 8520 basics, keyboard input, mouse input, and joystick input.
@@ -36,14 +36,16 @@ Still incomplete:
 
 - Not every game is glitch-free yet.
 - OCS DMA timing, sprite priority, Blitter/CPU arbitration, and loader edge
-  cases still need more work.
-- Disk write support, precompensation, ADKCON edge cases, and exact disk-loader
-  behavior are not finished.
+  cases need broader hardware/reference validation despite implemented slot
+  scheduling, per-plane fetches and region-aware bus contention.
+- Precompensation, ADKCON edge cases, and exact disk-loader behavior are not
+  finished. Basic disk write DMA, sector decoding and explicit flush are tested.
 - vAmigaTS support exists, but full byte-exact reference-frame comparison is
   not the final state yet.
 
-In short: the emulator already runs important real Amiga hardware paths, but it
-is not yet a complete replacement for mature emulators such as UAE.
+The emulator runs real Amiga hardware paths and remains under active
+compatibility and timing development. Current implementation details and
+remaining work are tracked in `AmigaEmulator/Docs/A500ChipAuditPlan.md`.
 
 ## Target Machine
 
@@ -52,7 +54,8 @@ The primary target is:
 - Commodore Amiga 500
 - PAL OCS
 - Kickstart 1.3
-- 512 KiB Chip RAM plus selectable expansion profiles
+- 512 KiB Chip RAM base model plus selectable expansion profiles
+  (the frontend currently defaults to 1 MiB Chip RAM for game loaders)
 - DF0 as the first internal floppy drive
 
 Additional RAM profiles and ROMs can be selected from the emulator menu when
@@ -185,6 +188,10 @@ The visible image is produced by the emulated Amiga framebuffer. Scaling and
 filters are applied afterwards as monitor/TV-style post-processing, not as a
 shortcut in the Amiga graphics path.
 
+Host presentation uses DIW/DDF and per-line display metadata for its source
+geometry. Black backgrounds and sparse top-edge artwork are preserved; frame
+brightness does not automatically shift or crop the picture.
+
 Available video options include:
 
 - Sharp
@@ -196,6 +203,13 @@ Available video options include:
 - HQ2x
 - HQ3x
 - Clean4
+
+## Accuracy profiles
+
+The frontend defaults to `Fast`, which disables tracing and relaxes chip-bus
+contention. `Compatible` and `Strict` enable region-aware bus arbitration and
+tracing. These profiles do not promise complete cycle accuracy. Saved user
+profile choices are preserved.
 
 ## Audio
 
@@ -305,7 +319,16 @@ Helper scripts:
 ```text
 Tools/run-game-matrix.ps1
 Tools/run-vamigats-full.ps1
+Tools/run-amiga-gui-stability.ps1
 ```
+
+## Gameplay/performance review (2026-10-07)
+
+New settings use Compatible chip-bus arbitration without continuous CPU/DMA
+tracing; Fast remains selectable and existing saved profile choices are respected.
+The local boot entries are not yet all certified playable. See [the reviewed
+results and open cases](AmigaEmulator/Docs/GameplayReview-2026-10-07.md) and
+[the scripted gameplay runner](Tools/GameRunner/README.md).
 
 ## License
 

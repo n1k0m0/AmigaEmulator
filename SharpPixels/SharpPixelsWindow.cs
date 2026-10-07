@@ -51,6 +51,26 @@ namespace SharpPixels
         /// </summary>
         private int[] _filterScratchBuffer;
         /// <summary>
+        /// Stores the offscreen device context used to compose pixels and overlays without flicker.
+        /// </summary>
+        private IntPtr _backBufferDc;
+        /// <summary>
+        /// Stores the bitmap selected into the offscreen device context.
+        /// </summary>
+        private IntPtr _backBufferBitmap;
+        /// <summary>
+        /// Stores the original object selected into the offscreen device context.
+        /// </summary>
+        private IntPtr _backBufferPreviousBitmap;
+        /// <summary>
+        /// Stores the current offscreen buffer width.
+        /// </summary>
+        private int _backBufferWidth;
+        /// <summary>
+        /// Stores the current offscreen buffer height.
+        /// </summary>
+        private int _backBufferHeight;
+        /// <summary>
         /// Stores presentation Filter Mode.
         /// </summary>
         private SharpPixelsGpuFilterMode _presentationFilterMode = SharpPixelsGpuFilterMode.Sharp;
@@ -136,8 +156,9 @@ namespace SharpPixels
             Text = title;
             ClientSize = new Size(PresentationWidth * 2, PresentationHeight * 2);
             MinimumSize = new Size(320, 240);
-            DoubleBuffered = true;
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            DoubleBuffered = false;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.Opaque | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, false);
             KeyPreview = true;
 
             _timer = new System.Windows.Forms.Timer();
@@ -275,10 +296,12 @@ namespace SharpPixels
                 _nextUpdateSeconds = 0.0;
                 _fpsWindowStartSeconds = 0.0;
                 Application.Idle += OnApplicationIdle;
+                _timer.Start();
                 Application.Run(this);
             }
             finally
             {
+                _timer.Stop();
                 Application.Idle -= OnApplicationIdle;
                 _running = false;
                 if (timerResolutionRaised)
@@ -325,7 +348,12 @@ namespace SharpPixels
                     continue;
                 }
 
-                PumpOneFrame();
+                bool painted = PumpOneFrame();
+                if (!painted && _updateFrequency <= 0.0)
+                {
+                    Thread.Yield();
+                }
+
                 if (_updateFrequency > 0.0)
                 {
                     double framePeriod = 1.0 / _updateFrequency;
@@ -337,12 +365,26 @@ namespace SharpPixels
         /// <summary>
         /// Runs Pump One Frame.
         /// </summary>
-        private void PumpOneFrame()
+        private bool PumpOneFrame()
         {
             OnUpdateFrame();
+            if (!ShouldPaintFrame())
+            {
+                return false;
+            }
+
             Invalidate();
             Update();
             UpdateFpsCounter();
+            return true;
+        }
+
+        /// <summary>
+        /// Returns whether the current update produced something worth repainting.
+        /// </summary>
+        protected virtual bool ShouldPaintFrame()
+        {
+            return true;
         }
 
         /// <summary>
@@ -523,27 +565,47 @@ namespace SharpPixels
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            EnsurePaintUploadBuffer();
-            Buffer.BlockCopy(Pixels, 0, _paintUploadBuffer, 0, Pixels.Length * sizeof(uint));
-            ApplyPresentationFilter(_paintUploadBuffer, PixelsWidth, PixelsHeight);
-
-            e.Graphics.CompositingMode = CompositingMode.SourceOver;
-            e.Graphics.CompositingQuality = CompositingQuality.HighSpeed;
-            e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.None;
-            e.Graphics.SmoothingMode = SmoothingMode.None;
             var target = GetPresentationRectangle();
             var source = GetPresentationSourceRectangle();
-            if (target.X > 0 ||
-                target.Y > 0 ||
-                target.Right < ClientSize.Width ||
-                target.Bottom < ClientSize.Height)
+            int width = Math.Max(1, ClientSize.Width);
+            int height = Math.Max(1, ClientSize.Height);
+            EnsureBackBuffer(e.Graphics, width, height);
+
+            using (Graphics backGraphics = Graphics.FromHdc(_backBufferDc))
             {
-                e.Graphics.Clear(Color.Black);
+                ConfigureFastGraphics(backGraphics);
+                if (target.X > 0 ||
+                    target.Y > 0 ||
+                    target.Right < width ||
+                    target.Bottom < height)
+                {
+                    backGraphics.Clear(Color.Black);
+                }
+
+                if (_presentationFilterMode == SharpPixelsGpuFilterMode.Sharp)
+                {
+                    DrawPresentationPixelsDib(_backBufferDc, source, target);
+                }
+                else
+                {
+                    EnsurePaintUploadBuffer();
+                    Buffer.BlockCopy(Pixels, 0, _paintUploadBuffer, 0, Pixels.Length * sizeof(uint));
+                    ApplyPresentationFilter(_paintUploadBuffer, PixelsWidth, PixelsHeight);
+                    DrawPresentationDib(_backBufferDc, source, target);
+                }
+
+                OnRenderOverlay(backGraphics, target);
             }
 
-            DrawPresentationDib(e.Graphics, source, target);
-            OnRenderOverlay(e.Graphics, target);
+            IntPtr hdc = e.Graphics.GetHdc();
+            try
+            {
+                BitBlt(hdc, 0, 0, width, height, _backBufferDc, 0, 0, SrcCopyRasterOperation);
+            }
+            finally
+            {
+                e.Graphics.ReleaseHdc(hdc);
+            }
         }
 
         /// <summary>
@@ -561,6 +623,7 @@ namespace SharpPixels
             _running = false;
             _timer.Stop();
             DisposeBitmap();
+            DisposeBackBuffer();
             _paintUploadBuffer = null;
             _filterScratchBuffer = null;
 
@@ -806,6 +869,80 @@ namespace SharpPixels
         }
 
         /// <summary>
+        /// Applies low-latency pixel-art drawing options to a graphics surface.
+        /// </summary>
+        private static void ConfigureFastGraphics(Graphics graphics)
+        {
+            graphics.CompositingMode = CompositingMode.SourceOver;
+            graphics.CompositingQuality = CompositingQuality.HighSpeed;
+            graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+            graphics.PixelOffsetMode = PixelOffsetMode.None;
+            graphics.SmoothingMode = SmoothingMode.None;
+        }
+
+        /// <summary>
+        /// Ensures the offscreen client-size backbuffer exists.
+        /// </summary>
+        private void EnsureBackBuffer(Graphics ownerGraphics, int width, int height)
+        {
+            if (_backBufferDc != IntPtr.Zero &&
+                _backBufferBitmap != IntPtr.Zero &&
+                _backBufferWidth == width &&
+                _backBufferHeight == height)
+            {
+                return;
+            }
+
+            DisposeBackBuffer();
+            IntPtr ownerHdc = ownerGraphics.GetHdc();
+            try
+            {
+                _backBufferDc = CreateCompatibleDC(ownerHdc);
+                _backBufferBitmap = CreateCompatibleBitmap(ownerHdc, width, height);
+                if (_backBufferDc == IntPtr.Zero || _backBufferBitmap == IntPtr.Zero)
+                {
+                    DisposeBackBuffer();
+                    throw new InvalidOperationException("Unable to allocate the SharpPixels backbuffer.");
+                }
+
+                _backBufferPreviousBitmap = SelectObject(_backBufferDc, _backBufferBitmap);
+                _backBufferWidth = width;
+                _backBufferHeight = height;
+            }
+            finally
+            {
+                ownerGraphics.ReleaseHdc(ownerHdc);
+            }
+        }
+
+        /// <summary>
+        /// Releases the offscreen client-size backbuffer.
+        /// </summary>
+        private void DisposeBackBuffer()
+        {
+            if (_backBufferDc != IntPtr.Zero && _backBufferPreviousBitmap != IntPtr.Zero)
+            {
+                SelectObject(_backBufferDc, _backBufferPreviousBitmap);
+            }
+
+            if (_backBufferBitmap != IntPtr.Zero)
+            {
+                DeleteObject(_backBufferBitmap);
+            }
+
+            if (_backBufferDc != IntPtr.Zero)
+            {
+                DeleteDC(_backBufferDc);
+            }
+
+            _backBufferDc = IntPtr.Zero;
+            _backBufferBitmap = IntPtr.Zero;
+            _backBufferPreviousBitmap = IntPtr.Zero;
+            _backBufferWidth = 0;
+            _backBufferHeight = 0;
+        }
+
+        /// <summary>
         /// Ensures the paint upload buffer exists without creating a GDI+ bitmap.
         /// </summary>
         private void EnsurePaintUploadBuffer()
@@ -831,6 +968,38 @@ namespace SharpPixels
         /// <summary>
         /// Draws the current pixel buffer through Win32 StretchDIBits, avoiding slow GDI+ bitmap scaling.
         /// </summary>
+        private void DrawPresentationPixelsDib(Graphics graphics, Rectangle source, Rectangle target)
+        {
+            GCHandle handle = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
+            try
+            {
+                DrawPresentationDib(graphics, source, target, handle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        /// <summary>
+        /// Draws the current pixel buffer through Win32 StretchDIBits into the supplied device context.
+        /// </summary>
+        private void DrawPresentationPixelsDib(IntPtr hdc, Rectangle source, Rectangle target)
+        {
+            GCHandle handle = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
+            try
+            {
+                DrawPresentationDib(hdc, source, target, handle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        /// <summary>
+        /// Draws the filtered upload buffer through Win32 StretchDIBits.
+        /// </summary>
         private void DrawPresentationDib(Graphics graphics, Rectangle source, Rectangle target)
         {
             if (_paintUploadBuffer == null || _paintUploadBuffer.Length < PixelsWidth * PixelsHeight)
@@ -838,6 +1007,59 @@ namespace SharpPixels
                 return;
             }
 
+            GCHandle handle = GCHandle.Alloc(_paintUploadBuffer, GCHandleType.Pinned);
+            try
+            {
+                DrawPresentationDib(graphics, source, target, handle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        /// <summary>
+        /// Draws the filtered upload buffer through Win32 StretchDIBits into the supplied device context.
+        /// </summary>
+        private void DrawPresentationDib(IntPtr hdc, Rectangle source, Rectangle target)
+        {
+            if (_paintUploadBuffer == null || _paintUploadBuffer.Length < PixelsWidth * PixelsHeight)
+            {
+                return;
+            }
+
+            GCHandle handle = GCHandle.Alloc(_paintUploadBuffer, GCHandleType.Pinned);
+            try
+            {
+                DrawPresentationDib(hdc, source, target, handle.AddrOfPinnedObject());
+            }
+            finally
+            {
+                handle.Free();
+            }
+        }
+
+        /// <summary>
+        /// Draws pinned top-down 32-bit pixels through Win32 StretchDIBits.
+        /// </summary>
+        private void DrawPresentationDib(Graphics graphics, Rectangle source, Rectangle target, IntPtr pixelPointer)
+        {
+            IntPtr hdc = graphics.GetHdc();
+            try
+            {
+                DrawPresentationDib(hdc, source, target, pixelPointer);
+            }
+            finally
+            {
+                graphics.ReleaseHdc(hdc);
+            }
+        }
+
+        /// <summary>
+        /// Draws pinned top-down 32-bit pixels through Win32 StretchDIBits into a device context.
+        /// </summary>
+        private void DrawPresentationDib(IntPtr hdc, Rectangle source, Rectangle target, IntPtr pixelPointer)
+        {
             var info = new BitmapInfo
             {
                 Header = new BitmapInfoHeader
@@ -852,31 +1074,21 @@ namespace SharpPixels
                 }
             };
 
-            GCHandle handle = GCHandle.Alloc(_paintUploadBuffer, GCHandleType.Pinned);
-            IntPtr hdc = graphics.GetHdc();
-            try
-            {
-                SetStretchBltMode(hdc, ColorOnColorStretchMode);
-                StretchDIBits(
-                    hdc,
-                    target.X,
-                    target.Y,
-                    target.Width,
-                    target.Height,
-                    source.X,
-                    source.Y,
-                    source.Width,
-                    source.Height,
-                    handle.AddrOfPinnedObject(),
-                    ref info,
-                    DibRgbColors,
-                    SrcCopyRasterOperation);
-            }
-            finally
-            {
-                graphics.ReleaseHdc(hdc);
-                handle.Free();
-            }
+            SetStretchBltMode(hdc, ColorOnColorStretchMode);
+            StretchDIBits(
+                hdc,
+                target.X,
+                target.Y,
+                target.Width,
+                target.Height,
+                source.X,
+                source.Y,
+                source.Width,
+                source.Height,
+                pixelPointer,
+                ref info,
+                DibRgbColors,
+                SrcCopyRasterOperation);
         }
 
         /// <summary>
@@ -963,6 +1175,51 @@ namespace SharpPixels
         /// </summary>
         [DllImport("gdi32.dll")]
         private static extern int SetStretchBltMode(IntPtr hdc, int stretchMode);
+
+        /// <summary>
+        /// Copies pixels between device contexts.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern bool BitBlt(
+            IntPtr destinationDc,
+            int destinationX,
+            int destinationY,
+            int width,
+            int height,
+            IntPtr sourceDc,
+            int sourceX,
+            int sourceY,
+            uint rasterOperation);
+
+        /// <summary>
+        /// Creates a memory device context compatible with a window device context.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+        /// <summary>
+        /// Creates a bitmap compatible with a window device context.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int width, int height);
+
+        /// <summary>
+        /// Selects a GDI object into a device context.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern IntPtr SelectObject(IntPtr hdc, IntPtr gdiObject);
+
+        /// <summary>
+        /// Deletes a GDI object.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr gdiObject);
+
+        /// <summary>
+        /// Deletes a memory device context.
+        /// </summary>
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteDC(IntPtr hdc);
 
         /// <summary>
         /// Uses direct RGB colors from the DIB header.

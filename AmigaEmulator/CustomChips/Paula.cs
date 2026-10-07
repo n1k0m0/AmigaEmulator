@@ -254,6 +254,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// Keeps older savestates readable after audio DMA changed from round-robin to fixed slots.
         /// </summary>
 #pragma warning disable 0414
+        [NonSerialized] private int _lastAudioDmaMask = -1;
         private int _audioDmaRoundRobin;
 #pragma warning restore 0414
         /// <summary>
@@ -475,6 +476,7 @@ namespace AmigaEmulator.Core.CustomChips
                 "_readAdkControl",
                 "_diskWordPeriodChipCycles");
 
+            _lastAudioDmaMask = -1;
             NormalizeDiskDmaStateAfterLoad();
         }
 
@@ -501,6 +503,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Reset()
         {
+            _lastAudioDmaMask = -1;
             AudioTicks = 0;
             LastCustomWriteAddress = 0;
             LastCustomWriteValue = 0;
@@ -861,9 +864,13 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void UpdateAudioDmaEnableState()
         {
+            ushort dmacon = _readDmaControl != null ? _readDmaControl() : (ushort)0;
+            int mask = (dmacon & 0x0200) != 0 ? dmacon & 0x000F : 0;
+            if (mask == _lastAudioDmaMask) return;
+            _lastAudioDmaMask = mask;
             for (int channel = 0; channel < _audioChannels.Length; channel++)
             {
-                bool enabled = IsAudioDmaEnabled(channel);
+                bool enabled = (mask & (1 << channel)) != 0;
                 _audioChannels[channel].SetDmaEnabled(enabled);
                 if (enabled)
                 {
@@ -1400,6 +1407,7 @@ namespace AmigaEmulator.Core.CustomChips
             /// </summary>
             public void SetDmaEnabled(bool enabled)
             {
+                if (_dmaEnabled == enabled) return;
                 _dmaEnabled = enabled;
                 if (!enabled)
                 {

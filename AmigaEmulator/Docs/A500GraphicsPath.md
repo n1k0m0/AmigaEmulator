@@ -2,6 +2,11 @@
 
 Goal: render the Kickstart 1.3 boot display only through the emulated A500 hardware path.
 
+Current status (2026-10-07): the strict 120-million-cycle Kickstart hardware-path
+assertion passes. The investigation notes below retain earlier measurements;
+their unresolved View/ViewPort hypotheses are not a current boot failure.
+For current implementation status, see [A500ChipAuditPlan.md](A500ChipAuditPlan.md).
+
 ## Hardware path
 
 The intended flow is:
@@ -24,7 +29,7 @@ The emulator must keep the same ownership boundaries as the A500 hardware:
 4. Denise side: Denise never invents boot graphics. It shifts the bitplane words fetched by Agnus, applies BPLCON/DIW/DDF/COLOR state, mixes sprites, and writes final ARGB pixels to the host framebuffer.
 5. Verification side: boot screenshots are only valid when BPL pointers, COLOR registers, DMACON, and Copper trace all explain the visible pixels.
 
-## Current implementation state
+## Earlier implementation notes
 
 - The old Kickstart vector boot renderer has been removed.
 - Copper execution now traces real instruction fetches and no longer falls back from COPJMP2 to COP1LC.
@@ -61,7 +66,7 @@ The blocker was the Blitter source-data latch semantics for disabled source chan
 - Kickstart uses small mask blits with A disabled and `BLTADAT=$FFFF`; corrupting that latch made later masks decay into broken full-span/fragmented graphics.
 - `BlitterSelfTest` now covers this with `disabled source mask does not corrupt constant latch`.
 
-## Latest release verification
+## Earlier release verification
 
 - `dotnet build .\AmigaEmulator\AmigaEmulator.sln -p:Configuration=Release -p:Platform=x64 -p:UseAppHost=false` passes.
 - `dotnet .\AmigaEmulator\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-cpu` passes.

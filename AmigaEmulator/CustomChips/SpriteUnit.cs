@@ -156,6 +156,29 @@ namespace AmigaEmulator.Core.CustomChips
         public bool HasActiveSprites { get; private set; }
 
         /// <summary>
+        /// Returns whether the current beam line has any sprite data that can render a visible pixel.
+        /// </summary>
+        public bool HasRenderablePixelsOnLine(int beamY)
+        {
+            if (!HasActiveSprites || _registers == null)
+            {
+                return false;
+            }
+
+            UpdateForBeamY(beamY);
+            for (int sprite = 0; sprite < _states.Length; sprite++)
+            {
+                SpriteState state = _states[sprite];
+                if (state.LineActive && (state.DataA != 0 || state.DataB != 0))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Runs Refresh From Registers.
         /// </summary>
         public void RefreshFromRegisters()
@@ -369,6 +392,59 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             return mask;
+        }
+
+        /// <summary>
+        /// Returns the register-selected horizontal extent of latched sprites on this beam line.
+        /// </summary>
+        public bool TryGetLinePresentationWindow(out int sourceLeft, out int sourceWidth)
+        {
+            sourceLeft = int.MaxValue;
+            int sourceRight = int.MinValue;
+            foreach (SpriteState state in _states)
+            {
+                if (!state.LineActive || (state.DataA | state.DataB) == 0) continue;
+                int left = state.HStart * 2;
+                sourceLeft = System.Math.Min(sourceLeft, left);
+                sourceRight = System.Math.Max(sourceRight, left + 32);
+            }
+            sourceWidth = sourceRight > sourceLeft ? sourceRight - sourceLeft : 0;
+            if (sourceWidth == 0)
+            {
+                sourceLeft = 0;
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Finds a wide frame formed by attached sprite pairs, excluding independent moving sprites.
+        /// </summary>
+        public bool TryGetLineSpriteFrameWindow(out int sourceLeft, out int sourceWidth)
+        {
+            sourceLeft = int.MaxValue;
+            int right = int.MinValue;
+            int pairs = 0;
+            for (int odd = 1; odd < _states.Length; odd += 2)
+            {
+                SpriteState evenState = _states[odd - 1];
+                SpriteState oddState = _states[odd];
+                if (!oddState.LineActive || (oddState.Ctl & 0x80) == 0 ||
+                    !evenState.LineActive || evenState.HStart != oddState.HStart ||
+                    (evenState.DataA | evenState.DataB | oddState.DataA | oddState.DataB) == 0)
+                    continue;
+                int left = oddState.HStart * 2;
+                sourceLeft = System.Math.Min(sourceLeft, left);
+                right = System.Math.Max(right, left + 32);
+                pairs++;
+            }
+            sourceWidth = right > sourceLeft ? right - sourceLeft : 0;
+            if (pairs < 2 || sourceWidth < BitplaneUnit.PalVisibleWidth)
+            {
+                sourceLeft = sourceWidth = 0;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>

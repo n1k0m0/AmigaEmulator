@@ -1,0 +1,560 @@
+[
+  {
+    "name": "Alien-Breed",
+    "boot": "Alien Breed - Special Edition 92 (1992)(Team 17)(Disk 1 of 2)[cr Flashtro].adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Canfod-1",
+    "boot": "Canfod-1.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Civ1",
+    "boot": "Civ1.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "DESERTS1",
+    "boot": "DESERTS1.ADF",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Fire-and-Ice",
+    "boot": "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 1 of 2)[cr FSN][t +1 FSN].adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "HOSTAGES",
+    "boot": "HOSTAGES.ADF",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "LOTUS",
+    "boot": "LOTUS.ADF",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "ManiacM1",
+    "boot": "ManiacM1.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Mega-lo-Mania",
+    "boot": "Mega lo Mania v1.00 (1991-08-16)(Image Works)(DE)(Disk 1 of 2)[cr SSP - AI].adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Moonstone",
+    "boot": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 1 of 3)[cr CSL].adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "North-&-South",
+    "boot": "North & South.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Oh-No",
+    "boot": "Oh No! More Lemmings.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "PDREMS21",
+    "boot": "PDREMS21.ADF",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "SELECTOR",
+    "boot": "SELECTOR.ADF",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Siedler",
+    "boot": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 3 of 3)(Boot).adf",
+    "ram": "Chip1Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Speedball-2",
+    "boot": "Speedball 2.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "TURRI3-1",
+    "boot": "TURRI3-1.ADF",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  },
+  {
+    "name": "Zak1",
+    "boot": "Zak1.adf",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "click",
+        "label": "left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-space"
+      }
+    ]
+  }
+]

@@ -1,4 +1,4 @@
-/*
+﻿/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -441,7 +441,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Stores accuracy Profile.
         /// </summary>
-        private AmigaAccuracyProfile _accuracyProfile = AmigaAccuracyProfile.Fast;
+        private AmigaAccuracyProfile _accuracyProfile = AmigaAccuracyProfile.Compatible;
         /// <summary>
         /// Stores mounted Media.
         /// </summary>
@@ -647,6 +647,14 @@ namespace AmigaEmulator
         /// </summary>
         private double _hostSpeedPercent = 100.0;
         /// <summary>
+        /// Stores frame-counter based presentation FPS for the window title.
+        /// </summary>
+        private double _presentedFps = 50.0;
+        /// <summary>
+        /// Stores frame counter at the previous performance sample.
+        /// </summary>
+        private long _perfFrameCounter;
+        /// <summary>
         /// Stores smoothed CPU Mhz.
         /// </summary>
         private double _smoothedCpuMhz;
@@ -670,6 +678,10 @@ namespace AmigaEmulator
         /// Stores status Text.
         /// </summary>
         private string _statusText = "READY";
+        /// <summary>
+        /// Tracks whether the latest update produced a new presented frame for painting.
+        /// </summary>
+        private bool _paintFrameReady = true;
 
         /// <summary>
         /// Runs Amiga Window.
@@ -697,7 +709,7 @@ namespace AmigaEmulator
             _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, GetRamProfileForModel(model));
             _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), _settings.CreateAccuracyOptions());
             ApplyPresentationSourceCrop();
-            SetPresentationStretchToClient(_fullscreen);
+            SetPresentationStretchToClient(false);
             ApplyFloppyTiming();
             AttachAudioToSystem();
             _inputPortMode = GetInputPortModeFromSettings(_settings.Port1Mode, _settings.Port2Mode);
@@ -717,10 +729,64 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Loads a savestate for this GUI session without persisting startup settings.
+        /// </summary>
+        public bool TryLoadStartupSaveState(string savePath)
+        {
+            if (string.IsNullOrWhiteSpace(savePath) || !File.Exists(savePath))
+            {
+                _statusText = "START SAVE MISSING";
+                return false;
+            }
+
+            try
+            {
+                SaveStateSlotMetadata slot = SaveStateFile.ReadMetadata(savePath);
+                if (slot.Status != SaveStateSlotStatus.Occupied)
+                {
+                    _statusText = "START SAVE INVALID";
+                    return false;
+                }
+
+                FlushMountedMedia();
+                RamProfile targetRamProfile = GetRamProfileFromSettings(slot.RamProfile, _ramProfile);
+                bool needsRecreate = _ramProfile != targetRamProfile || _accuracyProfile != slot.AccuracyProfile;
+                _ramProfile = targetRamProfile;
+                _accuracyProfile = slot.AccuracyProfile;
+                if (needsRecreate)
+                {
+                    RecreateSystemForCurrentProfile();
+                }
+                else
+                {
+                    _system.SetAccuracyOptions(CreateAccuracyOptions(_accuracyProfile));
+                }
+
+                SaveStateFile.Load(slot.Path, _system);
+                ClearDeferredMediaMount();
+                ApplyFloppyTiming();
+                _system.PresentedFrameBuffer.CopyTo(Pixels);
+                _mountedMedia = slot.MountedMedia ?? MountedMediaInfo.None;
+                _lastLoadedSaveStatePath = slot.Path;
+                ResetAudioOutput();
+                ResetEmulationClock();
+                _statusText = "SAVE LOADED";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+                _statusText = "START SAVE FAILED";
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Handles the Update Frame callback.
         /// </summary>
         protected override void OnUpdateFrame()
         {
+            _paintFrameReady = false;
             int cycles = CalculateCyclesForUpdate();
             if (cycles > 0)
             {
@@ -734,9 +800,18 @@ namespace AmigaEmulator
             {
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
                 _lastFrame = _system.FrameCounter;
+                _paintFrameReady = true;
             }
 
             _lastSeconds = _stopwatch.Elapsed.TotalSeconds;
+        }
+
+        /// <summary>
+        /// Paints only when a fresh Amiga frame is available or an overlay needs live interaction.
+        /// </summary>
+        protected override bool ShouldPaintFrame()
+        {
+            return _paintFrameReady || _overlayMode != OverlayMode.None;
         }
 
         /// <summary>
@@ -2089,6 +2164,8 @@ namespace AmigaEmulator
             _lastTitleUpdateSeconds = _lastUpdateSeconds;
             _pendingChipCycles = 0.0;
             _perfChipCycles = 0;
+            _perfFrameCounter = _system.FrameCounter;
+            _presentedFps = _system.Model.FrameRateHz;
             _smoothedCpuMhz = (_system.Model.ChipClockHz * 2.0) / 1000000.0;
             ClearBufferedMouseMotion();
         }
@@ -2308,6 +2385,10 @@ namespace AmigaEmulator
 
             _hostSpeedPercent = (_perfChipCycles / (GetPalChipCyclesPerSecond() * elapsed)) * 100.0;
             _smoothedCpuMhz = ((_perfChipCycles * 2.0) / elapsed) / 1000000.0;
+            long frameCounter = _system.FrameCounter;
+            long advancedFrames = Math.Max(0, frameCounter - _perfFrameCounter);
+            _presentedFps = advancedFrames / elapsed;
+            _perfFrameCounter = frameCounter;
             _perfChipCycles = 0;
             _lastPerfSeconds = now;
         }
@@ -2331,7 +2412,7 @@ namespace AmigaEmulator
                 _hostSpeedPercent,
                 _system.Cpu.PC,
                 _system.Cpu.CurrentOpcode,
-                FPS,
+                (int)Math.Round(_presentedFps),
                 FormatTitleDriveStatus());
         }
 
@@ -3632,7 +3713,7 @@ namespace AmigaEmulator
                 case RenderLimitMode.Hz120:
                     return 120.0;
                 case RenderLimitMode.Unlimited:
-                    return 0.0;
+                    return _system != null ? _system.Model.FrameRateHz : 50.0;
                 default:
                     return 50.0;
             }
@@ -3959,7 +4040,7 @@ namespace AmigaEmulator
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
             _fullscreen = true;
-            SetPresentationStretchToClient(true);
+            SetPresentationStretchToClient(false);
             _settings.Fullscreen = true;
             AmigaEmulatorSettingsStore.Save(_settings);
             _statusText = "FULLSCREEN";
@@ -3977,7 +4058,7 @@ namespace AmigaEmulator
 
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
-            SetPresentationStretchToClient(true);
+            SetPresentationStretchToClient(false);
         }
 
         /// <summary>

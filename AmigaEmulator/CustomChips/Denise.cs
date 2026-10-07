@@ -172,8 +172,13 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Tick(BeamTraceEntry beam)
         {
-            _bitplanes.RefreshFromRegisters();
-            _sprites.RefreshFromRegisters();
+            if (beam.BeamX == PalLowresDisplayStart)
+            {
+                _bitplanes.RefreshFromRegisters();
+                _sprites.RefreshFromRegisters();
+                _bitplanes.ObservePresentationWindowForBeamLine(beam.BeamY);
+            }
+
             int y = beam.BeamY - BitplaneUnit.PalVisibleTop + _frameBufferYOffset;
             if (y < 0 || y >= _frameBuffer.Height)
             {
@@ -187,45 +192,142 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            bool bitplaneActive = _bitplanes.IsBitplaneDisplayActiveCached;
-            bool spritesActive = _sprites.HasActiveSprites;
+            RenderPixelSpan(y, beam.BeamY, beam.Frame, frameX, frameX + BitplaneUnit.HiresPixelsPerChipCycle);
+        }
+
+        /// <summary>
+        /// Renders overscan pixels that are selected by a wide DDF window after all line DMA is available.
+        /// </summary>
+        public void FinishLineTail(BeamTraceEntry beam)
+        {
+            if (!_bitplanes.TryGetLinePresentationSourceWindow(beam.BeamY, out int sourceLeft, out int sourceWidth))
+            {
+                return;
+            }
+
+            int y = beam.BeamY - BitplaneUnit.PalVisibleTop + _frameBufferYOffset;
+            if (y < 0 || y >= _frameBuffer.Height)
+            {
+                return;
+            }
+
+            int lastFrameX = ((beam.BeamX - PalLowresDisplayStart) * BitplaneUnit.HiresPixelsPerChipCycle) +
+                _frameBufferXOffset +
+                BitplaneUnit.HiresPixelsPerChipCycle;
+            int firstFrameX = _frameBufferXOffset;
+            int requestedLeft = _frameBufferXOffset + sourceLeft;
+            int requestedRight = _frameBufferXOffset + sourceLeft + sourceWidth;
+
+            _bitplanes.RefreshFromRegisters();
+            _sprites.RefreshFromRegisters();
+
+            if (_sprites.TryGetLinePresentationWindow(out int spriteLeft, out int spriteWidth))
+            {
+                requestedLeft = System.Math.Min(requestedLeft, _frameBufferXOffset + spriteLeft);
+                requestedRight = System.Math.Max(requestedRight, _frameBufferXOffset + spriteLeft + spriteWidth);
+            }
+
+            if (_sprites.TryGetLineSpriteFrameWindow(out int frameLeft, out int frameWidth))
+            {
+                _bitplanes.IncludeSpritePresentationWindowForBeamLine(beam.BeamY, frameLeft, frameWidth);
+            }
+
+            int leadEndFrameX = System.Math.Min(firstFrameX, _frameBuffer.Width);
+            if (requestedLeft < leadEndFrameX)
+            {
+                RenderPixelSpan(y, beam.BeamY, beam.Frame, requestedLeft, leadEndFrameX);
+            }
+
+            int bitplaneTailEndFrameX = System.Math.Min(_frameBuffer.Width, requestedRight);
+            if (bitplaneTailEndFrameX > lastFrameX)
+            {
+                RenderPixelSpan(y, beam.BeamY, beam.Frame, lastFrameX, bitplaneTailEndFrameX);
+            }
+
+            int borderStartFrameX = System.Math.Max(lastFrameX, bitplaneTailEndFrameX);
+            if (borderStartFrameX < _frameBuffer.Width)
+            {
+                FillPixelSpan(y, borderStartFrameX, _frameBuffer.Width, _bitplanes.ReadColorArgb(0));
+            }
+        }
+
+        /// <summary>
+        /// Fills a contiguous host-framebuffer X span for one beam line.
+        /// </summary>
+        private void FillPixelSpan(int y, int startFrameX, int endFrameX, uint argb)
+        {
+            int start = System.Math.Max(0, startFrameX);
+            int end = System.Math.Min(_frameBuffer.Width, endFrameX);
+            if (end <= start)
+            {
+                return;
+            }
+
+            uint[] pixels = _frameBuffer.Pixels;
+            System.Array.Fill(pixels, argb, (y * _frameBuffer.Width) + start, end - start);
+            _frameBuffer.ClearSpriteSpan((y * _frameBuffer.Width) + start, end - start);
+        }
+
+        /// <summary>
+        /// Renders a contiguous host-framebuffer X span for one beam line.
+        /// </summary>
+        private void RenderPixelSpan(int y, int beamY, long frame, int startFrameX, int endFrameX)
+        {
+            int start = System.Math.Max(0, startFrameX);
+            int end = System.Math.Min(_frameBuffer.Width, endFrameX);
+            if (end <= start)
+            {
+                return;
+            }
+
+            bool bitplaneActive = _bitplanes.IsBitplaneDisplayActiveOnLine(beamY);
+            bool spritesActive = _sprites.HasRenderablePixelsOnLine(beamY);
+            bool collisionsActive = _collisions != null && !_collisions.IsSaturated;
+            if (!bitplaneActive && !spritesActive)
+            {
+                if (collisionsActive) _collisions.ObservePixel(0, 0);
+                FillPixelSpan(y, start, end, _bitplanes.ReadColorArgb(0));
+                return;
+            }
+            bool hires = _bitplanes.IsHiresMode;
             uint[] pixels = _frameBuffer.Pixels;
             int row = y * _frameBuffer.Width;
-            uint previousArgb = screenPreviousColor(row, frameX);
-            for (int pixel = 0; pixel < BitplaneUnit.HiresPixelsPerChipCycle; pixel++)
+            uint previousArgb = screenPreviousColor(row, start);
+            int bitplaneMask = 0;
+            int bitplaneColorIndex = 0;
+            int spriteMask = 0;
+            uint spriteArgb = 0;
+            int spriteGroup = 0;
+            bool spriteVisible = false;
+            for (int frameBufferX = start; frameBufferX < end; frameBufferX++)
             {
-                int frameBufferX = frameX + pixel;
-                if (frameBufferX < 0 || frameBufferX >= _frameBuffer.Width)
-                {
-                    continue;
-                }
-
-                int screenX = logicalX + pixel;
-                int bitplaneMask = 0;
-                int bitplaneColorIndex = bitplaneActive
-                    ? _bitplanes.RenderPixelInfo(screenX, beam.BeamY, out bitplaneMask)
-                    : 0;
+                int screenX = frameBufferX - _frameBufferXOffset;
+                // Lowres shifter bits and sprite bits each cover two hires framebuffer pixels.
+                // Cache only within this span: CPU/Copper writes between chip ticks remain visible.
+                bool firstInPair = frameBufferX == start || (screenX & 1) == 0;
+                if (bitplaneActive && (hires || firstInPair))
+                    bitplaneColorIndex = _bitplanes.RenderPixelInfo(screenX, beamY, out bitplaneMask);
                 uint argb = bitplaneActive
                     ? _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb)
-                    : _bitplanes.RenderFallbackPixel(screenX, y, beam.Frame);
-                int spriteMask = 0;
-                uint spriteArgb = 0;
-                int spriteGroup = 0;
-                bool spriteVisible = spritesActive &&
-                    _sprites.TryRenderPixel(screenX, beam.BeamY, out spriteArgb, out spriteGroup, out spriteMask);
-                if (_collisions != null)
+                    : _bitplanes.RenderFallbackPixel(screenX, y, frame);
+                if (spritesActive && firstInPair)
+                    spriteVisible = _sprites.TryRenderPixel(screenX, beamY, out spriteArgb, out spriteGroup, out spriteMask);
+                if (collisionsActive)
                 {
                     _collisions.ObservePixel(bitplaneMask, spriteMask);
+                    collisionsActive = !_collisions.IsSaturated;
                 }
 
-                if (spriteVisible &&
-                    ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex))
+                bool spriteCoversPlayfield = spriteVisible &&
+                    ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex);
+                _frameBuffer.RecordSpritePixel(row + frameBufferX, argb, spriteCoversPlayfield ? spriteArgb : 0);
+                previousArgb = argb; // HAM holds the playfield color before sprite composition.
+                if (spriteCoversPlayfield)
                 {
                     argb = spriteArgb;
                 }
 
                 pixels[row + frameBufferX] = argb;
-                previousArgb = argb;
             }
         }
 
@@ -237,7 +339,7 @@ namespace AmigaEmulator.Core.CustomChips
             int previousX = x - 1;
             if (previousX >= 0 && previousX < _frameBuffer.Width)
             {
-                return _frameBuffer.Pixels[row + previousX];
+                return _frameBuffer.ReadPlayfieldPixel(row + previousX);
             }
 
             return _bitplanes.ReadColorArgb(0);

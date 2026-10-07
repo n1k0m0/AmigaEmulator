@@ -14,7 +14,6 @@
    limitations under the License.
 */
 using System;
-using System.Collections.Generic;
 using System.IO;
 using AmigaEmulator.Core.SaveStates;
 
@@ -29,6 +28,13 @@ namespace AmigaEmulator.Core.Video
         /// Stores pixels.
         /// </summary>
         private readonly uint[] _pixels;
+        /// <summary>
+        /// Reused horizontal nearest-neighbor map for scaled presentation copies.
+        /// </summary>
+        private readonly int[] _scaleMap;
+        // Transient compositor data; the savestate format continues to store the raw composite only.
+        private readonly uint[] _spritePixels;
+        private readonly uint[] _pixelsBehindSprites;
 
         /// <summary>
         /// Initializes a new instance of the AmigaFrameBuffer class.
@@ -48,6 +54,9 @@ namespace AmigaEmulator.Core.Video
             Width = width;
             Height = height;
             _pixels = new uint[width * height];
+            _scaleMap = new int[width];
+            _spritePixels = new uint[width * height];
+            _pixelsBehindSprites = new uint[width * height];
         }
 
         /// <summary>
@@ -73,6 +82,7 @@ namespace AmigaEmulator.Core.Video
         /// </summary>
         public void Clear(uint argb)
         {
+            Array.Clear(_spritePixels);
             for (int index = 0; index < _pixels.Length; index++)
             {
                 _pixels[index] = argb;
@@ -90,6 +100,36 @@ namespace AmigaEmulator.Core.Video
             }
 
             _pixels[(y * Width) + x] = argb;
+            _spritePixels[(y * Width) + x] = 0;
+        }
+
+        /// <summary>
+        /// Records the already priority-tested hardware sprite and the pixel it covered.
+        /// </summary>
+        public void RecordSpritePixel(int index, uint background, uint sprite)
+        {
+            _spritePixels[index] = sprite;
+            if (sprite != 0) _pixelsBehindSprites[index] = background;
+        }
+
+        public void ClearSpriteSpan(int index, int length)
+        {
+            Array.Clear(_spritePixels, index, length);
+        }
+
+        /// <summary>
+        /// Samples normalized playfield data while keeping sprites in one frame-wide coordinate system.
+        /// </summary>
+        public uint ReadPlayfieldPixel(int index)
+        {
+            return _spritePixels[index] != 0 ? _pixelsBehindSprites[index] : _pixels[index];
+        }
+
+        public uint SamplePresentationPixel(int playfieldIndex, int spriteIndex)
+        {
+            uint sprite = _spritePixels[spriteIndex];
+            if (sprite != 0) return sprite;
+            return ReadPlayfieldPixel(playfieldIndex);
         }
 
         /// <summary>
@@ -111,6 +151,7 @@ namespace AmigaEmulator.Core.Video
             }
 
             Array.Copy(source._pixels, _pixels, Math.Min(_pixels.Length, source._pixels.Length));
+            Array.Clear(_spritePixels);
         }
 
         /// <summary>
@@ -207,7 +248,7 @@ namespace AmigaEmulator.Core.Video
                 return;
             }
 
-            int[] sourceColumns = BuildScaleMap(Width, width, startX);
+            BuildScaleMap(_scaleMap, width, startX);
             for (int y = 0; y < Height; y++)
             {
                 int sourceRow = startY + ScaleCoordinate(y, Height, height);
@@ -215,7 +256,7 @@ namespace AmigaEmulator.Core.Video
                 int sourceRowOffset = sourceRow * source.Width;
                 for (int x = 0; x < Width; x++)
                 {
-                    _pixels[targetRow + x] = source._pixels[sourceRowOffset + sourceColumns[x]];
+                    _pixels[targetRow + x] = source._pixels[sourceRowOffset + _scaleMap[x]];
                 }
             }
         }
@@ -223,15 +264,12 @@ namespace AmigaEmulator.Core.Video
         /// <summary>
         /// Builds one horizontal source lookup table for nearest-neighbor scaling.
         /// </summary>
-        private static int[] BuildScaleMap(int destinationSize, int sourceSize, int sourceOffset)
+        private static void BuildScaleMap(int[] map, int sourceSize, int sourceOffset)
         {
-            int[] map = new int[destinationSize];
-            for (int index = 0; index < destinationSize; index++)
+            for (int index = 0; index < map.Length; index++)
             {
-                map[index] = sourceOffset + ScaleCoordinate(index, destinationSize, sourceSize);
+                map[index] = sourceOffset + ScaleCoordinate(index, map.Length, sourceSize);
             }
-
-            return map;
         }
 
         /// <summary>
@@ -245,82 +283,6 @@ namespace AmigaEmulator.Core.Video
             }
 
             return Math.Min(sourceSize - 1, (destination * (sourceSize - 1)) / (destinationSize - 1));
-        }
-
-        /// <summary>
-        /// Removes sparse non-border pixels from the top overscan rows without cropping real top-edge artwork.
-        /// </summary>
-        public void ClearSparseTopBorderArtifacts(int rows, int maxNonBorderPixels)
-        {
-            if (rows <= 0 || maxNonBorderPixels <= 0 || _pixels.Length == 0)
-            {
-                return;
-            }
-
-            int scanRows = Math.Min(rows, Height);
-            uint borderColor = FindDominantColor(0, scanRows);
-            int nonBorderPixels = 0;
-            for (int y = 0; y < scanRows; y++)
-            {
-                int row = y * Width;
-                for (int x = 0; x < Width; x++)
-                {
-                    if (_pixels[row + x] != borderColor)
-                    {
-                        nonBorderPixels++;
-                        if (nonBorderPixels > maxNonBorderPixels)
-                        {
-                            return;
-                        }
-                    }
-                }
-            }
-
-            if (nonBorderPixels == 0)
-            {
-                return;
-            }
-
-            for (int y = 0; y < scanRows; y++)
-            {
-                int row = y * Width;
-                for (int x = 0; x < Width; x++)
-                {
-                    if (_pixels[row + x] != borderColor)
-                    {
-                        _pixels[row + x] = borderColor;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Finds the most common color in a small framebuffer band.
-        /// </summary>
-        private uint FindDominantColor(int startY, int rows)
-        {
-            var counts = new Dictionary<uint, int>();
-            int endY = Math.Min(Height, startY + rows);
-            uint dominant = 0;
-            int dominantCount = 0;
-            for (int y = Math.Max(0, startY); y < endY; y++)
-            {
-                int row = y * Width;
-                for (int x = 0; x < Width; x++)
-                {
-                    uint color = _pixels[row + x];
-                    counts.TryGetValue(color, out int count);
-                    count++;
-                    counts[color] = count;
-                    if (count > dominantCount)
-                    {
-                        dominant = color;
-                        dominantCount = count;
-                    }
-                }
-            }
-
-            return dominant;
         }
 
         /// <summary>
@@ -340,6 +302,7 @@ namespace AmigaEmulator.Core.Video
         {
             int width = reader.ReadInt32();
             int height = reader.ReadInt32();
+            Array.Clear(_spritePixels);
             uint[] pixels = StateSerializer.ReadUIntArray(reader) ?? Array.Empty<uint>();
             if (width == Width && height == Height && pixels.Length == _pixels.Length)
             {

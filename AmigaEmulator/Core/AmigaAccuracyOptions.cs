@@ -39,8 +39,8 @@ namespace AmigaEmulator.Core
         public static readonly AmigaAccuracyOptions Compatible = new AmigaAccuracyOptions
         {
             Name = "Compatible",
-            EnableDmaSlotTrace = true,
-            EnableCpuTrace = true,
+            EnableDmaSlotTrace = false,
+            EnableCpuTrace = false,
             StrictChipBusArbitration = true
         };
 

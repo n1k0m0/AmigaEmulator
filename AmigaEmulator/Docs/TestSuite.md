@@ -1,4 +1,4 @@
-# AmigaEmulator Test Suite
+﻿# AmigaEmulator Test Suite
 
 The emulator now has a dedicated test runner project:
 
@@ -93,8 +93,9 @@ dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.d
 - Bitplane DMA fetch to visible color index.
 - Split bitplane DMA plane-word fetch grouping: half-fetched groups stay hidden
   until all enabled planes have arrived.
-- Production Agnus bitplane DMA uses one plane-word fetch per chip-cycle slot
-  and applies the tested prefetch-to-shifter delay.
+- Production fetch grouping and prefetch-to-shifter delay regressions. Lowres
+  displays with up to four planes currently use a compact compatibility path;
+  this does not certify hardware-accurate per-slot reads.
 - Dual-playfield color-bank mapping.
 - Direct sprite register rendering.
 - Standard ADF MFM stream sync/gap sanity.
@@ -121,3 +122,80 @@ dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.d
 6. More ADF-specific visual heuristics for known graphics regressions.
 7. Reference-generated 68000 per-opcode expected-state vectors, including
    cycle counts, for instructions beyond the current semantic sample set.
+
+## Presentation and collision regressions
+
+The standard suite checks that changing scene brightness does not change the
+DIW/DDF source geometry, that asymmetric black scene edges retain their width
+and position, and that sparse and dense top-edge artwork survive end-of-frame
+presentation. CLXCON checks cover independent odd/even groups, zero matches,
+disabled planes, saturation and read-clear behavior.
+
+## Strict arbitration for external checks
+
+From the solution directory, use `--strict-bus` for vAmigaTS or the local
+Siedler savestate check (other test categories retain their own profiles):
+
+```powershell
+dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --include-vamigats --filter vAmigaTS --strict-bus
+dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --include-local-siedler-golden --filter LocalSiedlerGolden --strict-bus
+```
+
+These runs enable contention without collecting traces. The Siedler test picks
+the newest local Siedler/Settlers savestate; use `--siedler-save <path>` to pin a
+specific asset. vAmigaTS remains a smoke/reference-property check, not a full
+pixel-by-pixel comparison.
+
+## GUI stability
+
+```powershell
+.\Tools\run-amiga-gui-stability.ps1 -Seconds 120 -SampleSeconds 10 -SavestatePath <path>
+```
+
+The script builds Release, launches its own emulator process, records FPS,
+host speed, memory and GDI/USER resources, then closes that process. Hidden
+window titles are collected directly when `MainWindowTitle` is empty. Build
+failure, early exit, no samples or no positive FPS measurements return failure.
+Resource growth and FPS changes are reported for inspection; a successful run
+alone does not certify a leak-free renderer or sustained real-time speed.
+
+## Sprite-framed split-screen geometry
+
+The sprite regression suite checks the full latched word aperture and a sprite
+whose final lowres pixel lies beyond both the ordinary beam raster and the
+bitplane DDF window. The pixel must survive line-tail completion. The local
+Siedler check now requires the wooden playfield border at both monitor edges
+and top-frame content on the first presented row, in addition to panel metrics.
+Split-screen presentation includes full-width sprite frame geometry rather
+than treating those sprite pixels as black monitor border.
+
+The moving-pointer regression sweeps the local Siedler pointer to both horizontal
+edges, down into the command panel, and back to the top. Completed frame line
+apertures must remain fixed throughout. A synthetic split-screen fixture also
+checks that identical sprite X positions map to the same presented X above and
+below the panel seam, with the background restored at the former shifted pointer
+location. Attached border-pair geometry is tested independently of moving sprites.
+The transient sprite/background compositor buffers do not change savestate format.
+
+
+## Scripted gameplay review
+
+`Tools/GameRunner` replays input and disk-swap scenarios, including continuation
+from savestates. See [GameRunner README](../../Tools/GameRunner/README.md).
+Each action captures a screenshot, CPU/disk state, presentation bounds and a
+frame hash. Execution success and nonblank output do not prove gameplay or
+absence of glitches. The matrix marks visible output as `visible-unverified`;
+GameRunner records `requires-visual-review` until a person inspects the actual
+playfield. The 18 supplied scenarios are local-media smoke examples, not
+certified all-game walkthroughs.
+
+New regressions cover asymmetric BPLCON1 nibble assignment, beam-ordered hires
+DMA without periodic missing font pixels, HAM color hold beneath sprites both
+within and across rendering spans, manual AUDxDAT playback without DMA, and
+profiler equivalence with ordinary frame/presentation output. Compatible keeps
+bus arbitration enabled without collecting continuous CPU/DMA traces; Strict
+remains the explicit tracing profile.
+
+CIA serial regressions cover completion after 16 Timer-A underflows, buffered
+SDR output, input/output direction changes, stopped clocks, reset, and transfer
+phase restoration from new and legacy savestates.

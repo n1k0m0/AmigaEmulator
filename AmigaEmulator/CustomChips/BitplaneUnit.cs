@@ -1,4 +1,4 @@
-/*
+﻿/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -201,6 +201,76 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool _displayActive;
         /// <summary>
+        /// Tracks whether the current frame observed at least one active bitplane presentation window.
+        /// </summary>
+        [NonSerialized]
+        private bool _hasFramePresentationWindow;
+        /// <summary>
+        /// Stores the leftmost viewport-relative presentation edge observed during the current frame.
+        /// </summary>
+        [NonSerialized]
+        private int _framePresentationLeft;
+        /// <summary>
+        /// Stores the rightmost viewport-relative presentation edge observed during the current frame.
+        /// </summary>
+        [NonSerialized]
+        private int _framePresentationRight;
+        /// <summary>
+        /// Stores the topmost beam-relative presentation edge observed during the current frame.
+        /// </summary>
+        [NonSerialized]
+        private int _framePresentationTop;
+        /// <summary>
+        /// Stores the bottommost beam-relative presentation edge observed during the current frame.
+        /// </summary>
+        [NonSerialized]
+        private int _framePresentationBottom;
+        /// <summary>
+        /// Tracks which PAL beam lines observed a bitplane presentation window this frame.
+        /// </summary>
+        [NonSerialized]
+        private bool[] _linePresentationObserved = Array.Empty<bool>();
+        [NonSerialized]
+        private bool[] _lineSpriteFrameObserved = Array.Empty<bool>();
+        [NonSerialized]
+        private bool[] _previousLineSpriteFrameObserved = Array.Empty<bool>();
+
+        /// <summary>
+        /// Stores the leftmost viewport-relative presentation edge observed per PAL beam line.
+        /// </summary>
+        [NonSerialized]
+        private int[] _linePresentationLeft = Array.Empty<int>();
+        /// <summary>
+        /// Stores the rightmost viewport-relative presentation edge observed per PAL beam line.
+        /// </summary>
+        [NonSerialized]
+        private int[] _linePresentationRight = Array.Empty<int>();
+        /// <summary>
+        /// Stores the first viewport-relative bitplane-content edge observed per PAL beam line.
+        /// </summary>
+        [NonSerialized]
+        private int[] _linePresentationContentLeft = Array.Empty<int>();
+        /// <summary>
+        /// Stores the previous completed frame's per-line presentation-window flags for presentation.
+        /// </summary>
+        [NonSerialized]
+        private bool[] _previousLinePresentationObserved = Array.Empty<bool>();
+        /// <summary>
+        /// Stores the previous completed frame's per-line presentation left edges.
+        /// </summary>
+        [NonSerialized]
+        private int[] _previousLinePresentationLeft = Array.Empty<int>();
+        /// <summary>
+        /// Stores the previous completed frame's per-line presentation right edges.
+        /// </summary>
+        [NonSerialized]
+        private int[] _previousLinePresentationRight = Array.Empty<int>();
+        /// <summary>
+        /// Stores the previous completed frame's first per-line bitplane-content edges.
+        /// </summary>
+        [NonSerialized]
+        private int[] _previousLinePresentationContentLeft = Array.Empty<int>();
+        /// <summary>
         /// Stores diw Top.
         /// </summary>
         private int _diwTop;
@@ -232,6 +302,18 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores display Fetch Width.
         /// </summary>
         private int _displayFetchWidth;
+        /// <summary>
+        /// Stores the viewport-relative display start derived from DDF/BPLCON1.
+        /// </summary>
+        private int _displayLeft;
+        /// <summary>
+        /// Stores the display width including BPLCON1 fine-scroll extension.
+        /// </summary>
+        private int _scrolledDisplayWidth;
+        /// <summary>
+        /// Stores the per-plane fetched pixel width.
+        /// </summary>
+        private int _planeDisplayWidth;
         /// <summary>
         /// Stores scroll Even.
         /// </summary>
@@ -357,6 +439,7 @@ namespace AmigaEmulator.Core.CustomChips
             _hasPointerRegisterSnapshot = false;
             _reloadPointersAfterDeferredPartialRewrite = false;
             _paletteDirty = true;
+            ResetFramePresentationWindow();
             for (int word = 0; word < MaxFetchedWords; word++)
             {
                 _pendingFetchedRows[word] = int.MinValue;
@@ -371,6 +454,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void BeginFrame()
         {
+            SnapshotLinePresentationWindow();
+            ResetFramePresentationWindow();
             ResetDmaLineTracking();
         }
 
@@ -497,9 +582,13 @@ namespace AmigaEmulator.Core.CustomChips
             int fetchGroups = span < 0 ? 0 : ((span + fetchUnit - 1) / fetchUnit) + 1;
             _wordsPerFetchedLine = fetchGroups * fetchUnit / fetchStart;
             int bitplaneBits = _wordsPerFetchedLine * 16;
+            _planeDisplayWidth = bitplaneBits;
             _displayFetchWidth = _hires ? bitplaneBits : bitplaneBits * 2;
-            _scrollEven = bplcon1 & 0x000F;
-            _scrollOdd = (bplcon1 >> 4) & 0x000F;
+            // BPLCON1: PF1 (odd planes) is the low nibble; PF2 (even) is the high nibble.
+            _scrollOdd = bplcon1 & 0x000F;
+            _scrollEven = (bplcon1 >> 4) & 0x000F;
+            _displayLeft = CalculateDisplayLeft();
+            _scrolledDisplayWidth = CalculateScrolledDisplayWidth();
             RefreshHorizontalDisplayWindow(diwStart, diwStop);
         }
 
@@ -510,7 +599,7 @@ namespace AmigaEmulator.Core.CustomChips
         {
             int rawLeft = diwStart & 0x00FF;
             int rawRight = diwStop & 0x00FF;
-            _diwLeft = 0;
+            _diwLeft = Math.Min(0, GetDisplayLeft());
             if (diwStart == 0 && diwStop == 0)
             {
                 _diwRight = int.MaxValue;
@@ -524,7 +613,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int registerWidth = (rawRight - rawLeft) * HiresPixelsPerChipCycle;
-            _diwRight = Math.Max(registerWidth, GetDisplayLeft() + _displayFetchWidth);
+            _diwRight = Math.Max(registerWidth, GetDisplayLeft() + GetScrolledDisplayWidth());
         }
 
         /// <summary>
@@ -543,6 +632,10 @@ namespace AmigaEmulator.Core.CustomChips
         {
             get { return _displayActive; }
         }
+
+        public bool IsHiresMode => _hires;
+
+        public bool IsBitplaneDisplayActiveOnLine(int beamY) => _displayActive && IsInsideDiw(beamY);
 
         /// <summary>
         /// Returns whether Fetch Slot is true.
@@ -750,7 +843,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int displayX = GetDisplayX(screenX);
-            if (displayX < 0 || displayX >= _displayFetchWidth)
+            if (displayX < 0 || displayX >= GetScrolledDisplayWidth())
             {
                 return 0;
             }
@@ -776,7 +869,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int displayX = GetDisplayX(screenX);
-            if (displayX < 0 || displayX >= _displayFetchWidth)
+            if (displayX < 0 || displayX >= GetScrolledDisplayWidth())
             {
                 return 0;
             }
@@ -896,11 +989,10 @@ namespace AmigaEmulator.Core.CustomChips
         {
             int mask = 0;
             int bitplaneX = _hires ? displayX : displayX >> 1;
-            int planeDisplayWidth = _wordsPerFetchedLine * 16;
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
                 int firstX = bitplaneX - (((plane & 1) == 0) ? _scrollOdd : _scrollEven);
-                if (firstX < 0 || firstX >= planeDisplayWidth)
+                if (firstX < 0 || firstX >= _planeDisplayWidth)
                 {
                     continue;
                 }
@@ -1141,13 +1233,80 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetDisplayLeft()
         {
+            return _displayLeft;
+        }
+
+        /// <summary>
+        /// Returns the first viewport-relative X coordinate that can contain fetched bitplane data.
+        /// </summary>
+        private int GetDisplayContentLeft()
+        {
+            return GetDisplayLeft() + GetFineScrollContentLeadIn();
+        }
+
+        /// <summary>
+        /// Calculates the viewport-relative X coordinate where the fetched display data begins.
+        /// </summary>
+        private int CalculateDisplayLeft()
+        {
             int fetchLeadIn = GetRawDisplayLeft();
-            if (_dmaActive && !_hires)
+            if (_dmaActive)
             {
-                fetchLeadIn += HiresPixelsPerChipCycle;
+                fetchLeadIn += GetDmaPipelineLeadIn();
             }
 
             return fetchLeadIn;
+        }
+
+        /// <summary>
+        /// Returns the fine-scroll delay before any enabled bitplane can produce a visible bit.
+        /// </summary>
+        private int GetFineScrollContentLeadIn()
+        {
+            if (EnabledPlanes <= 0)
+            {
+                return 0;
+            }
+
+            int minScroll = 16;
+            for (int plane = 0; plane < EnabledPlanes; plane++)
+            {
+                int scroll = ((plane & 1) == 0) ? _scrollOdd : _scrollEven;
+                minScroll = Math.Min(minScroll, scroll);
+            }
+
+            if (minScroll == 16)
+            {
+                return 0;
+            }
+
+            return _hires ? minScroll : minScroll * LowresPixelsPerChipCycle;
+        }
+
+        /// <summary>
+        /// Returns the remaining fetch-pipeline delay after BPLCON1 fine scroll has consumed it.
+        /// </summary>
+        private int GetDmaPipelineLeadIn()
+        {
+            int earliestScroll = Math.Min(_scrollOdd, _scrollEven) * (_hires ? 1 : LowresPixelsPerChipCycle);
+            return Math.Max(0, HiresPixelsPerChipCycle - earliestScroll);
+        }
+
+        /// <summary>
+        /// Returns the viewport-relative width covered by fetched shifter data plus BPLCON1 fine scroll.
+        /// </summary>
+        private int GetScrolledDisplayWidth()
+        {
+            return _scrolledDisplayWidth;
+        }
+
+        /// <summary>
+        /// Calculates the viewport-relative width covered by fetched shifter data plus BPLCON1 fine scroll.
+        /// </summary>
+        private int CalculateScrolledDisplayWidth()
+        {
+            int scroll = Math.Max(_scrollOdd, _scrollEven);
+            return _displayFetchWidth + (_hires ? scroll : scroll * LowresPixelsPerChipCycle);
         }
 
         /// <summary>
@@ -1382,10 +1541,9 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 RefreshFromRegisters();
                 int displayLeft = GetDisplayLeft();
-                int sourceLeft = Math.Min(0, displayLeft);
-                int sourceRight = displayLeft > 0
-                    ? PalVisibleWidth
-                    : Math.Max(PalVisibleWidth, displayLeft + _displayFetchWidth);
+                int displayRight = displayLeft + GetScrolledDisplayWidth();
+                int sourceLeft = displayLeft > 0 ? displayLeft : Math.Min(0, displayLeft);
+                int sourceRight = Math.Max(PalVisibleWidth, displayRight);
                 return Math.Max(0, sourceRight - sourceLeft);
             }
         }
@@ -1426,6 +1584,337 @@ namespace AmigaEmulator.Core.CustomChips
                 int sourceTop = Math.Min(PalVisibleTop, _diwTop);
                 int sourceBottom = Math.Max(PalVisibleTop + PalVisibleHeight, _diwBottom);
                 return Math.Max(1, sourceBottom - sourceTop);
+            }
+        }
+
+        /// <summary>
+        /// Gets the left edge accumulated from every bitplane window observed in the current frame.
+        /// </summary>
+        public int FramePresentationSourceLeft
+        {
+            get
+            {
+                return _hasFramePresentationWindow ? _framePresentationLeft : PresentationSourceLeft;
+            }
+        }
+
+        /// <summary>
+        /// Gets the source width accumulated from every bitplane window observed in the current frame.
+        /// </summary>
+        public int FramePresentationSourceWidth
+        {
+            get
+            {
+                return _hasFramePresentationWindow
+                    ? Math.Max(1, _framePresentationRight - _framePresentationLeft)
+                    : PresentationSourceWidth;
+            }
+        }
+
+        /// <summary>
+        /// Gets the top edge accumulated from every bitplane window observed in the current frame.
+        /// </summary>
+        public int FramePresentationSourceTop
+        {
+            get
+            {
+                return _hasFramePresentationWindow ? _framePresentationTop : PresentationSourceTop;
+            }
+        }
+
+        /// <summary>
+        /// Gets the source height accumulated from every bitplane window observed in the current frame.
+        /// </summary>
+        public int FramePresentationSourceHeight
+        {
+            get
+            {
+                return _hasFramePresentationWindow
+                    ? Math.Max(1, _framePresentationBottom - _framePresentationTop)
+                    : PresentationSourceHeight;
+            }
+        }
+
+        /// <summary>
+        /// Clears the per-frame presentation aperture accumulator.
+        /// </summary>
+        private void ResetFramePresentationWindow()
+        {
+            _hasFramePresentationWindow = false;
+            _framePresentationLeft = 0;
+            _framePresentationRight = 0;
+            _framePresentationTop = 0;
+            _framePresentationBottom = 0;
+            EnsureLinePresentationStorage();
+            Array.Clear(_linePresentationObserved, 0, _linePresentationObserved.Length);
+            Array.Clear(_lineSpriteFrameObserved, 0, _lineSpriteFrameObserved.Length);
+            Array.Clear(_linePresentationLeft, 0, _linePresentationLeft.Length);
+            Array.Clear(_linePresentationRight, 0, _linePresentationRight.Length);
+            Array.Clear(_linePresentationContentLeft, 0, _linePresentationContentLeft.Length);
+        }
+
+        /// <summary>
+        /// Merges the currently programmed DIW/DDF presentation window into the frame aperture.
+        /// </summary>
+        private void ObserveFramePresentationWindow()
+        {
+            if (!_displayActive)
+            {
+                return;
+            }
+
+            GetCurrentPresentationWindow(
+                out int sourceLeft,
+                out int sourceRight,
+                out int sourceTop,
+                out int sourceBottom);
+            if (!_hasFramePresentationWindow)
+            {
+                _framePresentationLeft = sourceLeft;
+                _framePresentationRight = sourceRight;
+                _framePresentationTop = sourceTop;
+                _framePresentationBottom = sourceBottom;
+                _hasFramePresentationWindow = true;
+                return;
+            }
+
+            _framePresentationLeft = Math.Min(_framePresentationLeft, sourceLeft);
+            _framePresentationRight = Math.Max(_framePresentationRight, sourceRight);
+            _framePresentationTop = Math.Min(_framePresentationTop, sourceTop);
+            _framePresentationBottom = Math.Max(_framePresentationBottom, sourceBottom);
+        }
+
+        /// <summary>
+        /// Records the currently active presentation aperture for one beam line.
+        /// </summary>
+        public void ObservePresentationWindowForBeamLine(int beamY)
+        {
+            if (!_displayActive ||
+                beamY < 0 ||
+                beamY >= _linePresentationObserved.Length ||
+                _linePresentationObserved[beamY])
+            {
+                return;
+            }
+
+            GetCurrentPresentationWindow(
+                out int sourceLeft,
+                out int sourceRight,
+                out int sourceTop,
+                out int sourceBottom);
+            MergeFramePresentationWindow(sourceLeft, sourceRight, sourceTop, sourceBottom);
+            _linePresentationLeft[beamY] = sourceLeft;
+            _linePresentationRight[beamY] = sourceRight;
+            _linePresentationContentLeft[beamY] = Math.Min(sourceRight - 1, Math.Max(sourceLeft, GetDisplayContentLeft()));
+            _linePresentationObserved[beamY] = true;
+        }
+
+        /// <summary>
+        /// Includes latched sprite extents so host normalization preserves sprite borders around a playfield.
+        /// </summary>
+        public void IncludeSpritePresentationWindowForBeamLine(int beamY, int spriteLeft, int spriteWidth)
+        {
+            if (spriteWidth < PalVisibleWidth || beamY < 0 || beamY >= _linePresentationObserved.Length ||
+                !_linePresentationObserved[beamY] ||
+                spriteLeft > _linePresentationContentLeft[beamY] ||
+                spriteLeft + spriteWidth < _linePresentationRight[beamY])
+            {
+                return;
+            }
+            _lineSpriteFrameObserved[beamY] = true;
+            _linePresentationLeft[beamY] = Math.Min(_linePresentationLeft[beamY], spriteLeft);
+            _linePresentationContentLeft[beamY] = Math.Min(_linePresentationContentLeft[beamY], spriteLeft);
+            _linePresentationRight[beamY] = Math.Max(_linePresentationRight[beamY], spriteLeft + spriteWidth);
+        }
+
+        /// <summary>
+        /// Returns one stable horizontal sprite aperture for the whole framed display.
+        /// </summary>
+        public bool TryGetSpriteFrameHorizontalWindow(out int left, out int width)
+        {
+            for (int y = 0; y < _linePresentationObserved.Length; y++)
+            {
+                bool current = _linePresentationObserved[y];
+                bool framed = current ? _lineSpriteFrameObserved[y] : _previousLineSpriteFrameObserved[y];
+                if (!framed) continue;
+                left = current ? _linePresentationContentLeft[y] : _previousLinePresentationContentLeft[y];
+                int right = current ? _linePresentationRight[y] : _previousLinePresentationRight[y];
+                width = right - left;
+                return true;
+            }
+            left = width = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the first sprite-framed line and the end of the register-selected display below it.
+        /// </summary>
+        public bool TryGetSpriteFramedPresentationBounds(out int top, out int bottom)
+        {
+            top = int.MaxValue;
+            bottom = 0;
+            for (int y = 0; y < _linePresentationObserved.Length; y++)
+            {
+                bool current = _linePresentationObserved[y];
+                if (!current && !_previousLinePresentationObserved[y]) continue;
+                if (current ? _lineSpriteFrameObserved[y] : _previousLineSpriteFrameObserved[y])
+                    top = Math.Min(top, y);
+                bottom = y + 1;
+            }
+            return top < bottom;
+        }
+
+        /// <summary>
+        /// Returns the presentation aperture observed on one beam line during the current frame.
+        /// </summary>
+        public bool TryGetLinePresentationSourceWindow(int beamY, out int sourceLeft, out int sourceWidth)
+        {
+            if (beamY >= 0 &&
+                beamY < _linePresentationObserved.Length &&
+                _linePresentationObserved[beamY])
+            {
+                sourceLeft = _linePresentationLeft[beamY];
+                sourceWidth = Math.Max(1, _linePresentationRight[beamY] - _linePresentationLeft[beamY]);
+                return true;
+            }
+
+            if (beamY >= 0 &&
+                beamY < _previousLinePresentationObserved.Length &&
+                _previousLinePresentationObserved[beamY])
+            {
+                sourceLeft = _previousLinePresentationLeft[beamY];
+                sourceWidth = Math.Max(1, _previousLinePresentationRight[beamY] - _previousLinePresentationLeft[beamY]);
+                return true;
+            }
+
+            sourceLeft = 0;
+            sourceWidth = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the renderable bitplane-content aperture observed on one beam line during the current frame.
+        /// </summary>
+        public bool TryGetLinePresentationContentSourceWindow(int beamY, out int sourceLeft, out int sourceWidth)
+        {
+            if (beamY >= 0 &&
+                beamY < _linePresentationObserved.Length &&
+                _linePresentationObserved[beamY])
+            {
+                sourceLeft = _linePresentationContentLeft[beamY];
+                sourceWidth = Math.Max(1, _linePresentationRight[beamY] - sourceLeft);
+                return true;
+            }
+
+            if (beamY >= 0 &&
+                beamY < _previousLinePresentationObserved.Length &&
+                _previousLinePresentationObserved[beamY])
+            {
+                sourceLeft = _previousLinePresentationContentLeft[beamY];
+                sourceWidth = Math.Max(1, _previousLinePresentationRight[beamY] - sourceLeft);
+                return true;
+            }
+
+            sourceLeft = 0;
+            sourceWidth = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns a compact debug description for one observed presentation beam line.
+        /// </summary>
+        public string GetLinePresentationDebugInfo(int beamY)
+        {
+            if (TryGetLinePresentationSourceWindow(beamY, out int sourceLeft, out int sourceWidth))
+            {
+                return beamY.ToString(System.Globalization.CultureInfo.InvariantCulture) +
+                    ":" +
+                    sourceLeft.ToString(System.Globalization.CultureInfo.InvariantCulture) +
+                    "+" +
+                    sourceWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            return beamY.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":none";
+        }
+
+        /// <summary>
+        /// Ensures per-line presentation arrays exist after construction or deserialization.
+        /// </summary>
+        private void EnsureLinePresentationStorage()
+        {
+            const int maxPalLines = 512;
+            if (_linePresentationObserved.Length == maxPalLines)
+            {
+                return;
+            }
+
+            _linePresentationObserved = new bool[maxPalLines];
+            _lineSpriteFrameObserved = new bool[maxPalLines];
+            _previousLineSpriteFrameObserved = new bool[maxPalLines];
+            _linePresentationLeft = new int[maxPalLines];
+            _linePresentationRight = new int[maxPalLines];
+            _linePresentationContentLeft = new int[maxPalLines];
+            _previousLinePresentationObserved = new bool[maxPalLines];
+            _previousLinePresentationLeft = new int[maxPalLines];
+            _previousLinePresentationRight = new int[maxPalLines];
+            _previousLinePresentationContentLeft = new int[maxPalLines];
+        }
+
+        /// <summary>
+        /// Saves the just-completed frame's per-line aperture before starting the next frame.
+        /// </summary>
+        private void SnapshotLinePresentationWindow()
+        {
+            EnsureLinePresentationStorage();
+            Array.Copy(_linePresentationObserved, _previousLinePresentationObserved, _linePresentationObserved.Length);
+            Array.Copy(_lineSpriteFrameObserved, _previousLineSpriteFrameObserved, _lineSpriteFrameObserved.Length);
+            Array.Copy(_linePresentationLeft, _previousLinePresentationLeft, _linePresentationLeft.Length);
+            Array.Copy(_linePresentationRight, _previousLinePresentationRight, _linePresentationRight.Length);
+            Array.Copy(_linePresentationContentLeft, _previousLinePresentationContentLeft, _linePresentationContentLeft.Length);
+        }
+
+        /// <summary>
+        /// Merges one current aperture into the frame-wide aperture.
+        /// </summary>
+        private void MergeFramePresentationWindow(int sourceLeft, int sourceRight, int sourceTop, int sourceBottom)
+        {
+            if (!_hasFramePresentationWindow)
+            {
+                _framePresentationLeft = sourceLeft;
+                _framePresentationRight = sourceRight;
+                _framePresentationTop = sourceTop;
+                _framePresentationBottom = sourceBottom;
+                _hasFramePresentationWindow = true;
+                return;
+            }
+
+            _framePresentationLeft = Math.Min(_framePresentationLeft, sourceLeft);
+            _framePresentationRight = Math.Max(_framePresentationRight, sourceRight);
+            _framePresentationTop = Math.Min(_framePresentationTop, sourceTop);
+            _framePresentationBottom = Math.Max(_framePresentationBottom, sourceBottom);
+        }
+
+        /// <summary>
+        /// Calculates the current register-selected source window without mutating frame state.
+        /// </summary>
+        private void GetCurrentPresentationWindow(out int sourceLeft, out int sourceRight, out int sourceTop, out int sourceBottom)
+        {
+            int displayLeft = GetDisplayLeft();
+            int displayRight = displayLeft + GetScrolledDisplayWidth();
+            sourceLeft = displayLeft > 0 ? displayLeft : Math.Min(0, displayLeft);
+            sourceRight = displayLeft > 0
+                ? Math.Max(PalVisibleWidth, displayRight)
+                : Math.Max(PalVisibleWidth, displayRight);
+            sourceTop = Math.Min(PalVisibleTop, _diwTop);
+            sourceBottom = Math.Max(PalVisibleTop + PalVisibleHeight, _diwBottom);
+            if (sourceRight <= sourceLeft)
+            {
+                sourceRight = sourceLeft + 1;
+            }
+
+            if (sourceBottom <= sourceTop)
+            {
+                sourceBottom = sourceTop + 1;
             }
         }
 

@@ -1,4 +1,4 @@
-/*
+﻿/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,7 +94,7 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Gets or sets Accuracy Profile.
         /// </summary>
-        public AmigaAccuracyProfile AccuracyProfile { get; set; } = AmigaAccuracyProfile.Fast;
+        public AmigaAccuracyProfile AccuracyProfile { get; set; } = AmigaAccuracyProfile.Compatible;
 
         /// <summary>
         /// Gets or sets Fullscreen.

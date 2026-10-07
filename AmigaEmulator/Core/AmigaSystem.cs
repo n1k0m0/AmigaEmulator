@@ -36,6 +36,10 @@ namespace AmigaEmulator.Core
         /// Crops the stable PAL presentation window out of the wider internal Denise raster.
         /// </summary>
         private const int PresentationCropLeft = 128;
+        /// <summary>
+        /// Leftmost host framebuffer column kept by the PAL monitor aperture.
+        /// </summary>
+        private const int PresentationApertureMinLeft = 92;
 
         /// <summary>
         /// Fixed PAL monitor viewport width used for host presentation, including common horizontal overscan.
@@ -52,20 +56,13 @@ namespace AmigaEmulator.Core
         /// </summary>
         private const int HorizontalOverscanPixels = 128;
 
-        /// <summary>
-        /// Scans the top overscan rows for isolated transition artifacts before presentation.
-        /// </summary>
-        private const int TopOverscanArtifactRows = 24;
-
-        /// <summary>
-        /// Keeps the cleanup narrow enough that real top-edge artwork is preserved.
-        /// </summary>
-        private const int MaxTopOverscanArtifactPixels = 6000;
 
         /// <summary>
         /// Crops tiny PAL overscan height differences instead of vertically resampling HUD lines.
         /// </summary>
         private const int SmallVerticalOverscanCropTolerance = 8;
+
+
 
         /// <summary>
         /// Runs object.
@@ -151,6 +148,15 @@ namespace AmigaEmulator.Core
         /// Keeps the saved presented image visible until one partial post-load frame has been discarded.
         /// </summary>
         private bool _suppressNextPresentationAfterLoad;
+        /// <summary>
+        /// Reused source-column map for the default presentation aperture.
+        /// </summary>
+        private readonly int[] _presentationDefaultSourceColumns = new int[PresentationViewportWidth];
+        /// <summary>
+        /// Reused source-column map for scanlines with an oversized line-specific aperture.
+        /// </summary>
+        private readonly int[] _presentationLineSourceColumns = new int[PresentationViewportWidth];
+        private readonly int[] _presentationSpriteSourceColumns = new int[PresentationViewportWidth];
 
         /// <summary>
         /// Initializes a new instance of the AmigaSystem class.
@@ -335,7 +341,7 @@ namespace AmigaEmulator.Core
                 GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
                 return string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
-                    "framebuffer:{0}x{1} presented:{2}x{3} source:{4},{5}+{6}x{7}",
+                    "framebuffer:{0}x{1} presented:{2}x{3} source:{4},{5}+{6}x{7} lines:{8},{9},{10}",
                     _frameBuffer.Width,
                     _frameBuffer.Height,
                     _presentedFrameBuffer.Width,
@@ -343,7 +349,10 @@ namespace AmigaEmulator.Core
                     sourceLeft,
                     sourceTop,
                     sourceWidth,
-                    sourceHeight);
+                    sourceHeight,
+                    _agnus.Bitplanes.GetLinePresentationDebugInfo(44),
+                    _agnus.Bitplanes.GetLinePresentationDebugInfo(240),
+                    _agnus.Bitplanes.GetLinePresentationDebugInfo(280));
             }
         }
 
@@ -568,6 +577,7 @@ namespace AmigaEmulator.Core
                     }
 
                     _denise.Tick(_agnus.Beam);
+                    FinishVideoCycle(slot);
                     long afterDenise = Stopwatch.GetTimestamp();
 
                     if (_accuracyOptions.EnableCpuTrace || _accuracyOptions.EnableDmaSlotTrace)
@@ -705,6 +715,24 @@ namespace AmigaEmulator.Core
             }
 
             _denise.Tick(_agnus.Beam);
+            FinishVideoCycle(slot);
+
+            if (_accuracyOptions.EnableCpuTrace || _accuracyOptions.EnableDmaSlotTrace)
+            {
+                _lastTraceSample = CreateTraceSample(cpuTrace);
+            }
+        }
+
+        /// <summary>
+        /// Completes overscan rendering and presentation identically for normal and profiled execution.
+        /// </summary>
+        private void FinishVideoCycle(DmaSlotTraceEntry slot)
+        {
+            if (slot.SlotIndex == _model.ChipCyclesPerLine - 1)
+            {
+                _denise.FinishLineTail(_agnus.Beam);
+            }
+
             if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
             {
                 if (_suppressNextPresentationAfterLoad)
@@ -714,24 +742,11 @@ namespace AmigaEmulator.Core
                 else
                 {
                     GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
-                    _presentedFrameBuffer.Clear(0xFF000000);
-                    if (sourceWidth != PresentationViewportWidth || sourceHeight != PresentationViewportHeight)
-                    {
-                        _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
-                    }
-                    else
-                    {
-                        _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop, 0, 0, sourceWidth, sourceHeight);
-                    }
+                    CopyPresentationWindow(sourceLeft, sourceTop, sourceWidth, sourceHeight);
 
-                    _presentedFrameBuffer.ClearSparseTopBorderArtifacts(TopOverscanArtifactRows, MaxTopOverscanArtifactPixels);
                 }
             }
 
-            if (_accuracyOptions.EnableCpuTrace || _accuracyOptions.EnableDmaSlotTrace)
-            {
-                _lastTraceSample = CreateTraceSample(cpuTrace);
-            }
         }
 
         /// <summary>
@@ -739,17 +754,282 @@ namespace AmigaEmulator.Core
         /// </summary>
         private void GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight)
         {
-            int requestedLeft = PresentationCropLeft + _agnus.Bitplanes.PresentationSourceLeft;
-            int requestedWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.PresentationSourceWidth);
-            int requestedTop = _agnus.Bitplanes.PresentationSourceTop;
-            int requestedHeight = Math.Max(_model.VisibleHeight, _agnus.Bitplanes.PresentationSourceHeight);
+            int requestedLeft = PresentationCropLeft + _agnus.Bitplanes.FramePresentationSourceLeft;
+            int requestedWidth = Math.Max(_model.VisibleWidth, _agnus.Bitplanes.FramePresentationSourceWidth);
+            int requestedTop = _agnus.Bitplanes.FramePresentationSourceTop;
+            int requestedHeight = Math.Max(_model.VisibleHeight, _agnus.Bitplanes.FramePresentationSourceHeight);
             sourceLeft = Math.Max(0, Math.Min(requestedLeft, _frameBuffer.Width - 1));
             sourceWidth = Math.Max(1, Math.Min(requestedWidth, _frameBuffer.Width - sourceLeft));
             sourceTop = Math.Max(0, Math.Min(requestedTop, _frameBuffer.Height - 1));
             sourceHeight = Math.Max(1, Math.Min(requestedHeight, _frameBuffer.Height - sourceTop));
+            ClampToPresentationViewport(ref sourceTop, ref sourceHeight, PresentationViewportHeight, _frameBuffer.Height);
+            ExpandNearFullHeightAperture(ref sourceTop, ref sourceHeight);
             CropSmallVerticalOverscan(ref sourceTop, ref sourceHeight);
-            FitToPresentationViewport(ref sourceLeft, ref sourceWidth, PresentationViewportWidth, _frameBuffer.Width);
-            FitToPresentationViewport(ref sourceTop, ref sourceHeight, PresentationViewportHeight, _frameBuffer.Height);
+            ExpandHorizontalPresentationWindowFromLines(ref sourceLeft, ref sourceWidth, sourceTop, sourceHeight);
+            ClampHorizontalPresentationWindow(ref sourceLeft, ref sourceWidth);
+            ClampLeftPresentationAperture(ref sourceLeft, ref sourceWidth);
+            ExpandNearFullWidthAperture(ref sourceLeft, ref sourceWidth);
+            if (HasLineAdaptivePresentationWindow(sourceTop, sourceHeight))
+            {
+                if (_agnus.Bitplanes.TryGetSpriteFramedPresentationBounds(out int framedTop, out int framedBottom))
+                {
+                    sourceTop = framedTop;
+                    sourceHeight = framedBottom - framedTop;
+                }
+                else
+                {
+                    ExpandNearFullHeightToFrameEnd(ref sourceTop, ref sourceHeight);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Copies the register-selected aperture without changing geometry or pixels based on scene content.
+        /// </summary>
+        private void CopyPresentationWindow(int sourceLeft, int sourceTop, int sourceWidth, int sourceHeight)
+        {
+            if (HasLineAdaptivePresentationWindow(sourceTop, sourceHeight))
+            {
+                CopyLineAdaptivePresentationWindow(sourceLeft, sourceTop, sourceWidth, sourceHeight);
+            }
+            else if (sourceWidth != PresentationViewportWidth || sourceHeight != PresentationViewportHeight)
+            {
+                _presentedFrameBuffer.CopyScaledWindowFrom(_frameBuffer, sourceLeft, sourceTop, sourceWidth, sourceHeight);
+            }
+            else
+            {
+                _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop, 0, 0, sourceWidth, sourceHeight);
+            }
+        }
+
+        /// <summary>
+        /// Detects whether visible beam lines used different DDF/DIW apertures inside the same frame.
+        /// </summary>
+        private bool HasLineAdaptivePresentationWindow(int sourceTop, int sourceHeight)
+        {
+            int lastLeft = int.MinValue;
+            int lastWidth = int.MinValue;
+            for (int targetY = 0; targetY < PresentationViewportHeight; targetY++)
+            {
+                int sourceY = sourceTop + ScalePresentationCoordinate(targetY, PresentationViewportHeight, sourceHeight);
+                if (!_agnus.Bitplanes.TryGetLinePresentationSourceWindow(sourceY, out int observedLeft, out int observedWidth))
+                {
+                    continue;
+                }
+
+                if (lastLeft == int.MinValue)
+                {
+                    lastLeft = observedLeft;
+                    lastWidth = observedWidth;
+                    continue;
+                }
+
+                if (observedLeft != lastLeft || observedWidth != lastWidth)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Copies the current monitor aperture while keeping panel scanlines anchored to their logical playfield origin.
+        /// </summary>
+        private void CopyLineAdaptivePresentationWindow(int sourceLeft, int sourceTop, int sourceWidth, int sourceHeight)
+        {
+            uint[] sourcePixels = _frameBuffer.Pixels;
+            uint[] targetPixels = _presentedFrameBuffer.Pixels;
+            int[] defaultSourceColumns = _presentationDefaultSourceColumns;
+            int[] anchoredLineColumns = _presentationLineSourceColumns;
+            bool hasAnchoredLineColumns = false;
+            int anchoredLineLeft = -1;
+            int anchoredLineWidth = -1;
+            int boundedLeft = Math.Max(0, Math.Min(sourceLeft, _frameBuffer.Width - 1));
+            int boundedWidth = Math.Max(1, Math.Min(sourceWidth, _frameBuffer.Width - boundedLeft));
+            BuildPresentationScaleMap(defaultSourceColumns, boundedLeft, boundedWidth);
+            bool hasSpriteFrame = _agnus.Bitplanes.TryGetSpriteFrameHorizontalWindow(out int spriteLeft, out int spriteWidth);
+            if (hasSpriteFrame)
+            {
+                int spriteSourceLeft = Math.Max(0, PresentationCropLeft + spriteLeft);
+                int spriteSourceWidth = Math.Min(spriteWidth, _frameBuffer.Width - spriteSourceLeft);
+                BuildPresentationScaleMap(_presentationSpriteSourceColumns, spriteSourceLeft, spriteSourceWidth);
+            }
+            for (int targetY = 0; targetY < PresentationViewportHeight; targetY++)
+            {
+                int sourceY = sourceTop + ScalePresentationCoordinate(targetY, PresentationViewportHeight, sourceHeight);
+                int sourceRowOffset = Math.Max(0, Math.Min(sourceY, _frameBuffer.Height - 1)) * _frameBuffer.Width;
+                int targetRowOffset = targetY * PresentationViewportWidth;
+                int[] rowSourceColumns = defaultSourceColumns;
+                if (TryGetLogicalLeftAnchoredLineWindow(sourceY, out int lineLeft, out int lineWidth))
+                {
+                    if (!hasAnchoredLineColumns || lineLeft != anchoredLineLeft || lineWidth != anchoredLineWidth)
+                    {
+                        BuildPresentationScaleMap(anchoredLineColumns, lineLeft, lineWidth);
+                        hasAnchoredLineColumns = true;
+                        anchoredLineLeft = lineLeft;
+                        anchoredLineWidth = lineWidth;
+                    }
+
+                    rowSourceColumns = anchoredLineColumns;
+                }
+
+                for (int targetX = 0; targetX < PresentationViewportWidth; targetX++)
+                {
+                    int playfieldIndex = sourceRowOffset + rowSourceColumns[targetX];
+                    targetPixels[targetRowOffset + targetX] = hasSpriteFrame
+                        ? _frameBuffer.SamplePresentationPixel(playfieldIndex, sourceRowOffset + _presentationSpriteSourceColumns[targetX])
+                        : sourcePixels[playfieldIndex];
+                }
+            }
+        }
+
+        /// <summary>
+        /// Selects the renderable aperture, including sprite borders, for each wide overscan scanline.
+        /// </summary>
+        private bool TryGetLogicalLeftAnchoredLineWindow(int sourceY, out int lineSourceLeft, out int lineSourceWidth)
+        {
+            lineSourceLeft = 0;
+            lineSourceWidth = 0;
+            if (!_agnus.Bitplanes.TryGetLinePresentationSourceWindow(sourceY, out int observedLeft, out int observedWidth))
+            {
+                return false;
+            }
+
+            if (observedLeft >= 0 || observedWidth < _model.VisibleWidth)
+            {
+                return false;
+            }
+
+            if (!_agnus.Bitplanes.TryGetLinePresentationContentSourceWindow(sourceY, out int contentLeft, out int contentWidth))
+            {
+                return false;
+            }
+
+            int contentRight = contentLeft + contentWidth;
+            int requestedLeft = PresentationCropLeft + contentLeft;
+            int requestedRight = PresentationCropLeft + contentRight;
+            lineSourceLeft = Math.Max(0, Math.Min(requestedLeft, _frameBuffer.Width - 1));
+            lineSourceWidth = Math.Max(1, Math.Min(requestedRight, _frameBuffer.Width) - lineSourceLeft);
+            return true;
+        }
+
+        /// <summary>
+        /// Builds a horizontal nearest-neighbor source map for one presentation row geometry.
+        /// </summary>
+        private static void BuildPresentationScaleMap(int[] map, int sourceLeft, int sourceWidth)
+        {
+            for (int targetX = 0; targetX < map.Length; targetX++)
+            {
+                map[targetX] = sourceLeft + ScalePresentationCoordinate(targetX, map.Length, sourceWidth);
+            }
+        }
+
+        /// <summary>
+        /// Expands nearly full-width game apertures to the monitor width so both side borders remain visible.
+        /// </summary>
+        private void ExpandNearFullWidthAperture(ref int sourceLeft, ref int sourceWidth)
+        {
+            const int tolerance = 24;
+            if (sourceWidth >= PresentationViewportWidth ||
+                sourceWidth < PresentationViewportWidth - tolerance)
+            {
+                return;
+            }
+
+            sourceWidth = Math.Min(PresentationViewportWidth, _frameBuffer.Width - sourceLeft);
+        }
+
+        /// <summary>
+        /// Expands the global monitor aperture to include beam lines that open wider DDF windows mid-frame.
+        /// </summary>
+        private void ExpandHorizontalPresentationWindowFromLines(ref int sourceLeft, ref int sourceWidth, int sourceTop, int sourceHeight)
+        {
+            int observedLeft = sourceLeft;
+            int observedRight = sourceLeft + sourceWidth;
+            bool sawLineWindow = false;
+            for (int targetY = 0; targetY < PresentationViewportHeight; targetY++)
+            {
+                int sourceY = sourceTop + ScalePresentationCoordinate(targetY, PresentationViewportHeight, sourceHeight);
+                if (!_agnus.Bitplanes.TryGetLinePresentationSourceWindow(sourceY, out int lineLeft, out int lineWidth))
+                {
+                    continue;
+                }
+
+                int lineSourceLeft = PresentationCropLeft + lineLeft;
+                int lineSourceRight = lineSourceLeft + lineWidth;
+                observedLeft = Math.Min(observedLeft, lineSourceLeft);
+                observedRight = Math.Max(observedRight, lineSourceRight);
+                sawLineWindow = true;
+            }
+
+            if (!sawLineWindow)
+            {
+                return;
+            }
+
+            observedLeft = Math.Max(0, observedLeft);
+            observedRight = Math.Min(_frameBuffer.Width, observedRight);
+            if (observedRight <= observedLeft)
+            {
+                return;
+            }
+
+            sourceLeft = observedLeft;
+            sourceWidth = observedRight - observedLeft;
+        }
+
+        /// <summary>
+        /// Keeps almost full-height game apertures in a stable PAL monitor window instead of resampling them.
+        /// </summary>
+        private void ExpandNearFullHeightAperture(ref int sourceTop, ref int sourceHeight)
+        {
+            const int tolerance = 12;
+            if (sourceHeight >= PresentationViewportHeight ||
+                sourceHeight < PresentationViewportHeight - tolerance)
+            {
+                return;
+            }
+
+            int extra = PresentationViewportHeight - sourceHeight;
+            int requestedTop = sourceTop - (extra / 2);
+            sourceTop = Math.Max(0, Math.Min(requestedTop, _frameBuffer.Height - PresentationViewportHeight));
+            sourceHeight = PresentationViewportHeight;
+        }
+
+        /// <summary>
+        /// Keeps the bottom of near-full PAL overscan frames visible when artwork reaches the final beam lines.
+        /// </summary>
+        private void ExpandNearFullHeightToFrameEnd(ref int sourceTop, ref int sourceHeight)
+        {
+            const int maxTrailingRows = 8;
+            if (sourceHeight < PresentationViewportHeight)
+            {
+                return;
+            }
+
+            int trailingRows = _frameBuffer.Height - (sourceTop + sourceHeight);
+            if (trailingRows <= 0 || trailingRows > maxTrailingRows)
+            {
+                return;
+            }
+
+            sourceHeight = Math.Min(_frameBuffer.Height - sourceTop, sourceHeight + trailingRows);
+        }
+
+        /// <summary>
+        /// Hides extreme left PAL overscan while preserving the right edge selected by the game.
+        /// </summary>
+        private void ClampLeftPresentationAperture(ref int sourceLeft, ref int sourceWidth)
+        {
+            if (sourceLeft >= PresentationApertureMinLeft)
+            {
+                return;
+            }
+
+            int sourceRight = Math.Min(_frameBuffer.Width, sourceLeft + sourceWidth);
+            sourceLeft = Math.Min(PresentationApertureMinLeft, sourceRight - 1);
+            sourceWidth = Math.Max(1, sourceRight - sourceLeft);
         }
 
         /// <summary>
@@ -769,19 +1049,34 @@ namespace AmigaEmulator.Core
         }
 
         /// <summary>
-        /// Expands or crops the register-selected window to the fixed monitor viewport without content analysis.
+        /// Keeps a selected source window inside the internal framebuffer without changing its requested size.
         /// </summary>
-        private static void FitToPresentationViewport(ref int sourceStart, ref int sourceLength, int viewportLength, int frameBufferLength)
+        private static void ClampToFrameBuffer(ref int sourceStart, ref int sourceLength, int frameBufferLength)
         {
-            int targetLength = Math.Min(viewportLength, frameBufferLength);
-            if (sourceLength < targetLength)
+            sourceLength = Math.Max(1, Math.Min(sourceLength, frameBufferLength));
+            sourceStart = Math.Max(0, Math.Min(sourceStart, frameBufferLength - sourceLength));
+        }
+
+        /// <summary>
+        /// Keeps the horizontal monitor source inside the internal raster without cropping wide overscan.
+        /// </summary>
+        private void ClampHorizontalPresentationWindow(ref int sourceLeft, ref int sourceWidth)
+        {
+            if (sourceWidth > PresentationViewportWidth)
             {
-                int expandedStart = sourceStart - ((targetLength - sourceLength) / 2);
-                sourceStart = Math.Max(0, Math.Min(expandedStart, frameBufferLength - targetLength));
-                sourceLength = targetLength;
+                ClampToFrameBuffer(ref sourceLeft, ref sourceWidth, _frameBuffer.Width);
                 return;
             }
 
+            ClampToPresentationViewport(ref sourceLeft, ref sourceWidth, PresentationViewportWidth, _frameBuffer.Width);
+        }
+
+        /// <summary>
+        /// Crops oversized register-selected windows while preserving smaller game apertures for scaling.
+        /// </summary>
+        private static void ClampToPresentationViewport(ref int sourceStart, ref int sourceLength, int viewportLength, int frameBufferLength)
+        {
+            int targetLength = Math.Min(viewportLength, frameBufferLength);
             if (sourceLength > targetLength)
             {
                 int cropStart = sourceStart + ((sourceLength - targetLength) / 2);
@@ -790,7 +1085,20 @@ namespace AmigaEmulator.Core
                 return;
             }
 
-            sourceStart = Math.Max(0, Math.Min(sourceStart, frameBufferLength - targetLength));
+            sourceStart = Math.Max(0, Math.Min(sourceStart, frameBufferLength - sourceLength));
+        }
+
+        /// <summary>
+        /// Maps a destination presentation coordinate to a source coordinate while preserving both endpoints.
+        /// </summary>
+        private static int ScalePresentationCoordinate(int destination, int destinationSize, int sourceSize)
+        {
+            if (destinationSize <= 1 || sourceSize <= 1)
+            {
+                return 0;
+            }
+
+            return Math.Min(sourceSize - 1, (destination * (sourceSize - 1)) / (destinationSize - 1));
         }
 
         /// <summary>

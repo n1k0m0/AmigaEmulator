@@ -135,6 +135,25 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--profile-savestate-stability", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                int seconds = args.Length >= 3 && int.TryParse(args[2], out int parsedSeconds) && parsedSeconds > 0
+                    ? parsedSeconds
+                    : 120;
+                double sampleSeconds = args.Length >= 4 &&
+                    double.TryParse(args[3], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double parsedSampleSeconds) &&
+                    parsedSampleSeconds > 0.0
+                        ? parsedSampleSeconds
+                        : 5.0;
+                string profile = args.Length >= 5 && !args[4].StartsWith("--", StringComparison.Ordinal)
+                    ? args[4]
+                    : "fast";
+                string csvPath = ParseStringOption(args, "--csv", string.Empty);
+                RunSavestateStabilityProfile(savePath, seconds, sampleSeconds, profile, ParseSavestateModelArgument(args, 5, savePath), csvPath);
+                return;
+            }
+
             if (args != null && args.Length >= 1 && string.Equals(args[0], "--trace-machine", StringComparison.OrdinalIgnoreCase))
             {
                 int cycles = args.Length >= 2 && int.TryParse(args[1], out int parsedTraceCycles) && parsedTraceCycles > 0
@@ -258,6 +277,20 @@ namespace AmigaEmulator
                     : 0;
                 DumpSavestateFrame(savePath, imagePath, frames, ParseSavestateModelArgument(args, 4, savePath), true);
                 Console.WriteLine("Savestate raw frame written: " + Path.GetFullPath(imagePath));
+                return;
+            }
+
+            if (args != null && args.Length >= 1 && string.Equals(args[0], "--dump-savestate-raw-cycles", StringComparison.OrdinalIgnoreCase))
+            {
+                string savePath = args.Length >= 2 ? args[1] : SaveStateFile.GetSlotPath(UserDataPaths.GetSaveDirectory(), 0);
+                string imagePath = args.Length >= 3
+                    ? args[2]
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "amiga_savestate_raw_cycles.png");
+                int cycles = args.Length >= 4 && int.TryParse(args[3], out int parsedRawCycles) && parsedRawCycles >= 0
+                    ? parsedRawCycles
+                    : 0;
+                DumpSavestateRawCycles(savePath, imagePath, cycles, ParseSavestateModelArgument(args, 4, savePath));
+                Console.WriteLine("Savestate raw cycles frame written: " + Path.GetFullPath(imagePath));
                 return;
             }
 
@@ -1088,7 +1121,10 @@ namespace AmigaEmulator
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adf_matrix");
                 int limit = ParseIntOption(args, "--limit", 0);
                 AmigaModel modelFilter = HasOption(args, "--model") ? ParseModelArgument(args, 0) : null;
-                RunAdfTestMatrix(adfDirectory, cycles, outputDirectory, limit, modelFilter);
+                string inputProfile = ParseStringOption(args, "--input-profile", "none");
+                int inputCycle = ParseIntOption(args, "--input-cycle", 180000000);
+                int inputHoldCycles = ParseIntOption(args, "--input-hold-cycles", 400000);
+                RunAdfTestMatrix(adfDirectory, cycles, outputDirectory, limit, modelFilter, inputProfile, inputCycle, inputHoldCycles);
                 return;
             }
 
@@ -1660,6 +1696,12 @@ namespace AmigaEmulator
 
             using (var window = new AmigaWindow(AmigaModel.A500Pal, "Amiga Emulator"))
             {
+                string startupSavePath = ParseStringOption(args, "--gui-savestate", string.Empty);
+                if (!string.IsNullOrWhiteSpace(startupSavePath))
+                {
+                    window.TryLoadStartupSaveState(startupSavePath);
+                }
+
                 window.Run();
             }
         }
@@ -2180,6 +2222,212 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Runs a longer savestate speed and memory stability profile with periodic samples.
+        /// </summary>
+        private static void RunSavestateStabilityProfile(string savePath, int seconds, double sampleSeconds, string profile, AmigaModel model, string csvPath)
+        {
+            if (string.IsNullOrWhiteSpace(savePath) || !File.Exists(savePath))
+            {
+                Console.WriteLine("Savestate not found: " + savePath);
+                Environment.ExitCode = 2;
+                return;
+            }
+
+            AmigaAccuracyOptions accuracyOptions = ParseBenchmarkAccuracyOptions(profile);
+            AmigaModel activeModel = model ?? AmigaModel.PalA500;
+            int frameCycles = activeModel.ChipCyclesPerLine * activeModel.LinesPerFrame;
+            int sampleFrames = Math.Max(1, (int)Math.Round(activeModel.FrameRateHz * sampleSeconds));
+            var samples = new List<SavestateStabilitySample>();
+            string fullCsvPath = string.IsNullOrWhiteSpace(csvPath) ? string.Empty : Path.GetFullPath(csvPath);
+
+            using (var system = new AmigaSystem(activeModel, accuracyOptions))
+            {
+                SaveStateFile.Load(savePath, system);
+                RunFrames(system, 2);
+
+                StreamWriter writer = null;
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(fullCsvPath))
+                    {
+                        string directory = Path.GetDirectoryName(fullCsvPath);
+                        if (!string.IsNullOrWhiteSpace(directory))
+                        {
+                            Directory.CreateDirectory(directory);
+                        }
+
+                        writer = new StreamWriter(fullCsvPath, false, Encoding.UTF8);
+                        writer.WriteLine("sample,elapsed_seconds,frame_counter,sample_frames,sample_seconds,fps,host_speed_percent,gc_bytes,working_set_bytes,private_bytes,gc0,gc1,gc2");
+                    }
+
+                    Process process = Process.GetCurrentProcess();
+                    Stopwatch total = Stopwatch.StartNew();
+                    int sampleIndex = 0;
+                    Console.WriteLine("AMIGA SAVESTATE STABILITY PROFILE");
+                    Console.WriteLine("Profile=" + accuracyOptions.Name);
+                    Console.WriteLine("Model=" + activeModel.Name);
+                    Console.WriteLine("Save=" + Path.GetFullPath(savePath));
+                    Console.WriteLine("TargetSeconds=" + seconds);
+                    Console.WriteLine("SampleSeconds=" + sampleSeconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture));
+                    Console.WriteLine("SampleFrames=" + sampleFrames);
+
+                    while (total.Elapsed.TotalSeconds < seconds)
+                    {
+                        long frameBefore = system.FrameCounter;
+                        Stopwatch sampleStopwatch = Stopwatch.StartNew();
+                        system.RunChipCycles(frameCycles * sampleFrames);
+                        sampleStopwatch.Stop();
+
+                        process.Refresh();
+                        long frameAfter = system.FrameCounter;
+                        int framesAdvanced = (int)Math.Max(0, frameAfter - frameBefore);
+                        double elapsed = Math.Max(0.000001, sampleStopwatch.Elapsed.TotalSeconds);
+                        double fps = framesAdvanced / elapsed;
+                        double hostSpeedPercent = (fps / activeModel.FrameRateHz) * 100.0;
+                        var sample = new SavestateStabilitySample
+                        {
+                            Index = ++sampleIndex,
+                            ElapsedSeconds = total.Elapsed.TotalSeconds,
+                            FrameCounter = frameAfter,
+                            SampleFrames = framesAdvanced,
+                            SampleSeconds = elapsed,
+                            Fps = fps,
+                            HostSpeedPercent = hostSpeedPercent,
+                            GcBytes = GC.GetTotalMemory(false),
+                            WorkingSetBytes = process.WorkingSet64,
+                            PrivateBytes = process.PrivateMemorySize64,
+                            Gc0 = GC.CollectionCount(0),
+                            Gc1 = GC.CollectionCount(1),
+                            Gc2 = GC.CollectionCount(2)
+                        };
+                        samples.Add(sample);
+                        WriteSavestateStabilitySample(writer, sample);
+                        Console.WriteLine(string.Format(
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            "SAMPLE {0} elapsed={1:F1}s fps={2:F2} host={3:F1}% frame={4} gcMB={5:F1} privateMB={6:F1}",
+                            sample.Index,
+                            sample.ElapsedSeconds,
+                            sample.Fps,
+                            sample.HostSpeedPercent,
+                            sample.FrameCounter,
+                            sample.GcBytes / 1048576.0,
+                            sample.PrivateBytes / 1048576.0));
+                    }
+                }
+                finally
+                {
+                    if (writer != null)
+                    {
+                        writer.Dispose();
+                    }
+                }
+            }
+
+            PrintSavestateStabilitySummary(samples, activeModel, fullCsvPath);
+        }
+
+        /// <summary>
+        /// Writes one stability sample to the optional CSV file.
+        /// </summary>
+        private static void WriteSavestateStabilitySample(StreamWriter writer, SavestateStabilitySample sample)
+        {
+            if (writer == null)
+            {
+                return;
+            }
+
+            writer.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "{0},{1:F6},{2},{3},{4:F6},{5:F3},{6:F3},{7},{8},{9},{10},{11},{12}",
+                sample.Index,
+                sample.ElapsedSeconds,
+                sample.FrameCounter,
+                sample.SampleFrames,
+                sample.SampleSeconds,
+                sample.Fps,
+                sample.HostSpeedPercent,
+                sample.GcBytes,
+                sample.WorkingSetBytes,
+                sample.PrivateBytes,
+                sample.Gc0,
+                sample.Gc1,
+                sample.Gc2));
+            writer.Flush();
+        }
+
+        /// <summary>
+        /// Prints aggregate speed and memory stability numbers.
+        /// </summary>
+        private static void PrintSavestateStabilitySummary(List<SavestateStabilitySample> samples, AmigaModel model, string csvPath)
+        {
+            if (samples.Count == 0)
+            {
+                Console.WriteLine("No stability samples collected.");
+                Environment.ExitCode = 1;
+                return;
+            }
+
+            int warmupSkip = samples.Count > 2 ? 1 : 0;
+            double minFps = double.MaxValue;
+            double maxFps = 0.0;
+            double totalFps = 0.0;
+            for (int index = warmupSkip; index < samples.Count; index++)
+            {
+                SavestateStabilitySample sample = samples[index];
+                minFps = Math.Min(minFps, sample.Fps);
+                maxFps = Math.Max(maxFps, sample.Fps);
+                totalFps += sample.Fps;
+            }
+
+            int counted = Math.Max(1, samples.Count - warmupSkip);
+            double avgFps = totalFps / counted;
+            int segment = Math.Max(1, counted / 3);
+            double firstAvg = AverageSampleFps(samples, warmupSkip, segment);
+            double lastAvg = AverageSampleFps(samples, samples.Count - segment, segment);
+            SavestateStabilitySample first = samples[warmupSkip];
+            SavestateStabilitySample last = samples[samples.Count - 1];
+            double privateGrowthMb = (last.PrivateBytes - first.PrivateBytes) / 1048576.0;
+            double gcGrowthMb = (last.GcBytes - first.GcBytes) / 1048576.0;
+
+            Console.WriteLine("AMIGA SAVESTATE STABILITY SUMMARY");
+            Console.WriteLine("Samples=" + samples.Count);
+            Console.WriteLine("WarmupSamplesSkipped=" + warmupSkip);
+            Console.WriteLine("TargetFrameRate=" + model.FrameRateHz.ToString("F3", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("MinFPS=" + minFps.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("AvgFPS=" + avgFps.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("MaxFPS=" + maxFps.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("FirstSegmentAvgFPS=" + firstAvg.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("LastSegmentAvgFPS=" + lastAvg.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("PrivateBytesGrowthMB=" + privateGrowthMb.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            Console.WriteLine("GcBytesGrowthMB=" + gcGrowthMb.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+            if (!string.IsNullOrWhiteSpace(csvPath))
+            {
+                Console.WriteLine("Csv=" + csvPath);
+            }
+        }
+
+        /// <summary>
+        /// Averages FPS samples from a bounded slice.
+        /// </summary>
+        private static double AverageSampleFps(List<SavestateStabilitySample> samples, int start, int count)
+        {
+            int clampedStart = Math.Max(0, Math.Min(samples.Count, start));
+            int clampedEnd = Math.Max(clampedStart, Math.Min(samples.Count, clampedStart + count));
+            if (clampedEnd == clampedStart)
+            {
+                return 0.0;
+            }
+
+            double total = 0.0;
+            for (int index = clampedStart; index < clampedEnd; index++)
+            {
+                total += samples[index].Fps;
+            }
+
+            return total / (clampedEnd - clampedStart);
+        }
+
+        /// <summary>
         /// Runs Print Profile Line.
         /// </summary>
         private static void PrintProfileLine(string name, long ticks, AmigaSystemComponentProfile profile)
@@ -2254,6 +2502,29 @@ namespace AmigaEmulator
                 }
 
                 SaveFrameBuffer(rawFrameBuffer ? system.FrameBuffer : system.PresentedFrameBuffer, imagePath);
+                Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
+                Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
+                Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
+                Console.WriteLine("Blitter=busy:" + system.Agnus.Blitter.Busy + " pending:" + system.Agnus.Blitter.DmaPending);
+                Console.WriteLine("Presentation=" + system.GetPresentationDebugInfo());
+                DumpVideoRegisterSummary(system);
+            }
+        }
+
+        /// <summary>
+        /// Dumps the raw framebuffer after restoring a savestate and running an exact number of chip cycles.
+        /// </summary>
+        private static void DumpSavestateRawCycles(string savePath, string imagePath, int cyclesToRun, AmigaModel model)
+        {
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateNoTraceAccuracyOptions()))
+            {
+                SaveStateFile.Load(savePath, system);
+                if (cyclesToRun > 0)
+                {
+                    system.RunChipCycles(cyclesToRun);
+                }
+
+                SaveFrameBuffer(system.FrameBuffer, imagePath);
                 Console.WriteLine("CPU=" + system.GetCpuDebugInfo());
                 Console.WriteLine("Beam=" + system.GetBeamDebugInfo());
                 Console.WriteLine("DMA=" + system.GetDmaDebugInfo());
@@ -5371,7 +5642,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Runs the ADF Test Matrix routine.
         /// </summary>
-        private static void RunAdfTestMatrix(string adfDirectory, int cycles, string outputDirectory, int limit, AmigaModel modelFilter)
+        private static void RunAdfTestMatrix(string adfDirectory, int cycles, string outputDirectory, int limit, AmigaModel modelFilter, string inputProfile, int inputCycle, int inputHoldCycles)
         {
             if (string.IsNullOrWhiteSpace(adfDirectory) || !Directory.Exists(adfDirectory))
             {
@@ -5398,17 +5669,20 @@ namespace AmigaEmulator
                     AmigaModel.A500Pal512Slow512,
                     AmigaModel.A500Pal1MbChip
                 };
+            string normalizedInputProfile = NormalizeAdfMatrixInputProfile(inputProfile);
+            int clampedInputCycle = Math.Max(0, inputCycle);
+            int clampedInputHoldCycles = Math.Max(1, inputHoldCycles);
 
             using (var writer = new StreamWriter(csvPath, false, Encoding.UTF8))
             {
-                writer.WriteLine("adf,path,model,cycles,frame,pc,opcode,sr,category,image_activity,unique_colors,non_background_pixels,frame_hash,dominant_color,dominant_percent,edge_non_background_pixels,edge_non_background_percent,glitch_flags,df0,paula_disk,paula_audio,dmacon,intena,intreq,bplcon0,bplcon1,cop1lc,bpl1pt,bpl2pt,screenshot");
+                writer.WriteLine("adf,path,model,cycles,input_profile,input_cycle,input_hold_cycles,frame,pc,opcode,sr,category,image_activity,unique_colors,non_background_pixels,frame_hash,dominant_color,dominant_percent,edge_non_background_pixels,edge_non_background_percent,glitch_flags,df0,paula_disk,paula_audio,dmacon,intena,intreq,bplcon0,bplcon1,cop1lc,bpl1pt,bpl2pt,screenshot");
                 foreach (string adf in adfs)
                 {
                     foreach (AmigaModel model in models)
                     {
-                        AdfMatrixResult result = RunAdfMatrixCase(adf, adfRoot, model, cycles, outputDirectory);
+                        AdfMatrixResult result = RunAdfMatrixCase(adf, adfRoot, model, cycles, outputDirectory, normalizedInputProfile, clampedInputCycle, clampedInputHoldCycles);
                         writer.WriteLine(result.ToCsvLine());
-                        Console.WriteLine(result.AdfName + " | " + result.ModelName + " | " + result.Category + " | PC=$" + result.Pc.ToString("X6") + " | " + result.ImageActivity + " | hash=$" + result.FrameHash.ToString("X16") + " | " + result.GlitchFlags);
+                        Console.WriteLine(result.AdfName + " | " + result.ModelName + " | " + result.InputProfile + " | " + result.Category + " | PC=$" + result.Pc.ToString("X6") + " | " + result.ImageActivity + " | hash=$" + result.FrameHash.ToString("X16") + " | " + result.GlitchFlags);
                     }
                 }
             }
@@ -5419,7 +5693,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Runs the ADF Matrix Case routine.
         /// </summary>
-        private static AdfMatrixResult RunAdfMatrixCase(string adfPath, string adfRoot, AmigaModel model, int cycles, string outputDirectory)
+        private static AdfMatrixResult RunAdfMatrixCase(string adfPath, string adfRoot, AmigaModel model, int cycles, string outputDirectory, string inputProfile, int inputCycle, int inputHoldCycles)
         {
             using (var system = new AmigaSystem(model, AmigaAccuracyOptions.Fast.Clone()))
             {
@@ -5429,10 +5703,13 @@ namespace AmigaEmulator
                 }
 
                 system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
-                system.RunChipCycles(cycles);
+                RunAdfMatrixCycles(system, cycles, inputProfile, inputCycle, inputHoldCycles);
 
                 string adfName = Path.GetFileName(adfPath);
-                string imageName = SanitizeFileName(Path.GetFileNameWithoutExtension(adfPath)) + "_" + SanitizeFileName(GetMatrixModelKey(model)) + ".png";
+                string inputSuffix = string.Equals(inputProfile, "none", StringComparison.OrdinalIgnoreCase)
+                    ? string.Empty
+                    : "_" + SanitizeFileName(inputProfile);
+                string imageName = SanitizeFileName(Path.GetFileNameWithoutExtension(adfPath)) + "_" + SanitizeFileName(GetMatrixModelKey(model)) + inputSuffix + ".png";
                 string imagePath = Path.Combine(outputDirectory, imageName);
                 SaveFrame(system, imagePath);
 
@@ -5448,6 +5725,9 @@ namespace AmigaEmulator
                     AdfPath = MakeRelativePath(adfRoot, adfPath),
                     ModelName = model.Name,
                     Cycles = cycles,
+                    InputProfile = inputProfile,
+                    InputCycle = inputCycle,
+                    InputHoldCycles = inputHoldCycles,
                     Frame = system.FrameCounter,
                     Pc = system.Cpu.PC,
                     Opcode = system.Cpu.CurrentOpcode,
@@ -5549,6 +5829,7 @@ namespace AmigaEmulator
 
             double dominantPercent = pixels.Length > 0 ? (dominantPixels * 100.0) / pixels.Length : 100.0;
             double edgeNonBackgroundPercent = edgePixels > 0 ? (edgeNonBackground * 100.0) / edgePixels : 0.0;
+            bool readableMonochrome = IsReadableMonochromeFrame(colors.Count, nonBackground, dominantPercent, edgeNonBackgroundPercent);
             string activity;
             if (nonBackground < 16)
             {
@@ -5558,7 +5839,7 @@ namespace AmigaEmulator
             {
                 activity = "tiny";
             }
-            else if (colors.Count <= 2)
+            else if (colors.Count <= 2 && !readableMonochrome)
             {
                 activity = "mono";
             }
@@ -5579,6 +5860,17 @@ namespace AmigaEmulator
                 EdgeNonBackgroundPercent = edgeNonBackgroundPercent,
                 GlitchFlags = BuildGlitchFlags(activity, colors.Count, nonBackground, dominantPercent, edgeNonBackgroundPercent)
             };
+        }
+
+        /// <summary>
+        /// Detects valid monochrome text/menu screens without treating full-edge stripe patterns as visible gameplay.
+        /// </summary>
+        private static bool IsReadableMonochromeFrame(int uniqueColors, int nonBackgroundPixels, double dominantPercent, double edgeNonBackgroundPercent)
+        {
+            return uniqueColors <= 2 &&
+                nonBackgroundPixels >= 1000 &&
+                dominantPercent < 99.5 &&
+                edgeNonBackgroundPercent < 5.0;
         }
 
         /// <summary>
@@ -5608,12 +5900,13 @@ namespace AmigaEmulator
                 flags.Add("tiny-output");
             }
 
-            if (uniqueColors <= 2)
+            bool readableMonochrome = IsReadableMonochromeFrame(uniqueColors, nonBackgroundPixels, dominantPercent, edgeNonBackgroundPercent);
+            if (uniqueColors <= 2 && !readableMonochrome)
             {
                 flags.Add("low-entropy");
             }
 
-            if (dominantPercent >= 98.0)
+            if (dominantPercent >= 98.0 && !readableMonochrome)
             {
                 flags.Add("dominant-fill");
             }
@@ -5696,6 +5989,65 @@ namespace AmigaEmulator
         }
 
         /// <summary>
+        /// Provides one sampled row from a savestate stability profile.
+        /// </summary>
+        private sealed class SavestateStabilitySample
+        {
+            /// <summary>
+            /// Stores sample index.
+            /// </summary>
+            public int Index;
+            /// <summary>
+            /// Stores elapsed total profile seconds.
+            /// </summary>
+            public double ElapsedSeconds;
+            /// <summary>
+            /// Stores emulator frame counter after the sample.
+            /// </summary>
+            public long FrameCounter;
+            /// <summary>
+            /// Stores frames advanced in this sample.
+            /// </summary>
+            public int SampleFrames;
+            /// <summary>
+            /// Stores host seconds used by this sample.
+            /// </summary>
+            public double SampleSeconds;
+            /// <summary>
+            /// Stores measured emulator frames per host second.
+            /// </summary>
+            public double Fps;
+            /// <summary>
+            /// Stores measured host speed relative to the model frame rate.
+            /// </summary>
+            public double HostSpeedPercent;
+            /// <summary>
+            /// Stores managed heap bytes.
+            /// </summary>
+            public long GcBytes;
+            /// <summary>
+            /// Stores process working set bytes.
+            /// </summary>
+            public long WorkingSetBytes;
+            /// <summary>
+            /// Stores process private bytes.
+            /// </summary>
+            public long PrivateBytes;
+            /// <summary>
+            /// Stores gen0 collection count.
+            /// </summary>
+            public int Gc0;
+            /// <summary>
+            /// Stores gen1 collection count.
+            /// </summary>
+            public int Gc1;
+            /// <summary>
+            /// Stores gen2 collection count.
+            /// </summary>
+            public int Gc2;
+        }
+
+        /// <summary>
         /// Provides Frame Image Metrics functionality.
         /// </summary>
         private sealed class FrameImageMetrics
@@ -5759,6 +6111,18 @@ namespace AmigaEmulator
             /// Stores Cycles.
             /// </summary>
             public int Cycles;
+            /// <summary>
+            /// Stores the optional input profile used during the matrix run.
+            /// </summary>
+            public string InputProfile;
+            /// <summary>
+            /// Stores the cycle at which matrix input is injected.
+            /// </summary>
+            public int InputCycle;
+            /// <summary>
+            /// Stores how long the matrix input is held.
+            /// </summary>
+            public int InputHoldCycles;
             /// <summary>
             /// Stores Frame.
             /// </summary>
@@ -5875,6 +6239,9 @@ namespace AmigaEmulator
                     AdfPath,
                     ModelName,
                     Cycles.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    InputProfile,
+                    InputCycle.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    InputHoldCycles.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     Frame.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     "$" + Pc.ToString("X6"),
                     "$" + Opcode.ToString("X4"),
@@ -5955,12 +6322,11 @@ namespace AmigaEmulator
                 var registers = system.Agnus.CustomRegisters;
                 ushort bplcon0 = registers.ReadWord(0x100);
                 int planes = Math.Min(6, (bplcon0 >> 12) & 0x07);
+                bool hires = (bplcon0 & 0x8000) != 0;
                 ushort ddfStart = registers.ReadWord(0x092);
                 ushort ddfStop = registers.ReadWord(0x094);
-                int start = ddfStart == 0 ? 0x38 : ddfStart & 0x00FE;
-                int stop = ddfStop == 0 ? 0xD0 : ddfStop & 0x00FE;
-                int wordsPerLine = Math.Max(1, ((stop - start) / 8) + 1);
-                int width = Math.Min(system.FrameBuffer.Width, wordsPerLine * 16);
+                int wordsPerLine = CalculateDiagnosticBitplaneWordsPerLine(ddfStart, ddfStop, hires);
+                int width = Math.Min(system.FrameBuffer.Width, wordsPerLine * (hires ? 16 : 32));
                 int height = system.FrameBuffer.Height;
                 int oddModulo = (short)registers.ReadWord(0x108);
                 int evenModulo = (short)registers.ReadWord(0x10A);
@@ -5985,8 +6351,9 @@ namespace AmigaEmulator
                             int colorIndex = 0;
                             if (x < width)
                             {
-                                int wordIndex = x >> 4;
-                                int bit = 15 - (x & 0x0F);
+                                int bitplaneX = hires ? x : x >> 1;
+                                int wordIndex = bitplaneX >> 4;
+                                int bit = 15 - (bitplaneX & 0x0F);
                                 for (int plane = 0; plane < planes; plane++)
                                 {
                                     int modulo = (plane & 1) == 0 ? oddModulo : evenModulo;
@@ -6005,13 +6372,82 @@ namespace AmigaEmulator
 
                 Console.WriteLine(string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
-                    "Planes={0} WordsPerLine={1} BPL1=${2:X6} BPL2=${3:X6} MOD {4}/{5}",
+                    "Planes={0} Hires={1} WordsPerLine={2} BPL1=${3:X6} BPL2=${4:X6} MOD {5}/{6}",
                     planes,
+                    hires,
                     wordsPerLine,
                     pointers[0],
                     pointers[1],
                     oddModulo,
                     evenModulo));
+            }
+        }
+
+        /// <summary>
+        /// Normalizes an ADF matrix input profile name.
+        /// </summary>
+        private static string NormalizeAdfMatrixInputProfile(string inputProfile)
+        {
+            if (string.Equals(inputProfile, "fire", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(inputProfile, "mouse-fire", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(inputProfile, "joystick-fire", StringComparison.OrdinalIgnoreCase))
+            {
+                return inputProfile.ToLowerInvariant();
+            }
+
+            return "none";
+        }
+
+        /// <summary>
+        /// Runs a matrix case and optionally injects one generic control input pulse.
+        /// </summary>
+        private static void RunAdfMatrixCycles(AmigaSystem system, int cycles, string inputProfile, int inputCycle, int inputHoldCycles)
+        {
+            if (cycles <= 0)
+            {
+                return;
+            }
+
+            if (string.Equals(inputProfile, "none", StringComparison.OrdinalIgnoreCase))
+            {
+                system.RunChipCycles(cycles);
+                return;
+            }
+
+            int preCycles = Math.Min(cycles, Math.Max(0, inputCycle));
+            system.RunChipCycles(preCycles);
+            int remaining = cycles - preCycles;
+            if (remaining <= 0)
+            {
+                return;
+            }
+
+            SetAdfMatrixInput(system, inputProfile, true);
+            int heldCycles = Math.Min(remaining, Math.Max(1, inputHoldCycles));
+            system.RunChipCycles(heldCycles);
+            SetAdfMatrixInput(system, inputProfile, false);
+            remaining -= heldCycles;
+            if (remaining > 0)
+            {
+                system.RunChipCycles(remaining);
+            }
+        }
+
+        /// <summary>
+        /// Applies or releases a matrix input profile.
+        /// </summary>
+        private static void SetAdfMatrixInput(AmigaSystem system, string inputProfile, bool pressed)
+        {
+            if (string.Equals(inputProfile, "mouse-fire", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(inputProfile, "fire", StringComparison.OrdinalIgnoreCase))
+            {
+                system.Input.SetMouseButton(AmigaControlPort.Port0, AmigaJoystickButtons.Fire, pressed);
+            }
+
+            if (string.Equals(inputProfile, "joystick-fire", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(inputProfile, "fire", StringComparison.OrdinalIgnoreCase))
+            {
+                system.Input.SetJoystickButton(AmigaControlPort.Port1, AmigaJoystickButtons.Fire, pressed);
             }
         }
 
@@ -6035,12 +6471,11 @@ namespace AmigaEmulator
             var registers = system.Agnus.CustomRegisters;
             ushort bplcon0 = registers.ReadWord(0x100);
             int planes = Math.Min(6, (bplcon0 >> 12) & 0x07);
+            bool hires = (bplcon0 & 0x8000) != 0;
             ushort ddfStart = registers.ReadWord(0x092);
             ushort ddfStop = registers.ReadWord(0x094);
-            int start = ddfStart == 0 ? 0x38 : ddfStart & 0x00FE;
-            int stop = ddfStop == 0 ? 0xD0 : ddfStop & 0x00FE;
-            int wordsPerLine = Math.Max(1, ((stop - start) / 8) + 1);
-            int width = Math.Min(system.FrameBuffer.Width, wordsPerLine * 16);
+            int wordsPerLine = CalculateDiagnosticBitplaneWordsPerLine(ddfStart, ddfStop, hires);
+            int width = Math.Min(system.FrameBuffer.Width, wordsPerLine * (hires ? 16 : 32));
             int height = system.FrameBuffer.Height;
             int oddModulo = (short)registers.ReadWord(0x108);
             int evenModulo = (short)registers.ReadWord(0x10A);
@@ -6065,8 +6500,9 @@ namespace AmigaEmulator
                         int colorIndex = 0;
                         if (x < width)
                         {
-                            int wordIndex = x >> 4;
-                            int bit = 15 - (x & 0x0F);
+                            int bitplaneX = hires ? x : x >> 1;
+                            int wordIndex = bitplaneX >> 4;
+                            int bit = 15 - (bitplaneX & 0x0F);
                             for (int plane = 0; plane < planes; plane++)
                             {
                                 int modulo = (plane & 1) == 0 ? oddModulo : evenModulo;
@@ -6085,13 +6521,27 @@ namespace AmigaEmulator
 
             Console.WriteLine(string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
-                "Planes={0} WordsPerLine={1} BPL1=${2:X6} BPL2=${3:X6} MOD {4}/{5}",
+                "Planes={0} Hires={1} WordsPerLine={2} BPL1=${3:X6} BPL2=${4:X6} MOD {5}/{6}",
                 planes,
+                hires,
                 wordsPerLine,
                 pointers[0],
                 pointers[1],
                 oddModulo,
                 evenModulo));
+        }
+
+        /// <summary>
+        /// Calculates a diagnostic bitplane row width from DDF registers.
+        /// </summary>
+        private static int CalculateDiagnosticBitplaneWordsPerLine(ushort ddfStart, ushort ddfStop, bool hires)
+        {
+            int start = ddfStart == 0 ? 0x38 : ddfStart & 0x00FC;
+            int stop = ddfStop == 0 ? 0xD0 : ddfStop & 0x00FC;
+            int span = stop - start;
+            int fetchGroups = span < 0 ? 0 : ((span + 7) / 8) + 1;
+            int fetchStart = hires ? 4 : 8;
+            return Math.Max(1, fetchGroups * 8 / fetchStart);
         }
 
         /// <summary>
@@ -10085,6 +10535,22 @@ namespace AmigaEmulator
                     int.TryParse(args[index + 1], out int value))
                 {
                     return value;
+                }
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Parses a named string command-line option.
+        /// </summary>
+        private static string ParseStringOption(string[] args, string name, string defaultValue)
+        {
+            for (int index = 0; args != null && index < args.Length - 1; index++)
+            {
+                if (string.Equals(args[index], name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return args[index + 1];
                 }
             }
 

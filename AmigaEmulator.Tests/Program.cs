@@ -1,4 +1,4 @@
-/*
+﻿/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,6 +111,10 @@ namespace AmigaEmulator.Tests
             {
                 tests.AddRange(GoldenAdfTests.Build(options));
             }
+            if (options.IncludeLocalSiedlerGolden)
+            {
+                tests.AddRange(LocalSiedlerGoldenTests.Build(options));
+            }
             if (options.IncludeVAmigaTs)
             {
                 tests.AddRange(VAmigaTsTests.Build(options));
@@ -133,6 +137,19 @@ namespace AmigaEmulator.Tests
         /// Gets or sets Include ADF.
         /// </summary>
         public bool IncludeAdf { get; private set; }
+
+        /// <summary>
+        /// Enables chip-bus contention in external vAmigaTS and local savestate checks.
+        /// </summary>
+        public bool StrictBus { get; private set; }
+
+        public AmigaAccuracyOptions CreateExternalAccuracyOptions()
+        {
+            var accuracy = AmigaAccuracyOptions.Fast.Clone();
+            accuracy.StrictChipBusArbitration = StrictBus;
+            accuracy.Name = StrictBus ? "StrictNoTrace" : "Fast";
+            return accuracy;
+        }
         /// <summary>
         /// Gets or sets Include V Amiga Ts.
         /// </summary>
@@ -141,6 +158,14 @@ namespace AmigaEmulator.Tests
         /// Gets or sets Include Amiga Devtest.
         /// </summary>
         public bool IncludeAmigaDevtest { get; private set; }
+        /// <summary>
+        /// Gets or sets Include Local Siedler Golden.
+        /// </summary>
+        public bool IncludeLocalSiedlerGolden { get; private set; }
+        /// <summary>
+        /// Gets or sets Siedler Save Path.
+        /// </summary>
+        public string SiedlerSavePath { get; private set; }
         /// <summary>
         /// Gets or sets Amiga Devtest ADF path.
         /// </summary>
@@ -183,7 +208,11 @@ namespace AmigaEmulator.Tests
             for (int index = 0; args != null && index < args.Length; index++)
             {
                 string arg = args[index];
-                if (string.Equals(arg, "--include-adf", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(arg, "--strict-bus", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.StrictBus = true;
+                }
+                else if (string.Equals(arg, "--include-adf", StringComparison.OrdinalIgnoreCase))
                 {
                     options.IncludeAdf = true;
                 }
@@ -194,6 +223,10 @@ namespace AmigaEmulator.Tests
                 else if (string.Equals(arg, "--include-amiga-devtest", StringComparison.OrdinalIgnoreCase))
                 {
                     options.IncludeAmigaDevtest = true;
+                }
+                else if (string.Equals(arg, "--include-local-siedler-golden", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.IncludeLocalSiedlerGolden = true;
                 }
                 else if (string.Equals(arg, "--vamigats-all", StringComparison.OrdinalIgnoreCase))
                 {
@@ -222,6 +255,11 @@ namespace AmigaEmulator.Tests
                 {
                     options.AmigaDevtestAdfPath = args[++index];
                     options.IncludeAmigaDevtest = true;
+                }
+                else if (string.Equals(arg, "--siedler-save", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+                {
+                    options.SiedlerSavePath = args[++index];
+                    options.IncludeLocalSiedlerGolden = true;
                 }
                 else if (string.Equals(arg, "--amiga-devtest-cycles", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
                 {
@@ -341,12 +379,96 @@ namespace AmigaEmulator.Tests
             yield return SelfTest("Blitter", "existing blitter regression self-test", "Amiga HRM Blitter chapter; existing emulator regression suite", BlitterSelfTest.Run);
             yield return SelfTest("Copper", "existing copper regression self-test", "Amiga HRM Copper chapter; existing emulator regression suite", CopperSelfTest.Run);
             yield return SelfTest("CIA", "existing 8520 CIA regression self-test", "Amiga HRM Appendix F; existing emulator regression suite", CiaSelfTest.Run);
+            yield return new ChipTestCase("CIA/Serial", "output serial interrupt follows sixteen Timer-A underflows",
+                "Amiga HRM Appendix F SDR output at half the Timer-A underflow rate", TestSerialOutputTiming);
+            yield return new ChipTestCase("CIA/Serial", "buffered SDR write continues without restarting active output",
+                "Amiga HRM Appendix F double-buffered serial transmitter", TestSerialOutputBuffer);
+            yield return new ChipTestCase("CIA/Serial", "serial output resumes exactly across new and legacy savestates",
+                "CIA serial transfer state and compatibility with pre-output snapshots", TestSerialOutputSave);
             yield return SelfTest("Input", "existing keyboard/joystick/mouse regression self-test", "Amiga HRM input register descriptions; existing emulator regression suite", AmigaInputSelfTest.Run);
         }
 
         /// <summary>
         /// Runs Self Test.
         /// </summary>
+        private static Cia8520 CreateSerialOutput()
+        {
+            var cia = new Cia8520("CIA-A");
+            cia.WriteByte(0x0400, 1);
+            cia.WriteByte(0x0500, 0);
+            cia.WriteByte(0x0D00, 0x88);
+            cia.WriteByte(0x0E00, 0x41);
+            cia.WriteByte(0x0C00, 0xA5);
+            return cia;
+        }
+
+        private static void TestSerialOutputTiming()
+        {
+            var cia = CreateSerialOutput();
+            cia.QueueSerialInputByte(0x5A);
+            for (int i = 0; i < 15; i++) cia.Tick();
+            Check.Equal(0, cia.PeekByte(0x0D00) & 8, "No completion before eight CNT pulses.");
+            Check.Equal((byte)0xA5, cia.SerialData, "Incoming keyboard bytes must not overwrite SDR in output mode.");
+            cia.Tick();
+            Check.Equal(0x88, cia.ReadByte(0x0D00) & 0x88, "The final pulse must raise the masked serial interrupt.");
+            cia.WriteByte(0x0E00, 0x01);
+            for (int i = 0; i < 8; i++) cia.Tick();
+            Check.Equal((byte)0x5A, cia.SerialData, "Queued external input resumes after returning to input mode.");
+            Check.Equal(8, cia.ReadByte(0x0D00) & 8, "Received input has its own completion interrupt.");
+            cia = CreateSerialOutput();
+            cia.WriteByte(0x0E00, 0x40);
+            for (int i = 0; i < 100; i++) cia.Tick();
+            Check.Equal(0, cia.PeekByte(0x0D00) & 8, "A stopped Timer A cannot clock serial output.");
+        }
+
+        private static void TestSerialOutputBuffer()
+        {
+            var cia = CreateSerialOutput();
+            for (int i = 0; i < 5; i++) cia.Tick();
+            cia.WriteByte(0x0C00, 0x3C);
+            for (int i = 0; i < 10; i++) cia.Tick();
+            Check.Equal(0, cia.PeekByte(0x0D00) & 8, "SDR refill must not interrupt the current byte early.");
+            cia.Tick();
+            Check.Equal(8, cia.ReadByte(0x0D00) & 8, "First byte completes without restart.");
+            for (int i = 0; i < 15; i++) cia.Tick();
+            Check.Equal(0, cia.PeekByte(0x0D00) & 8, "Second byte requires another eight pulses.");
+            cia.Tick();
+            Check.Equal(8, cia.ReadByte(0x0D00) & 8, "Buffered byte completes automatically.");
+            for (int i = 0; i < 32; i++) cia.Tick();
+            Check.Equal(0, cia.PeekByte(0x0D00) & 8, "Idle transmitter does not generate repeated completion interrupts.");
+        }
+
+        private static void TestSerialOutputSave()
+        {
+            var cia = CreateSerialOutput();
+            for (int i = 0; i < 5; i++) cia.Tick();
+            using var stream = new MemoryStream();
+            using (var writer = new BinaryWriter(stream, Encoding.UTF8, true)) cia.SaveState(writer);
+            stream.Position = 0;
+            var restored = new Cia8520("CIA-A");
+            using (var reader = new BinaryReader(stream, Encoding.UTF8, true)) restored.LoadState(reader);
+            for (int i = 0; i < 10; i++) restored.Tick();
+            Check.Equal(0, restored.PeekByte(0x0D00) & 8, "Restoring must preserve the remaining clocks.");
+            restored.Tick();
+            Check.Equal(8, restored.ReadByte(0x0D00) & 8, "Restored completion occurs at the original boundary.");
+            stream.SetLength(0); stream.Position = 0;
+            cia = CreateSerialOutput();
+            using (var writer = new BinaryWriter(stream, Encoding.UTF8, true))
+                StateSerializer.WriteObjectFields(writer, cia, "_serialOutputHalfClocks", "_serialOutputBufferPending");
+            stream.Position = 0;
+            using (var reader = new BinaryReader(stream, Encoding.UTF8, true)) restored.LoadState(reader);
+            for (int i = 0; i < 16; i++) restored.Tick();
+            Check.Equal(8, restored.ReadByte(0x0D00) & 8, "Legacy output-mode snapshot must not remain permanently stuck.");
+            cia = CreateSerialOutput();
+            for (int i = 0; i < 5; i++) cia.Tick();
+            cia.Reset();
+            stream.SetLength(0); stream.Position = 0;
+            using (var writer = new BinaryWriter(stream, Encoding.UTF8, true)) cia.SaveState(writer);
+            using var freshStream = new MemoryStream();
+            using (var writer = new BinaryWriter(freshStream, Encoding.UTF8, true)) new Cia8520("CIA-A").SaveState(writer);
+            Check.True(stream.ToArray().SequenceEqual(freshStream.ToArray()), "Reset must clear pending serial output as completely as a fresh CIA.");
+        }
+
         private static ChipTestCase SelfTest(string category, string name, string source, Func<StringBuilder, int> run)
         {
             return new ChipTestCase(category, name, source, delegate
@@ -452,8 +574,8 @@ namespace AmigaEmulator.Tests
                 TestBeamLineAdvance);
             yield return new ChipTestCase(
                 "Agnus",
-                "production bitplane DMA fetches one plane word per chip cycle slot",
-                "Amiga HRM DMA slot diagrams and Denise bitplane prefetch grouping",
+                "production bitplane DMA hides incomplete fetch groups",
+                "Current lowres compatibility path; per-slot hardware fetch remains an open audit item",
                 TestProductionBitplaneDmaSplitFetch);
             yield return new ChipTestCase(
                 "Agnus",
@@ -525,7 +647,7 @@ namespace AmigaEmulator.Tests
             }
 
             agnus.Tick();
-            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $39 should fetch BPL2 in a two-plane display.");
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "Compact lowres slot $39 reserves BPL2 in a two-plane display.");
             Check.Equal(0, agnus.Bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "First split slot must not expose an incomplete two-plane fetch group.");
 
             for (int index = 0; index < 2; index++)
@@ -533,7 +655,7 @@ namespace AmigaEmulator.Tests
                 agnus.Tick();
             }
 
-            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "OCS lowres slot $3B should fetch BPL1 and complete the group.");
+            Check.Equal(DmaOwner.Bitplane, agnus.LastDmaSlot.Owner, "Compact lowres slot $3B completes BPL1 and complete the group.");
             Check.Equal(3, agnus.Bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "After both split slots commit, the first fetched pixel should remain visible after the OCS lowres fetch lead-in.");
         }
 
@@ -723,8 +845,8 @@ namespace AmigaEmulator.Tests
                 TestSplitBitplanePrefetchGroup);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "three-plane lowres DMA uses the compact OCS fetch group",
-                "OCS lowres screens with up to four bitplanes use the compact 4-cycle fetch group",
+                "three-plane lowres DMA uses the current compact fetch group",
+                "Current compatibility path for lowres screens with up to four planes",
                 TestThreePlaneLowresUsesCompactFetchGroup);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
@@ -734,8 +856,43 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "BPLCON1 applies odd and even scroll nibbles to the matching planes",
-                "Amiga HRM BPLCON1 lower nibble scrolls even planes and upper nibble scrolls odd planes",
+                "Amiga HRM BPLCON1 PF1/odd uses bits 0-3 and PF2/even uses bits 4-7",
                 TestBplcon1OddEvenScrollNibbles);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "BPLCON1 fine scroll keeps the shifted right edge visible",
+                "OCS bitplane shifter output extends past the raw DDF fetch width by the active BPLCON1 fine scroll",
+                TestBplcon1FineScrollExtendsRightEdge);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "mid-frame DDF change keeps per-line presentation apertures",
+                "Settlers-style bottom panels can widen DDF mid-frame without losing the stable playfield aperture",
+                TestMidFrameDdfChangeKeepsPerLinePresentationApertures);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "line-adaptive presentation keeps bottom panels horizontally registered",
+                "Settlers-style bottom panels must keep their widened right DDF edge aligned with the monitor edge",
+                TestLineAdaptivePresentationKeepsBottomPanelRegistered);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "oversized bottom panel includes widened left content edge",
+                "Settlers-style bottom panels must keep the negative left content visible without exposing fine-scroll blank lead-in",
+                TestOversizedBottomPanelIncludesWidenedLeftContentEdge);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "line tail renders the final widened DDF word",
+                "Settlers-style bottom panels need post-beam tail pixels after all line DMA data has arrived",
+                TestLineTailRendersFinalWidenedDdfWord);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "line tail renders right border color",
+                "Settlers-style wooden side frames use COLOR00 border pixels beyond the last normal beam sample",
+                TestLineTailRendersRightBorderColor);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "line lead-in renders the widened DDF left edge",
+                "Settlers-style bottom panels need left overscan pixels before the normal beam aperture",
+                TestLineLeadInRendersWidenedDdfLeftEdge);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "dual-playfield nonzero odd plane maps to playfield 2 color bank",
@@ -803,8 +960,8 @@ namespace AmigaEmulator.Tests
                 TestWideDdfOverscanReportsPresentationSourceWidth);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "wide PAL overscan is copied into a fixed monitor viewport",
-                "PAL overscan screens such as Settlers must not be vertically downsampled into the standard 640x256 buffer",
+                "wide PAL overscan uses the stable monitor viewport",
+                "PAL overscan screens such as Settlers must keep side-frame edges while avoiding vertical resampling",
                 TestWidePalOverscanUsesFixedMonitorViewport);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
@@ -818,19 +975,29 @@ namespace AmigaEmulator.Tests
                 TestVerticalDiwOverscanReportsPresentationSourceHeight);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "small vertical overscan crops instead of resampling HUD rows",
-                "PAL monitor presentation should avoid row-drop artifacts for two-line overscan screens",
+                "small vertical overscan keeps the game aperture",
+                "PAL monitor presentation should scale the register-selected display window without inventing border rows",
                 TestSmallVerticalOverscanCropsInsteadOfScaling);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "standard PAL black backgrounds are not letterbox-cropped",
-                "Black title-screen rows inside a normal 640x256 PAL display are scene content, not host letterbox bars",
+                "standard PAL black backgrounds stay inside the game aperture",
+                "Black title-screen rows inside a normal 640x256 PAL display are scene content once selected by DIW/DDF",
                 TestStandardPalBlackBackgroundIsNotLetterboxCropped);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "PAL vertical overscan crops to the fixed monitor viewport",
-                "Moderate vertical overscan at normal PAL width must use stable monitor geometry instead of content-cropping based on black rows",
+                "PAL vertical overscan keeps register-selected geometry",
+                "Moderate vertical overscan at normal PAL width must not use content-dependent side trimming",
                 TestPalVerticalOverscanKeepsRegisterSelectedSourceWindowStable);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "PAL aperture stays fixed when scene brightness changes",
+                "Display registers select geometry independently of black scene content",
+                TestPalApertureIgnoresSceneBrightness);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "PAL presentation preserves asymmetric dark scene edges",
+                "Host presentation must copy the selected aperture without content-based shifts",
+                TestPalPresentationPreservesDarkEdges);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "bitplane frame start invalidates previous-frame fetched rows",
@@ -838,19 +1005,19 @@ namespace AmigaEmulator.Tests
                 TestFrameStartInvalidatesFetchedRows);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "sparse top overscan artifacts are cleared from the presented frame",
-                "PAL monitor presentation should suppress isolated top-border transition noise",
-                TestSparseTopOverscanArtifactsAreCleared);
+                "sparse top-edge artwork survives frame presentation",
+                "Sparse scene content must not be erased as transition noise",
+                delegate { TestTopArtworkIsPreserved(8, 1); });
             yield return new ChipTestCase(
                 "Denise/Bitplane",
-                "wide sparse top overscan artifacts are cleared from the presented frame",
-                "PAL monitor presentation should suppress wider first-line transition noise without cropping artwork",
-                TestWideSparseTopOverscanArtifactsAreCleared);
+                "wide sparse top-edge artwork survives frame presentation",
+                "Wide sparse scene content must be preserved in the selected aperture",
+                delegate { TestTopArtworkIsPreserved(320, 4); });
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "dense top-edge artwork is preserved in the presented frame",
-                "PAL monitor presentation cleanup must not crop real title or HUD artwork",
-                TestDenseTopArtworkIsPreserved);
+                "PAL frame presentation must preserve dense title and HUD artwork",
+                delegate { TestTopArtworkIsPreserved(600, 10); });
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "wide horizontal overscan scales into the presented frame",
@@ -861,6 +1028,8 @@ namespace AmigaEmulator.Tests
                 "hires pixels are not duplicated like lowres pixels",
                 "Amiga HRM BPLCON0 HIRES mode outputs one bitplane bit per hires pixel",
                 TestHiresBitplanePixelsAreSingleWidth);
+            yield return new ChipTestCase("Denise/Bitplane", "hires DMA renders every bit without periodic missing word prefixes",
+                "Beam-ordered DMA word completion precedes shifter pixel output", TestHiresBeamOrderedDma);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "misaligned hires DDF fetches the complete OCS block",
@@ -871,6 +1040,8 @@ namespace AmigaEmulator.Tests
                 "HAM control codes modify the previous RGB component",
                 "Amiga HRM Hold-And-Modify color resolution for HAM6 screens",
                 TestHamControlCodesModifyPreviousColor);
+            yield return new ChipTestCase("Denise/Bitplane", "sprites cannot contaminate HAM color hold within or across render spans",
+                "HAM playfield color precedes sprite composition", TestHamIgnoresSpriteColor);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "six-plane EHB halves color bank 0 through plane 6",
@@ -881,6 +1052,17 @@ namespace AmigaEmulator.Tests
                 "CLXDAT latches playfield collision and clears on read",
                 "Amiga HRM CLXCON/CLXDAT read-clear collision registers",
                 TestClxdatReadClear);
+            yield return new ChipTestCase(
+                "Denise/Collision",
+                "CLXCON matches odd and even bitplane groups independently",
+                "Amiga Hardware Reference Manual, CLXCON/CLXDAT register summary",
+                TestCollisionPlayfieldGroups);
+            yield return new ChipTestCase(
+                "Denise/Collision",
+                "disabled collision planes match zero pixels and reset after read",
+                "Amiga Hardware Reference Manual: disabled planes cannot prevent collisions",
+                TestCollisionDisabledPlanes);
+
         }
 
         /// <summary>
@@ -946,7 +1128,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Verifies that 3-plane lowres displays use the compact OCS fetch slots required by split-screen game HUDs.
+        /// Verifies the current compact lowres fetch compatibility path for three-plane displays.
         /// </summary>
         private static void TestThreePlaneLowresUsesCompactFetchGroup()
         {
@@ -970,11 +1152,10 @@ namespace AmigaEmulator.Tests
 
             bitplanes.FetchDmaPlaneWord(0x39, BitplaneUnit.PalVisibleTop);
             bitplanes.FetchDmaPlaneWord(0x3A, BitplaneUnit.PalVisibleTop);
-            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "A 3-plane word must not render until all compact OCS fetch slots have arrived.");
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "A three-plane word remains hidden until the compatibility fetch group completes.");
             bitplanes.FetchDmaPlaneWord(0x3B, BitplaneUnit.PalVisibleTop);
-
-            Check.True(!bitplanes.IsPlaneFetchSlot(0x3F, BitplaneUnit.PalVisibleTop), "Slot $3F belongs to the 6-plane lowres sequence and must stay idle for a 3-plane compact group.");
-            Check.Equal(7, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "The completed 3-plane compact fetch group should render all three bitplane bits after the OCS lead-in.");
+            Check.True(!bitplanes.IsPlaneFetchSlot(0x3F, BitplaneUnit.PalVisibleTop), "The current compact path leaves slot $3F idle.");
+            Check.Equal(7, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "The completed group renders all three bits after the lead-in.");
         }
 
         /// <summary>
@@ -1021,7 +1202,362 @@ namespace AmigaEmulator.Tests
             bitplanes.NotifyCustomRegisterWordWrite(Bpl2dat, 0x8000);
             bitplanes.RefreshFromRegisters();
 
-            Check.Equal(2, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Upper BPLCON1 nibble should delay odd BPL1 while even BPL2 remains at the left edge.");
+            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Upper BPLCON1 nibble delays even BPL2; odd BPL1 stays at the left edge.");
+            registers.WriteWord(Bplcon1, 0x0001);
+            bitplanes.RefreshFromRegisters();
+            Check.Equal(2, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "Lower BPLCON1 nibble delays odd BPL1; even BPL2 stays at the left edge.");
+        }
+
+        /// <summary>
+        /// Verifies that BPLCON1 fine scroll does not clip the last shifted bitplane pixels.
+        /// </summary>
+        private static void TestBplcon1FineScrollExtendsRightEdge()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[32];
+            memory[19] = 0x0001;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & 31]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Bplcon1, 0x000F);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x1871);
+            registers.WriteWord(Diwstop, 0x10D1);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x00C8);
+            registers.WriteWord(Bpl1pth, 0x0000);
+            registers.WriteWord(Bpl1ptl, 0x0000);
+
+            for (int beamX = 0x30; beamX < 0xD0; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, BitplaneUnit.PalVisibleTop))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, BitplaneUnit.PalVisibleTop);
+                }
+            }
+
+            Check.Equal(1, bitplanes.RenderColorIndex(640, BitplaneUnit.PalVisibleTop), "The final shifted lowres bit must remain visible beyond the raw DDF fetch width.");
+            Check.Equal(1, bitplanes.RenderColorIndex(641, BitplaneUnit.PalVisibleTop), "Lowres pixels duplicate horizontally at the shifted right edge.");
+            Check.Equal(0, bitplanes.RenderColorIndex(642, BitplaneUnit.PalVisibleTop), "Fine-scroll extension must stop after the last shifted bitplane pixel.");
+        }
+
+        /// <summary>
+        /// Verifies that Siedler-style bottom-panel DDF changes are tracked per beam line.
+        /// </summary>
+        private static void TestMidFrameDdfChangeKeepsPerLinePresentationApertures()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, null);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Bplcon1, 0x00FF);
+            registers.WriteWord(Diwstrt, 0x1871);
+            registers.WriteWord(Diwstop, 0x10D1);
+            registers.WriteWord(Bplcon0, 0x6200);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x00C8);
+
+            bitplanes.RefreshFromRegisters();
+            bitplanes.ObservePresentationWindowForBeamLine(BitplaneUnit.PalVisibleTop);
+            Check.True(bitplanes.TryGetLinePresentationSourceWindow(BitplaneUnit.PalVisibleTop, out int playfieldLeft, out int playfieldWidth), "The playfield line should record its presentation aperture.");
+            Check.Equal(-32, playfieldLeft, "The 6-plane playfield starts at the expected left overscan position.");
+            Check.Equal(672, playfieldWidth, "The 6-plane playfield aperture should include BPLCON1 fine-scroll coverage.");
+
+            registers.WriteWord(Bplcon0, 0x4200);
+            registers.WriteWord(Diwstop, 0x31D1);
+            registers.WriteWord(Ddfstrt, 0x002C);
+            registers.WriteWord(Ddfstop, 0x00D1);
+
+            int panelBeamY = BitplaneUnit.PalVisibleTop + 236;
+            bitplanes.RefreshFromRegisters();
+            bitplanes.ObservePresentationWindowForBeamLine(panelBeamY);
+            Check.True(bitplanes.TryGetLinePresentationSourceWindow(panelBeamY, out int panelLeft, out int panelWidth), "The bottom-panel line should record its widened presentation aperture.");
+            Check.Equal(-48, panelLeft, "The 4-plane bottom panel starts further into left overscan.");
+            Check.Equal(734, panelWidth, "The 4-plane bottom panel should keep the shifted right edge selected by DDFSTOP and BPLCON1.");
+            Check.Equal(-48, bitplanes.FramePresentationSourceLeft, "The frame-wide aperture should include the widest observed left edge.");
+            Check.Equal(734, bitplanes.FramePresentationSourceWidth, "The frame-wide aperture should include the widest observed panel line.");
+        }
+
+        /// <summary>
+        /// Verifies that per-line presentation metadata keeps the widened right edge stable.
+        /// </summary>
+        private static void TestLineAdaptivePresentationKeepsBottomPanelRegistered()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                const int sourceLeft = 92;
+                const int sourceTop = 44;
+                const int sourceWidth = 722;
+                const int sourceHeight = 288;
+                const int topMarkerSourceX = 797;
+                const int panelMarkerSourceX = 813;
+                const int topTargetY = 16;
+                const int panelTargetY = 236;
+                const uint topMarker = 0xFFFF2222u;
+                const uint panelMarker = 0xFF22FF22u;
+                int topSourceY = sourceTop + topTargetY;
+                int panelSourceY = sourceTop + panelTargetY;
+
+                system.FrameBuffer.Clear(0xFF000000u);
+                system.PresentedFrameBuffer.Clear(0xFF000000u);
+                system.FrameBuffer.Pixels[(topSourceY * system.FrameBuffer.Width) + topMarkerSourceX] = topMarker;
+                system.FrameBuffer.Pixels[(panelSourceY * system.FrameBuffer.Width) + panelMarkerSourceX] = panelMarker;
+
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Bplcon1, 0x00FF);
+                registers.WriteWord(Diwstrt, 0x1871);
+                registers.WriteWord(Diwstop, 0x10D1);
+                registers.WriteWord(Bplcon0, 0x6200);
+                registers.WriteWord(Ddfstrt, 0x0030);
+                registers.WriteWord(Ddfstop, 0x00C8);
+                system.Agnus.Bitplanes.RefreshFromRegisters();
+                system.Agnus.Bitplanes.ObservePresentationWindowForBeamLine(topSourceY);
+                system.Agnus.Bitplanes.IncludeSpritePresentationWindowForBeamLine(topSourceY, -34, 704);
+
+                registers.WriteWord(Bplcon0, 0x4200);
+                registers.WriteWord(Diwstop, 0x31D1);
+                registers.WriteWord(Ddfstrt, 0x002C);
+                registers.WriteWord(Ddfstop, 0x00D1);
+                system.Agnus.Bitplanes.RefreshFromRegisters();
+                system.Agnus.Bitplanes.ObservePresentationWindowForBeamLine(panelSourceY);
+
+                MethodInfo copy = typeof(AmigaSystem).GetMethod("CopyLineAdaptivePresentationWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+                Check.True(copy != null, "Line-adaptive presentation copy method should exist.");
+                copy.Invoke(system, new object[] { sourceLeft, sourceTop, sourceWidth, sourceHeight });
+
+                // The same hardware X must stay fixed when the pointer crosses the panel seam.
+                const int spriteSourceX = 400;
+                const uint cursor = 0xFFFFFFFFu;
+                const uint behindCursor = 0xFF445566u;
+                foreach (int sourceY in new[] { topSourceY, panelSourceY })
+                {
+                    int index = sourceY * system.FrameBuffer.Width + spriteSourceX;
+                    system.FrameBuffer.Pixels[index] = cursor;
+                    system.FrameBuffer.RecordSpritePixel(index, behindCursor, cursor);
+                }
+                copy.Invoke(system, new object[] { sourceLeft, sourceTop, sourceWidth, sourceHeight });
+                int topCursorX = FindColorInPresentedRow(system, topTargetY, cursor);
+                int panelCursorX = FindColorInPresentedRow(system, panelTargetY, cursor);
+                Check.Equal(306, topCursorX, "The sprite uses the frame aperture origin at raw X94.");
+                Check.Equal(topCursorX, panelCursorX, "A hardware sprite must not jump sideways at the menu seam.");
+                Check.Equal(behindCursor, system.PresentedFrameBuffer.Pixels[panelTargetY * 704 + 290], "The old panel-relative cursor location must reveal its background without a duplicate pointer.");
+
+                int topX = FindColorInPresentedRow(system, topTargetY, topMarker);
+                int panelX = FindLastColorInPresentedRow(system, panelTargetY, panelMarker);
+                Check.True(topX >= 0, "Top marker should be visible after presentation copy.");
+                Check.True(panelX >= 0, "Bottom-panel marker should be visible after presentation copy.");
+                Check.True(Math.Abs(topX - panelX) <= 1, "The widened panel right edge must stay registered with the monitor edge. top=" + topX + " panel=" + panelX);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that Siedler-style oversized bottom panels keep their widened left content edge visible.
+        /// </summary>
+        private static void TestOversizedBottomPanelIncludesWidenedLeftContentEdge()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                const int sourceLeft = 92;
+                const int sourceTop = 44;
+                const int sourceWidth = 722;
+                const int sourceHeight = 288;
+                const int panelLeftSourceX = 110;
+                const int panelRightSourceX = 813;
+                const int panelTargetY = 236;
+                const uint leftMarker = 0xFF44AAFFu;
+                const uint rightMarker = 0xFFFFAA44u;
+                int panelSourceY = sourceTop + panelTargetY;
+
+                system.FrameBuffer.Clear(0xFF000000u);
+                system.PresentedFrameBuffer.Clear(0xFF000000u);
+                system.FrameBuffer.Pixels[(panelSourceY * system.FrameBuffer.Width) + panelLeftSourceX] = leftMarker;
+                system.FrameBuffer.Pixels[(panelSourceY * system.FrameBuffer.Width) + panelRightSourceX] = rightMarker;
+
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Bplcon1, 0x00FF);
+                registers.WriteWord(Diwstrt, 0x1871);
+                registers.WriteWord(Bplcon0, 0x4200);
+                registers.WriteWord(Diwstop, 0x31D1);
+                registers.WriteWord(Ddfstrt, 0x002C);
+                registers.WriteWord(Ddfstop, 0x00D1);
+                system.Agnus.Bitplanes.RefreshFromRegisters();
+                system.Agnus.Bitplanes.ObservePresentationWindowForBeamLine(panelSourceY);
+
+                MethodInfo copy = typeof(AmigaSystem).GetMethod("CopyLineAdaptivePresentationWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+                Check.True(copy != null, "Line-adaptive presentation copy method should exist.");
+                copy.Invoke(system, new object[] { sourceLeft, sourceTop, sourceWidth, sourceHeight });
+
+                int leftX = FindColorInPresentedRow(system, panelTargetY, leftMarker);
+                int rightX = FindLastColorInPresentedRow(system, panelTargetY, rightMarker);
+                Check.True(leftX >= 0 && leftX <= 1, "The bottom panel's widened left content edge should begin at the monitor edge. left=" + leftX);
+                Check.True(rightX >= system.PresentedFrameBuffer.Width - 2, "The widened bottom panel should keep its right edge visible. right=" + rightX);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that a widened DDF line renders pixels past the final normal beam sample.
+        /// </summary>
+        private static void TestLineTailRendersFinalWidenedDdfWord()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[0x1000];
+            const int panelBeamY = BitplaneUnit.PalVisibleTop + 236;
+            const int frameBufferXOffset = 128;
+            const int tailFrameX = 813;
+            const uint expectedColor = 0xFFFFFFFFu;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & (memory.Length - 1)]);
+            var sprites = new SpriteUnit(registers, address => 0);
+            var frameBuffer = new AmigaFrameBuffer(896, 312);
+            var denise = new Denise(frameBuffer, bitplanes, sprites, null, frameBufferXOffset, 0);
+
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Bplcon0, 0x4200);
+            registers.WriteWord(Bplcon1, 0x00FF);
+            registers.WriteWord(Diwstrt, 0x1871);
+            registers.WriteWord(Diwstop, 0x31D1);
+            registers.WriteWord(Ddfstrt, 0x002C);
+            registers.WriteWord(Ddfstop, 0x00D1);
+            registers.WriteWord(0x180 + (15u * 2u), 0x0FFF);
+            for (int plane = 0; plane < 4; plane++)
+            {
+                ushort pointer = (ushort)(plane * 0x100);
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), pointer);
+                memory[(pointer >> 1) + 21] = 0x0001;
+            }
+
+            frameBuffer.Clear(0xFF000000u);
+            bitplanes.RefreshFromRegisters();
+            bitplanes.ObservePresentationWindowForBeamLine(panelBeamY);
+            for (int beamX = 0; beamX < AmigaModel.A500Pal.ChipCyclesPerLine; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, panelBeamY))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, panelBeamY);
+                }
+            }
+
+            int row = (panelBeamY - BitplaneUnit.PalVisibleTop) * frameBuffer.Width;
+            Check.Equal(0xFF000000u, frameBuffer.Pixels[row + tailFrameX], "The tail pixel starts as untouched background.");
+            denise.FinishLineTail(new BeamTraceEntry { BeamX = AmigaModel.A500Pal.ChipCyclesPerLine - 1, BeamY = panelBeamY, Frame = 1 });
+            Check.Equal(expectedColor, frameBuffer.Pixels[row + tailFrameX], "The final widened DDF word should render beyond the last normal beam pixel.");
+        }
+
+        /// <summary>
+        /// Verifies that COLOR00 border pixels are rendered past the final normal beam sample.
+        /// </summary>
+        private static void TestLineTailRendersRightBorderColor()
+        {
+            var registers = new CustomRegisterMap();
+            const int frameBufferXOffset = 128;
+            const int beamY = BitplaneUnit.PalVisibleTop + 64;
+            const int borderFrameX = 813;
+            const uint expectedColor = 0xFFFFFFFFu;
+            var bitplanes = new BitplaneUnit(registers, address => 0);
+            var sprites = new SpriteUnit(registers, address => 0);
+            var frameBuffer = new AmigaFrameBuffer(896, 312);
+            var denise = new Denise(frameBuffer, bitplanes, sprites, null, frameBufferXOffset, 0);
+
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Bplcon0, 0x6200);
+            registers.WriteWord(Bplcon1, 0x00FF);
+            registers.WriteWord(Diwstrt, 0x1871);
+            registers.WriteWord(Diwstop, 0x10D1);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x00C8);
+            registers.WriteWord(Color00, 0x0FFF);
+
+            frameBuffer.Clear(0xFF000000u);
+            bitplanes.RefreshFromRegisters();
+            bitplanes.ObservePresentationWindowForBeamLine(beamY);
+
+            int row = (beamY - BitplaneUnit.PalVisibleTop) * frameBuffer.Width;
+            Check.Equal(0xFF000000u, frameBuffer.Pixels[row + borderFrameX], "The right border tail pixel starts as untouched background.");
+            denise.FinishLineTail(new BeamTraceEntry { BeamX = AmigaModel.A500Pal.ChipCyclesPerLine - 1, BeamY = beamY, Frame = 1 });
+            Check.Equal(expectedColor, frameBuffer.Pixels[row + borderFrameX], "COLOR00 should fill the right border tail beyond the final normal beam pixel.");
+        }
+
+        /// <summary>
+        /// Verifies that a widened DDF line renders pixels before the normal beam aperture.
+        /// </summary>
+        private static void TestLineLeadInRendersWidenedDdfLeftEdge()
+        {
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[0x1000];
+            const int panelBeamY = BitplaneUnit.PalVisibleTop + 236;
+            const int frameBufferXOffset = 128;
+            const int leadFrameX = 110;
+            const uint expectedColor = 0xFFFFFFFFu;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) & (memory.Length - 1)]);
+            var sprites = new SpriteUnit(registers, address => 0);
+            var frameBuffer = new AmigaFrameBuffer(896, 312);
+            var denise = new Denise(frameBuffer, bitplanes, sprites, null, frameBufferXOffset, 0);
+
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Bplcon0, 0x4200);
+            registers.WriteWord(Bplcon1, 0x00FF);
+            registers.WriteWord(Diwstrt, 0x1871);
+            registers.WriteWord(Diwstop, 0x31D1);
+            registers.WriteWord(Ddfstrt, 0x002C);
+            registers.WriteWord(Ddfstop, 0x00D1);
+            registers.WriteWord(0x180 + (15u * 2u), 0x0FFF);
+            for (int plane = 0; plane < 4; plane++)
+            {
+                ushort pointer = (ushort)(plane * 0x100);
+                registers.WriteWord((uint)(Bpl1pth + (plane * 4)), 0x0000);
+                registers.WriteWord((uint)(Bpl1ptl + (plane * 4)), pointer);
+                memory[pointer >> 1] = 0x8000;
+            }
+
+            frameBuffer.Clear(0xFF000000u);
+            bitplanes.RefreshFromRegisters();
+            bitplanes.ObservePresentationWindowForBeamLine(panelBeamY);
+            for (int beamX = 0; beamX < AmigaModel.A500Pal.ChipCyclesPerLine; beamX++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(beamX, panelBeamY))
+                {
+                    bitplanes.FetchDmaPlaneWord(beamX, panelBeamY);
+                }
+            }
+
+            int row = (panelBeamY - BitplaneUnit.PalVisibleTop) * frameBuffer.Width;
+            Check.Equal(0xFF000000u, frameBuffer.Pixels[row + leadFrameX], "The left lead-in pixel starts as untouched background.");
+            denise.FinishLineTail(new BeamTraceEntry { BeamX = AmigaModel.A500Pal.ChipCyclesPerLine - 1, BeamY = panelBeamY, Frame = 1 });
+            Check.Equal(expectedColor, frameBuffer.Pixels[row + leadFrameX], "The widened DDF left edge should render before the normal beam aperture.");
+        }
+
+        /// <summary>
+        /// Finds one ARGB color in a presented framebuffer row.
+        /// </summary>
+        private static int FindColorInPresentedRow(AmigaSystem system, int y, uint color)
+        {
+            int row = y * system.PresentedFrameBuffer.Width;
+            for (int x = 0; x < system.PresentedFrameBuffer.Width; x++)
+            {
+                if (system.PresentedFrameBuffer.Pixels[row + x] == color)
+                {
+                    return x;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Finds the last occurrence of one ARGB color in a presented framebuffer row.
+        /// </summary>
+        private static int FindLastColorInPresentedRow(AmigaSystem system, int y, uint color)
+        {
+            int row = y * system.PresentedFrameBuffer.Width;
+            for (int x = system.PresentedFrameBuffer.Width - 1; x >= 0; x--)
+            {
+                if (system.PresentedFrameBuffer.Pixels[row + x] == color)
+                {
+                    return x;
+                }
+            }
+
+            return -1;
         }
 
         /// <summary>
@@ -1427,7 +1963,7 @@ namespace AmigaEmulator.Tests
 
                 string info = system.GetPresentationDebugInfo();
                 Check.True(info.IndexOf("presented:704x288", StringComparison.Ordinal) >= 0, "PAL monitor presentation should use the fixed overscan viewport. " + info);
-                Check.True(info.IndexOf("source:84,21+704x288", StringComparison.Ordinal) >= 0, "Wide PAL overscan should be copied with border rows into the fixed monitor viewport. " + info);
+                Check.True(info.IndexOf("source:92,21+704x288", StringComparison.Ordinal) >= 0, "Wide PAL overscan should preserve both side-frame edges in a stable full-height monitor aperture. " + info);
             }
         }
 
@@ -1445,7 +1981,7 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Ddfstrt, 0x003C);
             registers.WriteWord(Ddfstop, 0x00D4);
 
-            Check.Equal(0, bitplanes.PresentationSourceLeft, "A standard hires DDF start at $3C is the normal PAL left edge.");
+            Check.Equal(4, bitplanes.PresentationSourceLeft, "A standard hires DDF start includes the DMA-to-shifter lead-in.");
             Check.Equal(640, bitplanes.PresentationSourceWidth, "A standard $3C..$D4 hires fetch should map directly to the stable PAL presentation width.");
         }
 
@@ -1468,7 +2004,7 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Verifies that tiny vertical overscan differences are cropped rather than vertically resampled.
+        /// Verifies that tiny vertical overscan differences keep the register-selected aperture.
         /// </summary>
         private static void TestSmallVerticalOverscanCropsInsteadOfScaling()
         {
@@ -1483,7 +2019,7 @@ namespace AmigaEmulator.Tests
                 registers.WriteWord(Ddfstop, 0x00D0);
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:100,24+704x288", StringComparison.Ordinal) >= 0, "Two-line vertical overscan should fit the stable PAL monitor viewport instead of scaling. " + info);
+                Check.True(info.IndexOf("source:132,44+640x256", StringComparison.Ordinal) >= 0, "Two-line vertical overscan should keep the game aperture instead of adding monitor border rows. " + info);
             }
         }
 
@@ -1511,7 +2047,7 @@ namespace AmigaEmulator.Tests
                 }
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:100,24+704x288", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens must preserve black background rows inside the stable monitor viewport. " + info);
+                Check.True(info.IndexOf("source:132,44+640x256", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens should present the register-selected game aperture without adding host letterbox rows. " + info);
             }
         }
 
@@ -1540,7 +2076,64 @@ namespace AmigaEmulator.Tests
                 }
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:100,14+704x288", StringComparison.Ordinal) >= 0, "Moderate normal-width PAL overscan should crop to the fixed monitor viewport instead of moving when black rows change. " + info);
+                Check.True(info.IndexOf("source:132,14+640x288", StringComparison.Ordinal) >= 0, "Moderate normal-width PAL overscan should keep register-selected vertical geometry without content-based side trimming. " + info);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that scene brightness cannot change the register-selected aperture.
+        /// </summary>
+        private static void TestPalApertureIgnoresSceneBrightness()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                CustomRegisterMap registers = system.Agnus.CustomRegisters;
+                registers.WriteWord(Bplcon0, 0x4302);
+                registers.WriteWord(Dmacon, 0x8300);
+                registers.WriteWord(Diwstrt, 0x0581);
+                registers.WriteWord(Diwstop, 0x40C1);
+                registers.WriteWord(Ddfstrt, 0x0038);
+                registers.WriteWord(Ddfstop, 0x00D0);
+                system.FrameBuffer.Clear(0xFFFFFFFFu);
+                string brightGeometry = system.GetPresentationDebugInfo();
+                for (int y = 0; y < 38; y++)
+                {
+                    Array.Fill(system.FrameBuffer.Pixels, 0xFF000000u, y * system.FrameBuffer.Width, system.FrameBuffer.Width);
+                }
+                Check.Equal(brightGeometry, system.GetPresentationDebugInfo(), "Black scene rows must not change the register-selected aperture.");
+            }
+        }
+
+        private static void TestPalPresentationPreservesDarkEdges()
+        {
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            {
+                const int left = 132;
+                const int top = 14;
+                const int width = 640;
+                const int height = 288;
+                MethodInfo copy = typeof(AmigaSystem).GetMethod("CopyPresentationWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+                Check.True(copy != null, "Presentation copy method should exist.");
+                var expected = new AmigaFrameBuffer(704, 288);
+                for (int edge = 0; edge < 3; edge++)
+                {
+                    system.FrameBuffer.Clear(0xFF334455u);
+                    for (int y = top; y < top + height; y++)
+                    {
+                        for (int x = left; x < left + width; x++)
+                        {
+                            if ((edge == 0 && x < left + 32) ||
+                                (edge == 1 && x >= left + width - 32) ||
+                                (edge == 2 && y >= top + height - 16))
+                            {
+                                system.FrameBuffer.Pixels[y * system.FrameBuffer.Width + x] = 0xFF000000u;
+                            }
+                        }
+                    }
+                    expected.CopyScaledWindowFrom(system.FrameBuffer, left, top, width, height);
+                    copy.Invoke(system, new object[] { left, top, width, height });
+                    Check.True(expected.Pixels.SequenceEqual(system.PresentedFrameBuffer.Pixels), "Dark scene edge " + edge + " must retain its width and position.");
+                }
             }
         }
 
@@ -1574,81 +2167,37 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Verifies that isolated top-border transition pixels are hidden before presentation.
+        /// Exercises the end-of-frame path with sparse and dense scene artwork near the top edge.
         /// </summary>
-        private static void TestSparseTopOverscanArtifactsAreCleared()
+        private static void TestTopArtworkIsPreserved(int artworkWidth, int artworkHeight)
         {
-            var frame = new AmigaFrameBuffer(640, 256);
-            frame.Clear(0xFF002288);
-            for (int y = 0; y < 10; y++)
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
             {
-                for (int x = 0; x < 16; x++)
+                int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
+                system.RunChipCycles(frameCycles - 1);
+                system.FrameBuffer.Clear(0xFF000000u);
+                MethodInfo aperture = typeof(AmigaSystem).GetMethod("GetPresentationSourceWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+                Check.True(aperture != null, "Register-selected aperture method should exist.");
+                object[] geometry = { 0, 0, 0, 0 };
+                aperture.Invoke(system, geometry);
+                int left = (int)geometry[0];
+                int top = (int)geometry[1];
+                int width = (int)geometry[2];
+                int height = (int)geometry[3];
+                for (int y = top + 4; y < top + 4 + artworkHeight; y++)
                 {
-                    frame.SetPixel(x, y, 0xFF000000);
+                    for (int x = left + 16; x < left + 16 + artworkWidth; x++)
+                    {
+                        system.FrameBuffer.SetPixel(x, y, 0xFF4422EEu);
+                    }
                 }
-
-                for (int x = 184; x < 192; x++)
-                {
-                    frame.SetPixel(x, y, 0xFF00CCEE);
-                }
+                var expected = new AmigaFrameBuffer(704, 288);
+                expected.CopyScaledWindowFrom(system.FrameBuffer, left, top, width, height);
+                int expectedPixels = expected.Pixels.Count(color => color == 0xFF4422EEu);
+                Check.True(expectedPixels > 0, "Top artwork must be inside the aperture.");
+                system.RunChipCycles(1);
+                Check.Equal(expectedPixels, system.PresentedFrameBuffer.Pixels.Count(color => color == 0xFF4422EEu), "End-of-frame presentation must preserve all top artwork pixels.");
             }
-
-            frame.ClearSparseTopBorderArtifacts(10, 512);
-
-            for (int y = 0; y < 10; y++)
-            {
-                Check.Equal(0xFF002288u, frame.Pixels[y * frame.Width], "Sparse top-border cleanup should use the dominant border color, not the left gutter pixel.");
-                for (int x = 184; x < 192; x++)
-                {
-                    Check.Equal(0xFF002288u, frame.Pixels[(y * frame.Width) + x], "Sparse top-border artifact pixel should be restored to COLOR00.");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Verifies that wider first-line transition noise is still treated as border garbage.
-        /// </summary>
-        private static void TestWideSparseTopOverscanArtifactsAreCleared()
-        {
-            var frame = new AmigaFrameBuffer(640, 256);
-            frame.Clear(0xFF0060AA);
-            for (int y = 0; y < 10; y++)
-            {
-                for (int x = 0; x < 360; x++)
-                {
-                    frame.SetPixel(x, y, (x & 1) == 0 ? 0xFFFFFFFFu : 0xFF000000u);
-                }
-            }
-
-            frame.ClearSparseTopBorderArtifacts(24, 6000);
-
-            for (int y = 0; y < 10; y++)
-            {
-                for (int x = 0; x < 360; x++)
-                {
-                    Check.Equal(0xFF0060AAu, frame.Pixels[(y * frame.Width) + x], "Wide sparse top-border transition pixels should be restored to the dominant border color.");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Verifies that real top-edge artwork is not mistaken for sparse overscan noise.
-        /// </summary>
-        private static void TestDenseTopArtworkIsPreserved()
-        {
-            var frame = new AmigaFrameBuffer(640, 256);
-            frame.Clear(0xFFEE8800);
-            for (int y = 0; y < 10; y++)
-            {
-                for (int x = 16; x < 640; x++)
-                {
-                    frame.SetPixel(x, y, 0xFF4422EE);
-                }
-            }
-
-            frame.ClearSparseTopBorderArtifacts(24, 6000);
-
-            Check.Equal(0xFF4422EEu, frame.Pixels[(5 * frame.Width) + 320], "Dense top-edge artwork should survive sparse overscan cleanup.");
         }
 
         /// <summary>
@@ -1669,6 +2218,29 @@ namespace AmigaEmulator.Tests
         /// <summary>
         /// Verifies that HIRES mode consumes one bitplane bit per hires pixel.
         /// </summary>
+        private static void TestHiresBeamOrderedDma()
+        {
+            var registers = new CustomRegisterMap();
+            var bitplanes = new BitplaneUnit(registers, address => address < 512 ? (ushort)0xFFFF : (ushort)0);
+            var frame = new AmigaFrameBuffer(704, 256);
+            var denise = new Denise(frame, bitplanes, new SpriteUnit(registers, null));
+            registers.WriteWord(Bplcon0, 0xA000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C00);
+            registers.WriteWord(Diwstop, 0x2DFF);
+            registers.WriteWord(Ddfstrt, 0x003C);
+            registers.WriteWord(Ddfstop, 0x00D4);
+            registers.WriteWord(Bpl2ptl, 512);
+            registers.WriteWord(Color01, 0x0FFF);
+            for (int x = 0; x < 227; x++)
+            {
+                if (bitplanes.IsPlaneFetchSlot(x, 44)) bitplanes.FetchDmaPlaneWord(x, 44);
+                denise.Tick(new BeamTraceEntry { BeamX = x, BeamY = 44 });
+            }
+            for (int x = 4; x < 644; x++)
+                Check.Equal(0xFFFFFFFFu, frame.Pixels[x], "Hires DMA must not lose the leading bits of successive words at X=" + x);
+        }
+
         private static void TestHiresBitplanePixelsAreSingleWidth()
         {
             var registers = new CustomRegisterMap();
@@ -1686,8 +2258,8 @@ namespace AmigaEmulator.Tests
 
             bitplanes.FetchDmaWords(0x3C, BitplaneUnit.PalVisibleTop);
 
-            Check.Equal(1, bitplanes.RenderColorIndex(0, BitplaneUnit.PalVisibleTop), "HIRES bit 15 should affect only the first hires pixel.");
-            Check.Equal(0, bitplanes.RenderColorIndex(1, BitplaneUnit.PalVisibleTop), "HIRES must not duplicate the first bit into the second pixel.");
+            Check.Equal(1, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop), "HIRES bit 15 should affect only the first hires pixel.");
+            Check.Equal(0, bitplanes.RenderColorIndex(5, BitplaneUnit.PalVisibleTop), "HIRES must not duplicate the first bit into the second pixel.");
         }
 
         /// <summary>
@@ -1718,12 +2290,45 @@ namespace AmigaEmulator.Tests
                 }
             }
 
-            Check.Equal(1, bitplanes.RenderColorIndex(639, BitplaneUnit.PalVisibleTop), "The final word of a $3C..$D0 two-plane hires fetch must not be dropped.");
+            Check.Equal(1, bitplanes.RenderColorIndex(643, BitplaneUnit.PalVisibleTop), "The final word of a $3C..$D0 two-plane hires fetch must not be dropped.");
         }
 
         /// <summary>
         /// Verifies HAM6 base colors and component modify operations.
         /// </summary>
+        private static void TestHamIgnoresSpriteColor()
+        {
+            foreach (int coveredPixels in new[] { 1, 2 })
+            {
+                var registers = new CustomRegisterMap();
+                var bitplanes = new BitplaneUnit(registers, null);
+                var frame = new AmigaFrameBuffer(640, 256);
+                var sprites = new SpriteUnit(registers, null);
+                var denise = new Denise(frame, bitplanes, sprites);
+                registers.WriteWord(Bplcon0, 0x6800);
+                registers.WriteWord(Bplcon2, 0x0038);
+                registers.WriteWord(Color01, 0x0F00);
+                registers.WriteWord(0x1A2, 0x00F0);
+                for (int plane = 0; plane < 6; plane++)
+                {
+                    ushort bits = 0;
+                    for (int pixel = 0; pixel < 4; pixel++)
+                    {
+                        int code = pixel < coveredPixels ? 1 : 0x1A;
+                        bits |= (ushort)(((code >> plane) & 1) << (15 - pixel));
+                    }
+                    bitplanes.NotifyCustomRegisterWordWrite(0x110u + (uint)plane * 2, bits);
+                }
+                registers.WriteWord(0x140, 0x2C40);
+                registers.WriteWord(0x142, 0x2D00);
+                registers.WriteWord(0x144, coveredPixels == 1 ? (ushort)0x8000 : (ushort)0xC000);
+                denise.Tick(new BeamTraceEntry { BeamX = 0x3E, BeamY = 44 });
+                denise.Tick(new BeamTraceEntry { BeamX = 0x3F, BeamY = 44 });
+                Check.Equal(0xFF00FF00u, frame.Pixels[0], "The sprite must cover the red palette pixel.");
+                Check.Equal(0xFFFF00AAu, frame.Pixels[coveredPixels * 2], "HAM blue modification must retain playfield red, independently of the green sprite.");
+            }
+        }
+
         private static void TestHamControlCodesModifyPreviousColor()
         {
             var registers = new CustomRegisterMap();
@@ -1757,6 +2362,29 @@ namespace AmigaEmulator.Tests
         /// <summary>
         /// Verifies CLXDAT playfield collision latch and clear-on-read semantics.
         /// </summary>
+        private static void TestCollisionPlayfieldGroups()
+        {
+            var collisions = new CollisionUnit { Control = 0x00C1 };
+            collisions.ObservePixel(0x03, 0x01);
+            Check.Equal(0x0002, collisions.ReadAndClear(), "BPL2 mismatch must not prevent the matched odd playfield from colliding with sprite 0.");
+            collisions.ObservePixel(0x01, 0x01);
+            Check.Equal(0x0023, collisions.ReadAndClear(), "BPL2 zero must satisfy its zero-match collision while BPL1 satisfies the odd playfield match.");
+        }
+
+        private static void TestCollisionDisabledPlanes()
+        {
+            var collisions = new CollisionUnit { Control = 0x003F };
+            collisions.ObservePixel(0, 0);
+            Check.Equal(0x0001, collisions.ReadAndClear(), "Disabled bitplanes must always match, even on zero pixels and with nonzero match values.");
+            collisions.Control = 0xF000;
+            collisions.ObservePixel(0, 0xFF);
+            Check.True(collisions.IsSaturated, "All included sprite pairs and disabled planes must latch all collision bits.");
+            Check.Equal(0x7FFF, collisions.ReadAndClear(), "Bit 15 is unused; all remaining collision bits should be set.");
+            Check.True(!collisions.IsSaturated, "Reading CLXDAT must re-enable collision observation.");
+            collisions.ObservePixel(0, 0x01);
+            Check.Equal(0x0023, collisions.ReadAndClear(), "After read-clear, sprite 0 must collide with both unmasked playfields again.");
+        }
+
         private static void TestClxdatReadClear()
         {
             var registers = new CustomRegisterMap();
@@ -1859,11 +2487,99 @@ namespace AmigaEmulator.Tests
                 "sprite POS write does not move stale line data",
                 "Amiga HRM sprite data latch and position register timing",
                 TestSpritePositionWriteDoesNotMoveStaleLineData);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite presentation aperture preserves the full latched word",
+                "SPRxPOS/CTL and the 16 lowres pixel latch determine sprite geometry",
+                TestSpritePresentationWindow);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "sprite border tail survives beyond the bitplane and beam raster",
+                "Sprite registers select a right border beyond the final regular beam pixel",
+                TestSpriteBorderTail);
+            yield return new ChipTestCase(
+                "Denise/Sprite",
+                "moving pointer cannot resize the attached wooden frame",
+                "Independent sprites do not select the frame presentation aperture",
+                TestMovingSpriteKeepsFrameWindow);
+
+
         }
 
         /// <summary>
         /// Runs Test Direct Sprite Register Rendering.
         /// </summary>
+        private static void TestSpriteBorderTail()
+        {
+            var registers = new CustomRegisterMap();
+            var frame = new AmigaFrameBuffer(896, 312);
+            var bitplanes = new BitplaneUnit(registers, null);
+            var sprites = new SpriteUnit(registers, null);
+            var denise = new Denise(frame, bitplanes, sprites, null, 128, BitplaneUnit.PalVisibleTop);
+            registers.WriteWord(0x100, 0x1000);
+            registers.WriteWord(0x096, 0x8300);
+            registers.WriteWord(0x08E, 0x2C81);
+            registers.WriteWord(0x090, 0x2D81);
+            registers.WriteWord(0x092, 0x0038);
+            registers.WriteWord(0x094, 0x00D0);
+            registers.WriteWord(Spr0pos, 0x2CDF);
+            registers.WriteWord(Spr0ctl, 0x2D01);
+            registers.WriteWord(Spr0data, 0x0001);
+            registers.WriteWord(Spr0datb, 0x0000);
+            registers.WriteWord(0x1A2, 0x00F0);
+            bitplanes.RefreshFromRegisters();
+            bitplanes.ObservePresentationWindowForBeamLine(BitplaneUnit.PalVisibleTop);
+            denise.Tick(new BeamTraceEntry { BeamX = 0x3E, BeamY = BitplaneUnit.PalVisibleTop });
+            var beam = new BeamTraceEntry { BeamX = 226, BeamY = BitplaneUnit.PalVisibleTop };
+            denise.Tick(beam);
+            denise.FinishLineTail(beam);
+            Check.Equal(0xFF00FF00u, frame.Pixels[BitplaneUnit.PalVisibleTop * frame.Width + 796], "The sprite's final word must render beyond the regular beam raster instead of being cleared as border.");
+            Check.Equal(0xFF00FF00u, frame.Pixels[BitplaneUnit.PalVisibleTop * frame.Width + 797], "Both hires halves of the last lowres sprite pixel must remain visible.");
+            Check.Equal(0xFF000000u, frame.Pixels[BitplaneUnit.PalVisibleTop * frame.Width + 798], "The sprite tail must stop at its registered right edge.");
+        }
+
+        private static void TestMovingSpriteKeepsFrameWindow()
+        {
+            var registers = new CustomRegisterMap();
+            var sprites = new SpriteUnit(registers, null);
+            for (int sprite = 2; sprite <= 5; sprite++)
+            {
+                uint offset = 0x140u + (uint)sprite * 8;
+                registers.WriteWord(offset, sprite < 4 ? (ushort)0x2C37 : (ushort)0x2CDF);
+                registers.WriteWord(offset + 2, (ushort)(0x2D01 | ((sprite & 1) != 0 ? 0x80 : 0)));
+                registers.WriteWord(offset + 4, 0xFFFF);
+            }
+            foreach (ushort cursorPos in new ushort[] { 0x2C00, 0x2C80, 0x2CFF })
+            {
+                registers.WriteWord(Spr0pos, cursorPos);
+                registers.WriteWord(Spr0ctl, 0x2D00);
+                registers.WriteWord(Spr0data, 0xFFFF);
+                sprites.RefreshFromRegisters();
+                sprites.NotifyCustomRegisterWordWrite(Spr0pos, cursorPos, 44);
+                sprites.NotifyCustomRegisterWordWrite(Spr0data, 0xFFFF, 44);
+                sprites.TryRenderPixel(0, 44, out uint _);
+                Check.True(sprites.TryGetLineSpriteFrameWindow(out int left, out int width), "Attached borders must determine the frame.");
+                Check.Equal(-34, left, "Pointer motion must not move the left wood aperture.");
+                Check.Equal(704, width, "Pointer motion must not stretch the wooden frame.");
+            }
+        }
+
+        private static void TestSpritePresentationWindow()
+        {
+            var registers = new CustomRegisterMap();
+            var sprites = new SpriteUnit(registers, null);
+            registers.WriteWord(Spr0pos, 0x2C46);
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            registers.WriteWord(Spr0data, 0x00F0);
+            registers.WriteWord(0x1A2, 0x0FFF);
+            registers.WriteWord(Spr0datb, 0x0000);
+            sprites.RefreshFromRegisters();
+            sprites.TryRenderPixel(40, BitplaneUnit.PalVisibleTop, out uint _, out int _);
+            Check.True(sprites.TryGetLinePresentationWindow(out int left, out int width), "Latched sprite must provide its rendered aperture.");
+            Check.Equal(24, left, "The aperture starts at the registered sprite position, independently of pixel colors.");
+            Check.Equal(32, width, "All sixteen latched lowres pixels must fit in the aperture.");
+        }
+
         private static void TestDirectSpriteRegisterRendering()
         {
             var registers = new CustomRegisterMap();
@@ -2160,6 +2876,18 @@ namespace AmigaEmulator.Tests
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
+            yield return new ChipTestCase("Paula/Audio", "manual AUDDAT samples survive while audio DMA stays disabled",
+                "Manual audio data latches are independent of repeated unchanged DMACON state", delegate {
+                    using var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone());
+                    bool audible = false;
+                    system.Paula.AudioSampleGenerated += (left, right) => audible |= left > 0.1f;
+                    system.Bus.WriteWord(0xDFF0A6, 124);
+                    system.Bus.WriteWord(0xDFF0A8, 64);
+                    system.Bus.WriteWord(0xDFF0AA, 0x7F7F);
+                    system.RunChipCycles(1000);
+                    Check.True(audible, "Manually written audio samples must reach the output without Audio DMA enabled.");
+                    Check.Equal(0L, system.Paula.AudioDmaWordsFetched, "Manual mode must not perform DMA fetches.");
+                });
             yield return new ChipTestCase(
                 "Paula/Disk",
                 "standard ADF MFM track starts with gap and contains paired sync words",
@@ -3142,6 +3870,16 @@ namespace AmigaEmulator.Tests
                 "fast accuracy keeps chip-bus arbitration relaxed",
                 "Frontend compatibility profile used for games with sensitive mid-scanline bitplane updates",
                 TestFastAccuracyKeepsChipBusRelaxed);
+            yield return new ChipTestCase("Integration", "component profiling preserves full rendered machine output",
+                "Profiling must execute line tails and presentation identically to ordinary chip cycles", TestProfilePreservesVideo);
+            yield return new ChipTestCase("Integration", "compatible profile retains arbitration without continuous trace allocation",
+                "Gameplay compatibility and diagnostic tracing are independent options", delegate {
+                    Check.Equal(AmigaAccuracyProfile.Compatible, new AmigaEmulatorSettings().AccuracyProfile, "New frontend settings should prioritize gameplay compatibility.");
+                    var options = AmigaAccuracyOptions.Compatible.Clone();
+                    Check.True(options.StrictChipBusArbitration, "Compatible must retain chip contention.");
+                    Check.True(!options.EnableCpuTrace && !options.EnableDmaSlotTrace, "Continuous traces are reserved for explicit Strict diagnostics.");
+                    Check.True(AmigaAccuracyOptions.Strict.EnableCpuTrace && AmigaAccuracyOptions.Strict.EnableDmaSlotTrace, "Strict diagnostic tracing remains available.");
+                });
             yield return new ChipTestCase(
                 "Integration",
                 "2MB Chip RAM plus 8MB Fast RAM profile maps both writable regions",
@@ -3218,8 +3956,23 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Verifies that the interactive Fast profile remains the compatibility-oriented timing mode.
+        /// Verifies profiling equivalence for the Fast throughput profile.
         /// </summary>
+        private static void TestProfilePreservesVideo()
+        {
+            using var ordinary = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone());
+            using var profiled = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone());
+            ordinary.Bus.WriteWord(0xDFF180, 0x0F00);
+            profiled.Bus.WriteWord(0xDFF180, 0x0F00);
+            int cycles = ordinary.Model.ChipCyclesPerLine * ordinary.Model.LinesPerFrame * 2;
+            ordinary.RunChipCycles(cycles);
+            profiled.ProfileChipCycles(cycles);
+            Check.True(ordinary.PresentedFrameBuffer.Pixels.Any(pixel => (pixel & 0xFFFFFFu) != 0), "Fixture must produce visible presentation output.");
+            Check.True(ordinary.FrameBuffer.Pixels.SequenceEqual(profiled.FrameBuffer.Pixels), "Profiled raw raster must match ordinary execution.");
+            Check.True(ordinary.PresentedFrameBuffer.Pixels.SequenceEqual(profiled.PresentedFrameBuffer.Pixels), "Profiler must update the presented frame, not leave stale pixels.");
+            Check.Equal(ordinary.GetCpuDebugInfo(), profiled.GetCpuDebugInfo(), "Profiling must preserve CPU state.");
+        }
+
         private static void TestFastAccuracyKeepsChipBusRelaxed()
         {
             AmigaAccuracyOptions options = AmigaAccuracyOptions.Fast.Clone();
@@ -3854,6 +4607,344 @@ namespace AmigaEmulator.Tests
     }
 
     /// <summary>
+    /// Provides local Settlers savestate presentation regression tests.
+    /// </summary>
+    internal static class LocalSiedlerGoldenTests
+    {
+        /// <summary>
+        /// Builds the Build result.
+        /// </summary>
+        public static IEnumerable<ChipTestCase> Build(TestOptions options)
+        {
+            yield return new ChipTestCase(
+                "LocalSiedlerGolden",
+                "Die Siedler savestate keeps wooden frame and bottom menu aligned",
+                "Local PDX Die Siedler savestate, no checked-in game assets",
+                delegate { TestSiedlerSavestatePresentation(options.SiedlerSavePath, options.CreateExternalAccuracyOptions()); });
+        }
+
+        /// <summary>
+        /// Verifies the visible Settlers gameplay frame and bottom command panel geometry.
+        /// </summary>
+        private static void TestSiedlerSavestatePresentation(string configuredSavePath, AmigaAccuracyOptions accuracy)
+        {
+            string savePath = ResolveSiedlerSavePath(configuredSavePath);
+            Check.True(System.IO.File.Exists(savePath), "Siedler savestate not found. Pass --siedler-save <path>.");
+
+            SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
+            using (var system = new AmigaSystem(GetModelForRamProfile(metadata.RamProfile), accuracy))
+            {
+                SaveStateFile.Load(savePath, system);
+                RunFrames(system, 12);
+
+                AmigaEmulator.Core.Video.AmigaFrameBuffer frame = system.PresentedFrameBuffer;
+                Check.Equal(704, frame.Width, "Siedler must use the stable PAL overscan presentation width.");
+                Check.Equal(288, frame.Height, "Siedler must use the stable PAL overscan presentation height.");
+                Check.True((frame.Pixels[100 * frame.Width] & 0xFFFFFFu) != 0, "The left wooden playfield border must meet the monitor edge.");
+                Check.True((frame.Pixels[100 * frame.Width + frame.Width - 1] & 0xFFFFFFu) != 0, "The right wooden playfield border must align with the bottom panel, without a black strip.");
+                Check.True(frame.Pixels.Take(frame.Width).Count(pixel => (pixel & 0xFFFFFFu) != 0) > frame.Width / 2, "The top wooden frame must remain visible instead of being preceded by unused raster rows.");
+
+
+                SiedlerFrameMetrics metrics = AnalyzeSiedlerFrame(frame.Pixels, frame.Width, frame.Height);
+                Check.True(metrics.UniqueColors >= 24, "Siedler frame has too few colors. " + metrics);
+                Check.True(metrics.BottomPanelNonBlackPercent >= 55.0, "Siedler bottom menu appears blank or clipped. " + metrics);
+                Check.True(metrics.BottomLeftWoodPixels >= 650, "Siedler bottom menu is clipped on the left edge. " + metrics);
+                Check.True(metrics.BottomRightWoodPixels >= 650, "Siedler bottom menu is clipped on the right edge. " + metrics);
+                Check.True(metrics.RightFrameWoodPixels >= 900, "Siedler right vertical wooden frame is missing or cropped. " + metrics);
+                Check.True(metrics.LeftFrameWoodPixels >= 900, "Siedler left vertical wooden frame is missing or cropped. " + metrics);
+                Check.True(metrics.TopRightFrameWoodPixels >= 100, "Siedler top-right frame corner is missing. " + metrics);
+                Check.True(metrics.ConsecutiveLargeBottomBlackRunRows <= 8, "Siedler bottom menu contains a large black block. " + metrics);
+                Check.True(metrics.BottomEdgeContentColumns >= 660, "Siedler bottom menu does not span the full monitor aperture. " + metrics);
+                while (system.Agnus.Beam.BeamX != 0 || system.Agnus.Beam.BeamY != 0) system.TickChipCycle();
+                Check.True(system.Agnus.Bitplanes.TryGetSpriteFrameHorizontalWindow(out int frameLeft, out int frameWidth), "Wood frame must select a stable sprite aperture.");
+                foreach (var delta in new[] { (-400, 0), (800, 0), (-400, 300), (0, -600) })
+                {
+                    int steps = Math.Max(Math.Abs(delta.Item1), Math.Abs(delta.Item2)) / 8;
+                    int lastX = 0, lastY = 0;
+                    for (int step = 1; step <= steps; step++)
+                    {
+                        int x = delta.Item1 * step / steps;
+                        int y = delta.Item2 * step / steps;
+                        system.Input.MoveMouse(AmigaControlPort.Port0, x - lastX, y - lastY);
+                        system.RunChipCycles(120_000);
+                        lastX = x; lastY = y;
+                    }
+                    RunFrames(system, 4);
+                    while (system.Agnus.Beam.BeamX != 0 || system.Agnus.Beam.BeamY != 0) system.TickChipCycle();
+                    Check.True(system.Agnus.Bitplanes.TryGetSpriteFrameHorizontalWindow(out int movedLeft, out int movedWidth), "The wood aperture must survive pointer motion.");
+                    Check.Equal(frameLeft, movedLeft, "Pointer motion must not shift the game frame.");
+                    Check.Equal(frameWidth, movedWidth, "Pointer motion must not resize the game frame.");
+                    for (int beamY = 44; beamY < 240; beamY++)
+                    {
+                        Check.True(system.Agnus.Bitplanes.TryGetLinePresentationContentSourceWindow(beamY, out int left, out int width), "Frame line metadata must be present.");
+                        Check.Equal(frameLeft, left, "No individual wood scanline may move with the pointer at beam " + beamY + " after " + delta);
+                        Check.Equal(frameWidth, width, "No individual wood scanline may stretch with the pointer at beam " + beamY + " after " + delta);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Advances by full PAL frames.
+        /// </summary>
+        private static void RunFrames(AmigaSystem system, int framesToRun)
+        {
+            int frameCycles = system.Model.ChipCyclesPerLine * system.Model.LinesPerFrame;
+            for (int frame = 0; frame < framesToRun; frame++)
+            {
+                system.RunChipCycles(frameCycles);
+            }
+        }
+
+        /// <summary>
+        /// Resolves the explicit or latest local Settlers savestate.
+        /// </summary>
+        private static string ResolveSiedlerSavePath(string configuredSavePath)
+        {
+            if (!string.IsNullOrWhiteSpace(configuredSavePath) && System.IO.File.Exists(configuredSavePath))
+            {
+                return System.IO.Path.GetFullPath(configuredSavePath);
+            }
+
+            string root = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AmigaEmulator",
+                "saves");
+            if (!System.IO.Directory.Exists(root))
+            {
+                return configuredSavePath ?? string.Empty;
+            }
+
+            return System.IO.Directory.GetFiles(root, "*.amigasav", SearchOption.AllDirectories)
+                .Where(path => path.IndexOf("Siedler", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    path.IndexOf("Settlers", StringComparison.OrdinalIgnoreCase) >= 0)
+                .OrderByDescending(path => System.IO.File.GetLastWriteTimeUtc(path))
+                .FirstOrDefault() ?? configuredSavePath ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Analyzes visible frame/menu geometry using broad color and edge metrics.
+        /// </summary>
+        private static SiedlerFrameMetrics AnalyzeSiedlerFrame(uint[] pixels, int width, int height)
+        {
+            int bottomTop = Math.Max(0, height - 64);
+            int playfieldTop = Math.Min(24, height - 1);
+            int playfieldBottom = Math.Max(playfieldTop + 1, bottomTop - 4);
+            var colors = new HashSet<uint>();
+            int bottomPixels = 0;
+            int bottomNonBlack = 0;
+            int bottomLeftWood = 0;
+            int bottomRightWood = 0;
+            int leftFrameWood = 0;
+            int rightFrameWood = 0;
+            int topRightFrameWood = 0;
+            int bottomEdgeContentColumns = 0;
+            int largestBottomBlackRun = 0;
+            int consecutiveLargeBlackRows = 0;
+            int maxConsecutiveLargeBlackRows = 0;
+
+            for (int index = 0; index < pixels.Length; index++)
+            {
+                if (colors.Count < 4096)
+                {
+                    colors.Add(pixels[index]);
+                }
+            }
+
+            for (int y = bottomTop; y < height; y++)
+            {
+                int row = y * width;
+                int blackRun = 0;
+                int rowLargestBlackRun = 0;
+                for (int x = 0; x < width; x++)
+                {
+                    uint color = pixels[row + x];
+                    bottomPixels++;
+                    if (!IsNearBlack(color))
+                    {
+                        bottomNonBlack++;
+                    }
+
+                    if (x < 80 && IsWoodLike(color))
+                    {
+                        bottomLeftWood++;
+                    }
+
+                    if (x >= width - 80 && IsWoodLike(color))
+                    {
+                        bottomRightWood++;
+                    }
+
+                    if (IsNearBlack(color))
+                    {
+                        blackRun++;
+                        largestBottomBlackRun = Math.Max(largestBottomBlackRun, blackRun);
+                        rowLargestBlackRun = Math.Max(rowLargestBlackRun, blackRun);
+                    }
+                    else
+                    {
+                        blackRun = 0;
+                    }
+                }
+
+                if (rowLargestBlackRun >= 160)
+                {
+                    consecutiveLargeBlackRows++;
+                    maxConsecutiveLargeBlackRows = Math.Max(maxConsecutiveLargeBlackRows, consecutiveLargeBlackRows);
+                }
+                else
+                {
+                    consecutiveLargeBlackRows = 0;
+                }
+            }
+
+            for (int x = 0; x < width; x++)
+            {
+                int contentRows = 0;
+                for (int y = bottomTop; y < height; y++)
+                {
+                    if (!IsNearBlack(pixels[(y * width) + x]))
+                    {
+                        contentRows++;
+                    }
+                }
+
+                if (contentRows >= 4)
+                {
+                    bottomEdgeContentColumns++;
+                }
+            }
+
+            for (int y = playfieldTop; y < playfieldBottom; y++)
+            {
+                int row = y * width;
+                for (int x = 0; x < Math.Min(34, width); x++)
+                {
+                    if (IsWoodLike(pixels[row + x]))
+                    {
+                        leftFrameWood++;
+                    }
+                }
+
+                for (int x = Math.Max(0, width - 34); x < width; x++)
+                {
+                    if (IsWoodLike(pixels[row + x]))
+                    {
+                        rightFrameWood++;
+                    }
+                }
+            }
+
+            for (int y = 0; y < Math.Min(28, height); y++)
+            {
+                int row = y * width;
+                for (int x = Math.Max(0, width - 48); x < width; x++)
+                {
+                    if (IsWoodLike(pixels[row + x]))
+                    {
+                        topRightFrameWood++;
+                    }
+                }
+            }
+
+            return new SiedlerFrameMetrics
+            {
+                UniqueColors = colors.Count,
+                BottomPanelNonBlackPercent = bottomPixels > 0 ? (bottomNonBlack * 100.0) / bottomPixels : 0.0,
+                BottomLeftWoodPixels = bottomLeftWood,
+                BottomRightWoodPixels = bottomRightWood,
+                LeftFrameWoodPixels = leftFrameWood,
+                RightFrameWoodPixels = rightFrameWood,
+                TopRightFrameWoodPixels = topRightFrameWood,
+                LargestBottomBlackRun = largestBottomBlackRun,
+                ConsecutiveLargeBottomBlackRunRows = maxConsecutiveLargeBlackRows,
+                BottomEdgeContentColumns = bottomEdgeContentColumns
+            };
+        }
+
+        /// <summary>
+        /// Returns whether a color is close to monitor black.
+        /// </summary>
+        private static bool IsNearBlack(uint color)
+        {
+            int red = (int)((color >> 16) & 0xFF);
+            int green = (int)((color >> 8) & 0xFF);
+            int blue = (int)(color & 0xFF);
+            return red < 18 && green < 18 && blue < 18;
+        }
+
+        /// <summary>
+        /// Returns whether a color is a broad wooden brown/orange frame color.
+        /// </summary>
+        private static bool IsWoodLike(uint color)
+        {
+            int red = (int)((color >> 16) & 0xFF);
+            int green = (int)((color >> 8) & 0xFF);
+            int blue = (int)(color & 0xFF);
+            return red >= 28 &&
+                red >= green &&
+                green >= blue &&
+                green >= 10 &&
+                blue <= 120 &&
+                red - blue >= 16;
+        }
+
+        /// <summary>
+        /// Converts savestate RAM-profile metadata back to the matching emulator model.
+        /// </summary>
+        private static AmigaModel GetModelForRamProfile(AmigaRamProfile profile)
+        {
+            switch (profile)
+            {
+                case AmigaRamProfile.Chip512KSlow512K:
+                    return AmigaModel.A500Pal512Slow512;
+                case AmigaRamProfile.Chip1Mb:
+                    return AmigaModel.A500Pal1MbChip;
+                case AmigaRamProfile.Chip2Mb:
+                    return AmigaModel.A500Pal2MbChip;
+                case AmigaRamProfile.Chip2MbFast8Mb:
+                    return AmigaModel.A500Pal2MbChipFast8Mb;
+                default:
+                    return AmigaModel.PalA500;
+            }
+        }
+
+        /// <summary>
+        /// Stores local Settlers visual metrics.
+        /// </summary>
+        private sealed class SiedlerFrameMetrics
+        {
+            public int UniqueColors;
+            public double BottomPanelNonBlackPercent;
+            public int BottomLeftWoodPixels;
+            public int BottomRightWoodPixels;
+            public int LeftFrameWoodPixels;
+            public int RightFrameWoodPixels;
+            public int TopRightFrameWoodPixels;
+            public int LargestBottomBlackRun;
+            public int ConsecutiveLargeBottomBlackRunRows;
+            public int BottomEdgeContentColumns;
+
+            public override string ToString()
+            {
+                return string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    "colors={0} bottomNonBlack={1:F1}% bottomLeftWood={2} bottomRightWood={3} leftFrameWood={4} rightFrameWood={5} topRightWood={6} largestBottomBlackRun={7} largeBlackRows={8} bottomContentColumns={9}",
+                    UniqueColors,
+                    BottomPanelNonBlackPercent,
+                    BottomLeftWoodPixels,
+                    BottomRightWoodPixels,
+                    LeftFrameWoodPixels,
+                    RightFrameWoodPixels,
+                    TopRightFrameWoodPixels,
+                    LargestBottomBlackRun,
+                    ConsecutiveLargeBottomBlackRunRows,
+                    BottomEdgeContentColumns);
+            }
+        }
+    }
+
+    /// <summary>
     /// Provides Golden ADF Tests functionality.
     /// </summary>
     internal static class GoldenAdfTests
@@ -4166,7 +5257,7 @@ namespace AmigaEmulator.Tests
                     /// <summary>
                     /// Runs the Smoke Case routine.
                     /// </summary>
-                    delegate { RunSmokeCase(testCase, options.VAmigaTsCycles); });
+                    delegate { RunSmokeCase(testCase, options.VAmigaTsCycles, options.CreateExternalAccuracyOptions()); });
             }
         }
 
@@ -4207,7 +5298,7 @@ namespace AmigaEmulator.Tests
         /// <summary>
         /// Runs the Smoke Case routine.
         /// </summary>
-        private static void RunSmokeCase(VAmigaTsCase testCase, int cycles)
+        private static void RunSmokeCase(VAmigaTsCase testCase, int cycles, AmigaAccuracyOptions accuracy)
         {
             string suiteRoot = FindSuiteRoot();
             string adfPath = System.IO.Path.Combine(suiteRoot, testCase.RelativeAdfPath);
@@ -4225,7 +5316,7 @@ namespace AmigaEmulator.Tests
 
             Check.True(KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out KickstartRomInfo romInfo), "Default Kickstart ROM not found.");
 
-            using (var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Fast.Clone()))
+            using (var system = new AmigaSystem(AmigaModel.A500Pal, accuracy))
             {
                 system.LoadKickstart(romBytes);
                 system.Bus.FloppyController.InsertDrive0(AdfImage.Load(adfPath), true);
