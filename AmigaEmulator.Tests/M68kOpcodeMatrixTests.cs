@@ -53,6 +53,92 @@ namespace AmigaEmulator.Tests
                 "representative arithmetic, logic, branch, shift, and exception vectors match 68000 results",
                 "Motorola M68000 PRM condition codes and effective-address semantics",
                 TestRepresentativeSemantics);
+            yield return new ChipTestCase("CPU/BCD", "packed decimal arithmetic covers every valid byte pair and sticky zero",
+                "Motorola M68000 PRM ABCD/SBCD/NBCD; independent decimal arithmetic oracle", TestPackedDecimalArithmetic);
+            yield return new ChipTestCase("CPU/BCD", "decimal memory preserves predecrement aliases and A7 byte alignment",
+                "Solid Gold score formatting plus M68000 byte predecrement and deferred execution", TestPackedDecimalMemory);
+        }
+
+        private static uint DecimalByte(int value) => (uint)((value / 10 << 4) | value % 10);
+
+        private static void FinishDecimalInstruction(M68kCpu cpu, bool tick)
+        {
+            if (!tick) { cpu.Step(); cpu.Step(); return; }
+            for (int i = 0; i < 80; i++)
+            {
+                var trace = cpu.Tick(i % 3 != 0);
+                if (trace != null && trace.AccessType == M68kTraceAccessType.OpcodeFetch && trace.PcBefore == ProgramStart + 6) return;
+            }
+            throw new InvalidOperationException("Decimal instruction did not retire: " + cpu.GetDebugInfo());
+        }
+
+        private static void TestPackedDecimalArithmetic()
+        {
+            foreach (bool tick in new[] { false, true })
+            foreach (bool add in new[] { false, true })
+            {
+                ushort opcode = add ? (ushort)0xC300 : (ushort)0x8300; // D0,D1
+                var bus = CreatePreparedBus(new ushort[] { 0x44FC, 0, opcode, 0x4E71 });
+                var cpu = CreatePreparedCpu(bus); cpu.TraceEnabled = true;
+                for (int source = 0; source < 100; source++)
+                for (int destination = 0; destination < 100; destination++)
+                for (int extend = 0; extend < 2; extend++)
+                for (int zero = 0; zero < 2; zero++)
+                {
+                    bus.WriteWord(ProgramStart + 2, (ushort)(extend * 16 + zero * 4));
+                    cpu.Reset(); cpu.SetD(0, 0x12345600 | DecimalByte(source)); cpu.SetD(1, 0xABCDEF00 | DecimalByte(destination));
+                    FinishDecimalInstruction(cpu, tick);
+                    int decimalResult = add ? destination + source + extend : destination - source - extend;
+                    bool carry = decimalResult < 0 || decimalResult >= 100;
+                    int wrapped = (decimalResult + 100) % 100;
+                    Check.Equal(0xABCDEF00 | DecimalByte(wrapped), cpu.GetD(1), "Decimal result/upper register bytes.");
+                    Check.Equal(0x12345600 | DecimalByte(source), cpu.GetD(0), "Decimal source must be preserved.");
+                    Check.Equal((ushort)((carry ? 0x11 : 0) | (wrapped == 0 && zero != 0 ? 4 : 0)), (ushort)(cpu.SR & 0x15), "Decimal carry, extend and sticky zero.");
+                }
+            }
+            foreach (bool tick in new[] { false, true })
+            for (int source = 0; source < 100; source++)
+            for (int extend = 0; extend < 2; extend++)
+            {
+                var bus = CreatePreparedBus(new ushort[] { 0x44FC, (ushort)(4 + extend * 16), 0x4801, 0x4E71 });
+                var cpu = CreatePreparedCpu(bus); cpu.TraceEnabled = true; cpu.SetD(1, 0x12345600 | DecimalByte(source));
+                FinishDecimalInstruction(cpu, tick);
+                int result = (100 - source - extend) % 100;
+                Check.Equal(0x12345600 | DecimalByte(result), cpu.GetD(1), "NBCD decimal negation.");
+                Check.Equal((ushort)((source + extend > 0 ? 0x11 : 0) | (result == 0 ? 4 : 0)), (ushort)(cpu.SR & 0x15), "NBCD flags.");
+            }
+        }
+
+        private static void TestPackedDecimalMemory()
+        {
+            foreach (bool tick in new[] { false, true })
+            foreach (bool add in new[] { false, true })
+            for (int source = 0; source < 8; source++)
+            for (int destination = 0; destination < 8; destination++)
+            {
+                ushort opcode = (ushort)((add ? 0xC108 : 0x8108) | destination << 9 | source);
+                var bus = CreatePreparedBus(new ushort[] { 0x44FC, 4, opcode, 0x4E71 });
+                var cpu = CreatePreparedCpu(bus); cpu.TraceEnabled = true;
+                uint srcStep = source == 7 ? 2u : 1u, dstStep = destination == 7 ? 2u : 1u;
+                uint srcAddress = 0x800 - srcStep;
+                uint dstAddress = source == destination ? srcAddress - dstStep : 0x900 - dstStep;
+                cpu.SetA(source, 0x800); if (source != destination) cpu.SetA(destination, 0x900);
+                bus.WriteByte(srcAddress, 0x01); bus.WriteByte(dstAddress, 0x99);
+                bus.WriteByte(dstAddress - 1, 0xA5);
+                FinishDecimalInstruction(cpu, tick);
+                Check.Equal((byte)(add ? 0x00 : 0x98), bus.ReadByte(dstAddress), "Decimal memory result.");
+                Check.Equal((byte)0x01, bus.ReadByte(srcAddress), "Source byte preserved.");
+                Check.Equal((byte)0xA5, bus.ReadByte(dstAddress - 1), "Only destination byte written.");
+                Check.Equal(dstAddress, cpu.GetA(destination), "Destination predecrement including A7/aliasing.");
+                if (source != destination) Check.Equal(srcAddress, cpu.GetA(source), "Source predecrement.");
+            }
+            var chainBus = CreatePreparedBus(new ushort[] { 0x44FC, 4, 0xC109, 0xC109, 0xC109, 0xC109 });
+            var chainCpu = CreatePreparedCpu(chainBus);
+            chainCpu.SetA(0, 0x804); chainCpu.SetA(1, 0x904);
+            chainBus.WriteLong(0x800, 0x00009999); chainBus.WriteLong(0x900, 1);
+            for (int i = 0; i < 5; i++) chainCpu.Step();
+            Check.Equal(0x00010000u, chainBus.ReadLong(0x800), "Four-byte decimal carry chain used by Solid Gold.");
+            Check.Equal((ushort)0, (ushort)(chainCpu.SR & 0x15), "Nonzero decimal chain must clear accumulated Z.");
         }
 
         /// <summary>
@@ -318,6 +404,10 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private static bool IsImplementedFamilyOpcode(ushort opcode)
         {
+            if ((opcode & 0xF1F0) == 0xC100 || (opcode & 0xF1F0) == 0x8100)
+                return true;
+            if ((opcode & 0xFFC0) == 0x4800)
+                return IsAlterableDataEa((opcode >> 3) & 7, opcode & 7);
             if ((opcode & 0xF000) == 0xA000 || (opcode & 0xF000) == 0xF000)
             {
                 return true;

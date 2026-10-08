@@ -666,6 +666,12 @@ namespace AmigaEmulator.Core.Cpu
                 return 4;
             }
 
+            if (instruction.StartsWith("ABCD", StringComparison.Ordinal) ||
+                instruction.StartsWith("SBCD", StringComparison.Ordinal))
+                return (opcode & 8) == 0 ? 6 : 18;
+            if (instruction.StartsWith("NBCD", StringComparison.Ordinal))
+                return ((opcode >> 3) & 7) == 0 ? 6 : 8 + EstimateEaReadCycles((opcode >> 3) & 7, opcode & 7, 1);
+
             if (instruction.StartsWith("BTST", StringComparison.Ordinal) ||
                 instruction.StartsWith("BCHG", StringComparison.Ordinal) ||
                 instruction.StartsWith("BCLR", StringComparison.Ordinal) ||
@@ -906,6 +912,11 @@ namespace AmigaEmulator.Core.Cpu
             {
                 return ExecuteAddSubCmp(opcode, false, true);
             }
+
+            if ((opcode & 0xF1F0) == 0xC100 || (opcode & 0xF1F0) == 0x8100)
+                return ExecutePackedDecimal(opcode, (opcode & 0xF000) == 0xC000);
+            if ((opcode & 0xFFC0) == 0x4800)
+                return ExecuteNegatePackedDecimal(opcode);
 
             if ((opcode & 0xF1F8) == 0xC140 || (opcode & 0xF1F8) == 0xC148 || (opcode & 0xF1F8) == 0xC188)
             {
@@ -1485,6 +1496,64 @@ namespace AmigaEmulator.Core.Cpu
                 : SubtractExtendValues(destination, source, size);
             WriteMemory(destinationAddress, size, memoryResult);
             return (add ? "ADDX." : "SUBX.") + SizeSuffix(size) + " -(A" + sourceRegister + "),-(A" + destinationRegister + ")";
+        }
+
+        /// <summary>
+        /// Executes byte-sized decimal addition/subtraction with cumulative Z and X carry.
+        /// </summary>
+        private string ExecutePackedDecimal(ushort opcode, bool add)
+        {
+            int sourceRegister = opcode & 7;
+            int destinationRegister = (opcode >> 9) & 7;
+            string mnemonic = add ? "ABCD" : "SBCD";
+            if ((opcode & 8) == 0)
+            {
+                uint result = PackedDecimalValue(ReadDataRegister(destinationRegister, 1), ReadDataRegister(sourceRegister, 1), add);
+                WriteDataRegister(destinationRegister, 1, result);
+                return mnemonic + " D" + sourceRegister + ",D" + destinationRegister;
+            }
+            uint sourceAddress = _state.A[sourceRegister] - AddressIncrement(sourceRegister, 1);
+            SetA(sourceRegister, sourceAddress);
+            uint source = ReadMemory(sourceAddress, 1);
+            uint destinationAddress = _state.A[destinationRegister] - AddressIncrement(destinationRegister, 1);
+            SetA(destinationRegister, destinationAddress);
+            uint destination = ReadMemory(destinationAddress, 1);
+            WriteMemory(destinationAddress, 1, PackedDecimalValue(destination, source, add));
+            return mnemonic + " -(A" + sourceRegister + "),-(A" + destinationRegister + ")";
+        }
+
+        private string ExecuteNegatePackedDecimal(ushort opcode)
+        {
+            int mode = (opcode >> 3) & 7, register = opcode & 7;
+            if (!IsDataAlterableEa(mode, register))
+            {
+                EnterException(4);
+                return "ILLEGAL NBCD";
+            }
+            EaLocation target = ResolveEaLocation(mode, register, 1, true);
+            WriteLocation(target, PackedDecimalValue(0, ReadLocation(target), false));
+            return "NBCD " + FormatEa(mode, register, 1);
+        }
+
+        private uint PackedDecimalValue(uint destination, uint source, bool add)
+        {
+            int extend = (_state.SR & FlagX) != 0 ? 1 : 0;
+            int binary = add ? (int)(destination + source) + extend : (int)destination - (int)source - extend;
+            int low = add ? (int)((destination & 15) + (source & 15)) + extend : (int)(destination & 15) - (int)(source & 15) - extend;
+            int corrected = binary;
+            if (add ? low > 9 : low < 0) corrected += add ? 6 : -6;
+            bool carry = add ? corrected > 0x99 : binary < 0;
+            if (carry) corrected += add ? 0x60 : -0x60;
+            uint result = (uint)corrected & 0xFF;
+            // Z is cumulative across a decimal chain. N/V are undefined in the
+            // programmer's model; derive them from the binary-to-decimal adjustment.
+            ushort flags = (ushort)(_state.SR & unchecked((ushort)~(FlagX | FlagN | FlagV | FlagC)));
+            if (result != 0) flags &= unchecked((ushort)~FlagZ);
+            if (carry) flags |= FlagX | FlagC;
+            if ((result & 0x80) != 0) flags |= FlagN;
+            if (add ? ((~binary & corrected & 0x80) != 0) : ((binary & ~corrected & 0x80) != 0)) flags |= FlagV;
+            _state.SR = flags;
+            return result;
         }
 
         /// <summary>

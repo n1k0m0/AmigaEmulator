@@ -1,0 +1,59 @@
+[
+  {
+    "name": "SolidGold",
+    "boot": "SolidGold.adf",
+    "ram": "Chip512KSlow512K",
+    "strict": true,
+    "actions": [
+      { "type": "wait", "cycles": 120000000, "label": "boot" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 80000000, "label": "menu" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 120000000, "label": "level-prompt" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 60000000, "label": "get-ready" },
+      { "type": "joystick", "cycles": 400000 },
+      { "type": "wait", "cycles": 4000000 },
+      { "type": "joystick", "button": "Right", "cycles": 1500000, "label": "move-right" },
+      { "type": "joystick", "button": "Up,Right", "cycles": 1000000, "label": "jump-right" }
+    ]
+  },
+  {
+    "name": "CelticHeart",
+    "boot": "CelticHeart.adf",
+    "ram": "Chip512KSlow512K",
+    "strict": true,
+    "actions": [
+      { "type": "wait", "cycles": 120000000, "label": "boot" },
+      { "type": "joystick", "cycles": 1200000 },
+      { "type": "wait", "cycles": 80000000, "label": "menu" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 80000000, "label": "story" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 120000000, "label": "stage-prompt" },
+      { "type": "joystick", "cycles": 800000 },
+      { "type": "wait", "cycles": 6000000, "label": "get-ready" },
+      { "type": "joystick", "cycles": 400000 },
+      { "type": "wait", "cycles": 4000000, "label": "level" },
+      { "type": "joystick", "button": "Right", "cycles": 1000000, "label": "move-right" },
+      { "type": "joystick", "button": "Up,Right", "cycles": 1000000, "label": "jump-right" }
+    ]
+  },
+  {
+    "name": "Sqrxz",
+    "boot": "Sqrxz.adf",
+    "ram": "Chip512KSlow512K",
+    "strict": true,
+    "actions": [
+      { "type": "wait", "cycles": 120000000, "label": "boot" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 120000000, "label": "menu" },
+      { "type": "joystick", "cycles": 4000000 },
+      { "type": "wait", "cycles": 120000000 },
+      { "type": "joystick", "cycles": 800000 },
+      { "type": "wait", "cycles": 30000000, "label": "level" },
+      { "type": "joystick", "button": "Right", "cycles": 1500000, "label": "move-right" },
+      { "type": "joystick", "button": "Up,Right", "cycles": 1000000, "label": "jump-right" }
+    ]
+  }
+]
