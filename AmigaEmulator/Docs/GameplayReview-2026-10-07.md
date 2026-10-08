@@ -5,6 +5,37 @@ compilation. **All games reaching glitch-free gameplay is not yet established.**
 Evidence is in [tmp/gameplay-optimization](../../../tmp/gameplay-optimization).
 Follow-up evidence is in [tmp/gameplay-debug](../../../tmp/gameplay-debug).
 
+## Moonstone follow-up — 2026-10-08
+
+- The earlier track-79 stall is reproduced by restoring the checkpoint taken
+  during Disk B DMA. Its loader receives a damaged OFS next-block pointer
+  `01400220`, then seeks cylinder `0220`. The CIA timer itself keeps running.
+- DF0's position was serialized, but `_streamRotationCycleAccumulator` was
+  marked nonserialized. Restoring it as zero changes its phase relative to
+  Paula's restored byte sampler; an in-flight read can duplicate/skip an MFM
+  word and corrupt the remaining track. The rotation phase is now serialized.
+  Older states lacking this field still load, but an already corrupted state
+  cannot recover lost data: restart from before the affected read.
+- A synthetic in-flight DMA regression compares more than 500 MFM words at
+  three save phases, including media reattachment. Phase 91 fails before the
+  fix and all phases pass afterward. Release build has no warnings/errors;
+  all 126 standard tests pass.
+- Re-created the original checkpoint at frame 17869 / PC C1A478 using the
+  fixed core, then restored it and ran the remaining 280 million chip cycles.
+  It reaches the main menu at frame 21823 with exactly the same screenshot
+  hash as the uninterrupted run (`0F43DBF6...A8B1A3C`).
+- Replaying from the actual Disk B request also reaches the clean main menu
+  without an intermediate restore. Practice then loads its two-knight fight.
+  Right/Left input moves the blue knight and Fire+Right produces a sword
+  attack, visually confirmed in successive screenshots. This establishes
+  direct control rather than an unattended animation.
+- The normal game also reaches knight selection, accepts the default name
+  with Return, and displays the world map and knight inventory. A complete
+  campaign and every later Disk C encounter are not covered by this check.
+- Evidence and deterministic input manifests are retained locally in
+  [tmp/moon-probe](../../../tmp/moon-probe): `replay`, `practice4`, `controls`,
+  `quest`, `save-during-load`, `resume-load`, and `tests.log`.
+
 ## Follow-up after commit 467879f — 2026-10-08
 
 - Fixed the 68000 stacked PC for illegal, Line-A and Line-F instruction
@@ -97,7 +128,7 @@ cold-boot walkthrough. All test ADFs were mounted read-only.
 | Lotus | Actual split-screen race | Longer race and controls |
 | Maniac Mansion | Gameplay from boot after kid selection/opening sequence; existing-save gameplay also checked | Longer play and transitions |
 | Mega lo Mania | Compatible advances into animated introduction | Start playable island |
-| Moonstone | Serial wait resolved; clean moon/ritual intro, actual Disk B request, Disk 2 accepted and title/loading screen | Diagnose loader delay at track 79 and reach gameplay; the old premature Disk 2 swap corrupted data |
+| Moonstone | Disk-DMA savestate phase fixed; main menu, controlled Practice swordfight, normal knight selection, world map and inventory | Longer campaign and later disk swaps; old corrupted loading snapshots need a restart |
 | North & South | Language selection and main menu | Play selection, map/battle |
 | Oh No More Lemmings | Main menu in Compatible | Scripted selection, playable level |
 | PDREMS21 | Compilation menu/course-disk request | Intended game and matching media |

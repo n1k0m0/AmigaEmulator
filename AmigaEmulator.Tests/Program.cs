@@ -4111,6 +4111,11 @@ namespace AmigaEmulator.Tests
                 TestFloppyControlLinesRefreshAfterLoad);
             yield return new ChipTestCase(
                 "SaveState",
+                "in-flight disk DMA preserves rotating word phase across restore",
+                "Paula byte sampling and DF0 physical rotation must resume in phase",
+                TestDiskDmaRotationPhaseRoundtrip);
+            yield return new ChipTestCase(
+                "SaveState",
                 "mounted ADF metadata is reattached to the recorded floppy drive",
                 "Savestate metadata media restore used by multi-disk trackloaders",
                 TestMountedAdfMetadataReattachesOnLoad);
@@ -4271,6 +4276,58 @@ namespace AmigaEmulator.Tests
                 {
                 }
             }
+        }
+
+        /// <summary>
+        /// Verifies that a restored rotating disk supplies exactly the same words to active DMA.
+        /// </summary>
+        private static void TestDiskDmaRotationPhaseRoundtrip()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "amiga-disk-phase-" + Guid.NewGuid().ToString("N") + ".adf");
+            var data = new byte[AdfImage.StandardSize];
+            for (int i = 0; i < data.Length; i++) data[i] = (byte)(i * 37 + i / 256);
+            File.WriteAllBytes(path, data);
+            try
+            {
+                foreach (int phase in new[] { 17, 53, 91 })
+                {
+                    var controller = new FloppyController();
+                    controller.InsertDrive0(AdfImage.Load(path), true);
+                    controller.Drive0.ApplySelection(true, true);
+                    for (int i = 0; i < 1_400_000; i++) controller.Tick();
+                    var expected = new List<ushort>();
+                    var paula = new Paula();
+                    paula.AttachDisk(controller, (_, word) => expected.Add(word), null, _ => { }, () => 0x0210, () => 0);
+                    paula.NotifyCustomRegisterWordWrite(0x024, 0x8800);
+                    paula.NotifyCustomRegisterWordWrite(0x024, 0x8800);
+                    for (int i = 0; i < 100_000 + phase; i++) { controller.Tick(); paula.Tick(true, false); }
+                    Check.True(paula.DiskDmaActive, "Save must occur during a disk DMA block.");
+                    using var stream = new MemoryStream();
+                    using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+                    StateSerializer.WriteObjectFields(writer, controller);
+                    paula.SaveState(writer);
+                    writer.Flush();
+                    var restoredController = new FloppyController();
+                    var restoredPaula = new Paula();
+                    stream.Position = 0;
+                    using var reader = new BinaryReader(stream, Encoding.UTF8, true);
+                    StateSerializer.ReadObjectFields(reader, restoredController);
+                    restoredController.RestoreDrive0Media(AdfImage.Load(path), true);
+                    restoredPaula.LoadState(reader);
+                    var actual = new List<ushort>();
+                    restoredPaula.AttachDisk(restoredController, (_, word) => actual.Add(word), null, _ => { }, () => 0x0210, () => 0);
+                    expected.Clear();
+                    for (int i = 0; i < 150_000; i++)
+                    {
+                        controller.Tick(); paula.Tick(true, false);
+                        restoredController.Tick(); restoredPaula.Tick(true, false);
+                    }
+                    Check.True(expected.Count > 500, "Test must compare a substantial DMA transfer.");
+                    Check.True(expected.SequenceEqual(actual), "Restored disk DMA changed MFM words at phase " + phase + ".");
+                    Check.True(!paula.DiskDmaActive && !restoredPaula.DiskDmaActive, "Both DMA blocks should complete.");
+                }
+            }
+            finally { File.Delete(path); }
         }
 
         /// <summary>

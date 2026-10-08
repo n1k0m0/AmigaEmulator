@@ -92,9 +92,9 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         private int _streamWordPosition;
         /// <summary>
-        /// Accumulates fractional chip cycles for physical MFM stream rotation.
+        /// Accumulates chip cycles within the current rotating MFM word. Save this phase
+        /// together with Paula's byte sampler so an in-flight DMA resumes without skipping words.
         /// </summary>
-        [NonSerialized]
         private int _streamRotationCycleAccumulator;
         /// <summary>
         /// Tracks captured MFM words written by Paula disk-write DMA.
