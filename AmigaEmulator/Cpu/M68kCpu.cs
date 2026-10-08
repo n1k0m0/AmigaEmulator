@@ -483,8 +483,15 @@ namespace AmigaEmulator.Core.Cpu
 
             _pendingBusOperations.Clear();
             _deferBusSideEffects = true;
-            M68kTraceEntry trace = Step();
-            _deferBusSideEffects = false;
+            var planningBus = _bus as IM68kPlanningBus;
+            planningBus?.BeginInstructionPlanning();
+            M68kTraceEntry trace;
+            try { trace = Step(); }
+            finally
+            {
+                _deferBusSideEffects = false;
+                planningBus?.EndInstructionPlanning();
+            }
             if (CanRetireNextPendingBusOperation(chipBusAvailable))
             {
                 RetireNextPendingBusOperation();

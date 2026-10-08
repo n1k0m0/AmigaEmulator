@@ -24,6 +24,9 @@ Implemented or partially implemented:
 - Real Kickstart 1.3 insert-disk path through ROM code, Copper, Blitter,
   bitplane DMA, Chip RAM, and Denise output.
 - Standard 880 KiB AmigaDOS ADF loading and writable-sector DMA with explicit flush.
+- File-backed HDF hard disks through an optional A600 Gayle ATA PIO controller,
+  including real Kickstart 3.1 boot to AmigaDOS without floppy media.
+- Chip/Slow RAM profiles and 2/4/8 MiB Fast RAM with Zorro II Autoconfig.
 - Paula disk and audio path with MFM track streams, disk activity status, and
   audio output.
 - CIA 8520 basics, keyboard input, mouse input, and joystick input.
@@ -60,6 +63,40 @@ The primary target is:
 
 Additional RAM profiles and ROMs can be selected from the emulator menu when
 the corresponding local files are available.
+
+## Hard disks and memory expansions
+
+Open the overlay with Esc, then **HARD DISK**. Choose **NEW IMAGE SIZE**
+(16–2048 MiB), then **CREATE IMAGE** and a new `.hdf` filename. This creates and
+mounts a writable, whole-disk image with an RDB and bootable DH0 FFS partition.
+The filesystem is initially unformatted: format DH0 and install your own Amiga
+system from Workbench disks. Existing files are never overwritten by creation.
+**MOUNT IMAGE** opens an existing raw whole-disk/RDB HDF; partition-only HDFs,
+VHD/HDZ containers and host directories are not translated into drives.
+
+Use **WRITE PROTECTION** to select read-only or read/write access. Completed
+sector writes persist in the image; ejecting, reconfiguring, saving or closing
+flushes it. Changing the controller/image/write mode restarts the guest machine.
+The emulator operates on image files, not Windows physical disks.
+
+Select a compatible A600 Kickstart (2.05 or 3.1, with the Gayle IDE `scsi.device`)
+in the ROM menu. Ordinary A500 Kickstart 1.3 has no built-in driver for this
+controller. **BOOT FROM HD** enables the persistent hard-disk boot preference,
+ejects floppies for the current session and restarts. When enabled, startup does
+not automatically restore DF0. Disable it to return to normal floppy startup;
+floppies can still be inserted explicitly through MEDIA.
+
+Select memory through **MACHINE → RAM** (also available in SETTINGS): 512 KiB
+Chip, 512 KiB Chip + 512 KiB Slow, 1/2 MiB Chip, 1/2 MiB Chip + 2/4 MiB Fast,
+or 2 MiB Chip + 8 MiB Fast. Changing a profile restarts the machine. Fast RAM
+is exposed as a Zorro II expansion so Kickstart can register it with Exec.
+
+Savestates preserve controller registers, partially transferred sectors and
+the mounted image path/access mode. The HDF remains an external, mutable file;
+loading a savestate does **not** rewind disk contents. Keep the image alongside
+its saves and make a separate copy when a disk snapshot is needed. Old savestates
+still load with the IDE controller disabled. See
+[storage validation](AmigaEmulator/Docs/StorageExpansion.md) for tested scope.
 
 ## Repository Layout
 

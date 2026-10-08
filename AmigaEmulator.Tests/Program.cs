@@ -107,6 +107,7 @@ namespace AmigaEmulator.Tests
             tests.AddRange(PaulaTests.Build());
             tests.AddRange(IntegrationTests.Build());
             tests.AddRange(SaveStateTests.Build());
+            tests.AddRange(StorageExpansionTests.Build());
             if (options.IncludeAdf)
             {
                 tests.AddRange(GoldenAdfTests.Build(options));

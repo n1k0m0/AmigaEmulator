@@ -22,6 +22,20 @@ namespace AmigaEmulator.Core
     /// </summary>
     public sealed class AmigaModel
     {
+        public static AmigaModel ForRamProfile(AmigaRamProfile profile)
+        {
+            switch (profile)
+            {
+                case AmigaRamProfile.Chip512K: return A500Pal;
+                case AmigaRamProfile.Chip512KSlow512K: return A500Pal512Slow512;
+                case AmigaRamProfile.Chip1Mb: return A500Pal1MbChip;
+                case AmigaRamProfile.Chip2Mb: return A500Pal2MbChip;
+                case AmigaRamProfile.Chip2MbFast8Mb: return A500Pal2MbChipFast8Mb;
+                default:
+                    var info = AmigaOverlaySettingCatalog.GetRamProfileInfo(profile);
+                    return new AmigaModel("PAL + " + info.Label, 7093790, info.ChipRamBytes, info.SlowRamBytes, info.FastRamBytes, 227, 312, 640, 256);
+            }
+        }
         /// <summary>
         /// Default PAL OCS Amiga 500 with 512 KB Chip RAM.
         /// </summary>

@@ -224,7 +224,11 @@ namespace AmigaEmulator.Core
             /// <summary>
             /// Runs Amiga Ram Profile Info.
             /// </summary>
-            new AmigaRamProfileInfo(AmigaRamProfile.Chip2MbFast8Mb, "2MB+8MB", 2 * M1, 0, 8 * M1)
+            new AmigaRamProfileInfo(AmigaRamProfile.Chip2MbFast8Mb, "2MB+8MB", 2 * M1, 0, 8 * M1),
+            new AmigaRamProfileInfo(AmigaRamProfile.Chip1MbFast2Mb, "1MB CHIP + 2MB FAST", M1, 0, 2 * M1),
+            new AmigaRamProfileInfo(AmigaRamProfile.Chip1MbFast4Mb, "1MB CHIP + 4MB FAST", M1, 0, 4 * M1),
+            new AmigaRamProfileInfo(AmigaRamProfile.Chip2MbFast2Mb, "2MB CHIP + 2MB FAST", 2 * M1, 0, 2 * M1),
+            new AmigaRamProfileInfo(AmigaRamProfile.Chip2MbFast4Mb, "2MB CHIP + 4MB FAST", 2 * M1, 0, 4 * M1)
         };
 
         /// <summary>

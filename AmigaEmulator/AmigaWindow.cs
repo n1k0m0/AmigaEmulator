@@ -32,7 +32,7 @@ namespace AmigaEmulator
     /// <summary>
     /// Hosts the emulator UI, SharpPixels presentation, overlay menus, input mapping, media loading, and audio output.
     /// </summary>
-    public sealed class AmigaWindow : SharpPixelsWindow
+    public sealed partial class AmigaWindow : SharpPixelsWindow
     {
         /// <summary>
         /// Lists the supported Overlay Mode values.
@@ -78,7 +78,8 @@ namespace AmigaEmulator
             /// <summary>
             /// Represents Save States.
             /// </summary>
-            SaveStates
+            SaveStates,
+            HardDisk
         }
 
         /// <summary>
@@ -228,7 +229,11 @@ namespace AmigaEmulator
             /// <summary>
             /// Represents Chip 2 Mb Fast 8 Mb.
             /// </summary>
-            Chip2MbFast8Mb
+            Chip2MbFast8Mb,
+            Chip1MbFast2Mb,
+            Chip1MbFast4Mb,
+            Chip2MbFast2Mb,
+            Chip2MbFast4Mb
         }
 
         /// <summary>
@@ -385,7 +390,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Stores main Menu Items.
         /// </summary>
-        private readonly string[] _mainMenuItems = { "SETTINGS", "MEDIA", "MACHINE", "INPUT", "RESET", "DISPLAY" };
+        private readonly string[] _mainMenuItems = { "SETTINGS", "MEDIA", "MACHINE", "INPUT", "RESET", "DISPLAY", "HARD DISK" };
         /// <summary>
         /// Number of savestate rows visible in the browser overlay.
         /// </summary>
@@ -717,6 +722,7 @@ namespace AmigaEmulator
             _mediaDirectory = !string.IsNullOrWhiteSpace(_settings.MediaBrowserDirectory) ? _settings.MediaBrowserDirectory : GetInitialMediaDirectory();
             _selectedRomPath = _settings.CustomKickstartPath ?? string.Empty;
             LoadConfiguredKickstart();
+            MountConfiguredHardDisk();
             ScheduleConfiguredMediaRemount();
             RefreshMediaEntries();
             RefreshRomEntries();
@@ -1213,6 +1219,7 @@ namespace AmigaEmulator
                 case OverlayMode.SaveStates:
                     DrawSaveStatesOverlay(graphics);
                     break;
+                case OverlayMode.HardDisk: DrawHardDiskOverlay(graphics); break;
             }
         }
 
@@ -1452,6 +1459,7 @@ namespace AmigaEmulator
                 case OverlayMode.Input: return 5;
                 case OverlayMode.Reset: return 4;
                 case OverlayMode.SaveStates: return Math.Max(1, _saveOverlayEntries.Count);
+                case OverlayMode.HardDisk: return 8;
                 default: return 0;
             }
         }
@@ -1472,6 +1480,7 @@ namespace AmigaEmulator
                 case OverlayMode.Input: return _inputSelection;
                 case OverlayMode.Reset: return _resetSelection;
                 case OverlayMode.SaveStates: return _saveSelection;
+                case OverlayMode.HardDisk: return _hardDiskSelection;
                 default: return 0;
             }
         }
@@ -1492,6 +1501,7 @@ namespace AmigaEmulator
                 case OverlayMode.Input: _inputSelection = value; break;
                 case OverlayMode.Reset: _resetSelection = value; break;
                 case OverlayMode.SaveStates: _saveSelection = value; ClampSaveOverlayScroll(); break;
+                case OverlayMode.HardDisk: _hardDiskSelection = value; break;
             }
         }
 
@@ -1517,6 +1527,7 @@ namespace AmigaEmulator
                 case OverlayMode.Reset:
                     ChangeResetItem(direction);
                     break;
+                case OverlayMode.HardDisk: ChangeHardDiskItem(direction); break;
             }
         }
 
@@ -1554,6 +1565,7 @@ namespace AmigaEmulator
                 case OverlayMode.SaveStates:
                     ActivateSelectedSaveOverlayEntry();
                     break;
+                case OverlayMode.HardDisk: ActivateHardDiskItem(); break;
             }
         }
 
@@ -1570,6 +1582,7 @@ namespace AmigaEmulator
                 case 3: ShowOverlay(OverlayMode.Input); break;
                 case 4: ShowOverlay(OverlayMode.Reset); break;
                 case 5: ShowOverlay(OverlayMode.Display); break;
+                case 6: ShowOverlay(OverlayMode.HardDisk); break;
             }
         }
 
@@ -2441,7 +2454,7 @@ namespace AmigaEmulator
         /// </summary>
         private void ApplyRamProfile(RamProfile profile)
         {
-            if (_ramProfile == profile && _system != null && _system.Model == GetModelForRamProfile(profile))
+            if (_ramProfile == profile && _system != null)
             {
                 return;
             }
@@ -2469,6 +2482,7 @@ namespace AmigaEmulator
             ApplyInputPortMode();
 
             LoadConfiguredKickstart();
+            MountConfiguredHardDisk();
             ScheduleDeferredMediaMount(media);
             UpdateFrequency = GetRenderUpdateFrequency(_renderLimitMode);
             ResetEmulationClock();
@@ -2506,6 +2520,7 @@ namespace AmigaEmulator
         /// </summary>
         private void ScheduleConfiguredMediaRemount()
         {
+            if (_settings.HardDiskEnabled && _settings.BootFromHardDisk) return;
             string path = _settings.Df0Path;
             if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             {
@@ -2579,6 +2594,7 @@ namespace AmigaEmulator
                 if (_system != null)
                 {
                     _system.Bus.FloppyController.FlushDrive0();
+                    _system.Bus.HardDisk.Flush();
                 }
             }
             catch (Exception ex)
@@ -2626,6 +2642,10 @@ namespace AmigaEmulator
                     return AmigaModel.A500Pal2MbChip;
                 case RamProfile.Chip2MbFast8Mb:
                     return AmigaModel.A500Pal2MbChipFast8Mb;
+                case RamProfile.Chip1MbFast2Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip1MbFast2Mb);
+                case RamProfile.Chip1MbFast4Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip1MbFast4Mb);
+                case RamProfile.Chip2MbFast2Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip2MbFast2Mb);
+                case RamProfile.Chip2MbFast4Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip2MbFast4Mb);
                 default:
                     return AmigaModel.A500Pal512Slow512;
             }
@@ -2636,6 +2656,12 @@ namespace AmigaEmulator
         /// </summary>
         private static RamProfile GetRamProfileForModel(AmigaModel model)
         {
+            foreach (AmigaRamProfile candidate in Enum.GetValues<AmigaRamProfile>())
+            {
+                var info = AmigaOverlaySettingCatalog.GetRamProfileInfo(candidate);
+                if (info.ChipRamBytes == model.ChipRamBytes && info.SlowRamBytes == model.SlowRamBytes && info.FastRamBytes == model.FastRamBytes)
+                    return GetRamProfileFromSettings(candidate, RamProfile.Chip512Slow512);
+            }
             if (model == AmigaModel.A500Pal)
             {
                 return RamProfile.Chip512;
@@ -2676,6 +2702,10 @@ namespace AmigaEmulator
                     return RamProfile.Chip2Mb;
                 case AmigaRamProfile.Chip2MbFast8Mb:
                     return RamProfile.Chip2MbFast8Mb;
+                case AmigaRamProfile.Chip1MbFast2Mb: return RamProfile.Chip1MbFast2Mb;
+                case AmigaRamProfile.Chip1MbFast4Mb: return RamProfile.Chip1MbFast4Mb;
+                case AmigaRamProfile.Chip2MbFast2Mb: return RamProfile.Chip2MbFast2Mb;
+                case AmigaRamProfile.Chip2MbFast4Mb: return RamProfile.Chip2MbFast4Mb;
                 default:
                     return fallback;
             }
@@ -2696,6 +2726,10 @@ namespace AmigaEmulator
                     return AmigaRamProfile.Chip2Mb;
                 case RamProfile.Chip2MbFast8Mb:
                     return AmigaRamProfile.Chip2MbFast8Mb;
+                case RamProfile.Chip1MbFast2Mb: return AmigaRamProfile.Chip1MbFast2Mb;
+                case RamProfile.Chip1MbFast4Mb: return AmigaRamProfile.Chip1MbFast4Mb;
+                case RamProfile.Chip2MbFast2Mb: return AmigaRamProfile.Chip2MbFast2Mb;
+                case RamProfile.Chip2MbFast4Mb: return AmigaRamProfile.Chip2MbFast4Mb;
                 default:
                     return AmigaRamProfile.Chip512K;
             }
@@ -3466,7 +3500,7 @@ namespace AmigaEmulator
         private void DrawMenu(Graphics graphics, string title, string help, string[] lines, int selection)
         {
             int width = Math.Min(760, Math.Max(420, ClientSize.Width - 32));
-            int height = 92 + (lines.Length * 24);
+            int height = 116 + (lines.Length * 24);
             int x = (ClientSize.Width - width) / 2;
             int y = Math.Max(18, (ClientSize.Height - height) / 2);
 
@@ -4596,6 +4630,10 @@ namespace AmigaEmulator
                 case RamProfile.Chip1Mb: return "1MB CHIP";
                 case RamProfile.Chip2Mb: return "2MB CHIP";
                 case RamProfile.Chip2MbFast8Mb: return "2MB CHIP + 8MB FAST";
+                case RamProfile.Chip1MbFast2Mb: return "1MB CHIP + 2MB FAST";
+                case RamProfile.Chip1MbFast4Mb: return "1MB CHIP + 4MB FAST";
+                case RamProfile.Chip2MbFast2Mb: return "2MB CHIP + 2MB FAST";
+                case RamProfile.Chip2MbFast4Mb: return "2MB CHIP + 4MB FAST";
                 default: return "512K CHIP + 512K SLOW";
             }
         }

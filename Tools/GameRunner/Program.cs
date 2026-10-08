@@ -38,16 +38,14 @@ static void Run(Scenario scenario, string output)
     string mediaRoot = Environment.ExpandEnvironmentVariables(scenario.MediaRoot ?? "%USERPROFILE%/Documents/AmigaEmulator");
     string save = scenario.Save == null ? null : Environment.ExpandEnvironmentVariables(scenario.Save);
     var ram = save != null ? SaveStateFile.ReadMetadata(save).RamProfile : Enum.Parse<AmigaRamProfile>(scenario.Ram ?? "Chip512KSlow512K");
-    var model = ram switch
-    {
-        AmigaRamProfile.Chip512K => AmigaModel.A500Pal,
-        AmigaRamProfile.Chip512KSlow512K => AmigaModel.A500Pal512Slow512,
-        AmigaRamProfile.Chip1Mb => AmigaModel.A500Pal1MbChip,
-        AmigaRamProfile.Chip2Mb => AmigaModel.A500Pal2MbChip,
-        _ => AmigaModel.A500Pal2MbChipFast8Mb
-    };
+    var model = AmigaModel.ForRamProfile(ram);
     var accuracy = (scenario.Strict ? AmigaAccuracyOptions.Compatible : AmigaAccuracyOptions.Fast).Clone();
     using var system = new AmigaSystem(model, accuracy);
+    using var ideTrace = scenario.TraceIde ? new StreamWriter(Path.Combine(directory, "ide-trace.txt")) { AutoFlush = true } : null;
+    if (ideTrace != null) system.Bus.WriteObserved += (address, size, value, region) =>
+    { if (region == AmigaEmulator.Core.Memory.AmigaAddressRegion.GayleIde || address >= 0xE80000 && address < 0xE90000) ideTrace.WriteLine($"PC={system.Cpu.PC:X6} W{size} {address:X6}={value:X8}"); };
+    if (ideTrace != null) system.Bus.ReadObserved += (address, size, value, region) =>
+    { if (address >= 0xE80000 && address < 0xE90000) ideTrace.WriteLine($"PC={system.Cpu.PC:X6} R{size} {address:X6}={value:X8}"); };
     var mounted = MountedMediaInfo.None;
     var kickstart = save == null ? AmigaKickstart.Kickstart13 : SaveStateFile.ReadMetadata(save).Kickstart;
     if (save != null)
@@ -58,9 +56,15 @@ static void Run(Scenario scenario, string output)
     }
     else
     {
-        if (!KickstartRomResolver.TryLoadDefaultKickstart(out byte[] rom, out _)) throw new FileNotFoundException("Kickstart ROM missing");
+        byte[] rom;
+        bool loaded = scenario.KickstartRom == null
+            ? KickstartRomResolver.TryLoadDefaultKickstart(out rom, out _)
+            : KickstartRomResolver.TryLoadKickstart(scenario.KickstartRom, out rom, out _);
+        if (!loaded) throw new FileNotFoundException("Kickstart ROM missing");
+        if (scenario.CreateHardDiskMiB > 0) HardDiskImage.Create(scenario.HardDisk, scenario.CreateHardDiskMiB);
+        if (scenario.HardDisk != null) system.Bus.HardDisk.Mount(scenario.HardDisk, scenario.HardDiskReadOnly);
         system.LoadKickstart(rom);
-        Mount(scenario.Boot, 0);
+        if (scenario.Boot != null) Mount(scenario.Boot, 0);
     }
     using var log = new StreamWriter(Path.Combine(directory, "steps.jsonl"));
     int step = 0;
@@ -130,7 +134,8 @@ static void Run(Scenario scenario, string output)
         log.WriteLine(JsonSerializer.Serialize(new { label, seconds, frame = system.FrameCounter,
             pc = system.Cpu.PC.ToString("X6"), hash = Convert.ToHexString(SHA256.HashData(bytes)),
             presentation = system.GetPresentationDebugInfo(), cpu = system.GetCpuDebugInfo(), stopped = system.Cpu.IsStopped,
-            disk = system.Bus.FloppyController.GetDebugInfo(), accuracy = accuracy.Name, imagePath, gameplay = "requires-visual-review" }));
+            disk = system.Bus.FloppyController.GetDebugInfo(), hardDisk = new { path = system.Bus.HardDisk.Image?.Path, reads = system.Bus.HardDisk.ReadSectors, writes = system.Bus.HardDisk.WrittenSectors },
+            fastRam = new { configured = system.Bus.AutoConfig.Configured, address = system.Bus.AutoConfig.BaseAddress }, accuracy = accuracy.Name, imagePath, gameplay = "requires-visual-review" }));
         log.Flush();
     }
 }
@@ -143,6 +148,11 @@ class Scenario
     public string Save { get; set; }
     public string Ram { get; set; }
     public bool Strict { get; set; }
+    public string KickstartRom { get; set; }
+    public string HardDisk { get; set; }
+    public bool HardDiskReadOnly { get; set; } = true;
+    public int CreateHardDiskMiB { get; set; }
+    public bool TraceIde { get; set; }
     public List<ScenarioAction> Actions { get; set; }
 }
 class ScenarioAction

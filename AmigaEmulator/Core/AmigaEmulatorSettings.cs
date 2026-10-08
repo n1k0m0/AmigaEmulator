@@ -56,6 +56,12 @@ namespace AmigaEmulator.Core
         /// </summary>
         public AmigaRamProfile RamProfile { get; set; } = AmigaRamProfile.Chip1Mb;
 
+        public bool HardDiskEnabled { get; set; }
+        public string HardDiskPath { get; set; } = string.Empty;
+        public bool HardDiskReadOnly { get; set; } = true;
+        public int NewHardDiskSizeMiB { get; set; } = 256;
+        public bool BootFromHardDisk { get; set; }
+
         /// <summary>
         /// Gets or sets Kickstart.
         /// </summary>

@@ -204,3 +204,8 @@ CPU tests also cover zero-count shift/rotation flags (including modulo-64
 counts) and instruction-emulation handlers for illegal/Line-A/Line-F opcodes.
 Both direct Step and deferred Tick execution must stack the original opcode
 address, allow the handler to inspect/skip it, and resume with RTE.
+
+Storage/Expansion tests cover file-backed ATA PIO, RDB creation, read-only and
+range failures, IRQ acknowledgement, CPU deferred FIFO reads, partial-transfer
+savestates and Zorro II memory registration/bounds. The independent ROM boot
+evidence and compatibility limits are in [StorageExpansion.md](StorageExpansion.md).

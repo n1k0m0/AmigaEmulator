@@ -395,6 +395,7 @@ namespace AmigaEmulator.Core
                 }
 
                 _bus.RomOverlayAtZero = true;
+                _bus.ResetExpansionDevices();
                 _agnus.Reset();
                 _denise.Reset();
                 _presentedFrameBuffer.Clear(0xFF0C1020);
@@ -426,7 +427,7 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(2);
+                writer.Write(3);
                 _bus.SaveState(writer);
                 _cpu.SaveState(writer);
                 _agnus.SaveState(writer);
@@ -442,6 +443,7 @@ namespace AmigaEmulator.Core
                 writer.Write(_cpuVisibleInterruptLevel);
                 writer.Write(_cpuPendingInterruptLevel);
                 writer.Write(_cpuInterruptDelayCycles);
+                _bus.SaveExpansionState(writer);
             }
         }
 
@@ -458,7 +460,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version != 1 && version != 2)
+                if (version < 1 || version > 3)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
@@ -489,6 +491,8 @@ namespace AmigaEmulator.Core
                     _cpuInterruptDelayCycles = 0;
                 }
 
+                if (version >= 3) _bus.LoadExpansionState(reader);
+                else { _bus.HardDisk.Eject(); _bus.HardDisk.Enabled = false; _bus.AutoConfig.MarkLegacyConfigured(); }
                 _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
                 _suppressNextPresentationAfterLoad = true;
                 _lastTraceSample = CreateTraceSample(null);
@@ -620,6 +624,7 @@ namespace AmigaEmulator.Core
         /// </summary>
         public void Dispose()
         {
+            _bus.HardDisk.Dispose();
         }
 
         /// <summary>
@@ -1166,7 +1171,7 @@ namespace AmigaEmulator.Core
             _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
 
             bool ciaAIrq = _ciaA.InterruptPending;
-            if (ciaAIrq)
+            if (ciaAIrq || _bus.HardDisk.InterruptActive)
             {
                 _agnus.CustomRegisters.RequestInterrupt(CustomInterruptSource.Ports);
             }

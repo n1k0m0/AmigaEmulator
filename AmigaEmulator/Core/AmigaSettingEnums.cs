@@ -143,7 +143,11 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Maps 2 MB Chip RAM plus 8 MB Zorro II Fast RAM.
         /// </summary>
-        Chip2MbFast8Mb
+        Chip2MbFast8Mb,
+        Chip1MbFast2Mb,
+        Chip1MbFast4Mb,
+        Chip2MbFast2Mb,
+        Chip2MbFast4Mb
     }
 
     /// <summary>

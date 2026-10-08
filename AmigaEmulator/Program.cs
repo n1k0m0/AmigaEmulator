@@ -4544,6 +4544,11 @@ namespace AmigaEmulator
         /// </summary>
         private static AmigaRamProfile GetRamProfileForModel(AmigaModel model)
         {
+            foreach (AmigaRamProfile candidate in Enum.GetValues<AmigaRamProfile>())
+            {
+                var info = AmigaOverlaySettingCatalog.GetRamProfileInfo(candidate);
+                if (info.ChipRamBytes == model.ChipRamBytes && info.SlowRamBytes == model.SlowRamBytes && info.FastRamBytes == model.FastRamBytes) return candidate;
+            }
             if (model.FastRamBytes >= 8 * 1024 * 1024 && model.ChipRamBytes >= 2 * 1024 * 1024)
             {
                 return AmigaRamProfile.Chip2MbFast8Mb;
@@ -10455,6 +10460,10 @@ namespace AmigaEmulator
                     return AmigaModel.A500Pal2MbChip;
                 case AmigaRamProfile.Chip2MbFast8Mb:
                     return AmigaModel.A500Pal2MbChipFast8Mb;
+                case AmigaRamProfile.Chip1MbFast2Mb:
+                case AmigaRamProfile.Chip1MbFast4Mb:
+                case AmigaRamProfile.Chip2MbFast2Mb:
+                case AmigaRamProfile.Chip2MbFast4Mb: return AmigaModel.ForRamProfile(profile);
                 default:
                     return AmigaModel.PalA500;
             }

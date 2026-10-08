@@ -40,3 +40,11 @@ Every action accepts a `label` for screenshots. `strict` does not imply that
 software is compatible; both profiles may require title-specific investigation.
 The supplied manifest is an initial smoke sweep. Real gameplay requires
 appropriate disk swaps and menu selections, as demonstrated in the review report.
+
+For HDD boot cases, omit `boot` and provide `hardDisk` (absolute whole-disk HDF
+path) and `kickstartRom` (absolute compatible A600 ROM path). `hardDiskReadOnly`
+defaults to true; set false only for a disposable writable test image.
+`createHardDiskMiB` optionally creates a new RDB/DH0 image before mounting it
+(refuses existing files; the partition must still be formatted/installed).
+`traceIde: true` adds `ide-trace.txt` with controller writes and Autoconfig
+accesses. Step diagnostics include HDF sector counters and Fast-RAM assignment.

@@ -15,6 +15,12 @@
 */
 namespace AmigaEmulator.Core.Cpu
 {
+    /// <summary>Gives FIFO devices a temporary read cursor during deferred instruction planning.</summary>
+    public interface IM68kPlanningBus
+    {
+        void BeginInstructionPlanning();
+        void EndInstructionPlanning();
+    }
     /// <summary>
     /// Defines the IM68k Bus contract.
     /// </summary>

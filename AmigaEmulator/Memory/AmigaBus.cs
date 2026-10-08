@@ -27,8 +27,15 @@ namespace AmigaEmulator.Core.Memory
     /// <summary>
     /// Routes 68000 memory accesses between Chip RAM, Slow RAM, CIA chips, custom registers, and Kickstart ROM.
     /// </summary>
-    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider
+    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider, IM68kPlanningBus
     {
+        public GayleIdeController HardDisk { get; } = new GayleIdeController();
+        public ZorroRamAutoConfig AutoConfig { get; }
+        public void BeginInstructionPlanning() => HardDisk.BeginPlanning();
+        public void EndInstructionPlanning() => HardDisk.EndPlanning();
+        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); }
+        public void SaveExpansionState(BinaryWriter writer) { HardDisk.SaveState(writer); AutoConfig.SaveState(writer); }
+        public void LoadExpansionState(BinaryReader reader) { HardDisk.LoadState(reader); AutoConfig.LoadState(reader); }
         /// <summary>
         /// Stores chip RAM.
         /// </summary>
@@ -109,6 +116,7 @@ namespace AmigaEmulator.Core.Memory
             _chipRam = new ChipRam(model.ChipRamBytes);
             _slowRam = new SlowRam(model.SlowRamBytes);
             _fastRam = new FastRam(model.FastRamBytes);
+            AutoConfig = new ZorroRamAutoConfig(model.FastRamBytes);
             _chipRamEnd = model.ChipRamBytes > 0
                 ? (uint)model.ChipRamBytes - 1u
                 : MemoryMap.ChipRamEnd;
@@ -247,6 +255,9 @@ namespace AmigaEmulator.Core.Memory
         {
             address = MemoryMap.Normalize(address);
 
+            if (HardDisk.Maps(address)) return AmigaAddressRegion.GayleIde;
+            if (AutoConfig.Maps(address)) return AmigaAddressRegion.AutoConfig;
+
             if (address <= _chipRamEnd)
             {
                 return AmigaAddressRegion.ChipRam;
@@ -270,8 +281,8 @@ namespace AmigaEmulator.Core.Memory
             }
 
             if (_fastRam.Enabled &&
-                address >= MemoryMap.FastRamStart &&
-                address < MemoryMap.FastRamStart + (uint)_fastRam.Size &&
+                address >= AutoConfig.BaseAddress &&
+                address < AutoConfig.BaseAddress + (uint)_fastRam.Size &&
                 address <= MemoryMap.FastRamEnd)
             {
                 return AmigaAddressRegion.FastRam;
@@ -361,7 +372,13 @@ namespace AmigaEmulator.Core.Memory
                     value = _slowRam.Read(address - MemoryMap.SlowRamStart);
                     break;
                 case AmigaAddressRegion.FastRam:
-                    value = _fastRam.Read(address - MemoryMap.FastRamStart);
+                    value = _fastRam.Read(address - AutoConfig.BaseAddress);
+                    break;
+                case AmigaAddressRegion.GayleIde:
+                    value = HardDisk.ReadByte(address);
+                    break;
+                case AmigaAddressRegion.AutoConfig:
+                    value = AutoConfig.ReadByte(address);
                     break;
                 case AmigaAddressRegion.CustomRegisters:
                     if (IsBplconWriteOnlyRead(address))
@@ -426,7 +443,11 @@ namespace AmigaEmulator.Core.Memory
                 case AmigaAddressRegion.SlowRam:
                     return _slowRam.Read(address - MemoryMap.SlowRamStart);
                 case AmigaAddressRegion.FastRam:
-                    return _fastRam.Read(address - MemoryMap.FastRamStart);
+                    return _fastRam.Read(address - AutoConfig.BaseAddress);
+                case AmigaAddressRegion.GayleIde:
+                    return HardDisk.ReadByte(address, true);
+                case AmigaAddressRegion.AutoConfig:
+                    return AutoConfig.ReadByte(address);
                 case AmigaAddressRegion.CustomRegisters:
                     if (_paula != null && _paula.TryPeekCustomRegisterWord(address & 0xFFFFFEu, out ushort paulaWord))
                     {
@@ -459,6 +480,12 @@ namespace AmigaEmulator.Core.Memory
         public ushort ReadWord(uint address)
         {
             uint normalized = MemoryMap.Normalize(address);
+            if (HardDisk.Maps(normalized) && GayleIdeController.IsData(normalized))
+            {
+                ushort value = HardDisk.ReadData();
+                NotifyReadObserved(normalized, 2, value, AmigaAddressRegion.GayleIde);
+                return value;
+            }
             if (GetRegion(normalized) == AmigaAddressRegion.CustomRegisters &&
                 _paula != null &&
                 _paula.TryReadCustomRegisterWord(normalized, out ushort paulaWord))
@@ -477,6 +504,7 @@ namespace AmigaEmulator.Core.Memory
         public ushort PeekWord(uint address)
         {
             uint normalized = MemoryMap.Normalize(address);
+            if (HardDisk.Maps(normalized) && GayleIdeController.IsData(normalized)) return HardDisk.ReadData(true);
             if (GetRegion(normalized) == AmigaAddressRegion.CustomRegisters &&
                 _paula != null &&
                 _paula.TryPeekCustomRegisterWord(normalized, out ushort paulaWord))
@@ -567,7 +595,13 @@ namespace AmigaEmulator.Core.Memory
                     _slowRam.Write(address - MemoryMap.SlowRamStart, value);
                     break;
                 case AmigaAddressRegion.FastRam:
-                    _fastRam.Write(address - MemoryMap.FastRamStart, value);
+                    _fastRam.Write(address - AutoConfig.BaseAddress, value);
+                    break;
+                case AmigaAddressRegion.GayleIde:
+                    HardDisk.WriteByte(address, value);
+                    break;
+                case AmigaAddressRegion.AutoConfig:
+                    AutoConfig.WriteByte(address, value);
                     break;
                 case AmigaAddressRegion.CustomRegisters:
                     _customRegisters.WriteByte(address, value);
@@ -605,6 +639,12 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void WriteWord(uint address, ushort value)
         {
+            if (HardDisk.Maps(MemoryMap.Normalize(address)) && GayleIdeController.IsData(MemoryMap.Normalize(address)))
+            {
+                HardDisk.WriteData(value);
+                NotifyWriteObserved(MemoryMap.Normalize(address), 2, value, AmigaAddressRegion.GayleIde);
+                return;
+            }
             uint normalized = MemoryMap.Normalize(address);
             if (GetRegion(normalized) == AmigaAddressRegion.CustomRegisters &&
                 GetRegion(normalized + 1) == AmigaAddressRegion.CustomRegisters)

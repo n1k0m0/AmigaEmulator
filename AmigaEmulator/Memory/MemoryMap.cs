@@ -51,7 +51,9 @@ namespace AmigaEmulator.Core.Memory
         /// <summary>
         /// Represents Kickstart ROM.
         /// </summary>
-        KickstartRom
+        KickstartRom,
+        GayleIde,
+        AutoConfig
     }
 
     /// <summary>
