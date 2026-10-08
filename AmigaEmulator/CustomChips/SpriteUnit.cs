@@ -146,6 +146,14 @@ namespace AmigaEmulator.Core.CustomChips
         public void LoadState(BinaryReader reader)
         {
             StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord");
+            foreach (SpriteState state in _states)
+            {
+                if (!state.DmaStateKnown)
+                {
+                    state.DmaActive = state.Active && state.ControlLoaded && !state.Terminated;
+                    state.DmaStateKnown = true;
+                }
+            }
             RefreshFromRegisters();
             SanitizeLoadedSpriteStates();
         }
@@ -243,10 +251,7 @@ namespace AmigaEmulator.Core.CustomChips
             HasActiveSprites = true;
             if (localOffset == 0u || localOffset == 2u)
             {
-                bool hadLineData = state.LineActive || state.DataA != 0 || state.DataB != 0;
-                int oldHStart = state.HStart;
-                int oldVStart = state.VStart;
-                int oldVStop = state.VStop;
+                bool wasArmed = state.LineActive;
                 ushort pos = localOffset == 0u || !state.ControlLoaded
                     ? ReadSpriteRegister(spriteIndex, 0)
                     : state.Pos;
@@ -255,8 +260,9 @@ namespace AmigaEmulator.Core.CustomChips
                     : state.Ctl;
                 ApplyControlWords(state, pos, ctl, false);
                 state.Active = beamY >= state.VStart && beamY < state.VStop;
-                bool sameOutputWindow = oldHStart == state.HStart && oldVStart == state.VStart && oldVStop == state.VStop;
-                state.LineActive = state.Active && !state.Terminated && hadLineData && sameOutputWindow;
+                // POS can reuse the data at another horizontal comparison on
+                // this line. CTL disarms; old nonzero data cannot rearm it.
+                state.LineActive = localOffset == 0u && wasArmed && !state.Terminated;
                 return;
             }
 
@@ -273,10 +279,11 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            if (state.ControlLoaded && !state.Terminated)
+            if (localOffset == 4u)
             {
-                state.Active = beamY >= state.VStart && beamY < state.VStop;
-                state.LineActive = state.Active;
+                // Denise's DATA write arms the horizontal comparator even
+                // outside Agnus's DMA vertical interval (Copper sprites).
+                state.LineActive = true;
             }
         }
 
@@ -315,10 +322,11 @@ namespace AmigaEmulator.Core.CustomChips
 
             for (int sprite = 0; sprite < 8; sprite++)
             {
-                if ((sprite & 1) == 0 &&
-                    TryReadSpritePixel(sprite + 1, screenX, out int oddColor, out bool attached) &&
-                    attached)
+                if ((sprite & 1) == 0 && _states[sprite + 1].Attached)
                 {
+                    // ATT selects the pair's palette even if the odd sprite
+                    // is transparent, parked elsewhere, or not active here.
+                    TryReadSpritePixel(sprite + 1, screenX, out int oddColor, out _);
                     TryReadSpritePixel(sprite, screenX, out int evenColor, out _);
                     int color = evenColor | (oddColor << 2);
                     if (color != 0)
@@ -370,10 +378,9 @@ namespace AmigaEmulator.Core.CustomChips
             int mask = 0;
             for (int sprite = 0; sprite < 8; sprite++)
             {
-                if ((sprite & 1) == 0 &&
-                    TryReadSpritePixel(sprite + 1, screenX, out int oddColor, out bool attached) &&
-                    attached)
+                if ((sprite & 1) == 0 && _states[sprite + 1].Attached)
                 {
+                    TryReadSpritePixel(sprite + 1, screenX, out int oddColor, out _);
                     TryReadSpritePixel(sprite, screenX, out int evenColor, out _);
                     if ((evenColor | (oddColor << 2)) != 0)
                     {
@@ -511,6 +518,7 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 state.Pointer = _dmaAddress.Add(state.Pointer, 4u);
                 ApplyControlWords(state, state.PendingFirstWord, second, true);
+                state.DmaActive = !state.Terminated && beamY == state.VStart;
                 state.PendingFetch = SpriteFetchKind.None;
                 return;
             }
@@ -552,15 +560,15 @@ namespace AmigaEmulator.Core.CustomChips
 
             if (beamY >= state.VStop)
             {
+                state.DmaActive = false;
                 return SpriteFetchKind.Control;
             }
 
-            if (beamY >= state.VStart && beamY < state.VStop)
-            {
-                return SpriteFetchKind.Data;
-            }
-
-            return SpriteFetchKind.None;
+            // Agnus starts DMA on the VSTART comparison, not on every line
+            // after it. Copper POS writes used for horizontal reuse often set
+            // VSTART to zero; they must not start DMA on an idle/dummy channel.
+            if (beamY == state.VStart) state.DmaActive = true;
+            return state.DmaActive ? SpriteFetchKind.Data : SpriteFetchKind.None;
         }
 
         /// <summary>
@@ -683,8 +691,11 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             state.HStart = (((pos & 0x00FF) << 1) | (ctl & 0x0001)) - FramebufferLowresStart;
-            state.ControlLoaded = pos != 0 || ctl != 0;
-            state.Terminated = !state.ControlLoaded;
+            // A zero pair is a loaded terminator, not an uninitialized latch.
+            // Subsequent Copper POS writes must keep its zero CTL rather than
+            // combining the new position with old register-map contents.
+            state.ControlLoaded = true;
+            state.Terminated = pos == 0 && ctl == 0;
             if (clearOutputLatch)
             {
                 state.Active = false;
@@ -841,6 +852,10 @@ namespace AmigaEmulator.Core.CustomChips
             /// Stores Active.
             /// </summary>
             public bool Active;
+            /// <summary>Tracks Agnus DMA activation independently of Denise output.</summary>
+            public bool DmaActive;
+            /// <summary>Distinguishes saved DMA activation from legacy state layouts.</summary>
+            public bool DmaStateKnown;
             /// <summary>
             /// Stores Line Active.
             /// </summary>
@@ -880,6 +895,8 @@ namespace AmigaEmulator.Core.CustomChips
                 ControlLoaded = false;
                 Terminated = false;
                 Active = false;
+                DmaActive = false;
+                DmaStateKnown = true;
                 LineActive = false;
                 PendingFetch = SpriteFetchKind.None;
                 PendingFirstWord = 0;

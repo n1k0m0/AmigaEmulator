@@ -266,7 +266,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private static bool IsCopperSlot(int beamX)
         {
-            return beamX >= 20 && beamX < 224 && (beamX & 3) == 0;
+            // A Copper word takes one of every two memory cycles. Two
+            // words therefore take four cycles, not eight.
+            return beamX >= 20 && beamX < 224 && (beamX & 1) == 0;
         }
 
         /// <summary>

@@ -744,6 +744,8 @@ namespace AmigaEmulator.Tests
 
             scheduler.AttachCopperBusDemand(() => true);
             Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 40, 0).Owner, "A Copper that needs an instruction word should own a Copper fetch slot.");
+            Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 41, 0).Owner, "The interleaved memory cycle remains available to the Blitter.");
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 42, 0).Owner, "The Copper must fetch its second instruction word two cycles later, rather than waiting four cycles and missing sprite reuse positions.");
 
             scheduler.AttachCopperBusDemand(() => false);
             Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 40, 0).Owner, "A waiting Copper should not reserve its fetch slot while the Blitter is pending.");
@@ -2485,9 +2487,13 @@ namespace AmigaEmulator.Tests
                 TestSpriteDmaStopsOnVStopLine);
             yield return new ChipTestCase(
                 "Denise/Sprite",
-                "sprite POS write does not move stale line data",
-                "Amiga HRM sprite data latch and position register timing",
-                TestSpritePositionWriteDoesNotMoveStaleLineData);
+                "sprite POS reuses armed data and CTL disarms until DATA is written",
+                "Amiga HRM Sprite Hardware Details horizontal comparator; Celtic Heart Copper reuse",
+                TestSpritePositionWriteReusesArmedData);
+            yield return new ChipTestCase("Denise/Sprite", "horizontal reuse cannot start DMA after a missed VSTART",
+                "Amiga HRM sprite DMA vertical comparator; idle Copper-fed parallax channel", TestSpriteReuseDoesNotStartIdleDma);
+            yield return new ChipTestCase("Denise/Sprite", "attachment selects pair palette with an inactive parked odd sprite",
+                "Amiga HRM SPRxCTL ATT; Night Owl transparent attachment dummy", TestSpriteAttachmentWithParkedOddSprite);
             yield return new ChipTestCase(
                 "Denise/Sprite",
                 "sprite presentation aperture preserves the full latched word",
@@ -2847,9 +2853,9 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Runs Test Sprite Position Write Does Not Move Stale Line Data.
+        /// Verifies horizontal reuse and the horizontal comparator arming registers.
         /// </summary>
-        private static void TestSpritePositionWriteDoesNotMoveStaleLineData()
+        private static void TestSpritePositionWriteReusesArmedData()
         {
             var registers = new CustomRegisterMap();
             registers.WriteWord(Spr0pos, 0x2C40);
@@ -2863,7 +2869,67 @@ namespace AmigaEmulator.Tests
 
             registers.WriteWord(Spr0pos, 0x2C46);
             sprites.NotifyCustomRegisterWordWrite(Spr0pos, 0x2C46, BitplaneUnit.PalVisibleTop);
-            Check.True(!sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Moving SPRxPOS must not drag the previous line's data to the new X position before SPRxDATA is refreshed.");
+            Check.True(sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "POS must reuse the armed bitmap at the second horizontal position.");
+            registers.WriteWord(Spr0ctl, 0x2D00);
+            sprites.NotifyCustomRegisterWordWrite(Spr0ctl, 0x2D00, BitplaneUnit.PalVisibleTop);
+            Check.True(!sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Even an unchanged CTL write disarms the comparator.");
+            sprites.NotifyCustomRegisterWordWrite(Spr0datb, 0xFFFF, BitplaneUnit.PalVisibleTop);
+            Check.True(!sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "DATB must not arm a disabled comparator.");
+            sprites.NotifyCustomRegisterWordWrite(Spr0data, 0x8000, BitplaneUnit.PalVisibleTop);
+            Check.True(sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "DATA must rearm the comparator.");
+            registers.WriteWord(Spr0pos, 0x7046);
+            sprites.NotifyCustomRegisterWordWrite(Spr0pos, 0x7046, BitplaneUnit.PalVisibleTop);
+            registers.WriteWord(Spr0ctl, 0x7100);
+            sprites.NotifyCustomRegisterWordWrite(Spr0ctl, 0x7100, BitplaneUnit.PalVisibleTop);
+            sprites.NotifyCustomRegisterWordWrite(Spr0data, 0x8000, BitplaneUnit.PalVisibleTop);
+            Check.True(sprites.TryRenderPixel(0x18, BitplaneUnit.PalVisibleTop, out uint _, out int _), "Manual DATA arms Denise even before Agnus's VSTART DMA comparison.");
+        }
+
+        private static void TestSpriteAttachmentWithParkedOddSprite()
+        {
+            var registers = new CustomRegisterMap();
+            registers.WriteWord(0x150, 0x2C40); // Sprite 2 at the visible origin.
+            registers.WriteWord(0x152, 0x2D00);
+            registers.WriteWord(0x154, 0x8000);
+            registers.WriteWord(0x158, 0x2870); // Sprite 3 parked and vertically inactive.
+            registers.WriteWord(0x15A, 0x2980); // ATT is a control latch, not a pixel.
+            registers.WriteWord(0x1A2, 0x00F); // Attached index 17: blue.
+            registers.WriteWord(0x1AA, 0xFF0); // Independent sprite 2 index 21: yellow.
+            var sprites = new SpriteUnit(registers, null);
+            sprites.RefreshFromRegisters();
+            Check.True(sprites.TryRenderPixel(0, 44, out uint color, out int group), "Even sprite must render with an inactive odd partner.");
+            Check.Equal(0xFF0000FFu, color, "ATT must select COLOR17 rather than the independent COLOR21.");
+            Check.Equal(1, group, "Attachment must retain the pair's priority group.");
+        }
+
+        private static void TestSpriteReuseDoesNotStartIdleDma()
+        {
+            var registers = new CustomRegisterMap();
+            int reads = 0;
+            var sprites = new SpriteUnit(registers, address => { reads++; return 0; });
+            registers.WriteWord(Dmacon, 0x8220);
+            registers.WriteWord(0x122, 0x0100);
+            sprites.RefreshFromRegisters();
+            sprites.TickDmaSlot(0, 0, 0); sprites.TickDmaSlot(0, 1, 0);
+            Check.Equal(2, reads, "Dummy list control pair.");
+            sprites.HasRenderablePixelsOnLine(100);
+            registers.WriteWord(Spr0pos, 0x0060);
+            sprites.NotifyCustomRegisterWordWrite(Spr0pos, 0x0060, 100);
+            sprites.NotifyCustomRegisterWordWrite(Spr0data, 0x8000, 100);
+            sprites.NotifyCustomRegisterWordWrite(Spr0datb, 0, 100);
+            Check.True(sprites.TryRenderPixel(128, 100, out uint _, out int _), "Manual Copper data must render.");
+            registers.WriteWord(Spr0pos, 0x0068);
+            sprites.NotifyCustomRegisterWordWrite(Spr0pos, 0x0068, 100);
+            Check.True(sprites.TryRenderPixel(160, 100, out uint _, out int _), "Copper can reuse the same word.");
+            sprites.TickDmaSlot(0, 0, 101); sprites.TickDmaSlot(0, 1, 101);
+            Check.Equal(2, reads, "A late VSTART=0 write must not start idle sprite DMA.");
+            using var buffer = new MemoryStream();
+            using (var writer = new BinaryWriter(buffer, System.Text.Encoding.UTF8, true)) sprites.SaveState(writer);
+            buffer.Position = 0;
+            using (var reader = new BinaryReader(buffer, System.Text.Encoding.UTF8, true)) sprites.LoadState(reader);
+            int restoredReads = reads;
+            sprites.TickDmaSlot(0, 0, 102); sprites.TickDmaSlot(0, 1, 102);
+            Check.Equal(restoredReads, reads, "Restore cannot restart DMA into memory after the dummy list.");
         }
     }
 

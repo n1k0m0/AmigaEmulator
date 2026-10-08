@@ -71,6 +71,11 @@ and a final checkpoint. Local evidence is outside Git at
 
 ## Graphics investigation — rejected experiment
 
+Follow-up: the combined Copper bandwidth, sprite DMA activation, comparator,
+and attachment-palette correction is now retained. See
+[the ten-game follow-up](TenGamesReview-2026-10-08.md). The rejected experiment
+below records the earlier POS-only attempt and does not describe the new core.
+
 Celtic Heart's published `sprites.asm` / `PlxSpriteField` moves the same sprite
 channels repeatedly across one raster line with Copper SPRxPOS writes. The
 current sprite path suppresses latched data when that position changes. The

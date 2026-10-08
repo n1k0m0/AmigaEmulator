@@ -98,6 +98,10 @@ dotnet .\AmigaEmulator\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.d
   this does not certify hardware-accurate per-slot reads.
 - Dual-playfield color-bank mapping.
 - Direct sprite register rendering.
+- Copper word-fetch bandwidth and release of waiting fetch slots to the Blitter.
+- Sprite POS reuse, CTL disarming, DATA arming independently of the DMA vertical
+  interval, DATB non-arming, parked attached palette selection, and idle DMA
+  activation state through save/restore.
 - Standard ADF MFM stream sync/gap sanity.
 - CPU bus write side effect into Denise bitplane latch.
 - Optional Turrican III nonblank Golden ADF checkpoint.
