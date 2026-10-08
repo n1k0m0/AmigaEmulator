@@ -299,6 +299,8 @@ namespace AmigaEmulator.Core.CustomChips
             uint spriteArgb = 0;
             int spriteGroup = 0;
             bool spriteVisible = false;
+            uint playfieldArgb = 0;
+            bool spriteCoversPlayfield = false;
             for (int frameBufferX = start; frameBufferX < end; frameBufferX++)
             {
                 int screenX = frameBufferX - _frameBufferXOffset;
@@ -307,19 +309,24 @@ namespace AmigaEmulator.Core.CustomChips
                 bool firstInPair = frameBufferX == start || (screenX & 1) == 0;
                 if (bitplaneActive && (hires || firstInPair))
                     bitplaneColorIndex = _bitplanes.RenderPixelInfo(screenX, beamY, out bitplaneMask);
-                uint argb = bitplaneActive
-                    ? _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb)
+                // Both hires framebuffer pixels of a lowres bit share a color.
+                // Reapplying the same HAM component is also idempotent. Keep
+                // this cache local to the span so raster writes stay immediate.
+                if (bitplaneActive && (hires || firstInPair))
+                    playfieldArgb = _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb);
+                uint argb = bitplaneActive ? playfieldArgb
                     : _bitplanes.RenderFallbackPixel(screenX, y, frame);
                 if (spritesActive && firstInPair)
                     spriteVisible = _sprites.TryRenderPixel(screenX, beamY, out spriteArgb, out spriteGroup, out spriteMask);
-                if (collisionsActive)
+                if (collisionsActive && (hires || firstInPair))
                 {
                     _collisions.ObservePixel(bitplaneMask, spriteMask);
                     collisionsActive = !_collisions.IsSaturated;
                 }
 
-                bool spriteCoversPlayfield = spriteVisible &&
-                    ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex);
+                if (hires || firstInPair)
+                    spriteCoversPlayfield = spriteVisible &&
+                        ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex);
                 _frameBuffer.RecordSpritePixel(row + frameBufferX, argb, spriteCoversPlayfield ? spriteArgb : 0);
                 previousArgb = argb; // HAM holds the playfield color before sprite composition.
                 if (spriteCoversPlayfield)
