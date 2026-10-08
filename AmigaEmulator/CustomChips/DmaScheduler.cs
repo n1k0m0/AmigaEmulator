@@ -96,19 +96,19 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Defines the first fixed audio DMA slot.
         /// </summary>
-        private const int AudioSlotStart = 8;
+        private const int AudioSlotStart = 17;
         /// <summary>
         /// Defines the first fixed disk DMA slot.
         /// </summary>
-        private const int DiskSlotStart = 16;
+        private const int DiskSlotStart = 11;
         /// <summary>
         /// Defines the first fixed sprite DMA slot.
         /// </summary>
-        private const int SpriteSlotStart = 20;
+        private const int SpriteSlotStart = 25;
         /// <summary>
         /// Defines the last fixed sprite DMA slot plus one.
         /// </summary>
-        private const int SpriteSlotEndExclusive = 36;
+        private const int SpriteSlotEndExclusive = 57;
         /// <summary>
         /// Stores base PAL OCS DMA slot table.
         /// </summary>
@@ -130,6 +130,14 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores whether the Copper needs a DMA slot for its next instruction fetch.
         /// </summary>
         private System.Func<bool> _doesCopperNeedBus;
+
+        private System.Func<int, int, int, bool> _doesSpriteNeedBus;
+
+        /// <summary>Releases idle sprite slots to lower-priority DMA clients.</summary>
+        public void AttachSpriteBusDemand(System.Func<int, int, int, bool> doesSpriteNeedBus)
+        {
+            _doesSpriteNeedBus = doesSpriteNeedBus;
+        }
         /// <summary>
         /// Stores is Disk DMA Active.
         /// </summary>
@@ -228,19 +236,20 @@ namespace AmigaEmulator.Core.CustomChips
                 return DmaOwner.Refresh;
             }
 
-            if (baseSlot.Owner == DmaOwner.Audio)
+            if (baseSlot.Owner == DmaOwner.Audio && audioDma && (dmacon & (1 << baseSlot.AudioChannelIndex)) != 0)
             {
-                return audioDma ? DmaOwner.Audio : DmaOwner.Cpu;
+                return DmaOwner.Audio;
             }
 
-            if (baseSlot.Owner == DmaOwner.Disk)
+            if (baseSlot.Owner == DmaOwner.Disk && diskDma)
             {
-                return diskDma ? DmaOwner.Disk : DmaOwner.Cpu;
+                return DmaOwner.Disk;
             }
 
-            if (baseSlot.Owner == DmaOwner.Sprite)
+            if (baseSlot.Owner == DmaOwner.Sprite && spriteDma &&
+                (_doesSpriteNeedBus == null || _doesSpriteNeedBus(baseSlot.SpriteIndex, baseSlot.SpriteSlotPhase, beamY)))
             {
-                return spriteDma ? DmaOwner.Sprite : DmaOwner.Cpu;
+                return DmaOwner.Sprite;
             }
 
             if (bitplaneDma && _bitplanes.IsPlaneFetchSlot(beamX, beamY))
@@ -268,7 +277,7 @@ namespace AmigaEmulator.Core.CustomChips
         {
             // A Copper word takes one of every two memory cycles. Two
             // words therefore take four cycles, not eight.
-            return beamX >= 20 && beamX < 224 && (beamX & 1) == 0;
+            return beamX >= 4 && beamX < 224 && (beamX & 1) == 0;
         }
 
         /// <summary>
@@ -319,30 +328,34 @@ namespace AmigaEmulator.Core.CustomChips
                 };
             }
 
-            for (int slot = 0; slot < 4; slot++)
+            // Fixed OCS DMA words are interleaved with free bus cycles.
+            // Keep Copper cycles available between them, including in hblank.
+            // RGA slot positions: WinUAE 4.9.1 custom.cpp, REFRESH_FIRST_HPOS,
+            // DMAL_FIRST_HPOS and SPR_FIRST_HPOS (tag 4910).
+            for (int slot = 3; slot <= 9; slot += 2)
             {
                 table[slot].Owner = DmaOwner.Refresh;
             }
 
-            for (int slot = AudioSlotStart; slot < AudioSlotStart + 8; slot++)
+            for (int channel = 0; channel < 4; channel++)
             {
-                int offset = slot - AudioSlotStart;
+                int slot = AudioSlotStart + channel * 2;
                 table[slot].Owner = DmaOwner.Audio;
-                table[slot].AudioChannelIndex = offset >> 1;
-                table[slot].AudioSlotPhase = offset & 1;
+                table[slot].AudioChannelIndex = channel;
+                table[slot].AudioSlotPhase = 0;
             }
 
-            for (int slot = DiskSlotStart; slot < DiskSlotStart + 4; slot++)
+            for (int slot = DiskSlotStart; slot < DiskSlotStart + 6; slot += 2)
             {
                 table[slot].Owner = DmaOwner.Disk;
             }
 
-            for (int slot = SpriteSlotStart; slot < SpriteSlotEndExclusive; slot++)
+            for (int slot = SpriteSlotStart; slot < SpriteSlotEndExclusive; slot += 2)
             {
-                int offset = slot - SpriteSlotStart;
+                int word = (slot - SpriteSlotStart) / 2;
                 table[slot].Owner = DmaOwner.Sprite;
-                table[slot].SpriteIndex = offset >> 1;
-                table[slot].SpriteSlotPhase = offset & 1;
+                table[slot].SpriteIndex = word >> 1;
+                table[slot].SpriteSlotPhase = word & 1;
             }
 
             return table;

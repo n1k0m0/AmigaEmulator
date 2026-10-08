@@ -82,6 +82,7 @@ namespace AmigaEmulator.Core.CustomChips
             Blitter = new Blitter(CustomRegisters, _model.ChipRamBytes);
             _dmaScheduler.AttachBlitterStatus(() => Blitter.DmaPending);
             _dmaScheduler.AttachCopperBusDemand(() => Copper.NeedsDmaBus);
+            _dmaScheduler.AttachSpriteBusDemand(Sprites.NeedsDmaBus);
             Copper.AttachBlitterStatus(() => Blitter.DmaPending);
             Copper.CustomRegisterWritten += Blitter.NotifyCustomRegisterWrite;
             CustomRegisters.CopperJumpRequested += Copper.StrobeJump;

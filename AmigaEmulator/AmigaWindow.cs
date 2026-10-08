@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -439,6 +439,7 @@ namespace AmigaEmulator
         /// Stores input Port Mode.
         /// </summary>
         private InputPortMode _inputPortMode = InputPortMode.MousePort1JoystickPort2;
+        private readonly WindowsGamepadInput _gamepads = new WindowsGamepadInput();
         /// <summary>
         /// Stores reset Mode.
         /// </summary>
@@ -714,7 +715,7 @@ namespace AmigaEmulator
             _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, GetRamProfileForModel(model));
             _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), _settings.CreateAccuracyOptions());
             ApplyPresentationSourceCrop();
-            SetPresentationStretchToClient(false);
+            SetPresentationStretchToClient(_settings.StretchToFullWidth);
             ApplyFloppyTiming();
             AttachAudioToSystem();
             _inputPortMode = GetInputPortModeFromSettings(_settings.Port1Mode, _settings.Port2Mode);
@@ -792,6 +793,7 @@ namespace AmigaEmulator
         /// </summary>
         protected override void OnUpdateFrame()
         {
+            PollGamepads();
             _paintFrameReady = false;
             int cycles = CalculateCyclesForUpdate();
             if (cycles > 0)
@@ -1452,7 +1454,7 @@ namespace AmigaEmulator
             {
                 case OverlayMode.Settings: return 18;
                 case OverlayMode.MainMenu: return _mainMenuItems.Length;
-                case OverlayMode.Display: return 6;
+                case OverlayMode.Display: return 7;
                 case OverlayMode.Media: return Math.Max(1, _mediaEntries.Count + 3);
                 case OverlayMode.Machine: return 8;
                 case OverlayMode.Roms: return Math.Max(1, _romEntries.Count + 3);
@@ -1627,6 +1629,7 @@ namespace AmigaEmulator
                 case 3: CycleRenderLimit(); break;
                 case 4: ToggleFullscreen(); break;
                 case 5: _debugOverlayVisible = !_debugOverlayVisible; break;
+                case 6: TogglePresentationStretch(); break;
             }
         }
 
@@ -1658,7 +1661,7 @@ namespace AmigaEmulator
                 case 0: _inputPortMode = CycleEnum(_inputPortMode, direction); ApplyInputPortMode(); break;
                 case 1: _statusText = "KEYBOARD LAYOUT PC"; break;
                 case 2: _statusText = "MOUSE SENSITIVITY NORMAL"; break;
-                case 3: _statusText = "GAMEPAD AUTODETECT"; break;
+                case 3: _gamepads.Poll(true); _statusText = "GAMEPAD " + FormatGamepadStatus(); break;
                 case 4: _statusText = "INPUT DEFAULTS RESTORED"; _inputPortMode = InputPortMode.MousePort1JoystickPort2; ApplyInputPortMode(); break;
             }
         }
@@ -3120,7 +3123,8 @@ namespace AmigaEmulator
                 MenuLine("MONITOR", FormatMonitorAperture(_monitorApertureMode)),
                 MenuLine("RENDER FPS", FormatRenderLimit(_renderLimitMode)),
                 MenuLine("WINDOW", _fullscreen ? "FULLSCREEN" : "WINDOW"),
-                MenuLine("DEBUG OVERLAY", _debugOverlayVisible ? "ON" : "OFF")
+                MenuLine("DEBUG OVERLAY", _debugOverlayVisible ? "ON" : "OFF"),
+                MenuLine("IMAGE WIDTH", _settings.StretchToFullWidth ? "FULL WIDTH" : "ORIGINAL")
             }, _displaySelection);
         }
 
@@ -3239,7 +3243,7 @@ namespace AmigaEmulator
                 MenuLine("PORT MODE", FormatInputPorts(_inputPortMode)),
                 MenuLine("KEYBOARD", "PC LAYOUT"),
                 MenuLine("MOUSE", "NORMAL"),
-                MenuLine("GAMEPAD", "AUTO"),
+                MenuLine("GAMEPAD", FormatGamepadStatus()),
                 MenuLine("DEFAULTS", "RESTORE")
             }, _inputSelection);
         }
@@ -4055,8 +4059,17 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Runs Toggle Fullscreen.
+        /// Toggles the persisted image aspect ratio setting.
         /// </summary>
+        private void TogglePresentationStretch()
+        {
+            _settings.StretchToFullWidth = !_settings.StretchToFullWidth;
+            SetPresentationStretchToClient(_settings.StretchToFullWidth);
+            AmigaEmulatorSettingsStore.Save(_settings);
+            _statusText = _settings.StretchToFullWidth ? "IMAGE FULL WIDTH" : "IMAGE ORIGINAL";
+        }
+
+        /// <summary>Toggles fullscreen while preserving the selected image width.</summary>
         private void ToggleFullscreen()
         {
             if (_fullscreen)
@@ -4064,7 +4077,7 @@ namespace AmigaEmulator
                 FormBorderStyle = FormBorderStyle.Sizable;
                 WindowState = FormWindowState.Normal;
                 _fullscreen = false;
-                SetPresentationStretchToClient(false);
+                SetPresentationStretchToClient(_settings.StretchToFullWidth);
                 _settings.Fullscreen = false;
                 AmigaEmulatorSettingsStore.Save(_settings);
                 _statusText = "WINDOW MODE";
@@ -4074,7 +4087,7 @@ namespace AmigaEmulator
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
             _fullscreen = true;
-            SetPresentationStretchToClient(false);
+            SetPresentationStretchToClient(_settings.StretchToFullWidth);
             _settings.Fullscreen = true;
             AmigaEmulatorSettingsStore.Save(_settings);
             _statusText = "FULLSCREEN";
@@ -4092,7 +4105,7 @@ namespace AmigaEmulator
 
             FormBorderStyle = FormBorderStyle.None;
             WindowState = FormWindowState.Maximized;
-            SetPresentationStretchToClient(false);
+            SetPresentationStretchToClient(_settings.StretchToFullWidth);
         }
 
         /// <summary>
@@ -4674,6 +4687,8 @@ namespace AmigaEmulator
                 return;
             }
 
+            _system.Input.SetGamepadButtons(AmigaControlPort.Port0, AmigaJoystickButtons.None);
+            _system.Input.SetGamepadButtons(AmigaControlPort.Port1, AmigaJoystickButtons.None);
             switch (_inputPortMode)
             {
                 case InputPortMode.JoystickPort1MousePort2:

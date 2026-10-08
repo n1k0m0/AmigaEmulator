@@ -669,7 +669,8 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Dmacon, 0x82E0);
             var scheduler = new DmaScheduler(registers);
             scheduler.AttachBlitterStatus(() => true);
-            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 24, BitplaneUnit.PalVisibleTop).Owner, "Sprite slot should not be stolen by Copper or Blitter.");
+            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 25, BitplaneUnit.PalVisibleTop).Owner, "Sprite slot should not be stolen by Copper or Blitter.");
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 26, BitplaneUnit.PalVisibleTop).Owner, "The cycle between sprite words remains available to Copper.");
         }
 
         /// <summary>
@@ -682,15 +683,25 @@ namespace AmigaEmulator.Tests
             var scheduler = new DmaScheduler(registers);
             scheduler.AttachDiskDmaStatus(() => true);
 
-            Check.Equal(DmaOwner.Refresh, scheduler.GetSlot(0, 0, 0).Owner, "Slot 0 should be refresh.");
-            Check.Equal(DmaOwner.Audio, scheduler.GetSlot(0, 8, 0).Owner, "Slot 8 should be audio when audio DMA is enabled.");
-            Check.Equal(0, scheduler.GetSlot(0, 8, 0).AudioChannelIndex, "Slot 8 should be assigned to audio channel 0.");
-            Check.Equal(3, scheduler.GetSlot(0, 14, 0).AudioChannelIndex, "Slot 14 should be assigned to audio channel 3.");
-            Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, 16, 0).Owner, "Slot 16 should be disk when disk DMA is active.");
-            DmaSlotTraceEntry spriteSlot = scheduler.GetSlot(0, 20, 0);
-            Check.Equal(DmaOwner.Sprite, spriteSlot.Owner, "Slot 20 should be sprite DMA when sprite DMA is enabled.");
-            Check.Equal(0, spriteSlot.SpriteIndex, "Slot 20 should address sprite 0.");
-            Check.Equal(0, spriteSlot.SpriteSlotPhase, "Slot 20 should be the first word of sprite 0.");
+            for (int slot = 3; slot <= 9; slot += 2)
+                Check.Equal(DmaOwner.Refresh, scheduler.GetSlot(0, slot, 0).Owner, "Four interleaved refresh cycles must be reserved.");
+            for (int slot = 11; slot <= 15; slot += 2)
+                Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, slot, 0).Owner, "Three interleaved disk cycles must be reserved.");
+            for (int channel = 0; channel < 4; channel++)
+            {
+                var audioSlot = scheduler.GetSlot(0, 17 + channel * 2, 0);
+                Check.Equal(DmaOwner.Audio, audioSlot.Owner, "Each audio channel reserves one word, not two.");
+                Check.Equal(channel, audioSlot.AudioChannelIndex, "Audio channel order must be preserved.");
+            }
+            for (int word = 0; word < 16; word++)
+            {
+                var spriteSlot = scheduler.GetSlot(0, 25 + word * 2, 0);
+                Check.Equal(DmaOwner.Sprite, spriteSlot.Owner, "Sixteen interleaved sprite word cycles must be reserved.");
+                Check.Equal(word / 2, spriteSlot.SpriteIndex, "Sprite channel order must be preserved.");
+                Check.Equal(word % 2, spriteSlot.SpriteSlotPhase, "Sprite control/data word order must be preserved.");
+            }
+            for (int slot = 4; slot < 56; slot += 2)
+                Check.Equal(DmaOwner.Cpu, scheduler.GetSlot(0, slot, 0).Owner, "Fixed DMA must leave every intervening cycle free.");
         }
 
         /// <summary>
@@ -715,8 +726,8 @@ namespace AmigaEmulator.Tests
             bitplanes.NotifyCustomRegisterWordWrite(Ddfstop, 0x0020);
             scheduler.AttachDiskDmaStatus(() => true);
 
-            Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, 16, BitplaneUnit.PalVisibleTop).Owner, "Bitplane fetch timing must not override the fixed disk DMA slot.");
-            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 20, BitplaneUnit.PalVisibleTop).Owner, "Bitplane fetch timing must not override the fixed sprite DMA slot.");
+            Check.Equal(DmaOwner.Disk, scheduler.GetSlot(0, 15, BitplaneUnit.PalVisibleTop).Owner, "Bitplane fetch timing must not override the fixed disk DMA slot.");
+            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 25, BitplaneUnit.PalVisibleTop).Owner, "Bitplane fetch timing must not override the fixed sprite DMA slot.");
         }
 
         /// <summary>
@@ -746,6 +757,16 @@ namespace AmigaEmulator.Tests
             Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 40, 0).Owner, "A Copper that needs an instruction word should own a Copper fetch slot.");
             Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 41, 0).Owner, "The interleaved memory cycle remains available to the Blitter.");
             Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 42, 0).Owner, "The Copper must fetch its second instruction word two cycles later, rather than waiting four cycles and missing sprite reuse positions.");
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 4, 0).Owner, "Copper can run during horizontal blanking after refresh.");
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 8, 0).Owner, "Disabled audio leaves its slot available to Copper.");
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 16, 0).Owner, "An idle disk leaves its slot available to Copper.");
+            registers.WriteWord(Dmacon, 0x8021);
+            Check.Equal(DmaOwner.Audio, scheduler.GetSlot(0, 17, 0).Owner, "Enabled audio retains priority.");
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 18, 0).Owner, "The cycle between audio words remains available to Copper.");
+            scheduler.AttachSpriteBusDemand((sprite, phase, line) => false);
+            Check.Equal(DmaOwner.Copper, scheduler.GetSlot(0, 20, 0).Owner, "An inactive sprite leaves its slot available to Copper.");
+            scheduler.AttachSpriteBusDemand((sprite, phase, line) => true);
+            Check.Equal(DmaOwner.Sprite, scheduler.GetSlot(0, 25, 0).Owner, "A fetching sprite retains priority over Copper.");
 
             scheduler.AttachCopperBusDemand(() => false);
             Check.Equal(DmaOwner.Blitter, scheduler.GetSlot(0, 40, 0).Owner, "A waiting Copper should not reserve its fetch slot while the Blitter is pending.");
@@ -871,6 +892,11 @@ namespace AmigaEmulator.Tests
                 "mid-frame DDF change keeps per-line presentation apertures",
                 "Settlers-style bottom panels can widen DDF mid-frame without losing the stable playfield aperture",
                 TestMidFrameDdfChangeKeepsPerLinePresentationApertures);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
+                "revisited DMA rows invalidate previously fetched words",
+                "A backward raster fetch must disable the forward-row cache fast path until a new frame",
+                TestRevisitedDmaRowsInvalidateWords);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "line-adaptive presentation keeps bottom panels horizontally registered",
@@ -1880,6 +1906,7 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private static void TestPartialMidLineBitplanePointerRewriteWaitsForCompleteSet()
         {
+            TestPlaneCountIncreaseReloadsSplitPointers();
             var registers = new CustomRegisterMap();
             ushort[] memory = new ushort[0x100];
             const int newBaseWord = 0x40;
@@ -1929,8 +1956,87 @@ namespace AmigaEmulator.Tests
         }
 
         /// <summary>
-        /// Verifies that wide DDF fetches ask presentation to include the right overscan content.
+        /// Verifies that a plane-count increase completes a raster split's pointer reload.
         /// </summary>
+        private static void TestPlaneCountIncreaseReloadsSplitPointers()
+        {
+            TestCompactGroupPlaneCountIncreasePreservesFetchPositions();
+            var registers = new CustomRegisterMap();
+            ushort[] memory = new ushort[0x100];
+            memory[0x40] = memory[0x42] = 0xFFFF;
+            var bitplanes = new BitplaneUnit(registers, address => memory[(address >> 1) % memory.Length]);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x30C1);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop);
+            registers.WriteWord(Bpl1ptl, 0x0080);
+            registers.WriteWord(Bpl2ptl, 0x0082);
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop + 1);
+            registers.WriteWord(Bpl2ptl, 0x0084);
+            registers.WriteWord(Bplcon0, 0x2000);
+            bitplanes.RefreshFromRegisters();
+            bitplanes.FetchDmaWords(0x38, BitplaneUnit.PalVisibleTop + 2);
+            Check.Equal(3, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop + 2),
+                "A raster split enabling another plane must reload its completed pointer set on the next line.");
+        }
+
+        private static void TestRevisitedDmaRowsInvalidateWords()
+        {
+            var registers = new CustomRegisterMap();
+            ushort data = 0xFFFF;
+            var bitplanes = new BitplaneUnit(registers, address => data);
+            registers.WriteWord(Bplcon0, 0x1000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x3081);
+            registers.WriteWord(Ddfstrt, 0x0038);
+            registers.WriteWord(Ddfstop, 0x0038);
+            Fetch(BitplaneUnit.PalVisibleTop);
+            Fetch(BitplaneUnit.PalVisibleTop + 1);
+            Check.Equal(1, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop + 1), "Initial row must contain its fetched data.");
+            data = 0;
+            Fetch(BitplaneUnit.PalVisibleTop);
+            Fetch(BitplaneUnit.PalVisibleTop + 1);
+            Check.Equal(0, bitplanes.RenderColorIndex(4, BitplaneUnit.PalVisibleTop + 1), "Returning forward after a backward fetch must not reuse the previous row's cached words.");
+            void Fetch(int row)
+            {
+                for (int x = 0x38; x < 0x40; x++)
+                    bitplanes.FetchDmaPlaneWord(x, row);
+            }
+        }
+
+        private static void TestCompactGroupPlaneCountIncreasePreservesFetchPositions()
+        {
+            var registers = new CustomRegisterMap();
+            var reads = new List<uint>();
+            var bitplanes = new BitplaneUnit(registers, address => { reads.Add(address); return 0xFFFF; });
+            registers.WriteWord(Bplcon0, 0x3000);
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0x30C1);
+            registers.WriteWord(Ddfstrt, 0x0030);
+            registers.WriteWord(Ddfstop, 0x0040);
+            for (int plane = 0; plane < 6; plane++)
+                registers.WriteWord((uint)(Bpl1ptl + plane * 4), (ushort)(plane * 0x100));
+            for (int x = 0x30; x < 0x3C; x++)
+                bitplanes.FetchDmaPlaneWord(x, BitplaneUnit.PalVisibleTop);
+            registers.WriteWord(Bplcon0, 0x6000);
+            for (int x = 0x3C; x < 0x48; x++)
+                bitplanes.FetchDmaPlaneWord(x, BitplaneUnit.PalVisibleTop);
+            for (int plane = 0; plane < 3; plane++)
+                Check.Equal(1, reads.Count(address => address == plane * 0x100u + 2),
+                    "A compact word already latched before the split must not be fetched again.");
+            for (int plane = 0; plane < 6; plane++)
+                Check.True(reads.Contains((uint)(plane * 0x100 + 4)),
+                    "Every plane must fetch the matching word position after the split.");
+            Check.Equal(63, bitplanes.RenderColorIndex(40, BitplaneUnit.PalVisibleTop),
+                "The first complete group following the split must contain all six aligned planes.");
+        }
+
+        /// <summary>Verifies that wide DDF fetches preserve the right overscan content.</summary>
         private static void TestWideDdfOverscanReportsPresentationSourceWidth()
         {
             var registers = new CustomRegisterMap();

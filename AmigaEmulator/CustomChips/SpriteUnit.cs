@@ -488,8 +488,20 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Advances the real sprite DMA state machine for one fixed OCS sprite slot.
+        /// Reports sprite DMA bus demand and applies the scanline comparisons.
         /// </summary>
+        public bool NeedsDmaBus(int sprite, int phase, int beamY)
+        {
+            if (!_dmaEnabled || _readChipWord == null || sprite < 0 || sprite >= 8 || phase < 0 || phase > 1)
+                return false;
+            UpdateForBeamY(beamY);
+            SpriteState state = _states[sprite];
+            return phase == 0
+                ? SelectFetchKind(state, beamY) != SpriteFetchKind.None
+                : state.PendingFetch != SpriteFetchKind.None;
+        }
+
+        /// <summary>Advances the sprite DMA state machine for one fixed OCS sprite slot.</summary>
         public void TickDmaSlot(int sprite, int phase, int beamY)
         {
             if (!_dmaEnabled || _readChipWord == null || sprite < 0 || sprite >= 8 || phase < 0 || phase > 1)

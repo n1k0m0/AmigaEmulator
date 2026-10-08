@@ -174,6 +174,15 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores last Fetched Word Index.
         /// </summary>
         private int _lastFetchedWordIndex;
+
+        private int _alignNewPlaneFetchMask;
+
+        // Transient decode cache; raw register comparisons also cover callers
+        // that write the register map directly rather than notifying this unit.
+        private bool _decodedRegistersValid;
+        private ulong _decodedControlKey;
+        private ulong _decodedWindowKey;
+        private bool _fetchRowsMonotonic;
         /// <summary>
         /// Stores completed DMA Line.
         /// </summary>
@@ -417,6 +426,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Reset()
         {
+            _decodedRegistersValid = false;
+            _fetchRowsMonotonic = true;
             EnabledPlanes = 0;
             for (int plane = 0; plane < MaxPlanes; plane++)
             {
@@ -435,6 +446,7 @@ namespace AmigaEmulator.Core.CustomChips
 
             _activeDmaRow = int.MinValue;
             _lastFetchedWordIndex = -1;
+            _alignNewPlaneFetchMask = 0;
             _completedDmaLine = false;
             _hasPointerRegisterSnapshot = false;
             _reloadPointersAfterDeferredPartialRewrite = false;
@@ -464,6 +476,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void ResetDmaLineTracking()
         {
+            _fetchRowsMonotonic = true;
+            _alignNewPlaneFetchMask = 0;
             for (int plane = 0; plane < MaxPlanes; plane++)
             {
                 for (int word = 0; word < MaxFetchedWords; word++)
@@ -498,7 +512,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void SaveState(BinaryWriter writer)
         {
-            StateSerializer.WriteObjectFields(writer, this, "_registers", "_readChipWord");
+            StateSerializer.WriteObjectFields(writer, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_fetchRowsMonotonic");
         }
 
         /// <summary>
@@ -506,7 +520,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
-            StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord");
+            StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_fetchRowsMonotonic");
+            _decodedRegistersValid = false;
+            _fetchRowsMonotonic = false;
             _paletteDirty = true;
         }
 
@@ -557,6 +573,23 @@ namespace AmigaEmulator.Core.CustomChips
             int enabledPlanes = Math.Min(6, (bplcon0 >> 12) & 0x07);
             bool hasValidDataLatch = HasValidDataLatch(enabledPlanes);
 
+            ulong controlKey = bplcon0 | ((ulong)bplcon1 << 16) | ((ulong)(dmacon & 0x0300) << 32) |
+                (hasValidDataLatch ? 1UL << 48 : 0);
+            ulong windowKey = diwStart | ((ulong)diwStop << 16) | ((ulong)ddfStart << 32) | ((ulong)ddfStop << 48);
+            if (_decodedRegistersValid && controlKey == _decodedControlKey && windowKey == _decodedWindowKey)
+                return;
+            _decodedControlKey = controlKey;
+            _decodedWindowKey = windowKey;
+            _decodedRegistersValid = true;
+
+            if (enabledPlanes > EnabledPlanes && _activeDmaRow != int.MinValue)
+            {
+                _alignNewPlaneFetchMask |= ((1 << enabledPlanes) - 1) & ~((1 << EnabledPlanes) - 1);
+                // A raster split can finish rewriting newly enabled pointers after
+                // the first fetch. Reload the complete set on the following line
+                // rather than treating those writes as an unrelated partial update.
+                _reloadPointersAfterDeferredPartialRewrite = true;
+            }
             EnabledPlanes = enabledPlanes;
             _hires = (bplcon0 & 0x8000) != 0;
             _ham = (bplcon0 & 0x0800) != 0;
@@ -766,12 +799,32 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             EnsureDmaLine(row, wordIndex);
+            // A compact lowres group may have completed before BPLCON0
+            // enables more planes within that same group. Do not read the
+            // already latched planes a second time and advance their pointers.
+            if (_fetchedRows[plane, wordIndex] == row)
+            {
+                return;
+            }
             if (_pendingFetchedRows[wordIndex] != row)
             {
                 _pendingFetchedRows[wordIndex] = row;
                 _pendingFetchedPlaneMask[wordIndex] = 0;
+                for (int existingPlane = 0; existingPlane < EnabledPlanes; existingPlane++)
+                {
+                    if (_fetchedRows[existingPlane, wordIndex] == row)
+                    {
+                        _pendingFetchedWords[existingPlane, wordIndex] = _fetchedWords[existingPlane, wordIndex];
+                        _pendingFetchedPlaneMask[wordIndex] |= 1 << existingPlane;
+                    }
+                }
             }
 
+            if ((_alignNewPlaneFetchMask & (1 << plane)) != 0)
+            {
+                _dmaPointers[plane] = _dmaAddress.Add(GetBitplanePointer(plane), (uint)(wordIndex * 2));
+                _alignNewPlaneFetchMask &= ~(1 << plane);
+            }
             uint address = _dmaAddress.Normalize(_dmaPointers[plane]);
             _pendingFetchedWords[plane, wordIndex] = _readChipWord(address);
             _pendingFetchedPlaneMask[wordIndex] |= 1 << plane;
@@ -1086,10 +1139,18 @@ namespace AmigaEmulator.Core.CustomChips
             bool sequentialLine = row == _activeDmaRow + 1 && _completedDmaLine;
             bool partialPointerRewrite = !forcePointerReload && pointerRegistersChanged && sequentialLine && !HaveAllEnabledPointerRegistersChanged();
             bool continuesPreviousLine = sequentialLine && !forcePointerReload && (!pointerRegistersChanged || partialPointerRewrite);
+            bool revisitingFetchedRow = row <= _activeDmaRow;
+            if (revisitingFetchedRow)
+                _fetchRowsMonotonic = false;
             _activeDmaRow = row;
+            _alignNewPlaneFetchMask = 0;
             _lastFetchedWordIndex = -1;
             _completedDmaLine = false;
-            InvalidateFetchedRow(row);
+            // Forward scanlines cannot contain words tagged with their new row:
+            // BeginFrame invalidates all row tags before DMA starts. Only a
+            // repeated or backward fetch needs the full cache scan.
+            if (!_fetchRowsMonotonic)
+                InvalidateFetchedRow(row);
 
             if (!continuesPreviousLine)
             {
@@ -1146,6 +1207,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void EndDmaLine()
         {
+            // A plane-count change can complete another group after the compact
+            // path already finished this line. Modulo belongs to the line once.
+            if (_completedDmaLine)
+                return;
             for (int plane = 0; plane < MaxPlanes; plane++)
             {
                 int modulo = (plane & 1) == 0 ? SignedWord(Read(Bpl1mod)) : SignedWord(Read(Bpl2mod));

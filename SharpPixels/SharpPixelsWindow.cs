@@ -673,15 +673,8 @@ namespace SharpPixels
                 return ApplyPresentationTargetMargins(new Rectangle(0, 0, Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height)));
             }
 
-            int fixedScale = GetPresentationIntegerScale();
-            double scale = fixedScale > 0
-                ? fixedScale
-                : Math.Min(ClientSize.Width / (double)PresentationWidth, ClientSize.Height / (double)PresentationHeight);
-
-            if (fixedScale > 0 && (PresentationWidth * scale > ClientSize.Width || PresentationHeight * scale > ClientSize.Height))
-            {
-                scale = Math.Min(ClientSize.Width / (double)PresentationWidth, ClientSize.Height / (double)PresentationHeight);
-            }
+            // Upscaling changes sampling, never the displayed image size or mouse mapping.
+            double scale = Math.Min(ClientSize.Width / (double)PresentationWidth, ClientSize.Height / (double)PresentationHeight);
 
             int width = Math.Max(1, (int)(PresentationWidth * scale));
             int height = Math.Max(1, (int)(PresentationHeight * scale));

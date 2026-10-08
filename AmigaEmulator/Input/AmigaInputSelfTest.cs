@@ -34,6 +34,9 @@ namespace AmigaEmulator.Core.Input
             failures += RunCase(log, "joystick directions encode into JOYDAT bits", TestJoystickDirections);
             failures += RunCase(log, "mouse counters and buttons feed custom/CIA registers", TestMouseAndButtons);
             failures += RunCase(log, "POTGO start resets and runs POTDAT counters", TestPotCounters);
+            failures += RunCase(log, "Windows gamepad axes, deadzone, POV and fire mapping", TestGamepadMapping);
+            failures += RunCase(log, "gamepad and keyboard sources coexist and release independently", TestGamepadSources);
+            failures += RunCase(log, "savestate restore clears live gamepad buttons", TestGamepadRestore);
             log.AppendLine(failures == 0 ? "Input self-test OK" : "Input self-test FAILED: " + failures);
             return failures;
         }
@@ -41,6 +44,59 @@ namespace AmigaEmulator.Core.Input
         /// <summary>
         /// Runs the Case routine.
         /// </summary>
+        private static bool TestGamepadMapping()
+        {
+            var none = AmigaJoystickButtons.None;
+            if (WindowsGamepadInput.MapButtons(32767, 32767, 0, 65535, 0, 65535, 0, 65535) != none) return false;
+            if (WindowsGamepadInput.MapButtons(40000, 25000, 0, 65535, 0, 65535, 0, 65535) != none) return false;
+            var diagonal = AmigaJoystickButtons.Right | AmigaJoystickButtons.Up;
+            if (WindowsGamepadInput.MapButtons(65535, 0, 0, 65535, 0, 65535, 1, 65535) != (diagonal | AmigaJoystickButtons.Fire)) return false;
+            var sectors = new[] { AmigaJoystickButtons.Up, diagonal, AmigaJoystickButtons.Right,
+                AmigaJoystickButtons.Right | AmigaJoystickButtons.Down, AmigaJoystickButtons.Down,
+                AmigaJoystickButtons.Down | AmigaJoystickButtons.Left, AmigaJoystickButtons.Left,
+                AmigaJoystickButtons.Left | AmigaJoystickButtons.Up };
+            for (int i = 0; i < sectors.Length; i++)
+                if (WindowsGamepadInput.MapButtons(50, 50, 0, 100, 0, 100, 0, (uint)(i * 4500)) != sectors[i]) return false;
+            if (WindowsGamepadInput.MapButtons(50, 50, 0, 100, 0, 100, 0, 35999) != AmigaJoystickButtons.Up) return false;
+            for (int i = 0; i < 4; i++)
+                if (WindowsGamepadInput.MapButtons(50, 50, 0, 100, 0, 100, 1u << i, 65535) != AmigaJoystickButtons.Fire) return false;
+            return WindowsGamepadInput.MapButtons(0, 0, 0, 0, 0, 0, 0x30, 65535) ==
+                (AmigaJoystickButtons.Second | AmigaJoystickButtons.Third);
+        }
+
+        private static bool TestGamepadSources()
+        {
+            var input = new AmigaInputDevice();
+            var port = AmigaControlPort.Port1;
+            input.SetJoystickButtons(port, AmigaJoystickButtons.Right | AmigaJoystickButtons.Fire);
+            input.SetGamepadButtons(port, AmigaJoystickButtons.Up | AmigaJoystickButtons.Fire | AmigaJoystickButtons.Second | AmigaJoystickButtons.Third);
+            if (input.ReadJoyDat(port) != AmigaInputDevice.EncodeJoystickDirections(AmigaJoystickButtons.Up | AmigaJoystickButtons.Right)) return false;
+            if ((input.GetCiaAPortAInputValue() & 0x80) != 0 || (input.ReadPotInp(0) & 0x5000) != 0) return false;
+            input.SetGamepadButtons(port, AmigaJoystickButtons.None); // Unplug must retain keyboard.
+            if (input.ReadJoyDat(port) != AmigaInputDevice.EncodeJoystickDirections(AmigaJoystickButtons.Right)) return false;
+            if ((input.GetCiaAPortAInputValue() & 0x80) != 0) return false;
+            input.SetGamepadButtons(port, AmigaJoystickButtons.Up | AmigaJoystickButtons.Fire);
+            input.SetJoystickButtons(port, AmigaJoystickButtons.None); // Key-up must retain pad.
+            if (input.ReadJoyDat(port) != AmigaInputDevice.EncodeJoystickDirections(AmigaJoystickButtons.Up)) return false;
+            if ((input.GetCiaAPortAInputValue() & 0x80) != 0) return false;
+            input.ReleaseAll();
+            return input.ReadJoyDat(port) == 0 && (input.GetCiaAPortAInputValue() & 0x80) != 0;
+        }
+
+        private static bool TestGamepadRestore()
+        {
+            var input = new AmigaInputDevice();
+            var port = AmigaControlPort.Port1;
+            input.SetJoystickButtons(port, AmigaJoystickButtons.Right);
+            input.SetGamepadButtons(port, AmigaJoystickButtons.Up | AmigaJoystickButtons.Fire);
+            using var buffer = new System.IO.MemoryStream();
+            using (var writer = new System.IO.BinaryWriter(buffer, System.Text.Encoding.UTF8, true)) input.SaveState(writer);
+            buffer.Position = 0;
+            using (var reader = new System.IO.BinaryReader(buffer, System.Text.Encoding.UTF8, true)) input.LoadState(reader);
+            return input.ReadJoyDat(port) == AmigaInputDevice.EncodeJoystickDirections(AmigaJoystickButtons.Right)
+                && (input.GetCiaAPortAInputValue() & 0x80) != 0;
+        }
+
         private static int RunCase(StringBuilder log, string name, System.Func<bool> test)
         {
             bool passed = false;

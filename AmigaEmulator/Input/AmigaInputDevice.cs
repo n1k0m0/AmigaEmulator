@@ -112,6 +112,7 @@ namespace AmigaEmulator.Core.Input
         public void LoadState(BinaryReader reader)
         {
             StateSerializer.ReadObjectFields(reader, this, "_ciaA");
+            foreach (PortState port in _ports) port.GamepadButtons = AmigaJoystickButtons.None;
         }
 
         /// <summary>
@@ -144,6 +145,7 @@ namespace AmigaEmulator.Core.Input
             for (int index = 0; index < _ports.Length; index++)
             {
                 _ports[index].JoystickButtons = AmigaJoystickButtons.None;
+                _ports[index].GamepadButtons = AmigaJoystickButtons.None;
             }
         }
 
@@ -190,6 +192,12 @@ namespace AmigaEmulator.Core.Input
         public void SetJoystickButtons(AmigaControlPort port, AmigaJoystickButtons buttons)
         {
             GetPort(port).JoystickButtons = buttons;
+        }
+
+        /// <summary>Physical controller state is independent of keyboard/mouse input.</summary>
+        public void SetGamepadButtons(AmigaControlPort port, AmigaJoystickButtons buttons)
+        {
+            GetPort(port).GamepadButtons = buttons;
         }
 
         /// <summary>
@@ -247,7 +255,7 @@ namespace AmigaEmulator.Core.Input
                 mode == AmigaInputPortMode.KeyboardJoystick ||
                 mode == AmigaInputPortMode.Gamepad)
             {
-                return EncodeJoystickDirections(state.JoystickButtons);
+                return EncodeJoystickDirections(state.JoystickButtons | state.GamepadButtons);
             }
 
             return 0;
@@ -279,13 +287,13 @@ namespace AmigaEmulator.Core.Input
         {
             byte value = GetCiaAPortAInputMask();
             if (UsesFireButton(AmigaControlPort.Port0) &&
-                (_ports[0].JoystickButtons & AmigaJoystickButtons.Fire) != 0)
+                ((_ports[0].JoystickButtons | _ports[0].GamepadButtons) & AmigaJoystickButtons.Fire) != 0)
             {
                 value &= unchecked((byte)~0x40);
             }
 
             if (UsesFireButton(AmigaControlPort.Port1) &&
-                (_ports[1].JoystickButtons & AmigaJoystickButtons.Fire) != 0)
+                ((_ports[1].JoystickButtons | _ports[1].GamepadButtons) & AmigaJoystickButtons.Fire) != 0)
             {
                 value &= unchecked((byte)~0x80);
             }
@@ -299,22 +307,22 @@ namespace AmigaEmulator.Core.Input
         public ushort ReadPotInp(ushort potgo)
         {
             ushort value = 0x5500;
-            if ((_ports[0].JoystickButtons & AmigaJoystickButtons.Third) != 0)
+            if (((_ports[0].JoystickButtons | _ports[0].GamepadButtons) & AmigaJoystickButtons.Third) != 0)
             {
                 value &= unchecked((ushort)~0x0100);
             }
 
-            if ((_ports[0].JoystickButtons & AmigaJoystickButtons.Second) != 0)
+            if (((_ports[0].JoystickButtons | _ports[0].GamepadButtons) & AmigaJoystickButtons.Second) != 0)
             {
                 value &= unchecked((ushort)~0x0400);
             }
 
-            if ((_ports[1].JoystickButtons & AmigaJoystickButtons.Third) != 0)
+            if (((_ports[1].JoystickButtons | _ports[1].GamepadButtons) & AmigaJoystickButtons.Third) != 0)
             {
                 value &= unchecked((ushort)~0x1000);
             }
 
-            if ((_ports[1].JoystickButtons & AmigaJoystickButtons.Second) != 0)
+            if (((_ports[1].JoystickButtons | _ports[1].GamepadButtons) & AmigaJoystickButtons.Second) != 0)
             {
                 value &= unchecked((ushort)~0x4000);
             }
@@ -445,6 +453,7 @@ namespace AmigaEmulator.Core.Input
             /// Stores Joystick Buttons.
             /// </summary>
             public AmigaJoystickButtons JoystickButtons;
+            public AmigaJoystickButtons GamepadButtons;
 
             /// <summary>
             /// Resets the value state.
@@ -454,6 +463,7 @@ namespace AmigaEmulator.Core.Input
                 MouseX = 0;
                 MouseY = 0;
                 JoystickButtons = AmigaJoystickButtons.None;
+                GamepadButtons = AmigaJoystickButtons.None;
             }
         }
     }

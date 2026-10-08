@@ -221,6 +221,11 @@ display, reset options, and save states.
 
 ## Video
 
+`F10` > Display > `IMAGE WIDTH` selects `ORIGINAL` (preserve the aspect ratio)
+or `FULL WIDTH` (stretch to fill the window or fullscreen display). The setting
+is saved. Upscale modes keep the same displayed bounds and mouse coordinates
+as the unscaled image.
+
 The visible image is produced by the emulated Amiga framebuffer. Scaling and
 filters are applied afterwards as monitor/TV-style post-processing, not as a
 shortcut in the Amiga graphics path.
@@ -266,11 +271,29 @@ Implemented input paths:
 
 - Amiga keyboard through PC keyboard mapping
 - Joystick emulation
+- Connected Windows USB/HID gamepads, polled automatically with hot-plug detection
 - Mouse emulation
 - CIA/input regression self-tests
 
 Input behavior is still an area of active improvement because many games depend
 on very specific CIA, joystick, and mouse behavior.
+
+Gamepads use the joystick port selected under `F10` > Input (normally Amiga
+port 2). The Input menu shows the detected Windows controller name and port;
+selecting Gamepad refreshes discovery. Directional axes and an eight-way POV
+hat are supported with a centered deadzone. The first four physical buttons
+are Fire; buttons 5 and 6 are the additional Amiga buttons. Keyboard joystick
+input remains available alongside the controller. With dual joysticks, the
+first controller drives port 2 and the second drives port 1. Gamepad inputs
+are released on disconnect, focus loss and while an overlay menu is open;
+loading a savestate clears saved physical-controller buttons.
+
+The native reader uses Windows `joyGetPosEx` and `joyGetDevCapsW`, which also
+cover generic USB controllers that do not expose XInput. The data layouts and
+flags follow Microsoft's [JOYINFOEX](https://learn.microsoft.com/en-us/windows/win32/api/joystickapi/ns-joystickapi-joyinfoex)
+and [JOYCAPSW](https://learn.microsoft.com/en-us/windows/win32/api/joystickapi/ns-joystickapi-joycapsw)
+documentation. Only controllers exposed through Windows joystick drivers are
+currently covered; custom button remapping is not yet available.
 
 ## Save States
 

@@ -41,6 +41,9 @@ namespace AmigaEmulator.Core
         /// </summary>
         public AmigaUpscaleMode UpscaleMode { get; set; } = AmigaUpscaleMode.None;
 
+        /// <summary>Stretches the image to fill the window instead of preserving its aspect ratio.</summary>
+        public bool StretchToFullWidth { get; set; }
+
         /// <summary>
         /// Gets or sets Render Fps.
         /// </summary>
