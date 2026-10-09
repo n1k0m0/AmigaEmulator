@@ -18,7 +18,9 @@ marked **PREVIEW**. Preview means incomplete hardware/software coverage.
 **A4000/040 is not implemented and is not exposed in the selector.** It needs
 a distinct 68040 CPU implementation. A3000 and the AGA models are previews;
 Native A1200, A3000 and A4000/030 Kickstart 3.1 boot to Initial CLI is verified
-on the formatted test HDF. An installed Workbench/OS remains untested.
+on the formatted test HDF. A4000/030 installed AmigaOS 3.1.4 now passes basic
+desktop, application, file-persistence and cold/warm/restore checks below;
+installed-OS coverage on every model remains open.
 The 68EC030 variant advertised for A4000/030 has no PMMU or integrated FPU.
 
 ## Memory and CPU
@@ -48,9 +50,13 @@ are not fully implemented. Do not advertise these paths as CPU conformance.
 PMOVE/PLOAD/PTEST/PFLUSH and MOVES function codes are implemented. It supports
 short/long and indirect translation descriptors, early/root mappings,
 root limits, function-code tables, transparent windows, U/M updates, access
-protection and 22 cached translations. Its ATC replacement is currently FIFO.
+protection and 22 cached translations. Level-zero PTEST converts cached table
+faults to the hardware ATC B/I status and distinguishes them from a cache miss;
+table-search PTEST remains separate. Its ATC replacement is currently FIFO.
 Faults enter a short format-A frame containing logical address, function code
-and transfer status. Full format-B pipeline/partial-operand restart is pending;
+and transfer status. TAS/CAS/CAS2 locked reads check write permission before
+changing condition codes or compare registers; their faults identify the RMW
+read in the SSW. Full format-B pipeline/partial-operand restart is pending;
 this is not sufficient for arbitrary demand-paged operating systems.
 
 ## Graphics
@@ -67,15 +73,20 @@ pending data groups across restore; position/resolution controls are sampled
 at the existing hires framebuffer resolution. Playfield XOR leaves COLOR00
 borders and HAM seeds unchanged.
 
-Native superhires output, complete extended fine scrolling, interlace,
+AGA BPLCON1 now decodes the full eight-bit, 35 ns delay for independent odd/even
+planes in lores and hires. Fractional phases also invalidate the compositor's
+lores pixel-pair optimization. All 256 delay codes are checked against an
+independent register/bitstream fixture, including restore and final composition.
+Native superhires output, interlace,
 programmable monitor timing, scan doubling and genlock remain incomplete.
 Sprite output retains its bitmap/position separately from subsequent Copper
 register writes. VSTOP uses an exact beam comparison; a zero stop cannot create
 a fictitious line-256 fetch. Early DATA writes now initialize the new scanline
 before arming the sprite, preventing DMA bookkeeping from erasing the output.
 These fixes remove the Celtic Heart background gaps and lower-screen corruption
-in the tested gameplay. The A2000 OCS/Kickstart 3.1 CLI column defect remains
-open. A successful script run is not a claim of universally glitch-free gameplay.
+in the tested gameplay. The A2000 OCS/Kickstart 3.1 duplicate CLI column is
+fixed: legacy horizontal DIW comparators clip DDF fetches on OCS as well as ECS.
+The corrected Initial CLI image survives cold/warm restart and core restore. A successful script run is not a claim of universally glitch-free gameplay.
 
 ## Storage, clocks and PCMCIA
 
@@ -155,7 +166,7 @@ core-state API. Development state layouts are not a stable interchange format.
 
 ## Verification
 
-- 210 standard regression tests pass, including CPU/MMU, AGA, model, RTC,
+- 219 standard regression tests pass, including CPU/MMU, AGA, model, RTC,
   PCMCIA, physical address, descriptor, A4000 PIO and A3000 SCSI/DMA cases.
   New fixtures cover running sprite tails/restores, early Copper DATA, exact
   stop comparisons, independent AGA border composition and packed bitplane output.
@@ -166,7 +177,8 @@ core-state API. Development state layouts are not a stable interchange format.
   AmigaDOS Initial CLI with 0/4/8 MiB Fast RAM. Cold/warm reset and core
   save/restore retain the console image. The 0/4/8 MiB sweep used the existing
   modified 40.70 ROM; native 40.68 was also tested with 4 MiB Fast RAM.
-  No Workbench files were installed.
+  That original controller test volume had no Workbench files installed;
+  the separately prepared user OS volume below is not an A4000 OS pass yet.
 - The independently encoded `RTCCheck` guest executable reports `RTC PASS`
   through Kickstart's battclock.resource on A500+, A2000 and A4000/030.
 - A1200 reaches Initial CLI with its matching 40.68 ROM and 4 MiB Fast RAM.
@@ -215,7 +227,7 @@ Reproduce the automated suite from the solution directory:
 
 ```powershell
 dotnet build AmigaEmulator.Tests/AmigaEmulator.Tests.csproj -c Release -p:Platform=x64
-dotnet AmigaEmulator.Tests/bin/x64/Release/net10.0-windows7.0/AmigaEmulator.Tests.dll
+dotnet AmigaEmulator.Tests/bin/x64/Release/AmigaEmulator.Tests.dll
 ```
 
 `Tools/model-validation-scenarios.json` and `Tools/model-gameplay-scenarios.json`
@@ -230,12 +242,397 @@ Use GameRunner with a fresh output directory and inspect screenshots manually.
 HDF/reset/restore checks with reviewed framebuffer and sector-read assertions,
 all four A3000 RAM layouts and the no-HDF boot checks.
 
+## Approved roadmap progress (2026-10-09)
+
+The roadmap remains active; the work below does not complete the full hardware
+expansion. The user supplied the purchased AmigaOS 3.1.4 A500/A600/A2000
+package on 2026-10-09 and subsequently supplied a source for matching 3.1.4
+ROMs. The requested A4000/030 installation now passes the basic OS checks;
+broader application and all-model storage coverage remain open.
+
+| Stage | Evidence and current status | Remaining acceptance work |
+| --- | --- | --- |
+| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes | Fix defects discovered by the broader matrix |
+| 2. Native gameplay | Tinyus and Sqrxz 2 swept on all eight boards with model-specific ROMs, movement/fire and restore | Tinyus/new-Kickstart/68000 blank output remains open; investigate Sqrxz 2 text output; native AGA-specific software, longer sessions and disk swaps |
+| 3. Performance | Cache unchanged display controls and opcode-derived descriptions; remove bitfield-name arrays; restore respects host trace settings; unobserved blitter tracing no longer allocates; paired CPU/frame hashes match | Continue profiling remaining allocations and repeat measurements after further changes |
+| 4. Installed OS | Purchased AmigaOS 3.1.4 installed on a new A4000/030 HDF; separate A3000/SCSI copy passes native 46.143 boot, Shell, Clock, ShowConfig, persistence and cold/warm/restore | Broader applications, install/boot on remaining models and complete storage-controller coverage |
+| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested | Native superhires, interlace fields/weaving, programmable timing, scan doubling, additional references |
+| 6. 020/030 correctness | Integer/MMU tests pass; locked-read protection faults and cached PTEST B/I status fixed; guest PMMU instruction and repair fixtures pass | Actual instruction/data caches, timing, ATC replacement and restartable format A/B faults |
+| 7. Further hardware | Dependencies and test gates remain explicit; unsupported models stay unavailable | Optional 68881/68882, distinct 68040 CPU/MMU/FPU, then Zorro III enumeration |
+
+### Gameplay evidence
+
+`Tools/run-model-gameplay-matrix.ps1` builds a manifest with ROMs from external
+user data, deterministic existing input sequences and post-restore movement.
+Default cases are Tinyus and Sqrxz 2. Captures were reviewed for all 16 cases:
+Sqrxz 2 reaches gameplay on all eight boards, but its text region still needs a
+reference comparison. Tinyus initially reaches its space stage on all eight
+boards. On A500/A2000 OCS with 1.3 and A1200/A3000/A4000 with native 3.1,
+the full movement/fire/restore sequence keeps visible gameplay. On the three
+68000 ECS boards with 2.0/3.1, an additional Fire input is followed by blank
+output. The guest CPU explicitly changes Copper BPLCON0 from $5200 to $0200
+(zero planes); the renderer follows that request. This also reproduces with
+the pre-optimization core. Continued play without the second Fire retains
+visible enemies through another 80 million chip clocks. Longer waits after
+the blank transition and added Fast RAM do not resolve it. An
+A600/1.3 control reaches gameplay; an A500/3.1 control reproduces the blank
+output. This isolates the failure to the newer-Kickstart/68000 path rather than
+ECS rendering. These are diagnostic controls, not recommended motherboard ROMs.
+The exact guest-side transition failure is still unresolved; this is not a
+clean compatibility pass on the affected configurations.
+A600 with only 1 MiB Chip reports the game's own insufficient-Fast-memory error.
+Menu images and black frames do not count as successful gameplay.
+
+`Tools/a2000-ocs-cli-scenarios.json` reproduces the corrected, reviewed OCS CLI
+on the external formatted test HDF. It asserts cold/warm boot, core restore and
+continued output. The volume and ROM remain external; replace the reference
+hash only after reviewing a different test volume.
+
+### Paired performance measurements
+
+`Tools/BenchmarkRunner` restores the model/RAM from metadata, explicitly applies
+Compatible without CPU/DMA tracing, warms the guest and measures consecutive
+frames using Stopwatch timestamps. JSON lines include FPS, median/p95 frame
+time, thread allocations, all CPU registers/last instruction and the presented
+ARGB hash. Run the identical tool against both core builds. Keep guest media,
+profile, warmup and frame counts identical; alternate the build order and avoid
+concurrent emulation jobs for final comparisons. The old CLI `--profile-savestate`
+now also obtains the model/RAM from the file rather than defaulting to A500.
+
+Local results: three alternating runs per build, each with 100 warmup frames and
+three 100-frame samples (nine samples per row). The control already includes the
+intentional OCS DIW fix; it excludes the subsequent performance changes.
+
+| Checkpoint | Control median FPS | Optimized median FPS | Change | Allocated bytes/frame, control -> optimized |
+| --- | ---: | ---: | ---: | ---: |
+| Siedler, A500 | 107.30 | 121.74 | +13.5% | 1,168,947 -> 535,138 |
+| Moonstone, A500 | 151.37 | 162.61 | +7.4% | 564,574 -> 4,497 |
+| Alien Breed, A500 | 127.48 | 138.01 | +8.3% | 714,416 -> 76,800 |
+| Celtic Heart, native A3000 | 48.57 | 55.07 | +13.4% | 5,356,859 -> 59,360 |
+
+Every one of the 36 paired sample endpoints retains identical framebuffer hashes
+and full CPU debug states. These are headless core throughput measurements on
+this host, not guaranteed GUI FPS or proof of cycle-exact hardware. The static
+opcode description cache is bounded to 65,536 references and is absent from
+savestates; execution, runtime exceptions and trace suffixes remain live.
+
+```powershell
+dotnet build Tools/BenchmarkRunner/BenchmarkRunner.csproj -c Release -p:Platform=x64
+dotnet Tools/BenchmarkRunner/bin/x64/Release/net10.0-windows7.0/BenchmarkRunner.dll <save.amigasav> 100 3 100
+```
+
+### Heartbeat validation: unobserved blitter diagnostics (2026-10-09)
+
+Block and line blits previously allocated a `BlitterWordTraceEntry` for every
+word/pixel, even with no `WordExecuted` subscriber. Both paths now construct
+the snapshot only when the event has an observer. Enabled diagnostics retain
+independent snapshots and the existing event timing; guest DMA, registers,
+memory writes and savestate layout are unchanged.
+
+Four new tests cover allocation bounds after warmup and retained diagnostic
+results for block copies and horizontal lines, including unsubscribing.
+Running the same new tests against the saved pre-change core fails both
+allocation checks (1,638,400 bytes for twenty 1,024-word copies; 4,800 bytes
+for twenty three-pixel lines), while the snapshot checks pass. With the fix,
+all four tests and all 219 standard regressions pass. The external Siedler
+wooden-frame/menu/mouse regression also passes.
+
+This comparison uses the immediately preceding optimized core as control,
+including the OCS, CPU trace and locked-MMU fixes above. Both builds use the
+same BenchmarkRunner, Compatible profile, checkpoints, 100 warmup frames and
+three 100-frame samples in each of three alternating runs. No other emulation
+jobs ran concurrently during this comparison. Medians across nine samples:
+
+| Checkpoint | Control FPS | New FPS | Allocated bytes/frame, control -> new |
+| --- | ---: | ---: | ---: |
+| Siedler, A500 | 141.53 | 142.94 | 535,137.68 -> 35.76 |
+| Moonstone, A500 | 188.87 | 187.89 | 4,497.36 -> 4,497.36 |
+| Alien Breed, A500 | 159.07 | 159.63 | 76,800 -> 0 |
+| Celtic Heart, native A3000 | 88.56 | 88.20 | 59,360 -> 0 |
+
+All 36 paired endpoints match the presented ARGB SHA-256 and full CPU debug
+state exactly. FPS changes range from -0.52% to +0.99%; these small differences
+do not establish a speed improvement. The measured improvement is eliminating
+the remaining blitter diagnostic allocation and its garbage-collection load.
+Moonstone's remaining allocations require separate profiling.
+
+Fresh external evidence is under
+`%TEMP%/amiga-heartbeat-20261009-1542/`: paired JSON lines and
+`paired-summary.json`, the full `regression.txt`, and scripted Siedler mouse /
+Celtic Heart movement, jump/fire and restore captures in `gameplay/`.
+The continued captures were reviewed and retain visible gameplay. The native
+A3000 HDF cold/warm/restore case was rerun in `native-boot/`; reviewed CLI hash
+`D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913`
+and minimum sector-read assertions pass throughout. These tests use existing
+read-only user media and fresh output savestates; they do not install an OS
+or complete the all-model gameplay acceptance gate.
+
+Next concrete gameplay step: capture the Tinyus object/animation-pointer list
+immediately before the second Fire on the working 1.3/68000 control and the
+failing 3.1/68000 configuration. Trace the first unexpected null animation
+pointer backwards through its guest writes before changing CPU/DMA behavior;
+do not force BPLCON0 to hide the guest-side transition failure. Continue
+restartable 030 fault and display-mode implementation independently of the
+user's pending OS media. The roadmap and recurring continuation remain active.
+
+### Purchased OS media and A4000 installation preparation (2026-10-09)
+
+The user requested installation for "Amiga 400", interpreted as A4000/030,
+from `\\freenas.local\software\Retro\Amiga\Meine gekauften Amiga Produkte\AmigaOS-3.1.4-A500_A600_A2000`.
+The supplied `Documentation/Installation.readme` explicitly requires a matching
+model-specific 3.1.4 ROM, or the appropriate modules disk when retaining an
+older 3.1 ROM. This package contains only A500/A600/A2000 modules and the
+46.143 ROM for those models. `ModulesA4000D_3.1.4.adf` and a matching A4000
+3.1.4 ROM were absent from that package; the nearby `kickstart_roms` directory
+only has the previous legacy ROM files. This initial missing-media condition
+was resolved using the user's subsequently supplied source, detailed below.
+
+At the user's request, the linked
+[firmware archive](https://archive.org/download/commodore-amiga-firmware)
+was checked again on 2026-10-09 through its directory and complete metadata
+file list (129 entries). It contains A4000 Kickstart 3.0/39.106 and several
+3.1 revisions, including the native 40.68 already installed and used above;
+no 3.1.4/46.143 ROM or modules disk is listed. The complete checked filename
+list is saved in the installation record's
+`firmware-archive-check-20261009.json`. This source therefore does not supply
+the missing A4000 3.1.4 component.
+
+A new writable nominal 256 MiB RDB/DH0/FFS image was created at
+`%APPDATA%/AmigaEmulator/harddisks/AmigaOS-3.1.4-A4000-20261009.hdf`.
+The original images and existing HDFs were preserved. Shared Workbench, Extras,
+Fonts, Locale and Storage files, the install disk's Workbench/icon libraries,
+hard-drive startup sequence and PAL monitor were prepared there, with complete
+original source trees in `Installation/` for the real installer. All 1,355
+resulting files were reopened and verified byte-for-byte and for Amiga
+protection flags, including pure bits. Source image hashes and installed-file
+hashes are recorded externally; no proprietary files were added to Git.
+
+Actual boot evidence:
+
+- A4000/EC030, 2 MiB Chip + 8 MiB Fast, native 40.68: the supplied Install
+  disk cold-boots to its reviewed Workbench desktop and sees the new DH0.
+- The prepared HDF with that old A4000 ROM reads 486 sectors and reaches an
+  empty Workbench Screen; it does **not** reach a usable desktop. Core restore
+  retains that image. This is incomplete installation evidence, not success
+  and not proof that missing modules are its only unresolved problem.
+- An independent copy of the prepared HDF was tested on A600, 2 MiB Chip,
+  with the supplied model-appropriate 46.143 ROM
+  (SHA-1 `D81CD6F131040895843D9DFA95A45BC95EDD9704`). Cold boot, warm boot
+  and core restore show the reviewed desktop with RAM Disk and System icons,
+  with 898 sector reads and identical presented ARGB SHA-256
+  `E00EC859BEBED3B1BD505E9E36748A1CD137D1A850913773DA9009AC5D8D201E`.
+  No guest write/persistence/application acceptance has been completed yet.
+
+Durable preparation manifest, input scenarios, captures and logs are in
+`%APPDATA%/AmigaEmulator/installations/AmigaOS-3.1.4-A4000-20261009/`.
+Fresh diagnostic runners, savestates and the separate A600 test HDF remain in
+`%TEMP%/amiga-os314-20261009/`. During preparation, saved model/ROM/HDF
+settings were not changed. The following checks subsequently completed the
+requested basic A4000 installation and enabled its startup profile.
+
+### A4000/030 AmigaOS 3.1.4 installation validation (2026-10-09)
+
+The user's new
+[Kickstart 3.1.4 source](https://archive.decromancer.ca/fsck.technology/software/Commodore/Amiga/Kickstart%20ROMs/Kickstart%203.1.4/)
+contains the unsplit desktop `kick.a4000.46.143` image. It was saved externally
+as `%APPDATA%/AmigaEmulator/roms/KICK314-A4000.ROM`: 524,288 bytes, header
+46.143, SHA-1 `BAD0AE388442DB02EAEB6A5363EF43EB4E308AE6`, valid internal
+end-around-carry checksum `$FFFFFFFF`. This is the desktop A4000 ROM, not the
+A4000T image or programmer-oriented hi/lo files. The previous ROMs remain.
+
+The previously prepared 256 MiB DH0/System HDF now boots to a usable Workbench
+desktop on A4000/EC030, 2 MiB Chip + 8 MiB Fast, Compatible. Its files were
+installed by file-level copying from the purchased ADFs, preserving metadata
+and following the distribution's hard-drive file layout; the interactive
+Installer was not executed. The original installation source trees are retained
+on the volume. No wrong-model RAM modules or FPU/MMU support package was used.
+
+Validated evidence with no boot floppy attached:
+
+- Cold boot, warm reset and a second cold boot read 898 sectors each and
+  reproduce reviewed desktop SHA-256
+  `CB2B10B163DC56156AC00685AAC95006CF0B1318A3A4AF8F0EBFD108ADBF1480`.
+  Core restore preserves the presented image and CPU PC.
+- Right Amiga + E opens Execute Command; NewShell opens an interactive Shell.
+  Guest `Version FULL` reports Kickstart 46.143 and Workbench 45.194;
+  `Version workbench.library FULL` reports 45.194 (09/23/2018).
+- Guest Echo creates `SYS:Storage-Test.txt`, with seven observed HDF sector
+  writes. Type displays its exact text after warm/cold reset. Reopening the HDF
+  independently also verifies the bytes, rather than relying on a RAM cache.
+- `SYS:Tools/ShowConfig` reports the 68030, AA chipset, 2 MiB Chip and 8 MiB
+  Fast; `SYS:Utilities/Clock` opens its functioning graphical window. The first
+  ShowConfig attempt used the wrong System drawer and returned Unknown command;
+  the correct Tools executable was subsequently run and reviewed.
+- After these guest writes, all 1,355 original copied files were reopened and
+  still match their preparation hashes and Amiga protection flags.
+
+`Tools/GameRunner` now supports raw modifier chords for reproducible Workbench
+shortcuts. The new behavior was verified through the actual OS Execute Command
+dialog and subsequent keyboard input; existing single-key scenarios remain
+supported. `installation-validated.json`, native-ROM boot/persistence scenarios,
+captures, logs and the verification script are saved alongside the durable
+installation record above. Its HDF SHA-256 after validation is
+`09957EC42DE994FCFA5E81E48C8A25545DF0F7A5805C30DC0331E23883253ADA`;
+normal later guest writes can change it.
+
+The previous frontend settings were backed up to `settings-before-os.json` in
+that record. The current startup profile selects A4000/EC030, 2+8 MiB RAM,
+the explicit 46.143 ROM, this writable HDF and disk boot. The latest GUI build
+was started with that profile. This completes the user's basic installed-OS
+request, not full A4000 hardware conformance or the entire roadmap. Broader
+applications, other models/controllers, interlace/superhires and CPU work remain.
+
+### Installed OS display and window input correction (2026-10-09)
+
+The user's report of the right edge wrapping onto the left exposed a defect
+in the earlier reviewed OS captures: the old desktop hashes above are boot
+evidence, not acceptance of correct horizontal graphics or mouse alignment.
+ECS/AGA hires erroneously added a 16-pixel word displacement plus an OCS
+four-pixel host-span delay. Workbench fetches a preceding word at DDFSTRT
+`$38` with negative modulo; those pixels must precede DIW rather than display
+the previous row's right edge on the left.
+
+The extra displacement and hires host-span delay are removed. Denise now
+renders ECS/AGA hires spans one chip tick later at their original coordinates,
+after DMA completion, instead of dropping the first four bits of every word.
+Line-tail geometry uses the same phase. OCS rendering remains unchanged.
+An independent beam-ordered ECS/AGA fixture checks every pixel of both a
+normal `$3C..$D4` fetch and a `$38..$D8` preload with distinct preceding,
+visible and following words. All 220 standard tests and the additional local
+Siedler wood-frame/menu/mouse-edge golden regression pass.
+
+Actual installed A4000/EC030 Workbench replay, using a separate read-only HDF
+copy, verifies that the pointer over the visible close gadget closes Clock,
+then Shell. Double-clicking System opens its drawer; moving to its visible
+close gadget closes that drawer. Captures were reviewed before and after each
+close; neither the HDF nor keyboard shortcuts substitute for guest mouse
+button input. An initial drawer click missed its gadget and only activated
+Workbench; the corrected move and subsequent close are recorded separately.
+Cold and warm boot each read 898 sectors, with zero test-disk writes and
+identical corrected desktop ARGB SHA-256
+`1183E4BC62AB3E3F5959B490A514CBE942F63A21EB7004C8923E20ECBE32EB89`.
+Restore preserves that image and CPU PC.
+
+Scenarios, screenshots, step logs and the regression log are retained under
+`%APPDATA%/AmigaEmulator/installations/AmigaOS-3.1.4-A4000-20261009/display-input-fix/`.
+Fresh runners, savestates and the isolated HDF are under
+`%TEMP%/amiga-os-render-input-20261009/`. GameRunner accepts an explicit HDF
+override on savestate replay to isolate these tests from the user's live disk.
+The frontend is restarted with the user's saved CRT/Clean4/fullscreen profile;
+these checks validate core output and guest input, not a manual fullscreen
+presentation review or complete ECS/AGA timing conformance. Wider AGA modes,
+interlace and the remaining hardware roadmap still require their own tests.
+
+### Heartbeat validation: cached MMU faults and A3000 installed OS (2026-10-09)
+
+Level-zero PTEST previously exposed the table walk's invalid flag without
+setting the resident ATC bus-error flag for invalid descriptors, limit and
+supervisor violations. Motorola MC68030UM section 9.4 and table 9-3 require
+B/I for those resident faults, with L/S/N cleared. A missing entry instead
+reports I without B. The cached entry retains its diagnostic table information
+internally; normalization occurs on PTEST, keeping the existing savestate
+layout and correctly interpreting older cached-fault states.
+
+Three new regression cases cover five fault sources (invalid descriptor,
+limit, supervisor restriction, physical table read and descriptor update),
+restore, FC separation, ordinary reads of write-protected pages and explicit
+repair. PTEST table searches neither update U/M nor replace a cached fault;
+PLOAD or PFLUSH can repair/invalidate it. An independently encoded guest
+PLOADR/PTESTR/PMOVE sequence observes `$8400` through MMUSR, sees repaired
+tables through level-seven PTEST and still sees the resident fault at level
+zero. All three cases fail against the preceding core and pass with the fix.
+All 223 standard regressions and the local Siedler golden test pass.
+
+A separate fresh copy of the prepared OS HDF was tested on A3000, 2 MiB Chip
++ 8 MiB Fast, Compatible. The native unsplit `kick.a3000.46.143` came from
+the user's supplied [3.1.4 ROM directory](https://archive.decromancer.ca/fsck.technology/software/Commodore/Amiga/Kickstart%20ROMs/Kickstart%203.1.4/):
+524,288 bytes, header 46.143, SHA-1
+`1A34B25A25E260E38E879172850143C80B461A64`, checksum `$FFFFFFFF`.
+Cold/warm/second-cold desktop boots read 898 SCSI sectors each with zero writes
+and reproduce corrected desktop hash
+`1183E4BC62AB3E3F5959B490A514CBE942F63A21EB7004C8923E20ECBE32EB89`.
+Restore retains CPU/image. A paired 100-million-chip-clock cold boot against
+the preceding core has identical full CPU debug state and framebuffer hash;
+this is a correctness comparison, not a performance measurement.
+
+Real OS input opens Execute Command and Shell. ShowConfig identifies 68030
+and ECS; Version reports Kickstart 46.143 and Workbench 45.194. Clock opens
+and its visible gadget closes with mouse movement/button input. Guest Echo
+writes `SYS:A3000-SCSI-Test.txt` through the emulated SCSI disk; after cold
+reset, guest Type reads the exact text. Independent host reopening verifies
+`A3000 SCSI persistence OK 2026-10-09\n` and all 1,355 original file hashes
+and protection flags. The host checker initially used the Windows default
+text encoding for the UTF-8 manifest; specifying UTF-8 corrected that checker
+error without altering the filesystem. The test HDF hash after verification is
+`54327E5D752960826075A582C4D6CA89257FCBED70DCBD266A9D7D4AF876AFDA`.
+
+Durable scenarios, captures, control/fixed test logs, ROM validation and host
+verification are under
+`%APPDATA%/AmigaEmulator/installations/A3000-3.1.4-validation-20261009/`.
+Fresh builds, continuation states, the downloaded diagnostic ROM and isolated
+HDF remain under `%TEMP%/amiga-roadmap-mmu-status-20261009/`. The interactive
+Installer was not run on A3000; this exercises the shared prepared files with
+the model-specific ROM and SCSI hardware. It does not prove arbitrary MMU
+demand paging, FPU or full SCSI timing. The user's running emulator, selected
+game/profile and original disk images were left in place. No commit/push.
+
+Next: add independent fault/retry fixtures for postincrement and page-crossing
+operands before implementing restartable format A/B state; expand A3000 SCSI
+coverage beyond these basic installed-OS accesses. Hardware ATC replacement
+remains explicitly FIFO until its history policy has suitable reference tests.
+
+### Frontend scaling and Siedler disk-change investigation (2026-10-09)
+
+The Win32 fast presentation path previously ignored the persisted upscale mode.
+It now performs source upscaling before its final DIB stretch: independent
+Scale2x/Scale3x, two-pass sharp 4x, bilinear smooth 2x/3x/4x and mixed soft 4x.
+Legacy serialized HQx/xBRZ names are retained, without algorithm conformance
+claims. The displayed bounds remain independent of the source upscale factor.
+Neighbors clamp at the crop boundary and changed frames reuse output buffers.
+IMAGE SIZE / KEEP ASPECT / FILL SCREEN is available in both Display and Settings;
+fill ignores the letterbox margins and fullscreen uses the complete monitor
+bounds, restoring the previous window bounds/state on exit. The Settings menu's
+previously unreachable PCMCIA row is also corrected.
+
+Nine new presentation/diagnostic regressions check diagonal reconstruction,
+crop/stride/native framebuffer preservation, exact center interpolation,
+allocation-free warmed rendering, identical viewport geometry for every mode,
+actual offscreen Win32 DIB output, failure-hook propagation and fresh crash
+reports. The full suite plus local Siedler wood/menu/mouse golden regression
+passes (233 tests, zero failures/skips). Manual live fullscreen acceptance remains
+pending: the user stopped Computer Use with Escape during the preceding turn.
+
+The subsequent reported Siedler intro/disk-2/click failure remains OPEN. Read-only
+replays used the three existing PDX ADFs, A500 / 512 KiB Chip + 512 KiB Slow +
+2 MiB Fast / Kickstart 1.3 / Compatible. Cold disk-3 boot, title, symbol input,
+main menu, mission start and disk replacement/click reach the playfield without
+a managed host exception. The intro disk also reaches its animated scene; an
+early abort returns to the OS. These related paths do not reproduce the exact
+reported requested-disk transition and are not acceptance of its correctness.
+Additional Chip1Mb and alternate-click runs are investigation artifacts only.
+The user's crash type and a new F12 save immediately before the failing swap
+were requested; neither is available yet. Do not claim this game defect fixed.
+
+GUI frame-update/paint failures now record the original managed exception and
+CPU, beam, drive/DMA, input, model/RAM/ROM and display context in a fresh
+`%APPDATA%/AmigaEmulator/logs/host-error-*.txt`. Logging does not swallow the
+error or mutate disks/saves. GameRunner step logs include DMA and input details.
+Fresh scenarios, captures and replay states are under
+`%TEMP%/amiga-siedler-diskswap-20261009/`; regression log is `regression.log`.
+Durable copies of scenarios, step/exception logs, reviewed captures and three
+continuation states are under
+`%APPDATA%/AmigaEmulator/diagnostics/SiedlerDiskSwap-20261009-11ea0fa205914526aec82a7e00479d11/`.
+Original ADFs and existing user checkpoints remain unchanged. No commit/push.
+
+Next for this report: replay the user's exact pre-swap save, distinguish host
+failure from Guru/reset/hang, and add a failing regression before a targeted fix.
+
 ## Remaining implementation order
 
 1. Complete restartable 68030 format A/B bus faults, cache semantics and ATC
    replacement using independent hardware fixtures.
-2. Verify installed OS coverage on A3000, then add negotiated
-   SCSI timing, disconnect/reselection and complete target command coverage.
+2. Expand A3000 installed-OS/SCSI coverage, then add negotiated SCSI timing,
+   disconnect/reselection and complete target command coverage.
 3. Expand native A1200/AGA software and installed-OS coverage. Optional
    68881/68882 support must be explicit; no FPU is currently emulated.
 4. Complete ECS/AGA missing output modes and known shared graphics defects;

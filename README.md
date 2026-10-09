@@ -52,8 +52,9 @@ Still incomplete:
 - Matching Kickstart 3.1/40.68 boots the test HDF to Initial CLI on A1200,
   A3000 and A4000/030, including cold/warm restart and restore. A3000's WD
   register mirrors and selection/completion interrupts are corrected.
-  Installed-OS verification still requires OS media. Generic-ROM runs remain
-  separate compatibility checks.
+  A4000/030 AmigaOS 3.1.4 on a new HDF also passes basic desktop, Shell/Clock,
+  cold/warm/restore and file-persistence checks. Other models and broader OS
+  coverage remain open. Generic-ROM runs remain separate compatibility checks.
 - A2000 motherboard profiles boot, but real Zorro storage/SCSI boards and
   Workbench installation still require implementation/verification.
 - OCS DMA timing, sprite priority, Blitter/CPU arbitration, and loader edge
@@ -253,10 +254,12 @@ display, reset options, and save states.
 
 ## Video
 
-`F10` > Display > `IMAGE WIDTH` selects `ORIGINAL` (preserve the aspect ratio)
-or `FULL WIDTH` (stretch to fill the window or fullscreen display). The setting
-is saved. Upscale modes keep the same displayed bounds and mouse coordinates
-as the unscaled image.
+`F10` > Display (or Settings) > `IMAGE SIZE` selects `KEEP ASPECT` or
+`FILL SCREEN`. Fill stretches the cropped picture across the entire client area;
+with `F11` fullscreen it fills the monitor, including the area normally occupied
+by the taskbar. The setting is saved. All upscale modes keep the same displayed
+bounds and mouse coordinates as the unscaled image. Leaving fullscreen restores
+the previous window bounds and state.
 
 The visible image is produced by the emulated Amiga framebuffer. Scaling and
 filters are applied afterwards as monitor/TV-style post-processing, not as a
@@ -272,11 +275,22 @@ Available video options include:
 - CRT
 - TV
 - No upscaling
-- Scale2x
-- Scale3x
-- HQ2x
-- HQ3x
-- Clean4
+- 2x/3x sharp (Scale2x/Scale3x neighbor rules)
+- 4x sharp (two Scale2x passes)
+- 2x/3x/4x smooth (pixel-center bilinear interpolation)
+- 4x soft (sharp edges mixed with smooth interpolation)
+
+Upscaling is applied by the CPU presentation renderer before the final display
+stretch. Source crop boundaries clamp the neighbors, and buffers are reused.
+The serialized `Hq2x`, `Hq3x`, `Hq4x` and `Xbrz` names remain for compatibility;
+these smooth/soft options do not implement the HQx or xBRZ algorithms.
+
+Managed failures during GUI frame updates or painting create a fresh
+`%APPDATA%/AmigaEmulator/logs/host-error-*.txt` containing the original exception
+and CPU, beam, floppy/DMA, input and display configuration. Reporting preserves
+the existing exception handling and never writes guest media or savestates.
+For a game-specific failure, create a new `F12` save immediately before the
+trigger so the exact guest state can be replayed.
 
 ## Accuracy profiles
 
@@ -421,6 +435,11 @@ tracing; Fast remains selectable and existing saved profile choices are respecte
 The local boot entries are not yet all certified playable. See [the reviewed
 results and open cases](AmigaEmulator/Docs/GameplayReview-2026-10-07.md) and
 [the scripted gameplay runner](Tools/GameRunner/README.md).
+
+The current model roadmap, native-ROM checks and paired throughput measurements
+are tracked in [MachineModels](AmigaEmulator/Docs/MachineModels.md#approved-roadmap-progress-2026-10-09).
+The full roadmap is still in progress. The user-provided AmigaOS 3.1.4 files and
+matching A4000 ROM now pass basic installed-OS checks; wider coverage remains open.
 
 ## License
 

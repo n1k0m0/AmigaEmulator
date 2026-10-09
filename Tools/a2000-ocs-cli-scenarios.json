@@ -1,0 +1,51 @@
+[
+  {
+    "name": "A2000Ocs-CLI",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "cold-boot",
+        "expectedFrameHash": "2EF19319A1AB67F4899095752A9B9CA9440C2A928C426C2E58D9119D68E464C7",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "restore",
+        "label": "restored",
+        "expectedFrameHash": "2EF19319A1AB67F4899095752A9B9CA9440C2A928C426C2E58D9119D68E464C7"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "continued",
+        "expectedFrameHash": "2EF19319A1AB67F4899095752A9B9CA9440C2A928C426C2E58D9119D68E464C7"
+      },
+      {
+        "type": "reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "warm-boot",
+        "expectedFrameHash": "2EF19319A1AB67F4899095752A9B9CA9440C2A928C426C2E58D9119D68E464C7"
+      },
+      {
+        "type": "reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "second-cold",
+        "expectedFrameHash": "2EF19319A1AB67F4899095752A9B9CA9440C2A928C426C2E58D9119D68E464C7"
+      }
+    ],
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "model": "A2000Ocs",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "strict": true,
+    "ram": "Chip512KSlow512KFast4Mb",
+    "hardDiskReadOnly": true
+  }
+]

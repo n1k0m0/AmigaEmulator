@@ -568,6 +568,8 @@ namespace AmigaEmulator
         /// Stores fullscreen.
         /// </summary>
         private bool _fullscreen;
+        private Rectangle _windowedBounds;
+        private FormWindowState _windowedState = FormWindowState.Normal;
         /// <summary>
         /// Stores has Last Mouse Position.
         /// </summary>
@@ -830,6 +832,36 @@ namespace AmigaEmulator
         protected override bool ShouldPaintFrame()
         {
             return _paintFrameReady || _overlayMode != OverlayMode.None;
+        }
+
+        private bool _hostFailureReported;
+
+        protected override void OnFrameFailure(Exception error)
+        {
+            RecordHostFailure(error);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            try { base.OnPaint(e); }
+            catch (Exception error) { RecordHostFailure(error); throw; }
+        }
+
+        private void RecordHostFailure(Exception error)
+        {
+            if (_hostFailureReported) return;
+            _hostFailureReported = true;
+            string path = HostFailureReport.TryWrite(Path.Combine(UserDataPaths.GetBaseDirectory(), "logs"), error, () =>
+                "Machine: " + _machineModel + " RAM: " + _ramProfile + " Accuracy: " + _accuracyProfile +
+                "\nROM: " + _selectedRomPath + " Kickstart: " + _settings.Kickstart +
+                "\nVideo: " + _videoFilterMode + " / " + _videoUpscaleMode + " Fullscreen: " + _fullscreen +
+                " Stretch: " + _settings.StretchToFullWidth + " Client: " + ClientSize +
+                "\nMedia: " + _mountedMedia?.HostPath + "\nCPU: " + _system.GetCpuDebugInfo() +
+                "\nBeam: " + _system.GetBeamDebugInfo() + "\nDisk: " + _system.Bus.FloppyController.GetDebugInfo() +
+                "\nPaula: " + _system.Paula.GetDiskDebugInfo() +
+                "\nInput: " + _system.Input.Port0Mode + "/" + _system.Input.Port1Mode +
+                " JOY0: " + _system.Input.ReadJoyDat(AmigaControlPort.Port0).ToString("X4"));
+            Debug.WriteLine(path ?? "Host failure report could not be written.");
         }
 
         /// <summary>
@@ -1463,7 +1495,7 @@ namespace AmigaEmulator
         {
             switch (_overlayMode)
             {
-                case OverlayMode.Settings: return 18;
+                case OverlayMode.Settings: return 20;
                 case OverlayMode.MainMenu: return _mainMenuItems.Length;
                 case OverlayMode.Display: return 7;
                 case OverlayMode.Media: return Math.Max(1, _mediaEntries.Count + 3);
@@ -1624,6 +1656,8 @@ namespace AmigaEmulator
                 case 15: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
                 case 16: ApplyResetMode(CycleEnum(_resetMode, direction)); break;
                 case 17: ShowOverlay(OverlayMode.Reset); break;
+                case 18: CyclePcmciaSram(direction); break;
+                case 19: TogglePresentationStretch(); break;
             }
         }
 
@@ -3138,7 +3172,8 @@ namespace AmigaEmulator
                 MenuLine("ACCURACY", FormatAccuracyProfile(_accuracyProfile)),
                 MenuLine("RESET MODE", FormatResetMode(_resetMode)),
                 MenuLine("RESET NOW", "OPEN CONFIRM"),
-                MenuLine("PCMCIA", FormatPcmciaSram())
+                MenuLine("PCMCIA", FormatPcmciaSram()),
+                MenuLine("IMAGE SIZE", _settings.StretchToFullWidth ? "FILL SCREEN" : "KEEP ASPECT")
             }, _settingsSelection);
         }
 
@@ -3179,7 +3214,7 @@ namespace AmigaEmulator
                 MenuLine("RENDER FPS", FormatRenderLimit(_renderLimitMode)),
                 MenuLine("WINDOW", _fullscreen ? "FULLSCREEN" : "WINDOW"),
                 MenuLine("DEBUG OVERLAY", _debugOverlayVisible ? "ON" : "OFF"),
-                MenuLine("IMAGE WIDTH", _settings.StretchToFullWidth ? "FULL WIDTH" : "ORIGINAL")
+                MenuLine("IMAGE SIZE", _settings.StretchToFullWidth ? "FILL SCREEN" : "KEEP ASPECT")
             }, _displaySelection);
         }
 
@@ -4121,7 +4156,7 @@ namespace AmigaEmulator
             _settings.StretchToFullWidth = !_settings.StretchToFullWidth;
             SetPresentationStretchToClient(_settings.StretchToFullWidth);
             AmigaEmulatorSettingsStore.Save(_settings);
-            _statusText = _settings.StretchToFullWidth ? "IMAGE FULL WIDTH" : "IMAGE ORIGINAL";
+            _statusText = _settings.StretchToFullWidth ? "IMAGE FILL SCREEN" : "IMAGE KEEP ASPECT";
         }
 
         /// <summary>Toggles fullscreen while preserving the selected image width.</summary>
@@ -4131,6 +4166,8 @@ namespace AmigaEmulator
             {
                 FormBorderStyle = FormBorderStyle.Sizable;
                 WindowState = FormWindowState.Normal;
+                if (!_windowedBounds.IsEmpty) Bounds = _windowedBounds;
+                WindowState = _windowedState;
                 _fullscreen = false;
                 SetPresentationStretchToClient(_settings.StretchToFullWidth);
                 _settings.Fullscreen = false;
@@ -4139,8 +4176,7 @@ namespace AmigaEmulator
                 return;
             }
 
-            FormBorderStyle = FormBorderStyle.None;
-            WindowState = FormWindowState.Maximized;
+            EnterMonitorFullscreen();
             _fullscreen = true;
             SetPresentationStretchToClient(_settings.StretchToFullWidth);
             _settings.Fullscreen = true;
@@ -4158,9 +4194,19 @@ namespace AmigaEmulator
                 return;
             }
 
-            FormBorderStyle = FormBorderStyle.None;
-            WindowState = FormWindowState.Maximized;
+            EnterMonitorFullscreen();
             SetPresentationStretchToClient(_settings.StretchToFullWidth);
+        }
+
+        private void EnterMonitorFullscreen()
+        {
+            Rectangle monitor = Screen.FromControl(this).Bounds;
+            _windowedState = WindowState;
+            _windowedBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+            WindowState = FormWindowState.Normal;
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            Bounds = monitor;
         }
 
         /// <summary>

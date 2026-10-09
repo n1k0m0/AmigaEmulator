@@ -791,7 +791,8 @@ namespace AmigaEmulator.Core.CustomChips
                 _zeroFlag = false;
             }
 
-            RaiseWordExecuted(new BlitterWordTraceEntry
+            // Null-conditional invocation also skips constructing the diagnostic snapshot.
+            WordExecuted?.Invoke(new BlitterWordTraceEntry
             {
                 LineMode = false,
                 Line = _currentLine,
@@ -998,7 +999,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             _cdat = rawC;
-            RaiseWordExecuted(new BlitterWordTraceEntry
+            WordExecuted?.Invoke(new BlitterWordTraceEntry
             {
                 LineMode = true,
                 Line = _currentLine,
@@ -1123,18 +1124,6 @@ namespace AmigaEmulator.Core.CustomChips
 
             WriteChip(_pendingDAddress, _pendingDValue);
             _pendingDWrite = false;
-        }
-
-        /// <summary>
-        /// Raises the Word Executed notification.
-        /// </summary>
-        private void RaiseWordExecuted(BlitterWordTraceEntry entry)
-        {
-            Action<BlitterWordTraceEntry> handler = WordExecuted;
-            if (handler != null)
-            {
-                handler(entry);
-            }
         }
 
         /// <summary>

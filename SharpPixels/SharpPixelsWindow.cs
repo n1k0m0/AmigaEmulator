@@ -78,6 +78,7 @@ namespace SharpPixels
         /// Stores presentation Upscale Mode.
         /// </summary>
         private SharpPixelsGpuUpscaleMode _presentationUpscaleMode = SharpPixelsGpuUpscaleMode.None;
+        private readonly PixelUpscaler _upscaler = new PixelUpscaler();
         /// <summary>
         /// Stores source pixels cropped from the left before presentation scaling.
         /// </summary>
@@ -367,17 +368,24 @@ namespace SharpPixels
         /// </summary>
         private bool PumpOneFrame()
         {
-            OnUpdateFrame();
-            if (!ShouldPaintFrame())
+            try
             {
-                return false;
+                OnUpdateFrame();
+                if (!ShouldPaintFrame()) return false;
+                Invalidate();
+                Update();
+                UpdateFpsCounter();
+                return true;
             }
-
-            Invalidate();
-            Update();
-            UpdateFpsCounter();
-            return true;
+            catch (Exception error)
+            {
+                try { OnFrameFailure(error); } catch { }
+                throw;
+            }
         }
+
+        /// <summary>Records a host failure before it reaches the existing exception handler.</summary>
+        protected virtual void OnFrameFailure(Exception error) { }
 
         /// <summary>
         /// Returns whether the current update produced something worth repainting.
@@ -582,7 +590,7 @@ namespace SharpPixels
                     backGraphics.Clear(Color.Black);
                 }
 
-                if (_presentationFilterMode == SharpPixelsGpuFilterMode.Sharp)
+                if (_presentationFilterMode == SharpPixelsGpuFilterMode.Sharp && _presentationUpscaleMode == SharpPixelsGpuUpscaleMode.None)
                 {
                     DrawPresentationPixelsDib(_backBufferDc, source, target);
                 }
@@ -591,7 +599,20 @@ namespace SharpPixels
                     EnsurePaintUploadBuffer();
                     Buffer.BlockCopy(Pixels, 0, _paintUploadBuffer, 0, Pixels.Length * sizeof(uint));
                     ApplyPresentationFilter(_paintUploadBuffer, PixelsWidth, PixelsHeight);
-                    DrawPresentationDib(_backBufferDc, source, target);
+                    if (_presentationUpscaleMode == SharpPixelsGpuUpscaleMode.None)
+                        DrawPresentationDib(_backBufferDc, source, target);
+                    else
+                    {
+                        _upscaler.Render(MemoryMarshal.Cast<int, uint>(_paintUploadBuffer.AsSpan()),
+                            PixelsWidth, PixelsHeight, source, _presentationUpscaleMode);
+                        GCHandle handle = GCHandle.Alloc(_upscaler.Pixels, GCHandleType.Pinned);
+                        try
+                        {
+                            DrawPresentationDib(_backBufferDc, new Rectangle(0, 0, _upscaler.Width, _upscaler.Height),
+                                target, handle.AddrOfPinnedObject(), _upscaler.Width, _upscaler.Height);
+                        }
+                        finally { handle.Free(); }
+                    }
                 }
 
                 OnRenderOverlay(backGraphics, target);
@@ -670,7 +691,7 @@ namespace SharpPixels
         {
             if (_stretchPresentationToClient)
             {
-                return ApplyPresentationTargetMargins(new Rectangle(0, 0, Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height)));
+                return new Rectangle(0, 0, Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height));
             }
 
             // Upscaling changes sampling, never the displayed image size or mouse mapping.
@@ -707,45 +728,6 @@ namespace SharpPixels
                 _presentationCropTop,
                 PresentationSourceWidth,
                 PresentationSourceHeight);
-        }
-
-        /// <summary>
-        /// Returns the Interpolation Mode.
-        /// </summary>
-        private InterpolationMode GetInterpolationMode()
-        {
-            switch (_presentationUpscaleMode)
-            {
-                case SharpPixelsGpuUpscaleMode.Hq2x:
-                case SharpPixelsGpuUpscaleMode.Hq3x:
-                case SharpPixelsGpuUpscaleMode.Hq4x:
-                case SharpPixelsGpuUpscaleMode.Xbrz:
-                    return InterpolationMode.HighQualityBicubic;
-                default:
-                    return InterpolationMode.NearestNeighbor;
-            }
-        }
-
-        /// <summary>
-        /// Returns the Presentation Integer Scale.
-        /// </summary>
-        private int GetPresentationIntegerScale()
-        {
-            switch (_presentationUpscaleMode)
-            {
-                case SharpPixelsGpuUpscaleMode.Scale2x:
-                case SharpPixelsGpuUpscaleMode.Hq2x:
-                    return 2;
-                case SharpPixelsGpuUpscaleMode.Scale3x:
-                case SharpPixelsGpuUpscaleMode.Hq3x:
-                    return 3;
-                case SharpPixelsGpuUpscaleMode.Hq4x:
-                case SharpPixelsGpuUpscaleMode.Clean4:
-                case SharpPixelsGpuUpscaleMode.Xbrz:
-                    return 4;
-                default:
-                    return 0;
-            }
         }
 
         /// <summary>
@@ -1051,19 +1033,21 @@ namespace SharpPixels
         /// <summary>
         /// Draws pinned top-down 32-bit pixels through Win32 StretchDIBits into a device context.
         /// </summary>
-        private void DrawPresentationDib(IntPtr hdc, Rectangle source, Rectangle target, IntPtr pixelPointer)
+        private void DrawPresentationDib(IntPtr hdc, Rectangle source, Rectangle target, IntPtr pixelPointer, int pixelWidth = 0, int pixelHeight = 0)
         {
+            if (pixelWidth == 0) pixelWidth = PixelsWidth;
+            if (pixelHeight == 0) pixelHeight = PixelsHeight;
             var info = new BitmapInfo
             {
                 Header = new BitmapInfoHeader
                 {
                     Size = Marshal.SizeOf(typeof(BitmapInfoHeader)),
-                    Width = PixelsWidth,
-                    Height = -PixelsHeight,
+                    Width = pixelWidth,
+                    Height = -pixelHeight,
                     Planes = 1,
                     BitCount = 32,
                     Compression = 0,
-                    SizeImage = PixelsWidth * PixelsHeight * 4
+                    SizeImage = pixelWidth * pixelHeight * 4
                 }
             };
 

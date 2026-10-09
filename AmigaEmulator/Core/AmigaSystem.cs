@@ -558,6 +558,9 @@ namespace AmigaEmulator.Core
                     throw new InvalidDataException("Invalid mains TOD clock phase.");
                 _agnus.Bitplanes.RefreshFromRegisters();
                 _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
+                // Tracing is a host diagnostic setting. A saved CPU flag must
+                // not silently enable allocations in a Fast/Compatible session.
+                _cpu.TraceEnabled = _accuracyOptions.EnableCpuTrace;
                 _suppressNextPresentationAfterLoad = true;
                 _lastTraceSample = CreateTraceSample(null);
             }

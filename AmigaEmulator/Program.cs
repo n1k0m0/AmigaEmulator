@@ -131,7 +131,7 @@ namespace AmigaEmulator
                     ? parsedProfileFrames
                     : 20;
                 string profile = args.Length >= 5 ? args[4] : "fast";
-                RunSavestateProfile(savePath, frames, profileFrames, profile, ParseModelArgument(args, 5));
+                RunSavestateProfile(savePath, frames, profileFrames, profile, ParseSavestateModelArgument(args, 5, savePath));
                 return;
             }
 
@@ -5608,7 +5608,7 @@ namespace AmigaEmulator
                 return;
             }
 
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, AmigaAccuracyOptions.Compatible.Clone()))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9314,7 +9314,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void RunUntilPc(uint pc, int maxCycles, int requestedHit)
         {
-            using (var system = new AmigaSystem(AmigaModel.PalA500))
+            using (var system = new AmigaSystem(AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9421,7 +9421,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void ProfileProgramCounter(int maxCycles, int top)
         {
-            using (var system = new AmigaSystem(AmigaModel.PalA500))
+            using (var system = new AmigaSystem(AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9475,7 +9475,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void TraceAfterPc(uint pc, int requestedHit, int traceCycles, int maxSearchCycles, string logPath, AmigaModel model)
         {
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9517,7 +9517,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void TraceBeforePc(uint pc, int maxCycles, int samplesToKeep, int requestedHit, AmigaModel model)
         {
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9580,7 +9580,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void TraceSavestateBeforePc(string savePath, uint pc, int maxCycles, int samplesToKeep, int requestedHit, AmigaModel model)
         {
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 SaveStateFile.Load(savePath, system);
                 var samples = new Queue<M68kTraceEntry>();
@@ -9648,7 +9648,7 @@ namespace AmigaEmulator
                 return;
             }
 
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9846,7 +9846,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void TraceUntilPcRange(uint minPc, uint maxPc, int maxCycles, int samplesToKeep, AmigaModel model)
         {
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -9903,7 +9903,7 @@ namespace AmigaEmulator
                 return;
             }
 
-            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500))
+            using (var system = new AmigaSystem(model ?? AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {
@@ -10038,7 +10038,7 @@ namespace AmigaEmulator
         /// </summary>
         private static void RunUntilOverlayOff(int maxCycles)
         {
-            using (var system = new AmigaSystem(AmigaModel.PalA500))
+            using (var system = new AmigaSystem(AmigaModel.PalA500, CreateCpuTraceAccuracyOptions()))
             {
                 if (KickstartRomResolver.TryLoadDefaultKickstart(out byte[] romBytes, out _))
                 {

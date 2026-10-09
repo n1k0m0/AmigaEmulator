@@ -17,6 +17,8 @@ Each case creates numbered PNGs, `steps.jsonl` and a continuation
 number, presentation bounds, pixel hash and `gameplay: requires-visual-review`.
 Disk images are mounted read-only. Output filenames are replaced on reruns;
 use a fresh output directory to preserve earlier evidence.
+Step logs also include Paula DMA counters/queue state and input-port modes and
+JOY0DAT, to distinguish media/loader failures from pointer/input failures.
 
 A case has `name`, `boot` (ADF filename), optional `mediaRoot`, `model`, `ram`, `strict`
 and `actions`. Default media root is `%USERPROFILE%/Documents/AmigaEmulator`;
@@ -35,6 +37,9 @@ Actions:
 - `wait`: `cycles` chip clocks (about 3.55 million per emulated PAL second).
 - `key`: `key` Amiga raw keycode; `cycles` optional hold duration. Space is 64,
   Return 68, F1 80. Release is followed by 400,000 chip clocks.
+  Optional `modifiers` holds raw modifier keys around the main key, then releases
+  them in reverse order. For example, `key: 18, modifiers: [103]` sends right
+  Amiga + E to open Workbench's Execute Command dialog.
 - `mouse`: relative `x`/`y` movement, split into small steps to avoid byte-counter
   wrap ambiguity. Coordinates refer to mouse counters, not screenshot pixels.
 - `click`: mouse-port button, default `button: Fire` (left mouse).
@@ -44,6 +49,8 @@ Actions:
 - `reset`: warm reset by default, `cold: true` for a power cycle.
 - `restore`: save the current core state, advance one frame, restore and check
   that the captured framebuffer hash is unchanged. The HDF is not rolled back.
+- `checkpoint`: write a continuation savestate named `<label>.amigasav` at an
+  intermediate step, without advancing the guest; the label must be a filename.
 
 Every action accepts a `label` for screenshots. `strict` does not imply that
 software is compatible; both profiles may require title-specific investigation.
@@ -60,6 +67,8 @@ For HDD boot cases, omit `boot` and provide `hardDisk` (absolute whole-disk HDF
 path) and `kickstartRom` (absolute ROM path matching the selected motherboard).
 A3000 uses SCSI target 0; A4000Ec030 uses DD2020 IDE. `hardDiskReadOnly`
 defaults to true; set false only for a disposable writable test image.
+When replaying a `save`, an explicit `hardDisk` overrides its saved HDF mount
+after loading; use this to replay mouse/input tests against a separate copy.
 `createHardDiskMiB` optionally creates a new RDB/DH0 image before mounting it
 (refuses existing files; the partition must still be formatted/installed).
 `traceIde: true` adds `ide-trace.txt` with controller writes and Autoconfig
@@ -69,3 +78,14 @@ accesses. Step diagnostics include HDF sector counters and Fast-RAM assignment.
 8 MiB Fast RAM. `expectPcmciaRam: true` checks guest Exec memory registration.
 `traceExceptions: true` records synchronous CPU exceptions for investigation.
 Environment variables are expanded in ROM, HDF and media-root paths.
+
+`traceCopper: true` records executed Copper instructions in `copper.jsonl`.
+`traceCopperBuild: true` records CPU-created BPLCON0 instruction words and
+following data words in Chip RAM, including byte-split bus stores. These are
+optional diagnostics; keep them off for throughput measurements.
+
+Generate the eight-model sweep using `Tools/run-model-gameplay-matrix.ps1` with
+`-OutputDirectory` set to a fresh external directory. `-Games` selects existing
+manifest templates and `-Models` selects boards. `-ManifestOnly` writes the cases
+without running them. A successful process exit still requires visual review;
+newer-Kickstart/68000 Tinyus currently remains an open case.

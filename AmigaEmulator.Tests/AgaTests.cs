@@ -21,9 +21,107 @@ namespace AmigaEmulator.Tests
             yield return Test("wide sprites consume complete header/data groups, select palette banks and restore pending DMA", TestSprites);
             yield return Test("extended collision masks include planes seven/eight and legacy writes reset them", TestCollisions);
             yield return Test("playfield XOR and border sprites retain independent border color and blanking", TestBorderComposition);
+            yield return Test("all 256 scroll delays retain independent odd/even phases in lores and hires", TestExtendedScroll);
+            yield return Test("ECS/AGA hires preload stays outside DIW and DMA spans retain every leading bit", TestHiresDmaPhase);
         }
         private static ChipTestCase Test(string name, Action run) => new("AGA/Bringup", name,
             "Commodore Advanced Amiga Chip Set Functional Specification, 1991; independent fixtures", run);
+
+        private static void TestHiresDmaPhase()
+        {
+            foreach (var chipset in new[] { AmigaChipset.Ecs, AmigaChipset.Aga })
+            foreach (bool preload in new[] { false, true })
+            {
+                var regs = new CustomRegisterMap(chipset);
+                ushort Read(uint address)
+                {
+                    if (address >= 0x1000) return 0; // Second plane.
+                    int word = (int)(address / 2);
+                    if (!preload) return 0xFFFF;
+                    // A previous row's final word and the next row's first
+                    // word must stay outside a 640-pixel display window.
+                    return word switch { 0 or 41 => 0xFFFF, 1 => 0x8000, 40 => 1, _ => 0 };
+                }
+                var planes = new BitplaneUnit(regs, Read);
+                var frame = new AmigaFrameBuffer(704, 1);
+                var denise = new Denise(frame, planes, new SpriteUnit(regs, null));
+                regs.WriteWord(0x08E, 0x2C81); regs.WriteWord(0x090, 0x2DC1);
+                regs.WriteWord(0x1E4, 0x2000);
+                regs.WriteWord(0x092, preload ? (ushort)0x38 : (ushort)0x3C);
+                regs.WriteWord(0x094, preload ? (ushort)0xD8 : (ushort)0xD4);
+                regs.WriteWord(0x100, 0xA001); regs.WriteWord(0x096, 0x8300);
+                regs.WriteWord(0x0E6, 0x1000); regs.WriteWord(0x182, 0x0FFF);
+                planes.BeginFrame();
+                for (int x = 0; x < 227; x++)
+                {
+                    if (planes.IsPlaneFetchSlot(x, 44)) planes.FetchDmaPlaneWord(x, 44);
+                    denise.Tick(new BeamTraceEntry { BeamX = x, BeamY = 44 });
+                }
+                denise.FinishLineTail(new BeamTraceEntry { BeamX = 226, BeamY = 44 });
+                for (int x = 0; x < 704; x++)
+                {
+                    bool white = x < 640 && (!preload || x == 0 || x == 639);
+                    Check.Equal(white ? 0xFFFFFFFFu : 0xFF000000u, frame.Pixels[x],
+                        $"{chipset}, preload={preload}, pixel={x}: completed DMA and DIW must agree.");
+                }
+            }
+        }
+
+        private static void TestExtendedScroll()
+        {
+            foreach (bool hires in new[] { false, true })
+            {
+                var regs = new CustomRegisterMap(AmigaChipset.Aga);
+                var planes = new BitplaneUnit(regs, null, 2 * 1024 * 1024);
+                regs.WriteWord(0x08E, 0x2C81); regs.WriteWord(0x090, 0x2DC1);
+                regs.WriteWord(0x092, hires ? (ushort)0x3C : (ushort)0x38);
+                regs.WriteWord(0x094, 0xD4);
+                regs.WriteWord(0x100, hires ? (ushort)0xA001 : (ushort)0x2001);
+                planes.NotifyCustomRegisterWordWrite(0x110, 0xA55A);
+                planes.NotifyCustomRegisterWordWrite(0x112, 0x3CC3);
+                for (int odd = 0; odd < 256; odd++)
+                {
+                    int even = 255 - odd;
+                    // Encode the published PFxH7..0 register layout independently.
+                    ushort value = (ushort)(((odd & 0x3C) >> 2) | ((odd & 3) << 8) | ((odd & 0xC0) << 4) |
+                        ((even & 0x3C) << 2) | ((even & 3) << 12) | ((even & 0xC0) << 8));
+                    regs.WriteWord(0x102, value); planes.RefreshFromRegisters();
+                    for (int x = 0; x < 256; x++)
+                    {
+                        int first = (x * 2 - odd) >> (hires ? 1 : 2);
+                        int second = (x * 2 - even) >> (hires ? 1 : 2);
+                        int expected = first < 0 ? 0 : (0xA55A >> (15 - (first & 15))) & 1;
+                        if (second >= 0) expected |= ((0x3CC3 >> (15 - (second & 15))) & 1) << 1;
+                        Check.Equal(expected, planes.RenderColorIndex(x, 44), "35 ns delay and independent plane phase.");
+                    }
+                    if (odd == 129)
+                    {
+                        int beforeRestore = planes.RenderColorIndex(66, 44);
+                        using var stream = new MemoryStream(); planes.SaveState(new BinaryWriter(stream));
+                        stream.Position = 0; planes.LoadState(new BinaryReader(stream));
+                        planes.RefreshFromRegisters();
+                        Check.Equal(beforeRestore, planes.RenderColorIndex(66, 44), "Restore regenerates the fractional delay from the register.");
+                    }
+                }
+            }
+            // The compositor's lores pixel-pair cache must retain an odd
+            // host-pixel transition caused by the sub-lores delay bits.
+            var registers = new CustomRegisterMap(AmigaChipset.Aga);
+            var bitplanes = new BitplaneUnit(registers, null);
+            var sprites = new SpriteUnit(registers, null);
+            var frame = new AmigaFrameBuffer(64, 256);
+            var denise = new Denise(frame, bitplanes, sprites);
+            registers.WriteWord(0x08E, 0x2C81); registers.WriteWord(0x090, 0x2DC1);
+            registers.WriteWord(0x092, 0x38); registers.WriteWord(0x094, 0xD0);
+            registers.WriteWord(0x100, 0x1001); registers.WriteWord(0x102, 0x0100);
+            Color(registers, 0, 0); Color(registers, 1, 0xFF0000);
+            bitplanes.NotifyCustomRegisterWordWrite(0x110, 0x8000); bitplanes.RefreshFromRegisters();
+            denise.Tick(new BeamTraceEntry { BeamX = 0x3E, BeamY = 44 });
+            Check.Equal(0xFF000000u, frame.Pixels[0], "Fractional delay leaves the first sample blank.");
+            Check.Equal(0xFFFF0000u, frame.Pixels[1], "Odd host sample begins the lores bit.");
+            Check.Equal(0xFFFF0000u, frame.Pixels[2], "The delayed bit still spans two host samples.");
+            Check.Equal(0xFF000000u, frame.Pixels[3], "The next bit begins on the correct phase.");
+        }
 
         private static void TestBorderComposition()
         {

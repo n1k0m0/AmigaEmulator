@@ -29,7 +29,9 @@ namespace AmigaEmulator.Tests
             yield return Test("EC030 adds data cache control readback while absent MMU/FPU opcodes trap", TestEc030);
             yield return Test("68030 translates instruction/data pages, MOVES function codes and page-boundary longs", Test030Translation);
             yield return Test("68030 PMOVE, PTEST, PLOAD and PFLUSH preserve guest MMU state", Test030Instructions);
+            yield return Test("68030 guest PLOAD/PTEST/PMOVE distinguish a cached fault from a repaired table", Test030CachedFaultInstructions);
             yield return Test("68030 protection faults create a format A frame and double faults halt", Test030Fault);
+            yield return Test("68030 locked reads check write protection before TAS/CAS change registers", Test030LockedProtection);
         }
         private static ChipTestCase Test(string name, Action run) => new("CPU/020", name, "Motorola M68000 PRM and MC68020UM; independently encoded integer fixtures", run);
 
@@ -425,6 +427,28 @@ namespace AmigaEmulator.Tests
             functionCode.SetA(0, 0x3000); functionCode.SetD(0, 0xFFFFFFFF); functionCode.Step();
             Check.Equal(0x1004u, functionCode.PC, "A data-register FC uses only its three low bits.");
         }
+        private static void Test030CachedFaultInstructions()
+        {
+            // PLOADR #5,(A2); PTESTR #5,(A2),#0; PMOVE MMUSR,(A3);
+            // then a level-seven PTEST followed by another cached-only PTEST.
+            var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0xF012, 0x2215,
+                0xF012, 0x8215, 0xF013, 0x6200, 0xF012, 0x9E15, 0xF012, 0x8215);
+            Map030(cpu, bus); bus.WriteLong(0x5018, 0);
+            cpu.SetA(2, 0x6000); cpu.SetA(3, 0x3000);
+            cpu.Step(); // A failed PLOAD creates an entry, not a data-access exception.
+            Check.Equal(0x1004u, cpu.PC, "PLOAD completes even when the page descriptor is invalid.");
+            bus.WriteLong(0x5018, 0x6001);
+            cpu.Step(); cpu.Step();
+            Check.Equal((ushort)0x8400, bus.ReadWord(0x3000), "The guest reads B/I through PMOVE MMUSR.");
+            cpu.Step();
+            Check.Equal((ushort)2, cpu.MemoryManagementUnit.Status, "Level-seven PTEST sees the repaired two-level table.");
+            cpu.Step();
+            Check.Equal((ushort)0x8400, cpu.MemoryManagementUnit.Status, "PTEST did not repair the fault in the ATC.");
+            cpu.MemoryManagementUnit.Flush(5, 7, 0x6000);
+            Check.Equal((ushort)0x400, cpu.MemoryManagementUnit.Test(0x6000, 5, false, 0).Flags,
+                "Explicit PFLUSH changes the cached bus error to an ATC miss.");
+        }
+
         private static void Test030Fault()
         {
             var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x2080);
@@ -440,6 +464,40 @@ namespace AmigaEmulator.Tests
             Map030(doubleFault, db); db.WriteLong(0x500C, 0); db.WriteLong(0x501C, 0);
             doubleFault.SetA(0, 0x3000); doubleFault.Step();
             Check.Equal(M68kExecutionState.Stopped, doubleFault.Snapshot.ExecutionState, "A fault while stacking halts the guest.");
+        }
+
+        private static void Test030LockedProtection()
+        {
+            foreach (bool deferred in new[] { false, true })
+            foreach (ushort[] code in new[] { new ushort[] { 0x4AD0 }, new ushort[] { 0x0CD0, 0x0040 },
+                new ushort[] { 0x0CFC, 0x8080, 0x90C1 } })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, code);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9005); // Logical 3000 maps to read-only 9000.
+                bus.WriteWord(0x9000, 0x1234);
+                cpu.SetA(0, 0x3000); cpu.SetA(1, 0x3002);
+                cpu.SetD(0, 0xDEADBEEF); cpu.SetD(1, 0xAABBCCDD);
+                if (deferred) for (int i = 0; i < 200 &&
+                    (bus.ReadLong(0x7FE2) != 0x1000 || bus.ReadWord(0x7FE0) != 0x2700); i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Write-protected locked read enters vector 2 even when CAS comparison would fail.");
+                Check.Equal(0x1000u, bus.ReadLong(cpu.A7 + 2), "Exception points at the uncompleted atomic instruction.");
+                Check.Equal((ushort)0x2700, bus.ReadWord(cpu.A7), "Comparison/TAS flags did not change before protection was checked.");
+                Check.Equal((ushort)(code[0] == 0x4AD0 ? 0x1D5 : 0x1E5), bus.ReadWord(cpu.A7 + 10), "SSW marks the faulting RMW read, transfer size and supervisor FC.");
+                Check.Equal(0xDEADBEEFu, cpu.D0, "A failed protected CAS does not update its compare register.");
+                Check.Equal(0xAABBCCDDu, cpu.GetD(1), "Second compare register remains intact.");
+                Check.Equal((ushort)0x1234, bus.ReadWord(0x9000), "Protected memory remains intact.");
+                // Repair the mapping, then RTE and retry to prove the temporary
+                // locked-read flag did not leak into exception stacking or RTE.
+                bus.WriteLong(0x500C, 0x9001); cpu.MemoryManagementUnit.Flush();
+                if (deferred) for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE returns to the faulting instruction.");
+                cpu.Step();
+                Check.Equal(code[0] == 0x4AD0 ? 0x1002u : code[0] == 0x0CD0 ? 0x1004u : 0x1006u,
+                    cpu.PC, "Atomic instruction completes after write protection is removed.");
+            }
         }
 
         private sealed class TestBus : IM68kPeekableBus, IM68kBusArbitration

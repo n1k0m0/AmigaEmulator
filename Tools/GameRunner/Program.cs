@@ -57,6 +57,20 @@ static void Run(Scenario scenario, string output)
             opcodePc = opcodePc.ToString("X6"), opcode = opcode.ToString("X4"), target = target.ToString("X6") }));
     };
     using var ideTrace = scenario.TraceIde ? new StreamWriter(Path.Combine(directory, "ide-trace.txt")) { AutoFlush = true } : null;
+    using var copperTrace = scenario.TraceCopper ? new StreamWriter(Path.Combine(directory, "copper.jsonl")) : null;
+    if (copperTrace != null) system.Agnus.Copper.InstructionExecuted += entry =>
+        copperTrace.WriteLine(JsonSerializer.Serialize(entry));
+    using var copperBuildTrace = scenario.TraceCopperBuild ? new StreamWriter(Path.Combine(directory, "copper-build.jsonl")) : null;
+    if (copperBuildTrace != null) system.Bus.WriteObserved += (address, size, value, region) =>
+    {
+        if (region != AmigaEmulator.Core.Memory.AmigaAddressRegion.ChipRam || address < 2 ||
+            size == 1 && (address & 1) == 0) return;
+        uint wordAddress = address & ~1u;
+        ushort word = system.Bus.PeekWord(wordAddress);
+        if (word == 0x100 || system.Bus.PeekWord(wordAddress - 2) == 0x100)
+            copperBuildTrace.WriteLine(JsonSerializer.Serialize(new { frame = system.FrameCounter, address = wordAddress,
+                value = word, pc = system.Cpu.PC, cpu = system.GetCpuDebugInfo() }));
+    };
     if (ideTrace != null) system.Bus.WriteObserved += (address, size, value, region) =>
     { if (region == AmigaEmulator.Core.Memory.AmigaAddressRegion.GayleIde || address >= 0xE80000 && address < 0xE90000) ideTrace.WriteLine($"PC={system.Cpu.PC:X6} W{size} {address:X6}={value:X8}"); };
     if (ideTrace != null) system.Bus.ReadObserved += (address, size, value, region) =>
@@ -68,6 +82,10 @@ static void Run(Scenario scenario, string output)
         var metadata = SaveStateFile.ReadMetadata(save);
         SaveStateFile.Load(save, system);
         mounted = metadata.MountedMedia ?? MountedMediaInfo.None;
+        // Permit isolated replay against a copy instead of writing the user's
+        // live disk recorded in the savestate.
+        if (scenario.HardDisk != null)
+            system.Bus.HardDisk.Mount(Environment.ExpandEnvironmentVariables(scenario.HardDisk), scenario.HardDiskReadOnly);
     }
     else
     {
@@ -93,9 +111,19 @@ static void Run(Scenario scenario, string output)
         {
             case "wait": system.RunChipCycles(action.Cycles); break;
             case "key":
+                var modifiers = action.Modifiers ?? [];
+                if (action.Key < 0 || action.Key > 0x7F || modifiers.Any(key => key < 0 || key > 0x7F))
+                    throw new ArgumentOutOfRangeException(nameof(action.Key), "Amiga raw keys must be 0..127.");
+                foreach (int modifier in modifiers)
+                {
+                    system.Input.KeyboardKeyDown((byte)modifier);
+                    system.RunChipCycles(120_000);
+                }
                 system.Input.KeyboardKeyDown((byte)action.Key);
                 system.RunChipCycles(action.Cycles > 0 ? action.Cycles : 400_000);
                 system.Input.KeyboardKeyUp((byte)action.Key);
+                for (int i = modifiers.Count - 1; i >= 0; i--)
+                    system.Input.KeyboardKeyUp((byte)modifiers[i]);
                 system.RunChipCycles(400_000);
                 break;
             case "mouse":
@@ -120,6 +148,7 @@ static void Run(Scenario scenario, string output)
                 break;
             case "disk": Mount(action.Disk, action.Drive); break;
             case "reset": system.Reset(action.Cold); break;
+            case "checkpoint": SaveCheckpoint(action.Label ?? $"step-{step:00}"); break;
             case "restore":
                 using (var state = new MemoryStream())
                 {
@@ -147,9 +176,17 @@ static void Run(Scenario scenario, string output)
     }
     if (scenario.ExpectPcmciaRam && !GuestMemory().Any(m => m.Lower >= 0x600000 && m.Lower < 0x600400 && m.Upper == 0x600000 + system.Bus.Pcmcia.Size))
         throw new InvalidOperationException("Guest Exec did not register the inserted PCMCIA SRAM card.");
-    SaveStateFile.Write(Path.Combine(directory, "checkpoint.amigasav"), system, mounted,
-        kickstart, ram, scenario.Strict ? AmigaAccuracyProfile.Compatible : AmigaAccuracyProfile.Fast, system.PresentedFrameBuffer.Pixels, 704, 288);
+    SaveCheckpoint("checkpoint");
     Console.WriteLine($"DONE {scenario.Name} frame={system.FrameCounter} PC={system.Cpu.PC:X6}");
+
+    void SaveCheckpoint(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name is "." or "..")
+            throw new ArgumentException("Checkpoint label must be a valid filename.");
+        SaveStateFile.Write(Path.Combine(directory, name + ".amigasav"), system, mounted,
+            kickstart, ram, scenario.Strict ? AmigaAccuracyProfile.Compatible : AmigaAccuracyProfile.Fast,
+            system.PresentedFrameBuffer.Pixels, system.PresentedFrameBuffer.Width, system.PresentedFrameBuffer.Height);
+    }
 
     void Mount(string disk, int drive)
     {
@@ -176,6 +213,8 @@ static void Run(Scenario scenario, string output)
             pc = system.Cpu.PC.ToString("X6"), hash = Convert.ToHexString(SHA256.HashData(bytes)),
             presentation = system.GetPresentationDebugInfo(), cpu = system.GetCpuDebugInfo(), stopped = system.Cpu.IsStopped, exceptions,
             disk = system.Bus.FloppyController.GetDebugInfo(), hardDisk = new { path = system.Bus.HardDisk.Image?.Path, reads = system.Bus.HardDisk.ReadSectors, writes = system.Bus.HardDisk.WrittenSectors },
+            diskDma = system.Paula.GetDiskDebugInfo(), input = new { port0 = system.Input.Port0Mode.ToString(),
+                port1 = system.Input.Port1Mode.ToString(), joy0 = system.Input.ReadJoyDat(AmigaControlPort.Port0).ToString("X4") },
             fastRam = new { configured = model.HasDesktopResources ? model.FastRamBytes != 0 : system.Bus.AutoConfig.Configured,
                 address = model.HasDesktopResources ? model.MotherboardFastRamStart : system.Bus.AutoConfig.BaseAddress },
             pcmcia = new { size = system.Bus.Pcmcia.Size, status = system.Bus.PeekByte(0xDA8000), changes = system.Bus.PeekByte(0xDA9000),
@@ -220,6 +259,8 @@ class Scenario
     public bool ExpectPcmciaRam { get; set; }
     public bool TraceIde { get; set; }
     public bool TraceExceptions { get; set; }
+    public bool TraceCopper { get; set; }
+    public bool TraceCopperBuild { get; set; }
     public List<ScenarioAction> Actions { get; set; }
 }
 class ScenarioAction
@@ -228,6 +269,7 @@ class ScenarioAction
     public string Label { get; set; }
     public int Cycles { get; set; }
     public int Key { get; set; }
+    public List<int> Modifiers { get; set; }
     public int X { get; set; }
     public int Y { get; set; }
     public string Button { get; set; }

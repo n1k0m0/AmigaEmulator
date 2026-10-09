@@ -4,13 +4,15 @@ namespace AmigaEmulator.Core.Cpu
 {
     public sealed partial class M68kCpu
     {
+        [NonSerialized] private bool _locked030Access;
+
         private sealed class MmuAccessException : Exception
         {
             public readonly uint Address;
             public readonly int FunctionCode, Size;
-            public readonly bool Write, Instruction;
-            public MmuAccessException(uint address, int fc, bool write, int size)
-            { Address = address; FunctionCode = fc; Write = write; Size = size; Instruction = (fc & 3) == 2; }
+            public readonly bool Write, Instruction, Locked;
+            public MmuAccessException(uint address, int fc, bool write, int size, bool locked = false)
+            { Address = address; FunctionCode = fc; Write = write; Size = size; Instruction = (fc & 3) == 2; Locked = locked; }
         }
 
         // Table walks use physical addresses and participate in deferred bus retirement.
@@ -29,9 +31,28 @@ namespace AmigaEmulator.Core.Cpu
         private uint Translate030Address(uint address, bool write, int size = 2)
         {
             int fc = _functionCodeOverride >= 0 ? _functionCodeOverride : (IsSupervisor() ? 5 : 1);
-            var translation = _mmu.Translate(address, fc, write);
-            if (!translation.Accessible(write)) throw new MmuAccessException(address, fc, write, size);
+            // A locked RMW read already requires write permission, including
+            // a CAS whose comparison would otherwise suppress its write.
+            bool needsWrite = write || _locked030Access;
+            var translation = _mmu.Translate(address, fc, needsWrite);
+            if (!translation.Accessible(needsWrite)) throw new MmuAccessException(address, fc, write, size, _locked030Access);
             return translation.Physical;
+        }
+        private uint ReadLockedMemory(uint address, int size)
+        {
+            if (_mmu == null) return ReadMemory(address, size);
+            bool previous = _locked030Access;
+            _locked030Access = true;
+            try { return ReadMemory(address, size); }
+            finally { _locked030Access = previous; }
+        }
+        private uint ReadLockedLocation(EaLocation location)
+        {
+            if (_mmu == null) return ReadLocation(location);
+            bool previous = _locked030Access;
+            _locked030Access = true;
+            try { return ReadLocation(location); }
+            finally { _locked030Access = previous; }
         }
         private ushort Fetch030Word()
         {
@@ -53,7 +74,7 @@ namespace AmigaEmulator.Core.Cpu
             _functionCodeOverride = -1;
             SetStatusRegister((ushort)((sr | FlagS) & ~0xC000));
             ushort ssw = fault.Instruction ? (ushort)0xA000 :
-                (ushort)(0x100 | (fault.Write ? 0 : 0x40) | (fault.Size == 1 ? 0x10 : 0x20) | fault.FunctionCode);
+                (ushort)(0x100 | (fault.Locked ? 0x80 : 0) | (fault.Write ? 0 : 0x40) | (fault.Size == 1 ? 0x10 : 0x20) | fault.FunctionCode);
             try
             {
                 // Format A. Pipeline rerun and partial operand restart are still approximate.

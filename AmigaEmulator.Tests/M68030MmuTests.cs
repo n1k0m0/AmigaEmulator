@@ -12,6 +12,8 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("CPU/030MMU", "two-level translation updates U/M, protects pages and retains/flushes ATC entries", "Motorola MC68030UM 9.5/9.7; independent tables", TestShortTables);
             yield return new ChipTestCase("CPU/030MMU", "long descriptors, root limits, supervisor tables and indirect pages use physical addresses", "Motorola MC68030UM descriptor formats", TestDescriptors);
             yield return new ChipTestCase("CPU/030MMU", "configuration errors, transparent FC/RW windows and cache restore remain distinct", "Motorola MC68030UM register programming", TestControl);
+            yield return new ChipTestCase("CPU/030MMU", "cached invalid, limit and supervisor faults report ATC B/I rather than table-search status", "Motorola MC68030UM 9.4, 9.7.4 table 9-3", TestCachedFaultStatus);
+            yield return new ChipTestCase("CPU/030MMU", "cached write protection is readable and PTEST table walks leave cached faults intact", "Motorola MC68030UM 9.4, 9.7.6", TestCachedProtectionAndRepair);
         }
         private static (M68030Mmu mmu, Dictionary<uint, uint> memory) Setup()
         {
@@ -21,6 +23,60 @@ namespace AmigaEmulator.Tests
             Check.True(mmu.SetRoot(false, 0x7FFF000200001000), "Unlimited short root table.");
             memory[0x1048] = 0x2002; memory[0x20D0] = 0x500001;
             return (mmu, memory);
+        }
+
+        private static void TestCachedFaultStatus()
+        {
+            foreach (string fault in new[] { "invalid", "limit", "supervisor", "physical-read", "physical-update" })
+            {
+                var (mmu, mem) = Setup();
+                if (fault == "invalid") mem[0x20D0] = 0;
+                if (fault == "limit") mmu.SetRoot(false, 0x0011000200001000);
+                if (fault == "supervisor")
+                {
+                    mmu.SetRoot(false, 0x7FFF000300001000);
+                    mem[0x1090] = 0x7FFF0103; mem[0x1094] = 0x2000;
+                }
+                if (fault.StartsWith("physical-"))
+                {
+                    bool read = fault == "physical-read";
+                    mmu = new M68030Mmu(a => read ? throw new IOException("table bus error") : mem.GetValueOrDefault(a),
+                        (a, value) => throw new IOException("descriptor update bus error"));
+                    mmu.SetTranslationControl(0x80C48800); mmu.SetRoot(false, 0x7FFF000200001000);
+                }
+                var walk = mmu.Translate(0x01234567, 1, false);
+                Check.True(!walk.Accessible(false), $"{fault} blocks the initial access.");
+                int relevant = M68030Mmu.BusError | M68030Mmu.Invalid | M68030Mmu.Limit | M68030Mmu.SupervisorOnly | 7;
+                Check.Equal(M68030Mmu.BusError | M68030Mmu.Invalid,
+                    mmu.Test(0x01234567, 1, false, 0).Flags & relevant,
+                    $"{fault}: a resident failing ATC entry reports B/I and clears L/S/N.");
+                using var state = new MemoryStream(); mmu.SaveState(new BinaryWriter(state));
+                mmu.Flush(); state.Position = 0; mmu.LoadState(new BinaryReader(state));
+                Check.Equal(M68030Mmu.BusError | M68030Mmu.Invalid,
+                    mmu.Test(0x01234567, 1, true, 0).Flags & relevant,
+                    $"{fault}: restored ATC retains its fault, independent of PTESTR/PTESTW.");
+                Check.Equal(M68030Mmu.Invalid, mmu.Test(0x01234567, 2, false, 0).Flags,
+                    "Another function code is an ATC miss, with I but without B.");
+            }
+        }
+
+        private static void TestCachedProtectionAndRepair()
+        {
+            var (mmu, mem) = Setup(); mem[0x20D0] = 0x500005;
+            Check.True(mmu.Translate(0x01234567, 1, false).Accessible(false), "WP permits ordinary reads.");
+            Check.Equal(M68030Mmu.WriteProtected, mmu.Test(0x01234567, 1, true, 0).Flags,
+                "PTESTW reports WP without inventing a cached bus error.");
+            Check.True(!mmu.Translate(0x01234567, 1, true).Accessible(true), "WP still denies writes.");
+            mmu.Flush(); mem[0x20D0] = 0; mmu.Load(0x01234567, 1, false);
+            mem[0x20D0] = 0x600001;
+            Check.Equal((ushort)2, mmu.Test(0x01234567, 1, false, 7).Flags,
+                "PTEST table search sees the repaired mapping without altering U/M.");
+            Check.Equal(0x600001u, mem[0x20D0], "PTEST does not update the repaired page descriptor.");
+            Check.Equal((ushort)(M68030Mmu.BusError | M68030Mmu.Invalid), mmu.Test(0x01234567, 1, false, 0).Flags,
+                "A table-search PTEST must not replace the resident fault.");
+            Check.True(!mmu.Translate(0x01234567, 1, false).Accessible(false), "Access retains the fault until explicit invalidation.");
+            Check.Equal(0x600567u, mmu.Load(0x01234567, 1, false).Physical, "PLOAD repairs the selected ATC entry.");
+            Check.Equal((ushort)0, mmu.Test(0x01234567, 1, false, 0).Flags, "Repaired ATC reports no fault/depth.");
         }
         private static void TestShortTables()
         {

@@ -107,11 +107,22 @@ namespace AmigaEmulator.Core.Cpu
             if (level == 0)
             {
                 if (Matches(Transparent0, logical, functionCode & 7, !write) || Matches(Transparent1, logical, functionCode & 7, !write)) result = new(logical, Transparent, 0);
-                else if (_atc.TryGetValue((logical >> PageBits, functionCode & 7), out var entry)) result = entry with { Flags = (ushort)(entry.Flags & ~(Limit | SupervisorOnly | 7)) };
+                else if (_atc.TryGetValue((logical >> PageBits, functionCode & 7), out var entry)) result = entry with { Flags = AtcStatus(entry.Flags) };
                 else result = new(0, Invalid, 0);
             }
             else result = Walk(logical, functionCode & 7, write, false, level);
             Status = result.Flags; return result;
+        }
+        private static ushort AtcStatus(ushort tableFlags)
+        {
+            // Keep table-search diagnostics internally (and in legacy saves),
+            // but level-zero PTEST reports the ATC's B/WP/M fields. Every
+            // invalid descriptor, limit/supervisor violation or physical table
+            // fault latches B; table depth and L/S do not exist in the ATC.
+            ushort flags = (ushort)(tableFlags & (WriteProtected | Modified));
+            if ((tableFlags & (BusError | Limit | SupervisorOnly | Invalid)) != 0)
+                flags |= BusError | Invalid;
+            return flags;
         }
         public Translation Load(uint logical, int functionCode, bool write)
         {

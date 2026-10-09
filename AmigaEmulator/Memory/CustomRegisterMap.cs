@@ -106,6 +106,8 @@ namespace AmigaEmulator.Core.Memory
         [field: NonSerialized] public AgaColorTable AgaColors { get; }
         [field: NonSerialized]
         public bool DiwHighWritten { get; private set; }
+        [field: NonSerialized]
+        internal uint DisplayControlGeneration { get; private set; }
 
         public CustomRegisterMap(AmigaChipset chipset = AmigaChipset.Ocs)
         {
@@ -113,7 +115,8 @@ namespace AmigaEmulator.Core.Memory
             if (HasAga) AgaColors = new AgaColorTable();
         }
 
-        internal void RestoreEcsState(bool diwHighWritten) => DiwHighWritten = HasEcs && diwHighWritten;
+        internal void RestoreEcsState(bool diwHighWritten)
+        { DiwHighWritten = HasEcs && diwHighWritten; DisplayControlGeneration++; }
         /// <summary>
         /// Constant for Custom Bit Mask.
         /// </summary>
@@ -328,6 +331,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void Reset()
         {
+            DisplayControlGeneration++;
             AgaColors?.Reset();
             DiwHighWritten = false;
             for (int index = 0; index < _registers.Length; index++)
@@ -497,6 +501,7 @@ namespace AmigaEmulator.Core.Memory
         public void WriteWord(uint address, ushort value)
         {
             uint offset = GetOffset(address);
+            if (IsDisplayControl(offset)) DisplayControlGeneration++;
             if (offset == 0x07C) return; // Chip identification is read-only.
             if (HasEcs && (offset == 0x08E || offset == 0x090))
                 DiwHighWritten = false; // Legacy window writes release the ECS high-bit interlock.
@@ -611,8 +616,13 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void WriteRawWord(uint address, ushort value)
         {
+            if (IsDisplayControl(GetOffset(address))) DisplayControlGeneration++;
             _registers[GetIndex(address)] = value;
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private static bool IsDisplayControl(uint offset) =>
+            offset - 0x08E <= 8 || offset - 0x100 <= 4 || offset == 0x1E4 || offset == 0x1FC;
 
         /// <summary>
         /// Advances live potentiometer counters once per scanline.

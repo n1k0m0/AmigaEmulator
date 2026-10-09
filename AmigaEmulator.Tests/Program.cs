@@ -105,6 +105,8 @@ namespace AmigaEmulator.Tests
             tests.AddRange(M68030MmuTests.Build());
             tests.AddRange(AgaTests.Build());
             tests.AddRange(AgnusTests.Build());
+            tests.AddRange(BlitterDiagnosticsTests.Build());
+            tests.AddRange(PresentationTests.Build());
             tests.AddRange(DeniseBitplaneTests.Build());
             tests.AddRange(SpriteTests.Build());
             tests.AddRange(SpriteShifterTests.Build());
@@ -858,6 +860,8 @@ namespace AmigaEmulator.Tests
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
+            yield return new ChipTestCase("Denise/Bitplane", "legacy OCS/ECS DIW clips wide hires fetches at both horizontal comparators",
+                "Commodore HRM DIWSTRT H8=0, DIWSTOP H8=1; DDF does not expand the display window", TestLegacyHorizontalComparators);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
                 "BPLxDAT write feeds bitplane latch when bitplane DMA is off",
@@ -1449,7 +1453,8 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Bplcon0, 0x4200);
             registers.WriteWord(Bplcon1, 0x00FF);
             registers.WriteWord(Diwstrt, 0x1871);
-            registers.WriteWord(Diwstop, 0x31D1);
+            // The fetched tail is visible only when DIW also includes it.
+            registers.WriteWord(Diwstop, 0x31E1);
             registers.WriteWord(Ddfstrt, 0x002C);
             registers.WriteWord(Ddfstop, 0x00D1);
             registers.WriteWord(0x180 + (15u * 2u), 0x0FFF);
@@ -1476,6 +1481,27 @@ namespace AmigaEmulator.Tests
             Check.Equal(0xFF000000u, frameBuffer.Pixels[row + tailFrameX], "The tail pixel starts as untouched background.");
             denise.FinishLineTail(new BeamTraceEntry { BeamX = AmigaModel.A500Pal.ChipCyclesPerLine - 1, BeamY = panelBeamY, Frame = 1 });
             Check.Equal(expectedColor, frameBuffer.Pixels[row + tailFrameX], "The final widened DDF word should render beyond the last normal beam pixel.");
+        }
+
+        private static void TestLegacyHorizontalComparators()
+        {
+            foreach (var chipset in new[] { AmigaChipset.Ocs, AmigaChipset.Ecs })
+            {
+                var registers = new CustomRegisterMap(chipset);
+                var planes = new BitplaneUnit(registers, _ => 0xFFFF);
+                void Set(uint offset, ushort value) { registers.WriteWord(offset, value); planes.NotifyCustomRegisterWordWrite(offset, value); }
+                Set(Dmacon, 0x8300); Set(Bplcon0, 0x9000);
+                Set(Diwstrt, 0x2C85); Set(Diwstop, 0x2DC1);
+                Set(Ddfstrt, 0x0038); Set(Ddfstop, 0x00D8);
+                for (int x = 0; x < 227; x++) if (planes.IsPlaneFetchSlot(x, 44)) planes.FetchDmaPlaneWord(x, 44);
+                Check.Equal(0, planes.RenderColorIndex(7, 44), "Fetching early must not expose pixels before HSTART.");
+                Check.Equal(1, planes.RenderColorIndex(8, 44), "HSTART is inclusive on both chipsets.");
+                Check.Equal(1, planes.RenderColorIndex(639, 44), "The final pixel before legacy HSTOP remains visible.");
+                Check.Equal(0, planes.RenderColorIndex(640, 44), "Wide fetches must not duplicate the next row outside HSTOP.");
+                Set(Diwstop, 0x2D91);
+                Check.Equal(1, planes.RenderColorIndex(543, 44), "Legacy stop implies bit 8 even when its low byte exceeds HSTART.");
+                Check.Equal(0, planes.RenderColorIndex(544, 44), "Moving HSTOP immediately clips previously fetched data.");
+            }
         }
 
         /// <summary>
@@ -4273,6 +4299,8 @@ namespace AmigaEmulator.Tests
         /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
+            yield return new ChipTestCase("SaveState", "restore keeps the current host tracing profile instead of a saved CPU diagnostic flag",
+                "Host diagnostic options must agree with CPU tracing after old and new state loads", TestRestoreTracingProfile);
             yield return new ChipTestCase(
                 "SaveState",
                 "full machine state roundtrips through the Amiga savestate file format",
@@ -4313,6 +4341,23 @@ namespace AmigaEmulator.Tests
                 "flat savestates migrate into mounted-media subdirectories",
                 "C64-style savestate browser groups timestamped saves by mounted media",
                 TestFlatSaveMigrationUsesMountedMediaDirectory);
+        }
+
+        private static void TestRestoreTracingProfile()
+        {
+            foreach (bool savedTrace in new[] { false, true })
+            foreach (bool activeTrace in new[] { false, true })
+            {
+                using var source = new AmigaSystem(AmigaModel.A500Pal,
+                    savedTrace ? AmigaAccuracyOptions.Strict : AmigaAccuracyOptions.Compatible);
+                using var stream = new MemoryStream(); source.SaveState(new BinaryWriter(stream));
+                using var target = new AmigaSystem(AmigaModel.A500Pal,
+                    activeTrace ? AmigaAccuracyOptions.Strict : AmigaAccuracyOptions.Compatible);
+                stream.Position = 0; target.LoadState(new BinaryReader(stream));
+                Check.Equal(activeTrace, target.Cpu.TraceEnabled, "CPU tracing follows the receiving host profile.");
+                Check.Equal(activeTrace, target.AccuracyOptions.EnableCpuTrace, "CPU and system trace flags stay consistent.");
+                Check.Equal(source.Cpu.PC, target.Cpu.PC, "Host tracing selection does not change the guest PC.");
+            }
         }
 
         /// <summary>

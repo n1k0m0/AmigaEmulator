@@ -57,6 +57,36 @@ namespace AmigaEmulator.Tests
                 "Motorola M68000 PRM ABCD/SBCD/NBCD; independent decimal arithmetic oracle", TestPackedDecimalArithmetic);
             yield return new ChipTestCase("CPU/BCD", "decimal memory preserves predecrement aliases and A7 byte alignment",
                 "Solid Gold score formatting plus M68000 byte predecrement and deferred execution", TestPackedDecimalMemory);
+            yield return new ChipTestCase("CPU/Diagnostics", "opcode descriptions preserve trace and privilege changes without per-instruction allocations",
+                "M68000 PRM trace/privilege semantics; allocation budget after decoder warmup", TestDescriptions);
+        }
+
+        private static void TestDescriptions()
+        {
+            var bus = CreatePreparedBus(new ushort[] { 0x2001 }); // MOVE.L D1,D0
+            var cpu = CreatePreparedCpu(bus);
+            for (int i = 0; i < 100; i++) { cpu.SetProgramCounter(ProgramStart); cpu.Step(); }
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 1000; i++) { cpu.SetProgramCounter(ProgramStart); cpu.Step(); }
+            Check.True(GC.GetAllocatedBytesForCurrentThread() - before < 2048, "Warm decoder must not allocate a description per instruction.");
+            Check.Equal(cpu.GetD(1), cpu.GetD(0), "Cached descriptions do not skip execution.");
+            Check.Equal("MOVE.L D1,D0", cpu.LastInstruction, "Description retains operands.");
+
+            bus = CreatePreparedBus(new ushort[] { 0x7007, 0x46FC, 0xA700, 0x7007 });
+            bus.WriteLong(9 * 4, 0x400);
+            cpu = CreatePreparedCpu(bus); cpu.TraceEnabled = true;
+            Check.Equal("MOVEQ #7,D0", cpu.Step().Instruction, "Normal description.");
+            cpu.Step();
+            Check.Equal("MOVEQ #7,D0 + TRACE", cpu.Step().Instruction, "Trace suffix reflects the current SR.");
+            Check.Equal(0x400u, cpu.PC, "Trace vector must still execute.");
+
+            bus = CreatePreparedBus(new ushort[] { 0x4E60, 0x46FC, 0x0000, 0x4E60 });
+            bus.WriteLong(8 * 4, 0x420);
+            cpu = CreatePreparedCpu(bus);
+            cpu.Step(); Check.Equal("MOVE A0,USP", cpu.LastInstruction, "Supervisor path.");
+            cpu.Step(); cpu.Step();
+            Check.Equal("PRIVILEGE", cpu.LastInstruction, "A warm opcode must not hide a privilege fault.");
+            Check.Equal(0x420u, cpu.PC, "Privilege vector must still execute.");
         }
 
         private static uint DecimalByte(int value) => (uint)((value / 10 << 4) | value % 10);

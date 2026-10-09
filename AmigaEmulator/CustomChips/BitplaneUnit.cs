@@ -107,6 +107,7 @@ namespace AmigaEmulator.Core.CustomChips
         [NonSerialized] private readonly bool _hasAga;
         [NonSerialized] private int _fetchWords = 1, _fetchStep = 8, _fetchUnit = 8, _fetchStopExclusive;
         [NonSerialized] private int[] _fetchSequence = s_hiresFetchSequence;
+        [NonSerialized] private uint _decodedDisplayGeneration;
         [NonSerialized] private static readonly ulong[] s_expandedPlaneBytes = BuildExpandedPlaneBytes();
         [NonSerialized] private int _pixelCacheRow = int.MinValue, _pixelCacheWord = -1, _pixelCachePlanes;
         [NonSerialized] private ulong _pixelCacheFirst, _pixelCacheSecond;
@@ -340,6 +341,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores scroll Odd.
         /// </summary>
         private int _scrollOdd;
+        [NonSerialized] private int _scrollOddSubpixel, _scrollEvenSubpixel;
         /// <summary>
         /// Stores hires.
         /// </summary>
@@ -551,6 +553,7 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 int plane = (int)((registerOffset - BplDataBase) >> 1);
                 _dataLatches[plane] = value;
+                if (!_dataLatchValid[plane]) _decodedRegistersValid = false;
                 _dataLatchValid[plane] = true;
                 return;
             }
@@ -581,6 +584,11 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void RefreshFromRegisters()
         {
+            // Most DMA slots see unchanged control registers. Writes, manual
+            // latch activation, reset and restore invalidate this fast path.
+            if (_registers != null && _decodedRegistersValid &&
+                _decodedDisplayGeneration == _registers.DisplayControlGeneration) return;
+            if (_registers != null) _decodedDisplayGeneration = _registers.DisplayControlGeneration;
             ushort bplcon0 = GetEffectiveBplcon0();
             ushort bplcon1 = Read(Bplcon1);
             ushort dmacon = Read(Dmacon);
@@ -653,6 +661,18 @@ namespace AmigaEmulator.Core.CustomChips
             // BPLCON1: PF1 (odd planes) is the low nibble; PF2 (even) is the high nibble.
             _scrollOdd = bplcon1 & 0x000F;
             _scrollEven = (bplcon1 >> 4) & 0x000F;
+            _scrollOddSubpixel = _scrollEvenSubpixel = 0;
+            if (_hasAga)
+            {
+                // Lisa's eight-bit delay is measured in 35 ns pixels. The
+                // original nibbles are bits 2..5, not the two fractional bits.
+                int odd = ((bplcon1 & 15) << 2) | ((bplcon1 >> 8) & 3) | ((bplcon1 >> 4) & 0xC0);
+                int even = ((bplcon1 & 0xF0) >> 2) | ((bplcon1 >> 12) & 3) | ((bplcon1 >> 8) & 0xC0);
+                int shift = _hires ? 1 : 2;
+                _scrollOdd = odd >> shift; _scrollEven = even >> shift;
+                _scrollOddSubpixel = odd & ((1 << shift) - 1);
+                _scrollEvenSubpixel = even & ((1 << shift) - 1);
+            }
             _displayLeft = CalculateDisplayLeft();
             _scrolledDisplayWidth = CalculateScrolledDisplayWidth();
             RefreshHorizontalDisplayWindow(diwStart, diwStop);
@@ -663,10 +683,11 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void RefreshHorizontalDisplayWindow(ushort diwStart, ushort diwStop)
         {
-            if (_registers != null && _registers.HasEcs && !_registers.DiwHighWritten &&
+            if (_registers != null && !_registers.DiwHighWritten &&
                 (diwStart != 0 || diwStop != 0))
             {
-                // Legacy Denise comparators imply HSTART bit 8=0 and HSTOP bit 8=1.
+                // Both OCS and ECS legacy comparators imply HSTART bit 8=0
+                // and HSTOP bit 8=1. DDF fetches outside DIW stay invisible.
                 _diwLeft = ((diwStart & 0xFF) - 0x81) * 2;
                 _diwRight = (((diwStop & 0xFF) | 0x100) - 0x81) * 2;
                 return;
@@ -718,6 +739,10 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         public bool IsHiresMode => _hires;
+        // Fractional Lisa delays can move lores transitions onto odd host
+        // pixels. Such spans cannot reuse a single sample for an even pair.
+        public bool RequiresHiresPixelSampling => _hires ||
+            ((((_scrollOddSubpixel + 1) / 2) | ((_scrollEvenSubpixel + 1) / 2)) & 1) != 0;
         public bool IsAga => _hasAga;
         public bool ClipSpritesToDisplayWindow => _hasEcs;
         public bool BorderBlankEnabled => _hasEcs &&
@@ -1126,9 +1151,9 @@ namespace AmigaEmulator.Core.CustomChips
         {
             int mask = 0;
             int bitplaneX = _hires ? displayX : displayX >> 1;
-            if (_dmaActive && _scrollOdd == _scrollEven)
+            if (_dmaActive && _scrollOdd == _scrollEven && _scrollOddSubpixel == _scrollEvenSubpixel)
             {
-                int firstX = bitplaneX - _scrollOdd;
+                int firstX = ScrolledBitX(displayX, bitplaneX, _scrollOdd, _scrollOddSubpixel);
                 if ((uint)firstX >= (uint)_planeDisplayWidth) return 0;
                 int word = firstX >> 4;
                 if ((_pixelCacheRow == row && _pixelCacheWord == word && _pixelCachePlanes == EnabledPlanes) ||
@@ -1140,7 +1165,9 @@ namespace AmigaEmulator.Core.CustomChips
             }
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
-                int firstX = bitplaneX - (((plane & 1) == 0) ? _scrollOdd : _scrollEven);
+                int firstX = (plane & 1) == 0
+                    ? ScrolledBitX(displayX, bitplaneX, _scrollOdd, _scrollOddSubpixel)
+                    : ScrolledBitX(displayX, bitplaneX, _scrollEven, _scrollEvenSubpixel);
                 if (firstX < 0 || firstX >= _planeDisplayWidth)
                 {
                     continue;
@@ -1155,6 +1182,13 @@ namespace AmigaEmulator.Core.CustomChips
             // EnabledPlanes is bounded by the chipset at register decoding.
             return mask;
         }
+
+        private int ScrolledBitX(int displayX, int bitplaneX, int scroll, int subpixel)
+            => subpixel == 0 ? bitplaneX - scroll :
+                ((displayX * 2 - subpixel) >> (_hires ? 1 : 2)) - scroll;
+
+        private int ScrollHostPixels(int scroll, int subpixel)
+            => (_hires ? scroll : scroll * LowresPixelsPerChipCycle) + (subpixel + 1) / 2;
 
         private bool TryCachePixelWord(int row, int word)
         {
@@ -1458,9 +1492,9 @@ namespace AmigaEmulator.Core.CustomChips
             if (_dmaActive)
             {
                 fetchLeadIn += GetDmaPipelineLeadIn();
-                // Include the hires DMA/shifter word in ECS output coordinates.
-                // DIWHIGH clips display output, not the earlier DMA fetch span.
-                if (_registers != null && _registers.HasEcs && _hires) fetchLeadIn += 16;
+                // The hires $3C origin already accounts for the fetch-to-display
+                // phase. ECS/AGA retain it: an earlier $38 fetch preloads one
+                // word before DIW, which must not reappear at the left edge.
             }
 
             return fetchLeadIn;
@@ -1476,19 +1510,20 @@ namespace AmigaEmulator.Core.CustomChips
                 return 0;
             }
 
-            int minScroll = 16;
+            int minScroll = int.MaxValue;
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
-                int scroll = ((plane & 1) == 0) ? _scrollOdd : _scrollEven;
+                int scroll = (plane & 1) == 0 ? ScrollHostPixels(_scrollOdd, _scrollOddSubpixel)
+                    : ScrollHostPixels(_scrollEven, _scrollEvenSubpixel);
                 minScroll = Math.Min(minScroll, scroll);
             }
 
-            if (minScroll == 16)
+            if (minScroll == int.MaxValue)
             {
                 return 0;
             }
 
-            return _hires ? minScroll : minScroll * LowresPixelsPerChipCycle;
+            return minScroll;
         }
 
         /// <summary>
@@ -1496,7 +1531,13 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetDmaPipelineLeadIn()
         {
-            int earliestScroll = Math.Min(_scrollOdd, _scrollEven) * (_hires ? 1 : LowresPixelsPerChipCycle);
+            // ECS/AGA hires screens preload a word with an early DDF start.
+            // Its entire 16 bits precede DIW; applying the OCS host-span delay
+            // here exposes the previous row's final four pixels at the left.
+            if (_registers != null && _registers.HasEcs && _hires)
+                return 0;
+            int earliestScroll = Math.Min(ScrollHostPixels(_scrollOdd, _scrollOddSubpixel),
+                ScrollHostPixels(_scrollEven, _scrollEvenSubpixel));
             return Math.Max(0, HiresPixelsPerChipCycle - earliestScroll);
         }
 
@@ -1513,8 +1554,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int CalculateScrolledDisplayWidth()
         {
-            int scroll = Math.Max(_scrollOdd, _scrollEven);
-            return _displayFetchWidth + (_hires ? scroll : scroll * LowresPixelsPerChipCycle);
+            int scroll = Math.Max(ScrollHostPixels(_scrollOdd, _scrollOddSubpixel),
+                ScrollHostPixels(_scrollEven, _scrollEvenSubpixel));
+            return _displayFetchWidth + scroll;
         }
 
         /// <summary>

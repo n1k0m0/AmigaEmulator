@@ -26,6 +26,11 @@ namespace AmigaEmulator.Core.Cpu
     /// </summary>
     public sealed partial class M68kCpu
     {
+        // Only opcode-derived descriptions use this cache. Runtime fault,
+        // privilege and trace descriptions remain separate. It is bounded,
+        // shared by CPUs and deliberately absent from savestates.
+        private static readonly string[] OpcodeMnemonics = new string[65536];
+
         /// <summary>
         /// Stores one CPU bus micro-operation waiting for its real chip-bus slot.
         /// </summary>
@@ -898,13 +903,13 @@ namespace AmigaEmulator.Core.Cpu
             if ((opcode & 0xF000) == 0xA000)
             {
                 EnterException(10);
-                return "LINEA $" + opcode.ToString("X4");
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "LINEA $" + opcode.ToString("X4"));
             }
 
             if ((opcode & 0xF000) == 0xF000)
             {
                 EnterException(11);
-                return "LINEF $" + opcode.ToString("X4");
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "LINEF $" + opcode.ToString("X4"));
             }
 
             if ((opcode & 0xF100) == 0x7000)
@@ -1029,7 +1034,7 @@ namespace AmigaEmulator.Core.Cpu
 
                 if (_has020 && TryEnterPrivilegeViolation(out string privilegeMnemonic)) return privilegeMnemonic;
                 WriteEa(mode, register, 2, _state.SR);
-                return FormatEaInstruction("MOVE SR", 2, mode, register);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = FormatEaInstruction("MOVE SR", 2, mode, register));
             }
 
             if ((opcode & 0xFFC0) == 0x44C0)
@@ -1044,7 +1049,7 @@ namespace AmigaEmulator.Core.Cpu
 
                 uint value = ReadEa(mode, register, 2);
                 SetCcr((ushort)value);
-                return FormatEaInstruction("MOVE CCR", 2, mode, register);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = FormatEaInstruction("MOVE CCR", 2, mode, register));
             }
 
             if ((opcode & 0xFFC0) == 0x46C0)
@@ -1064,7 +1069,7 @@ namespace AmigaEmulator.Core.Cpu
 
                 uint value = ReadEa(mode, register, 2);
                 SetStatusRegister((ushort)value);
-                return FormatEaInstruction("MOVE SR", 2, mode, register);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = FormatEaInstruction("MOVE SR", 2, mode, register));
             }
 
             if ((opcode & 0xFFF8) == 0x4E60)
@@ -1076,7 +1081,7 @@ namespace AmigaEmulator.Core.Cpu
 
                 int register = opcode & 7;
                 _state.USP = _state.A[register];
-                return "MOVE A" + register + ",USP";
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVE A" + register + ",USP");
             }
 
             if ((opcode & 0xFFF8) == 0x4E68)
@@ -1088,7 +1093,7 @@ namespace AmigaEmulator.Core.Cpu
 
                 int register = opcode & 7;
                 SetA(register, _state.USP);
-                return "MOVE USP,A" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVE USP,A" + register);
             }
 
             if ((opcode & 0xFFF8) == 0x4E50)
@@ -1098,7 +1103,7 @@ namespace AmigaEmulator.Core.Cpu
                 PushLong(_state.A[register]);
                 SetA(register, _state.A[7]);
                 SetA(7, (uint)((int)_state.A[7] + displacement));
-                return "LINK A" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "LINK A" + register);
             }
 
             if ((opcode & 0xFFF8) == 0x4E58)
@@ -1106,7 +1111,7 @@ namespace AmigaEmulator.Core.Cpu
                 int register = opcode & 7;
                 SetA(7, _state.A[register]);
                 SetA(register, PopLong());
-                return "UNLK A" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "UNLK A" + register);
             }
 
             if ((opcode & 0xF1C0) == 0x41C0)
@@ -1121,7 +1126,7 @@ namespace AmigaEmulator.Core.Cpu
                 }
 
                 SetA(addressRegister, GetEffectiveAddress(mode, register, 4, true, true));
-                return "LEA " + FormatEa(mode, register, 4) + ",A" + addressRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "LEA " + FormatEa(mode, register, 4) + ",A" + addressRegister);
             }
 
             if ((opcode & 0xFFF8) == 0x4840)
@@ -1131,7 +1136,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = ((value & 0xFFFF) << 16) | ((value >> 16) & 0xFFFF);
                 _state.D[register] = result;
                 SetLogicFlags(result, 4);
-                return "SWAP D" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "SWAP D" + register);
             }
 
             if ((opcode & 0xFFF8) == 0x4880)
@@ -1140,7 +1145,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (uint)(ushort)(short)(sbyte)(_state.D[register] & 0xFF);
                 _state.D[register] = (_state.D[register] & 0xFFFF0000) | (result & 0xFFFF);
                 SetLogicFlags(result, 2);
-                return "EXT.W D" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EXT.W D" + register);
             }
 
             if ((opcode & 0xFFF8) == 0x48C0)
@@ -1149,7 +1154,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (uint)(int)(short)(_state.D[register] & 0xFFFF);
                 _state.D[register] = result;
                 SetLogicFlags(result, 4);
-                return "EXT.L D" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EXT.L D" + register);
             }
 
             if ((opcode & 0xFFC0) == 0x4840)
@@ -1163,7 +1168,7 @@ namespace AmigaEmulator.Core.Cpu
                 }
 
                 PushLong(GetEffectiveAddress(mode, register, 4, true, true));
-                return "PEA " + FormatEa(mode, register, 4);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "PEA " + FormatEa(mode, register, 4));
             }
 
             if ((opcode & 0xFB80) == 0x4880 || (opcode & 0xFB80) == 0x4C80)
@@ -1195,7 +1200,7 @@ namespace AmigaEmulator.Core.Cpu
             {
                 int vector = 32 + (opcode & 0x000F);
                 EnterException(vector);
-                return "TRAP #" + (opcode & 0x000F).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "TRAP #" + (opcode & 0x000F).ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
 
             switch (opcode)
@@ -1251,7 +1256,7 @@ namespace AmigaEmulator.Core.Cpu
                 }
 
                 SetProgramCounterInternal(GetEffectiveAddress(mode, register, 4, true));
-                return "JMP " + FormatEa(mode, register, 4);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "JMP " + FormatEa(mode, register, 4));
             }
 
             if ((opcode & 0xFFC0) == 0x4E80)
@@ -1267,11 +1272,11 @@ namespace AmigaEmulator.Core.Cpu
                 uint target = GetEffectiveAddress(mode, register, 4, true);
                 PushLong(_state.PC);
                 SetProgramCounterInternal(target);
-                return "JSR " + FormatEa(mode, register, 4);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "JSR " + FormatEa(mode, register, 4));
             }
 
             EnterException(4);
-            return "ILLEGAL $" + opcode.ToString("X4");
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ILLEGAL $" + opcode.ToString("X4"));
         }
 
         /// <summary>
@@ -1282,7 +1287,7 @@ namespace AmigaEmulator.Core.Cpu
             int register = (opcode >> 9) & 7;
             _state.D[register] = (uint)(int)(sbyte)(opcode & 0xFF);
             SetLogicFlags(_state.D[register], 4);
-            return "MOVEQ #" + ((sbyte)(opcode & 0xFF)).ToString(System.Globalization.CultureInfo.InvariantCulture) + ",D" + register;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEQ #" + ((sbyte)(opcode & 0xFF)).ToString(System.Globalization.CultureInfo.InvariantCulture) + ",D" + register);
         }
 
         /// <summary>
@@ -1309,12 +1314,12 @@ namespace AmigaEmulator.Core.Cpu
             if (destinationMode == 1)
             {
                 SetA(destinationRegister, size == 2 ? (uint)(int)(short)(value & 0xFFFF) : value);
-                return "MOVEA." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + ",A" + destinationRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEA." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + ",A" + destinationRegister);
             }
 
             WriteEa(destinationMode, destinationRegister, size, value);
             SetLogicFlags(value, size);
-            return "MOVE." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + "," + FormatEa(destinationMode, destinationRegister, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVE." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + "," + FormatEa(destinationMode, destinationRegister, size));
         }
 
         /// <summary>
@@ -1339,7 +1344,7 @@ namespace AmigaEmulator.Core.Cpu
                 SetProgramCounterInternal((uint)((int)displacementBase + displacement));
             }
 
-            return condition == 0 ? "BRA" : "B" + ConditionName(condition);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = condition == 0 ? "BRA" : "B" + ConditionName(condition));
         }
 
         /// <summary>
@@ -1361,7 +1366,7 @@ namespace AmigaEmulator.Core.Cpu
                 }
             }
 
-            return "DB" + ConditionName(condition) + " D" + register;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DB" + ConditionName(condition) + " D" + register);
         }
 
         /// <summary>
@@ -1379,7 +1384,7 @@ namespace AmigaEmulator.Core.Cpu
             }
 
             WriteEa(mode, register, 1, EvaluateCondition(condition) ? 0xFFu : 0x00u);
-            return "S" + ConditionName(condition) + " " + FormatEa(mode, register, 1);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "S" + ConditionName(condition) + " " + FormatEa(mode, register, 1));
         }
 
         /// <summary>
@@ -1403,18 +1408,18 @@ namespace AmigaEmulator.Core.Cpu
                 if (size == 1)
                 {
                     EnterException(4);
-                    return "ILLEGAL " + (add ? "ADDQ.B" : "SUBQ.B") + " A" + register;
+                    return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ILLEGAL " + (add ? "ADDQ.B" : "SUBQ.B") + " A" + register);
                 }
 
                 uint oldAddress = _state.A[register];
                 SetA(register, (uint)((int)oldAddress + (add ? amount : -amount)));
-                return (add ? "ADDQ" : "SUBQ") + " #" + amount + ",A" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADDQ" : "SUBQ") + " #" + amount + ",A" + register);
             }
 
             if (!IsDataAlterableEa(mode, register))
             {
                 EnterException(4);
-                return "ILLEGAL " + (add ? "ADDQ" : "SUBQ");
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ILLEGAL " + (add ? "ADDQ" : "SUBQ"));
             }
 
             EaLocation target = ResolveEaLocation(mode, register, size, true);
@@ -1423,7 +1428,7 @@ namespace AmigaEmulator.Core.Cpu
                 ? AddValues(oldValue, (uint)amount, size, true)
                 : SubtractValues(oldValue, (uint)amount, size, true);
             WriteLocation(target, result);
-            return (add ? "ADDQ." : "SUBQ.") + SizeSuffix(size) + " #" + amount + "," + FormatEa(mode, register, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADDQ." : "SUBQ.") + SizeSuffix(size) + " #" + amount + "," + FormatEa(mode, register, size));
         }
 
         /// <summary>
@@ -1438,7 +1443,7 @@ namespace AmigaEmulator.Core.Cpu
 
             if (allowStore && operationMode >= 4 && operationMode <= 6 && (mode == 0 || mode == 1))
             {
-                return ExecuteAddxSubx(add, operationMode, dataRegister, mode, register);
+                return ExecuteAddxSubx(opcode, add, operationMode, dataRegister, mode, register);
             }
 
             if (operationMode == 3 || operationMode == 7)
@@ -1450,7 +1455,7 @@ namespace AmigaEmulator.Core.Cpu
                     ? destination + SignExtend(source, size)
                     : destination - SignExtend(source, size);
                 SetA(dataRegister, result);
-                return (add ? "ADDA." : "SUBA.") + SizeSuffix(size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADDA." : "SUBA.") + SizeSuffix(size));
             }
 
             if (operationMode <= 2)
@@ -1466,7 +1471,7 @@ namespace AmigaEmulator.Core.Cpu
                     WriteDataRegister(dataRegister, size, result);
                 }
 
-                return (add ? "ADD." : "SUB.") + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADD." : "SUB.") + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister);
             }
 
             if (operationMode >= 4 && operationMode <= 6)
@@ -1475,7 +1480,7 @@ namespace AmigaEmulator.Core.Cpu
                 if (!IsAlterableMemoryEa(mode, register))
                 {
                     EnterException(4);
-                    return "ILLEGAL " + (add ? "ADD" : "SUB");
+                    return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ILLEGAL " + (add ? "ADD" : "SUB"));
                 }
 
                 uint source = ReadDataRegister(dataRegister, size);
@@ -1489,16 +1494,16 @@ namespace AmigaEmulator.Core.Cpu
                     WriteLocation(target, result);
                 }
 
-                return (add ? "ADD." : "SUB.") + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADD." : "SUB.") + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size));
             }
 
-            return "DC.W $" + opcode.ToString("X4");
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DC.W $" + opcode.ToString("X4"));
         }
 
         /// <summary>
         /// Runs Execute Addx Subx.
         /// </summary>
-        private string ExecuteAddxSubx(bool add, int operationMode, int destinationRegister, int mode, int sourceRegister)
+        private string ExecuteAddxSubx(ushort opcode, bool add, int operationMode, int destinationRegister, int mode, int sourceRegister)
         {
             int size = operationMode == 4 ? 1 : (operationMode == 5 ? 2 : 4);
             uint source;
@@ -1512,7 +1517,7 @@ namespace AmigaEmulator.Core.Cpu
                     ? AddExtendValues(destination, source, size)
                     : SubtractExtendValues(destination, source, size);
                 WriteDataRegister(destinationRegister, size, result);
-                return (add ? "ADDX." : "SUBX.") + SizeSuffix(size) + " D" + sourceRegister + ",D" + destinationRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADDX." : "SUBX.") + SizeSuffix(size) + " D" + sourceRegister + ",D" + destinationRegister);
             }
 
             uint sourceAddress = _state.A[sourceRegister] - AddressIncrement(sourceRegister, size);
@@ -1525,7 +1530,7 @@ namespace AmigaEmulator.Core.Cpu
                 ? AddExtendValues(destination, source, size)
                 : SubtractExtendValues(destination, source, size);
             WriteMemory(destinationAddress, size, memoryResult);
-            return (add ? "ADDX." : "SUBX.") + SizeSuffix(size) + " -(A" + sourceRegister + "),-(A" + destinationRegister + ")";
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (add ? "ADDX." : "SUBX.") + SizeSuffix(size) + " -(A" + sourceRegister + "),-(A" + destinationRegister + ")");
         }
 
         /// <summary>
@@ -1540,7 +1545,7 @@ namespace AmigaEmulator.Core.Cpu
             {
                 uint result = PackedDecimalValue(ReadDataRegister(destinationRegister, 1), ReadDataRegister(sourceRegister, 1), add);
                 WriteDataRegister(destinationRegister, 1, result);
-                return mnemonic + " D" + sourceRegister + ",D" + destinationRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = mnemonic + " D" + sourceRegister + ",D" + destinationRegister);
             }
             uint sourceAddress = _state.A[sourceRegister] - AddressIncrement(sourceRegister, 1);
             SetA(sourceRegister, sourceAddress);
@@ -1549,7 +1554,7 @@ namespace AmigaEmulator.Core.Cpu
             SetA(destinationRegister, destinationAddress);
             uint destination = ReadMemory(destinationAddress, 1);
             WriteMemory(destinationAddress, 1, PackedDecimalValue(destination, source, add));
-            return mnemonic + " -(A" + sourceRegister + "),-(A" + destinationRegister + ")";
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = mnemonic + " -(A" + sourceRegister + "),-(A" + destinationRegister + ")");
         }
 
         private string ExecuteNegatePackedDecimal(ushort opcode)
@@ -1562,7 +1567,7 @@ namespace AmigaEmulator.Core.Cpu
             }
             EaLocation target = ResolveEaLocation(mode, register, 1, true);
             WriteLocation(target, PackedDecimalValue(0, ReadLocation(target), false));
-            return "NBCD " + FormatEa(mode, register, 1);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "NBCD " + FormatEa(mode, register, 1));
         }
 
         private uint PackedDecimalValue(uint destination, uint source, bool add)
@@ -1603,7 +1608,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (ReadDataRegister(dataRegister, size) | source) & SizeMask(size);
                 WriteDataRegister(dataRegister, size, result);
                 SetLogicFlags(result, size);
-                return "OR." + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "OR." + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister);
             }
 
             if (operationMode >= 4 && operationMode <= 6 && IsAlterableMemoryEa(mode, register))
@@ -1613,7 +1618,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (ReadLocation(target) | ReadDataRegister(dataRegister, size)) & SizeMask(size);
                 WriteLocation(target, result);
                 SetLogicFlags(result, size);
-                return "OR." + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "OR." + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size));
             }
 
             if (operationMode >= 4 && operationMode <= 6)
@@ -1622,7 +1627,7 @@ namespace AmigaEmulator.Core.Cpu
                 return "ILLEGAL OR";
             }
 
-            return "DC.W $" + opcode.ToString("X4");
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DC.W $" + opcode.ToString("X4"));
         }
 
         /// <summary>
@@ -1639,7 +1644,7 @@ namespace AmigaEmulator.Core.Cpu
                 temporary = _state.D[left];
                 _state.D[left] = _state.D[right];
                 _state.D[right] = temporary;
-                return "EXG D" + left + ",D" + right;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EXG D" + left + ",D" + right);
             }
 
             if ((opcode & 0xF1F8) == 0xC148)
@@ -1647,13 +1652,13 @@ namespace AmigaEmulator.Core.Cpu
                 temporary = _state.A[left];
                 SetA(left, _state.A[right]);
                 SetA(right, temporary);
-                return "EXG A" + left + ",A" + right;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EXG A" + left + ",A" + right);
             }
 
             temporary = _state.D[left];
             _state.D[left] = _state.A[right];
             SetA(right, temporary);
-            return "EXG D" + left + ",A" + right;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EXG D" + left + ",A" + right);
         }
 
         /// <summary>
@@ -1672,7 +1677,7 @@ namespace AmigaEmulator.Core.Cpu
 
             _state.D[dataRegister] = result;
             SetLogicFlags(result, 4);
-            return (signed ? "MULS.W " : "MULU.W ") + FormatEa(mode, register, 2) + ",D" + dataRegister;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (signed ? "MULS.W " : "MULU.W ") + FormatEa(mode, register, 2) + ",D" + dataRegister);
         }
 
         /// <summary>
@@ -1716,7 +1721,7 @@ namespace AmigaEmulator.Core.Cpu
             if (overflow)
             {
                 _state.SR = (ushort)(preserve | FlagV);
-                return (signed ? "DIVS.W " : "DIVU.W ") + FormatEa(mode, register, 2) + ",D" + dataRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (signed ? "DIVS.W " : "DIVU.W ") + FormatEa(mode, register, 2) + ",D" + dataRegister);
             }
 
             uint result = ((remainder & 0xFFFF) << 16) | (quotient & 0xFFFF);
@@ -1733,7 +1738,7 @@ namespace AmigaEmulator.Core.Cpu
             }
 
             _state.SR = (ushort)(preserve | flags);
-            return (signed ? "DIVS.W " : "DIVU.W ") + FormatEa(mode, register, 2) + ",D" + dataRegister;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = (signed ? "DIVS.W " : "DIVU.W ") + FormatEa(mode, register, 2) + ",D" + dataRegister);
         }
 
         /// <summary>
@@ -1753,7 +1758,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (ReadDataRegister(dataRegister, size) & source) & SizeMask(size);
                 WriteDataRegister(dataRegister, size, result);
                 SetLogicFlags(result, size);
-                return "AND." + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "AND." + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister);
             }
 
             if (operationMode >= 4 && operationMode <= 6 && IsAlterableMemoryEa(mode, register))
@@ -1763,7 +1768,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (ReadLocation(target) & ReadDataRegister(dataRegister, size)) & SizeMask(size);
                 WriteLocation(target, result);
                 SetLogicFlags(result, size);
-                return "AND." + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "AND." + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size));
             }
 
             if (operationMode >= 4 && operationMode <= 6)
@@ -1772,7 +1777,7 @@ namespace AmigaEmulator.Core.Cpu
                 return "ILLEGAL AND";
             }
 
-            return "DC.W $" + opcode.ToString("X4");
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DC.W $" + opcode.ToString("X4"));
         }
 
         /// <summary>
@@ -1790,7 +1795,7 @@ namespace AmigaEmulator.Core.Cpu
                 int size = operationMode == 3 ? 2 : 4;
                 uint source = ReadEa(mode, register, size);
                 SubtractValues(_state.A[dataRegister], SignExtend(source, size), 4, false);
-                return "CMPA." + SizeSuffix(size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "CMPA." + SizeSuffix(size));
             }
 
             if (operationMode <= 2)
@@ -1799,7 +1804,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint source = ReadEa(mode, register, size);
                 uint destination = ReadDataRegister(dataRegister, size);
                 SubtractValues(destination, source, size, false);
-                return "CMP." + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "CMP." + SizeSuffix(size) + " " + FormatEa(mode, register, size) + ",D" + dataRegister);
             }
 
             if (operationMode >= 4 && operationMode <= 6 && mode == 1)
@@ -1808,7 +1813,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint source = ReadEa(3, register, size);
                 uint destination = ReadEa(3, dataRegister, size);
                 SubtractValues(destination, source, size, false);
-                return "CMPM." + SizeSuffix(size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "CMPM." + SizeSuffix(size));
             }
 
             if (operationMode >= 4 && operationMode <= 6 && IsDataAlterableEa(mode, register))
@@ -1818,7 +1823,7 @@ namespace AmigaEmulator.Core.Cpu
                 uint result = (ReadLocation(target) ^ ReadDataRegister(dataRegister, size)) & SizeMask(size);
                 WriteLocation(target, result);
                 SetLogicFlags(result, size);
-                return "EOR." + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EOR." + SizeSuffix(size) + " D" + dataRegister + "," + FormatEa(mode, register, size));
             }
 
             if (operationMode >= 4 && operationMode <= 6)
@@ -1827,7 +1832,7 @@ namespace AmigaEmulator.Core.Cpu
                 return "ILLEGAL EOR";
             }
 
-            return "DC.W $" + opcode.ToString("X4");
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DC.W $" + opcode.ToString("X4"));
         }
 
         /// <summary>
@@ -1917,7 +1922,7 @@ namespace AmigaEmulator.Core.Cpu
             if (operation == 0x0C00)
             {
                 SubtractValues(destination, immediate, size, false);
-                mnemonic = "CMPI." + SizeSuffix(size);
+                mnemonic = OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "CMPI." + SizeSuffix(size));
                 return true;
             }
 
@@ -1925,7 +1930,7 @@ namespace AmigaEmulator.Core.Cpu
             {
                 uint subtractResult = SubtractValues(destination, immediate, size, true);
                 WriteLocation(target, subtractResult);
-                mnemonic = "SUBI." + SizeSuffix(size);
+                mnemonic = OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "SUBI." + SizeSuffix(size));
                 return true;
             }
 
@@ -1933,7 +1938,7 @@ namespace AmigaEmulator.Core.Cpu
             {
                 uint addResult = AddValues(destination, immediate, size, true);
                 WriteLocation(target, addResult);
-                mnemonic = "ADDI." + SizeSuffix(size);
+                mnemonic = OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ADDI." + SizeSuffix(size));
                 return true;
             }
 
@@ -1941,17 +1946,17 @@ namespace AmigaEmulator.Core.Cpu
             if (operation == 0x0000)
             {
                 result = destination | immediate;
-                mnemonic = "ORI." + SizeSuffix(size);
+                mnemonic = OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ORI." + SizeSuffix(size));
             }
             else if (operation == 0x0200)
             {
                 result = destination & immediate;
-                mnemonic = "ANDI." + SizeSuffix(size);
+                mnemonic = OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "ANDI." + SizeSuffix(size));
             }
             else
             {
                 result = destination ^ immediate;
-                mnemonic = "EORI." + SizeSuffix(size);
+                mnemonic = OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "EORI." + SizeSuffix(size));
             }
 
             WriteLocation(target, result);
@@ -2096,7 +2101,7 @@ namespace AmigaEmulator.Core.Cpu
 
             WriteEa(mode, register, size, 0);
             SetLogicFlags(0, size);
-            return "CLR." + SizeSuffix(size) + " " + FormatEa(mode, register, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "CLR." + SizeSuffix(size) + " " + FormatEa(mode, register, size));
         }
 
         /// <summary>
@@ -2115,7 +2120,7 @@ namespace AmigaEmulator.Core.Cpu
 
             uint value = ReadEa(mode, register, size);
             SetLogicFlags(value, size);
-            return "TST." + SizeSuffix(size) + " " + FormatEa(mode, register, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "TST." + SizeSuffix(size) + " " + FormatEa(mode, register, size));
         }
 
         /// <summary>
@@ -2132,10 +2137,10 @@ namespace AmigaEmulator.Core.Cpu
             }
 
             EaLocation target = ResolveEaLocation(mode, register, 1, true);
-            uint value = ReadLocation(target) & 0xFFu;
+            uint value = ReadLockedLocation(target) & 0xFFu;
             SetLogicFlags(value, 1);
             WriteLocation(target, value | 0x80u);
-            return "TAS " + FormatEa(mode, register, 1);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "TAS " + FormatEa(mode, register, 1));
         }
 
         /// <summary>
@@ -2146,7 +2151,7 @@ namespace AmigaEmulator.Core.Cpu
             int sizeCode = (opcode >> 6) & 3;
             if (sizeCode == 3)
             {
-                return "DC.W $" + opcode.ToString("X4");
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DC.W $" + opcode.ToString("X4"));
             }
 
             int size = DecodeSize(sizeCode);
@@ -2164,7 +2169,7 @@ namespace AmigaEmulator.Core.Cpu
             uint result = (0u - value - (extend ? 1u : 0u)) & SizeMask(size);
             WriteLocation(target, result);
             SetNegxFlags(value, result, size, extend);
-            return "NEGX." + SizeSuffix(size) + " " + FormatEa(mode, register, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "NEGX." + SizeSuffix(size) + " " + FormatEa(mode, register, size));
         }
 
         /// <summary>
@@ -2175,7 +2180,7 @@ namespace AmigaEmulator.Core.Cpu
             int sizeCode = (opcode >> 6) & 3;
             if (sizeCode == 3)
             {
-                return "DC.W $" + opcode.ToString("X4");
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "DC.W $" + opcode.ToString("X4"));
             }
 
             int size = DecodeSize(sizeCode);
@@ -2191,7 +2196,7 @@ namespace AmigaEmulator.Core.Cpu
             uint value = ReadLocation(target);
             uint result = SubtractValues(0, value, size, true);
             WriteLocation(target, result);
-            return "NEG." + SizeSuffix(size) + " " + FormatEa(mode, register, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "NEG." + SizeSuffix(size) + " " + FormatEa(mode, register, size));
         }
 
         /// <summary>
@@ -2212,7 +2217,7 @@ namespace AmigaEmulator.Core.Cpu
             uint result = (~ReadLocation(target)) & SizeMask(size);
             WriteLocation(target, result);
             SetLogicFlags(result, size);
-            return "NOT." + SizeSuffix(size) + " " + FormatEa(mode, register, size);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "NOT." + SizeSuffix(size) + " " + FormatEa(mode, register, size));
         }
 
         /// <summary>
@@ -2247,7 +2252,7 @@ namespace AmigaEmulator.Core.Cpu
                 // preserved; ROX copies X to C, while other shifts clear C.
                 bool carryFromExtend = kind == 2 && (_state.SR & FlagX) != 0;
                 SetShiftRotateFlags(value, size, carryFromExtend, false, false);
-                return ShiftRotateName(kind, left) + "." + SizeSuffix(size) + " " + ((opcode & 0x0020) != 0 ? "D" + countRegister : "#" + count) + ",D" + register;
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = ShiftRotateName(kind, left) + "." + SizeSuffix(size) + " " + ((opcode & 0x0020) != 0 ? "D" + countRegister : "#" + count) + ",D" + register);
             }
 
             uint result = ShiftRotateValue(value, size, count, left, kind, out bool carry, out bool overflow);
@@ -2255,8 +2260,9 @@ namespace AmigaEmulator.Core.Cpu
             SetShiftRotateFlags(result, size, carry, overflow, count != 0 && kind != 3);
 
             string name = ShiftRotateName(kind, left);
+            if (OpcodeMnemonics[opcode] is string cached) return cached;
             string countText = (opcode & 0x0020) != 0 ? "D" + countRegister : "#" + count;
-            return name + "." + SizeSuffix(size) + " " + countText + ",D" + register;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = name + "." + SizeSuffix(size) + " " + countText + ",D" + register);
         }
 
         /// <summary>
@@ -2321,7 +2327,7 @@ namespace AmigaEmulator.Core.Cpu
                 name = left ? "ROL" : "ROR";
             }
 
-            return name + ".W " + FormatEa(mode, register, 2);
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = name + ".W " + FormatEa(mode, register, 2));
         }
 
         /// <summary>
@@ -2475,7 +2481,7 @@ namespace AmigaEmulator.Core.Cpu
                     SetA(register, address);
                 }
 
-                return "MOVEM." + SizeSuffix(size) + " <ea>,regs";
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEM." + SizeSuffix(size) + " <ea>,regs");
             }
 
             if (mode == 4)
@@ -2515,7 +2521,7 @@ namespace AmigaEmulator.Core.Cpu
                 }
             }
 
-            return "MOVEM." + SizeSuffix(size) + " regs,<ea>";
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEM." + SizeSuffix(size) + " regs,<ea>");
         }
 
         /// <summary>
@@ -2545,7 +2551,7 @@ namespace AmigaEmulator.Core.Cpu
                     WriteByte((address + 2u) & AddressMask, (byte)value);
                 }
 
-                return "MOVEP." + SizeSuffix(size) + " D" + dataRegister + ",d16(A" + addressRegister + ")";
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEP." + SizeSuffix(size) + " D" + dataRegister + ",d16(A" + addressRegister + ")");
             }
 
             uint result;
@@ -2566,7 +2572,7 @@ namespace AmigaEmulator.Core.Cpu
                 _state.D[dataRegister] = (_state.D[dataRegister] & 0xFFFF0000u) | result;
             }
 
-            return "MOVEP." + SizeSuffix(size) + " d16(A" + addressRegister + "),D" + dataRegister;
+            return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEP." + SizeSuffix(size) + " d16(A" + addressRegister + "),D" + dataRegister);
         }
 
         /// <summary>

@@ -188,6 +188,10 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int logicalX = (beam.BeamX - PalLowresDisplayStart) * BitplaneUnit.HiresPixelsPerChipCycle;
+            // Hires ECS/AGA has no OCS host-span lead-in. Render the span
+            // after its final DMA slot, retaining its actual display position.
+            if (_ecs && _bitplanes.IsHiresMode)
+                logicalX -= BitplaneUnit.HiresPixelsPerChipCycle;
             int frameX = logicalX + _frameBufferXOffset;
             if (frameX >= _frameBuffer.Width || frameX + BitplaneUnit.HiresPixelsPerChipCycle <= 0)
             {
@@ -216,6 +220,8 @@ namespace AmigaEmulator.Core.CustomChips
             int lastFrameX = ((beam.BeamX - PalLowresDisplayStart) * BitplaneUnit.HiresPixelsPerChipCycle) +
                 _frameBufferXOffset +
                 BitplaneUnit.HiresPixelsPerChipCycle;
+            if (_ecs && _bitplanes.IsHiresMode)
+                lastFrameX -= BitplaneUnit.HiresPixelsPerChipCycle;
             int firstFrameX = _frameBufferXOffset;
             int requestedLeft = _frameBufferXOffset + sourceLeft;
             int requestedRight = _frameBufferXOffset + sourceLeft + sourceWidth;
@@ -415,7 +421,7 @@ namespace AmigaEmulator.Core.CustomChips
                 FillBackgroundSpan(y, beamY, start, end);
                 return;
             }
-            bool hires = _bitplanes.IsHiresMode;
+            bool hires = _bitplanes.RequiresHiresPixelSampling;
             bool fineSprites = _sprites.UsesSingleHiresPixels;
             uint[] pixels = _frameBuffer.Pixels;
             int row = y * _frameBuffer.Width;

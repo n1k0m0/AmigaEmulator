@@ -297,7 +297,8 @@ namespace AmigaEmulator.Core.Cpu
                     for (int i = 0; i < byteCount; i++) WriteByte(address + (uint)i, (byte)(memory >> ((byteCount - 1 - i) * 8)));
                 }
             }
-            return new[] { "BFTST", "BFEXTU", "BFCHG", "BFEXTS", "BFCLR", "BFFFO", "BFSET", "BFINS" }[operation];
+            return operation switch { 0 => "BFTST", 1 => "BFEXTU", 2 => "BFCHG", 3 => "BFEXTS",
+                4 => "BFCLR", 5 => "BFFFO", 6 => "BFSET", _ => "BFINS" };
         }
 
         private string Execute020MultiplyDivide(ushort opcode)
@@ -350,7 +351,7 @@ namespace AmigaEmulator.Core.Cpu
             ushort ext = FetchWord(); if ((ext & 0xFE38) != 0) throw new InvalidOperationException();
             int compare = ext & 7, update = (ext >> 6) & 7;
             EaLocation location = ResolveEaLocation(mode, reg, size, true);
-            uint value = ReadLocation(location);
+            uint value = ReadLockedLocation(location);
             SubtractValues(value, _state.D[compare], size, false);
             if ((_state.SR & FlagZ) != 0) WriteLocation(location, _state.D[update]);
             else WriteDataRegister(compare, size, value);
@@ -364,7 +365,7 @@ namespace AmigaEmulator.Core.Cpu
             if (((first | second) & 0x0E38) != 0) throw new InvalidOperationException();
             uint Address(ushort ext) => (ext & 0x8000) != 0 ? _state.A[(ext >> 12) & 7] : _state.D[(ext >> 12) & 7];
             uint a = Address(first), b = Address(second);
-            uint av = ReadMemory(a, size), bv = ReadMemory(b, size);
+            uint av = ReadLockedMemory(a, size), bv = ReadLockedMemory(b, size);
             int ac = first & 7, bc = second & 7;
             uint au = _state.D[(first >> 6) & 7], bu = _state.D[(second >> 6) & 7];
             SubtractValues(av, _state.D[ac], size, false);
