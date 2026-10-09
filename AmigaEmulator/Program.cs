@@ -1694,7 +1694,7 @@ namespace AmigaEmulator
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            using (var window = new AmigaWindow(AmigaModel.A500Pal, "Amiga Emulator"))
+            using (var window = new AmigaWindow(ParseModelArgument(args, 0), "Amiga Emulator", HasOption(args, "--model")))
             {
                 string startupSavePath = ParseStringOption(args, "--gui-savestate", string.Empty);
                 if (!string.IsNullOrWhiteSpace(startupSavePath))
@@ -1728,6 +1728,7 @@ namespace AmigaEmulator
             Console.WriteLine("DisplayName=" + metadata.DisplayName);
             Console.WriteLine("CreatedLocalTime=" + metadata.CreatedLocalTime.ToString("yyyy-MM-dd HH:mm:ss"));
             Console.WriteLine("Kickstart=" + metadata.Kickstart);
+            Console.WriteLine("MachineModel=" + metadata.MachineModel);
             Console.WriteLine("RamProfile=" + metadata.RamProfile);
             Console.WriteLine("AccuracyProfile=" + metadata.AccuracyProfile);
             Console.WriteLine("Screenshot=" + metadata.ScreenshotWidth + "x" + metadata.ScreenshotHeight);
@@ -10434,7 +10435,7 @@ namespace AmigaEmulator
                 if (!string.IsNullOrWhiteSpace(savePath) && File.Exists(savePath))
                 {
                     SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(savePath);
-                    return GetModelForRamProfile(metadata.RamProfile);
+                    return AmigaModel.Create(metadata.MachineModel, metadata.RamProfile);
                 }
             }
             catch (Exception ex)
@@ -10463,6 +10464,9 @@ namespace AmigaEmulator
                 case AmigaRamProfile.Chip1MbFast2Mb:
                 case AmigaRamProfile.Chip1MbFast4Mb:
                 case AmigaRamProfile.Chip2MbFast2Mb:
+                case AmigaRamProfile.Chip512KSlow512KFast2Mb:
+                case AmigaRamProfile.Chip512KSlow512KFast4Mb:
+                case AmigaRamProfile.Chip512KSlow512KFast8Mb:
                 case AmigaRamProfile.Chip2MbFast4Mb: return AmigaModel.ForRamProfile(profile);
                 default:
                     return AmigaModel.PalA500;
@@ -10482,6 +10486,20 @@ namespace AmigaEmulator
                 }
 
                 string value = args[index + 1];
+                if (value.Equals("a1200", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A1200, AmigaRamProfile.Chip2Mb);
+                if (value.Equals("a3000", StringComparison.OrdinalIgnoreCase) || value.Equals("a3000/030", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A3000, AmigaRamProfile.Chip2MbFast4Mb);
+                if (value.Equals("a4000", StringComparison.OrdinalIgnoreCase) || value.Equals("a4000/030", StringComparison.OrdinalIgnoreCase) || value.Equals("a4000ec030", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A4000Ec030, AmigaRamProfile.Chip2MbFast4Mb);
+                if (value.Equals("a500+", StringComparison.OrdinalIgnoreCase) || value.Equals("a500plus", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A500Plus, AmigaRamProfile.Chip1Mb);
+                if (value.Equals("a600", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A600, AmigaRamProfile.Chip1Mb);
+                if (value.Equals("a2000", StringComparison.OrdinalIgnoreCase) || value.Equals("a2000ocs", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A2000Ocs, AmigaRamProfile.Chip512KSlow512K);
+                if (value.Equals("a2000ecs", StringComparison.OrdinalIgnoreCase))
+                    return AmigaModel.Create(AmigaMachineModel.A2000Ecs, AmigaRamProfile.Chip1Mb);
                 if (string.Equals(value, "slow512", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "512slow", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(value, "a500slow512", StringComparison.OrdinalIgnoreCase) ||

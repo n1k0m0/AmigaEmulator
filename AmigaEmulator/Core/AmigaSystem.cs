@@ -19,6 +19,7 @@ using System.IO;
 using AmigaEmulator.Core.CustomChips;
 using AmigaEmulator.Core.DevTools;
 using AmigaEmulator.Core.Memory;
+using AmigaEmulator.Core.Media;
 using AmigaEmulator.Core.Cpu;
 using AmigaEmulator.Core.Cia;
 using AmigaEmulator.Core.Input;
@@ -124,6 +125,13 @@ namespace AmigaEmulator.Core
         /// Stores CIA Clock Divider.
         /// </summary>
         private int _ciaClockDivider;
+        private readonly int _mainsTodIncrement;
+        private readonly bool _hasPcmcia;
+        private readonly bool _hasBuiltInScsi;
+        private readonly bool _hasExtendedCpu;
+        private readonly int _cpuClockHz, _chipClockHz;
+        private int _mainsTodPhase;
+        private int _cpuClockPhase;
         /// <summary>
         /// Stores CIA A Irq Last.
         /// </summary>
@@ -180,6 +188,12 @@ namespace AmigaEmulator.Core
         public AmigaSystem(AmigaModel model, AmigaAccuracyOptions accuracyOptions)
         {
             _model = model ?? AmigaModel.A500Pal;
+            _mainsTodIncrement = _model.HasMainsTodClock ? 50 * 10 : 0;
+            _hasPcmcia = _model.HasPcmcia;
+            _hasBuiltInScsi = _model.HasBuiltInScsi;
+            _hasExtendedCpu = _model.Cpu != AmigaCpuModel.M68000;
+            _cpuClockHz = _model.CpuClockHz;
+            _chipClockHz = _model.ChipMasterClockHz;
             _accuracyOptions = (accuracyOptions ?? AmigaAccuracyOptions.Compatible).Clone();
             _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft + HorizontalOverscanPixels, _model.LinesPerFrame);
             _presentedFrameBuffer = new AmigaFrameBuffer(PresentationViewportWidth, PresentationViewportHeight);
@@ -210,7 +224,7 @@ namespace AmigaEmulator.Core
             _agnus.Blitter.AttachChipMemory(ReadChipRamWord, WriteChipRamWord);
             _agnus.Blitter.AttachInterruptRequester(_agnus.CustomRegisters.RequestInterrupt);
             _bus.AttachBlitter(_agnus.Blitter);
-            _cpu = new M68kCpu(_bus);
+            _cpu = new M68kCpu(_bus, _model.Cpu);
             _cpu.TraceEnabled = _accuracyOptions.EnableCpuTrace;
             _ciaA.OverlayChanged += delegate(bool enabled)
             {
@@ -396,6 +410,7 @@ namespace AmigaEmulator.Core
 
                 _bus.RomOverlayAtZero = true;
                 _bus.ResetExpansionDevices();
+                _bus.DesktopResources.Reset(powerCycle);
                 _agnus.Reset();
                 _denise.Reset();
                 _presentedFrameBuffer.Clear(0xFF0C1020);
@@ -404,6 +419,8 @@ namespace AmigaEmulator.Core
                 _ciaB.Reset();
                 _input.Reset();
                 _ciaClockDivider = 0;
+                _mainsTodPhase = 0;
+                _cpuClockPhase = 0;
                 _ciaAIrqLast = false;
                 _ciaBIrqLast = false;
                 _cpuVisibleInterruptLevel = 0;
@@ -427,7 +444,13 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(3);
+                writer.Write(14); // Includes the separate sprite output shifters.
+                writer.Write((int)_model.Machine);
+                writer.Write(_model.ChipRamBytes); writer.Write(_model.SlowRamBytes); writer.Write(_model.FastRamBytes);
+                writer.Write((int)_model.Cpu); writer.Write(_model.CpuClockHz); writer.Write(_cpuClockPhase);
+                writer.Write((int)_model.Chipset);
+                writer.Write((int)_model.IdeModel);
+                writer.Write(_model.HasDesktopResources);
                 _bus.SaveState(writer);
                 _cpu.SaveState(writer);
                 _agnus.SaveState(writer);
@@ -444,6 +467,14 @@ namespace AmigaEmulator.Core
                 writer.Write(_cpuPendingInterruptLevel);
                 writer.Write(_cpuInterruptDelayCycles);
                 _bus.SaveExpansionState(writer);
+                writer.Write(_agnus.CustomRegisters.DiwHighWritten);
+                _bus.BatteryClock.SaveState(writer);
+                writer.Write(_mainsTodPhase);
+                _bus.Pcmcia.SaveState(writer);
+                writer.Write(_bus.BatteryClock.SavedDividerPhase);
+                if (_model.Chipset == AmigaChipset.Aga) _agnus.CustomRegisters.AgaColors.SaveState(writer);
+                if (_model.HasDesktopResources) _bus.DesktopResources.SaveState(writer);
+                if (_model.HasRicohClock) _bus.RicohClock.SaveState(writer);
             }
         }
 
@@ -460,11 +491,32 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version < 1 || version > 3)
+                if (version < 1 || version > 14)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
 
+                var savedModel = version >= 4 ? (AmigaMachineModel)reader.ReadInt32() : AmigaMachineModel.A500;
+                if (savedModel != _model.Machine) throw new InvalidDataException("Savestate machine model does not match the current machine.");
+                if (version >= 8)
+                {
+                    int chip = reader.ReadInt32(), slow = reader.ReadInt32(), fast = reader.ReadInt32();
+                    if (chip != _model.ChipRamBytes || slow != _model.SlowRamBytes || fast != _model.FastRamBytes)
+                        throw new InvalidDataException("Savestate RAM layout does not match the current machine.");
+                }
+                var savedCpu = version >= 9 ? (AmigaCpuModel)reader.ReadInt32() : AmigaCpuModel.M68000;
+                int savedClock = version >= 9 ? reader.ReadInt32() : _model.ChipMasterClockHz;
+                int savedPhase = version >= 9 ? reader.ReadInt32() : 0;
+                if (savedCpu != _model.Cpu || savedClock != _model.CpuClockHz)
+                    throw new InvalidDataException("Savestate processor configuration does not match the current machine.");
+                if (savedPhase < 0 || savedPhase >= _model.ChipMasterClockHz) throw new InvalidDataException("Invalid CPU clock phase.");
+                var savedChipset = version >= 10 ? (AmigaChipset)reader.ReadInt32() : AmigaModel.GetChipset(savedModel);
+                if (savedChipset != _model.Chipset) throw new InvalidDataException("Savestate chipset does not match the current machine.");
+                var savedIde = version >= 11 ? (AmigaIdeModel)reader.ReadInt32() : AmigaIdeModel.Gayle;
+                if (savedIde != _model.IdeModel) throw new InvalidDataException("Savestate IDE wiring does not match the current machine.");
+                bool savedDesktop = version >= 12 && reader.ReadBoolean();
+                if (savedDesktop != _model.HasDesktopResources) throw new InvalidDataException("Savestate motherboard resources do not match the current machine.");
+                _cpuClockPhase = savedPhase;
                 _bus.LoadState(reader);
                 _cpu.LoadState(reader);
                 _agnus.LoadState(reader);
@@ -493,6 +545,18 @@ namespace AmigaEmulator.Core
 
                 if (version >= 3) _bus.LoadExpansionState(reader);
                 else { _bus.HardDisk.Eject(); _bus.HardDisk.Enabled = false; _bus.AutoConfig.MarkLegacyConfigured(); }
+                _agnus.CustomRegisters.RestoreEcsState(version >= 4 && reader.ReadBoolean());
+                if (version >= 5) _bus.BatteryClock.LoadState(reader);
+                _mainsTodPhase = version >= 6 ? reader.ReadInt32() : 0;
+                if (version >= 7) _bus.Pcmcia.LoadState(reader);
+                else { _bus.Pcmcia.Eject(); _bus.Pcmcia.ResetMotherboard(); }
+                if (version >= 8) _bus.BatteryClock.RestoreDividerPhase(reader.ReadInt64());
+                if (version >= 10 && _model.Chipset == AmigaChipset.Aga) _agnus.CustomRegisters.AgaColors.LoadState(reader);
+                if (version >= 12 && _model.HasDesktopResources) _bus.DesktopResources.LoadState(reader);
+                if (version >= 13 && _model.HasRicohClock) _bus.RicohClock.LoadState(reader);
+                if (_mainsTodPhase < 0 || _mainsTodPhase >= _model.ChipMasterClockHz)
+                    throw new InvalidDataException("Invalid mains TOD clock phase.");
+                _agnus.Bitplanes.RefreshFromRegisters();
                 _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
                 _suppressNextPresentationAfterLoad = true;
                 _lastTraceSample = CreateTraceSample(null);
@@ -571,7 +635,8 @@ namespace AmigaEmulator.Core
                     long afterCia = Stopwatch.GetTimestamp();
 
                     bool cpuMayUseChipBus = !_accuracyOptions.StrictChipBusArbitration || slot.CpuCanUseChipBus;
-                    M68kTraceEntry cpuTrace = _cpu.Tick(cpuMayUseChipBus);
+                    if (_hasBuiltInScsi && _bus.TickStorageDma(slot.CpuCanUseChipBus)) cpuMayUseChipBus = false;
+                    M68kTraceEntry cpuTrace = _hasExtendedCpu ? TickCpuForChipCycle(cpuMayUseChipBus) : _cpu.Tick(cpuMayUseChipBus);
                     ApplyPendingInterrupts();
                     long afterCpu = Stopwatch.GetTimestamp();
 
@@ -712,7 +777,8 @@ namespace AmigaEmulator.Core
             TickCiasOnEClock();
 
             bool cpuMayUseChipBus = !_accuracyOptions.StrictChipBusArbitration || slot.CpuCanUseChipBus;
-            M68kTraceEntry cpuTrace = _cpu.Tick(cpuMayUseChipBus);
+            if (_hasBuiltInScsi && _bus.TickStorageDma(slot.CpuCanUseChipBus)) cpuMayUseChipBus = false;
+            M68kTraceEntry cpuTrace = _hasExtendedCpu ? TickCpuForChipCycle(cpuMayUseChipBus) : _cpu.Tick(cpuMayUseChipBus);
             ApplyPendingInterrupts();
             if (slot.SlotIndex == 0 && slot.BeamY == 0)
             {
@@ -1171,7 +1237,7 @@ namespace AmigaEmulator.Core
             _cpu.SetInterruptLevel(_cpuVisibleInterruptLevel);
 
             bool ciaAIrq = _ciaA.InterruptPending;
-            if (ciaAIrq || _bus.HardDisk.InterruptActive)
+            if (ciaAIrq || _bus.HardDisk.InterruptActive || (_hasPcmcia && _bus.Pcmcia.Level2Interrupt))
             {
                 _agnus.CustomRegisters.RequestInterrupt(CustomInterruptSource.Ports);
             }
@@ -1179,7 +1245,7 @@ namespace AmigaEmulator.Core
             _ciaAIrqLast = ciaAIrq;
 
             bool ciaBIrq = _ciaB.InterruptPending;
-            if (ciaBIrq)
+            if (ciaBIrq || (_hasPcmcia && _bus.Pcmcia.Level6Interrupt))
             {
                 _agnus.CustomRegisters.RequestInterrupt(CustomInterruptSource.External);
             }
@@ -1213,6 +1279,20 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Advances the CIA TOD From Video state by one emulator tick.
         /// </summary>
+        private M68kTraceEntry TickCpuForChipCycle(bool chipBusAvailable)
+        {
+            _cpuClockPhase += _cpuClockHz;
+            M68kTraceEntry trace = null;
+            while (_cpuClockPhase >= _chipClockHz)
+            {
+                _cpuClockPhase -= _chipClockHz;
+                var current = _cpu.Tick(chipBusAvailable);
+                if (current != null) trace = current;
+                if (_cpu.UsedChipBusInLastTick) chipBusAvailable = false;
+            }
+            return trace;
+        }
+
         private void TickCiaTodFromVideo()
         {
             BeamTraceEntry beam = _agnus.Beam;
@@ -1227,7 +1307,7 @@ namespace AmigaEmulator.Core
             }
 
             _ciaB.TickTodEvent();
-            if (beam.BeamY == 0)
+            if (beam.BeamY == 0 && _mainsTodIncrement == 0)
             {
                 _ciaA.TickTodEvent();
             }
@@ -1245,6 +1325,17 @@ namespace AmigaEmulator.Core
             }
 
             _ciaClockDivider = 0;
+            if (_mainsTodIncrement != 0)
+            {
+                // A2000/A3000 default CIA-A TOD comes from the PAL PSU's 50 Hz signal.
+                // Each E-clock period contains ten CPU clocks; retain fractional phase.
+                _mainsTodPhase += _mainsTodIncrement;
+                if (_mainsTodPhase >= _model.ChipMasterClockHz)
+                {
+                    _mainsTodPhase -= _model.ChipMasterClockHz;
+                    _ciaA.TickTodEvent();
+                }
+            }
             _ciaA.Tick();
             _ciaB.Tick();
             _input.TickEClock();

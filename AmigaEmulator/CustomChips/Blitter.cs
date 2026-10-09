@@ -558,6 +558,8 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 StartBlockBlitFromRegisters();
             }
+            if (_registers != null && _registers.HasEcs && ((size == 2 && (offset & 0x01FEu) == 0x05E) || (size == 1 && offset == 0x05F)))
+                StartBlockBlitFromRegisters(true);
         }
 
         /// <summary>
@@ -574,7 +576,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Runs Start Block Blit From Registers.
         /// </summary>
-        private void StartBlockBlitFromRegisters()
+        private void StartBlockBlitFromRegisters(bool extended = false)
         {
             if (_registers == null || _readChipWord == null || _writeChipWord == null)
             {
@@ -594,6 +596,13 @@ namespace AmigaEmulator.Core.CustomChips
                 height = 1024;
             }
 
+            if (extended)
+            {
+                widthWords = Read(0x05E) & 0x07FF;
+                height = Read(0x05C) & 0x7FFF;
+                if (widthWords == 0) widthWords = 2048;
+                if (height == 0) height = 32768;
+            }
             ushort bltcon0 = Read(Bltcon0);
             ushort bltcon1 = Read(Bltcon1);
             _widthWords = widthWords;

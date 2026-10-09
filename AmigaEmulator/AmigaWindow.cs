@@ -233,7 +233,10 @@ namespace AmigaEmulator
             Chip1MbFast2Mb,
             Chip1MbFast4Mb,
             Chip2MbFast2Mb,
-            Chip2MbFast4Mb
+            Chip2MbFast4Mb,
+            Chip512KSlow512KFast2Mb,
+            Chip512KSlow512KFast4Mb,
+            Chip512KSlow512KFast8Mb
         }
 
         /// <summary>
@@ -431,6 +434,7 @@ namespace AmigaEmulator
         /// Stores RAM Profile.
         /// </summary>
         private RamProfile _ramProfile = RamProfile.Chip1Mb;
+        private AmigaMachineModel _machineModel = AmigaMachineModel.A500;
         /// <summary>
         /// Stores floppy Speed Mode.
         /// </summary>
@@ -692,7 +696,7 @@ namespace AmigaEmulator
         /// <summary>
         /// Runs Amiga Window.
         /// </summary>
-        public AmigaWindow(AmigaModel model, string title)
+        public AmigaWindow(AmigaModel model, string title, bool applyStartupModel = false)
             : base(
                 AmigaSystem.PresentationViewportWidth,
                 AmigaSystem.PresentationViewportHeight,
@@ -701,6 +705,7 @@ namespace AmigaEmulator
                 title)
         {
             _settings = AmigaEmulatorSettingsStore.Load();
+            if (applyStartupModel) _settings.ApplyStartupModel(model);
             _videoFilterMode = GetVideoFilterFromSettings(_settings.VideoFilter);
             _videoUpscaleMode = GetVideoUpscaleFromSettings(_settings.UpscaleMode);
             _monitorApertureMode = GetMonitorApertureFromSettings(_settings.MonitorAperture);
@@ -712,8 +717,11 @@ namespace AmigaEmulator
             _turboMode = _settings.TurboMode;
             _fullscreen = _settings.Fullscreen;
             _accuracyProfile = _settings.AccuracyProfile;
+            _machineModel = _settings.MachineModel;
             _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, GetRamProfileForModel(model));
-            _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), _settings.CreateAccuracyOptions());
+            _system = new AmigaSystem(AmigaModel.Create(_machineModel, GetSettingsRamProfile(_ramProfile)), _settings.CreateAccuracyOptions());
+            RestoreBatteryClock();
+            MountConfiguredPcmcia();
             ApplyPresentationSourceCrop();
             SetPresentationStretchToClient(_settings.StretchToFullWidth);
             ApplyFloppyTiming();
@@ -757,12 +765,13 @@ namespace AmigaEmulator
 
                 FlushMountedMedia();
                 RamProfile targetRamProfile = GetRamProfileFromSettings(slot.RamProfile, _ramProfile);
-                bool needsRecreate = _ramProfile != targetRamProfile || _accuracyProfile != slot.AccuracyProfile;
+                bool needsRecreate = _ramProfile != targetRamProfile || _accuracyProfile != slot.AccuracyProfile || _machineModel != slot.MachineModel;
+                _machineModel = slot.MachineModel;
                 _ramProfile = targetRamProfile;
                 _accuracyProfile = slot.AccuracyProfile;
                 if (needsRecreate)
                 {
-                    RecreateSystemForCurrentProfile();
+                    RecreateSystemForCurrentProfile(false);
                 }
                 else
                 {
@@ -770,6 +779,7 @@ namespace AmigaEmulator
                 }
 
                 SaveStateFile.Load(slot.Path, _system);
+                SynchronizeRestoredMachineSettings(false);
                 ClearDeferredMediaMount();
                 ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
@@ -1232,6 +1242,7 @@ namespace AmigaEmulator
         {
             ReleaseHostMouseCapture();
             FlushMountedMedia();
+            SaveBatteryClock();
             _smallFont.Dispose();
             _titleFont.Dispose();
             _audioOutput.Dispose();
@@ -1456,7 +1467,7 @@ namespace AmigaEmulator
                 case OverlayMode.MainMenu: return _mainMenuItems.Length;
                 case OverlayMode.Display: return 7;
                 case OverlayMode.Media: return Math.Max(1, _mediaEntries.Count + 3);
-                case OverlayMode.Machine: return 8;
+                case OverlayMode.Machine: return 9;
                 case OverlayMode.Roms: return Math.Max(1, _romEntries.Count + 3);
                 case OverlayMode.Input: return 5;
                 case OverlayMode.Reset: return 4;
@@ -1606,7 +1617,7 @@ namespace AmigaEmulator
                 case 8: ToggleTurboMode(); break;
                 case 9: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;
                 case 10: _inputPortMode = CycleEnum(_inputPortMode, direction); ApplyInputPortMode(); break;
-                case 11: ApplyRamProfile(CycleEnum(_ramProfile, direction)); break;
+                case 11: ApplyRamProfile(CycleMachineRam(direction)); break;
                 case 12: _debugOverlayVisible = !_debugOverlayVisible; break;
                 case 13: ToggleDriveOverlay(); break;
                 case 14: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
@@ -1640,14 +1651,15 @@ namespace AmigaEmulator
         {
             switch (_machineSelection)
             {
-                case 0: _statusText = _system.Model.Name; break;
-                case 1: ApplyRamProfile(CycleEnum(_ramProfile, direction)); break;
+                case 0: ApplyMachineModel(CycleEnum(_machineModel, direction)); break;
+                case 1: ApplyRamProfile(CycleMachineRam(direction)); break;
                 case 2: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;
                 case 3: ToggleDiskWriteProtection(); break;
                 case 4: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
                 case 5: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
                 case 6: ApplyResetMode(CycleEnum(_resetMode, direction)); break;
                 case 7: ShowOverlay(OverlayMode.Reset); break;
+                case 8: CyclePcmciaSram(direction); break;
             }
         }
 
@@ -2002,15 +2014,17 @@ namespace AmigaEmulator
             {
                 FlushMountedMedia();
                 RamProfile targetRamProfile = GetRamProfileFromSettings(slot.RamProfile, _ramProfile);
-                bool needsRecreate = _ramProfile != targetRamProfile || _accuracyProfile != slot.AccuracyProfile;
+                bool needsRecreate = _ramProfile != targetRamProfile || _accuracyProfile != slot.AccuracyProfile || _machineModel != slot.MachineModel;
+                _machineModel = slot.MachineModel;
                 _ramProfile = targetRamProfile;
                 _accuracyProfile = slot.AccuracyProfile;
                 _settings.RamProfile = GetSettingsRamProfile(_ramProfile);
+                _settings.MachineModel = _machineModel;
                 _settings.AccuracyProfile = _accuracyProfile;
                 AmigaEmulatorSettingsStore.Save(_settings);
                 if (needsRecreate)
                 {
-                    RecreateSystemForCurrentProfile();
+                    RecreateSystemForCurrentProfile(false);
                 }
                 else
                 {
@@ -2018,6 +2032,7 @@ namespace AmigaEmulator
                 }
 
                 SaveStateFile.Load(slot.Path, _system);
+                SynchronizeRestoredMachineSettings(true);
                 ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
                 _mountedMedia = slot.MountedMedia ?? MountedMediaInfo.None;
@@ -2455,8 +2470,31 @@ namespace AmigaEmulator
         /// <summary>
         /// Applies RAM Profile to the current state.
         /// </summary>
+        private RamProfile CycleMachineRam(int direction)
+        {
+            RamProfile candidate = _ramProfile;
+            do { candidate = CycleEnum(candidate, direction); }
+            while (AmigaModel.NormalizeRamProfile(_machineModel, GetSettingsRamProfile(candidate)) != GetSettingsRamProfile(candidate));
+            return candidate;
+        }
+
+        private void ApplyMachineModel(AmigaMachineModel model)
+        {
+            if (_machineModel == model) return;
+            _machineModel = model;
+            _settings.MachineModel = model;
+            _selectedRomPath = string.Empty;
+            _settings.CustomKickstartPath = string.Empty;
+            _settings.RamProfile = AmigaModel.NormalizeRamProfile(model, GetSettingsRamProfile(_ramProfile));
+            _ramProfile = GetRamProfileFromSettings(_settings.RamProfile, _ramProfile);
+            AmigaEmulatorSettingsStore.Save(_settings);
+            RecreateSystemForCurrentProfile();
+            _statusText = _system.Model.Name + " - RESET";
+        }
+
         private void ApplyRamProfile(RamProfile profile)
         {
+            profile = GetRamProfileFromSettings(AmigaModel.NormalizeRamProfile(_machineModel, GetSettingsRamProfile(profile)), profile);
             if (_ramProfile == profile && _system != null)
             {
                 return;
@@ -2464,6 +2502,7 @@ namespace AmigaEmulator
 
             _ramProfile = profile;
             _settings.RamProfile = GetSettingsRamProfile(profile);
+            _settings.MachineModel = _machineModel;
             AmigaEmulatorSettingsStore.Save(_settings);
             RecreateSystemForCurrentProfile();
             _statusText = "RAM " + FormatRamProfile(_ramProfile);
@@ -2472,21 +2511,27 @@ namespace AmigaEmulator
         /// <summary>
         /// Runs Recreate System For Current Profile.
         /// </summary>
-        private void RecreateSystemForCurrentProfile()
+        private void RecreateSystemForCurrentProfile(bool initializeDevices = true)
         {
             MountedMediaInfo media = _mountedMedia;
             AmigaSystem oldSystem = _system;
             FlushMountedMedia();
+            SaveBatteryClock();
             DetachAudioFromSystem(oldSystem);
-            _system = new AmigaSystem(GetModelForRamProfile(_ramProfile), CreateAccuracyOptions(_accuracyProfile));
+            _system = new AmigaSystem(AmigaModel.Create(_machineModel, GetSettingsRamProfile(_ramProfile)), CreateAccuracyOptions(_accuracyProfile));
+            RestoreBatteryClock();
+            if (initializeDevices) MountConfiguredPcmcia();
             ApplyFloppyTiming();
             AttachAudioToSystem();
             oldSystem?.Dispose();
             ApplyInputPortMode();
 
-            LoadConfiguredKickstart();
-            MountConfiguredHardDisk();
-            ScheduleDeferredMediaMount(media);
+            if (initializeDevices)
+            {
+                LoadConfiguredKickstart();
+                MountConfiguredHardDisk();
+                ScheduleDeferredMediaMount(media);
+            }
             UpdateFrequency = GetRenderUpdateFrequency(_renderLimitMode);
             ResetEmulationClock();
         }
@@ -2649,6 +2694,9 @@ namespace AmigaEmulator
                 case RamProfile.Chip1MbFast4Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip1MbFast4Mb);
                 case RamProfile.Chip2MbFast2Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip2MbFast2Mb);
                 case RamProfile.Chip2MbFast4Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip2MbFast4Mb);
+                case RamProfile.Chip512KSlow512KFast2Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip512KSlow512KFast2Mb);
+                case RamProfile.Chip512KSlow512KFast4Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip512KSlow512KFast4Mb);
+                case RamProfile.Chip512KSlow512KFast8Mb: return AmigaModel.ForRamProfile(AmigaRamProfile.Chip512KSlow512KFast8Mb);
                 default:
                     return AmigaModel.A500Pal512Slow512;
             }
@@ -2709,6 +2757,9 @@ namespace AmigaEmulator
                 case AmigaRamProfile.Chip1MbFast4Mb: return RamProfile.Chip1MbFast4Mb;
                 case AmigaRamProfile.Chip2MbFast2Mb: return RamProfile.Chip2MbFast2Mb;
                 case AmigaRamProfile.Chip2MbFast4Mb: return RamProfile.Chip2MbFast4Mb;
+                case AmigaRamProfile.Chip512KSlow512KFast2Mb: return RamProfile.Chip512KSlow512KFast2Mb;
+                case AmigaRamProfile.Chip512KSlow512KFast4Mb: return RamProfile.Chip512KSlow512KFast4Mb;
+                case AmigaRamProfile.Chip512KSlow512KFast8Mb: return RamProfile.Chip512KSlow512KFast8Mb;
                 default:
                     return fallback;
             }
@@ -2733,6 +2784,9 @@ namespace AmigaEmulator
                 case RamProfile.Chip1MbFast4Mb: return AmigaRamProfile.Chip1MbFast4Mb;
                 case RamProfile.Chip2MbFast2Mb: return AmigaRamProfile.Chip2MbFast2Mb;
                 case RamProfile.Chip2MbFast4Mb: return AmigaRamProfile.Chip2MbFast4Mb;
+                case RamProfile.Chip512KSlow512KFast2Mb: return AmigaRamProfile.Chip512KSlow512KFast2Mb;
+                case RamProfile.Chip512KSlow512KFast4Mb: return AmigaRamProfile.Chip512KSlow512KFast4Mb;
+                case RamProfile.Chip512KSlow512KFast8Mb: return AmigaRamProfile.Chip512KSlow512KFast8Mb;
                 default:
                     return AmigaRamProfile.Chip512K;
             }
@@ -3083,7 +3137,8 @@ namespace AmigaEmulator
                 MenuLine("KICKSTART", _romStatusText),
                 MenuLine("ACCURACY", FormatAccuracyProfile(_accuracyProfile)),
                 MenuLine("RESET MODE", FormatResetMode(_resetMode)),
-                MenuLine("RESET NOW", "OPEN CONFIRM")
+                MenuLine("RESET NOW", "OPEN CONFIRM"),
+                MenuLine("PCMCIA", FormatPcmciaSram())
             }, _settingsSelection);
         }
 
@@ -3222,7 +3277,7 @@ namespace AmigaEmulator
         {
             DrawMenu(graphics, "MACHINE", "ENTER CHANGE  ESC BACK", new[]
             {
-                MenuLine("MODEL", _system.Model.Name),
+                MenuLine("MODEL", _system.Model.Name + (_machineModel == AmigaMachineModel.A500 ? "" : " (PREVIEW)")),
                 MenuLine("RAM", FormatRamProfile(_ramProfile)),
                 MenuLine("FLOPPY SPEED", FormatFloppySpeed(_floppySpeedMode)),
                 MenuLine("DISK WRITE", _floppyWriteProtected ? "PROTECTED" : "ENABLED"),
@@ -4139,6 +4194,30 @@ namespace AmigaEmulator
                 return;
             }
 
+            if (_machineModel != AmigaMachineModel.A500)
+            {
+                if (_system.Model.Chipset == AmigaChipset.Aga || _machineModel == AmigaMachineModel.A3000)
+                {
+                    foreach (var rom in KickstartRomResolver.FindAvailableKickstartRoms())
+                        if (rom.IsUsable && KickstartModelCompatibility.IsKnownCompatible(_machineModel, rom.Sha1))
+                        { LoadSelectedKickstart(rom.Path); return; }
+                    _romStatusText = _machineModel == AmigaMachineModel.A1200 ? "SELECT A1200 KICKSTART 3.x" : _machineModel == AmigaMachineModel.A3000 ? "SELECT A3000 KICKSTART 3.1" : "SELECT A4000 KICKSTART 3.x";
+                    _statusText = _romStatusText;
+                    return;
+                }
+                string[] candidates = _machineModel switch
+                {
+                    AmigaMachineModel.A600 => new[] { "KICK31.ROM", "KICK20.ROM" },
+                    AmigaMachineModel.A2000Ocs => new[] { "KICK13.ROM", "KICK12.ROM" },
+                    _ => new[] { "KICK20.ROM", "KICK31.ROM" }
+                };
+                string preferred = KickstartRomResolver.FindFirstExisting(candidates);
+                if (preferred != null) { LoadSelectedKickstart(preferred); return; }
+                _romStatusText = _machineModel == AmigaMachineModel.A2000Ocs
+                    ? "SELECT A2000 KICKSTART 1.2/1.3" : "SELECT ECS KICKSTART 2.x/3.1";
+                _statusText = _romStatusText;
+                return;
+            }
             LoadDefaultKickstart();
         }
 
@@ -4647,6 +4726,9 @@ namespace AmigaEmulator
                 case RamProfile.Chip1MbFast4Mb: return "1MB CHIP + 4MB FAST";
                 case RamProfile.Chip2MbFast2Mb: return "2MB CHIP + 2MB FAST";
                 case RamProfile.Chip2MbFast4Mb: return "2MB CHIP + 4MB FAST";
+                case RamProfile.Chip512KSlow512KFast2Mb: return "512K CHIP + 512K SLOW + 2MB FAST";
+                case RamProfile.Chip512KSlow512KFast4Mb: return "512K CHIP + 512K SLOW + 4MB FAST";
+                case RamProfile.Chip512KSlow512KFast8Mb: return "512K CHIP + 512K SLOW + 8MB FAST";
                 default: return "512K CHIP + 512K SLOW";
             }
         }

@@ -29,7 +29,28 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Gets or sets Version.
         /// </summary>
-        public int Version { get; set; } = 5;
+        public int Version { get; set; } = 6;
+
+        public AmigaMachineModel MachineModel { get; set; } = AmigaMachineModel.A500;
+        public int PcmciaSramMiB { get; set; }
+
+        public void ApplyStartupModel(AmigaModel model)
+        {
+            MachineModel = model.Machine;
+            RamProfile = AmigaModel.NormalizeRamProfile(MachineModel, GetRamProfile(model));
+            Kickstart = AmigaKickstart.Auto; CustomKickstartPath = string.Empty;
+        }
+
+        private static AmigaRamProfile GetRamProfile(AmigaModel model)
+        {
+            foreach (var profile in Enum.GetValues<AmigaRamProfile>())
+            {
+                var info = AmigaOverlaySettingCatalog.GetRamProfileInfo(profile);
+                if (info.ChipRamBytes == model.ChipRamBytes && info.SlowRamBytes == model.SlowRamBytes && info.FastRamBytes == model.FastRamBytes)
+                    return profile;
+            }
+            throw new ArgumentException("Unknown startup memory layout.", nameof(model));
+        }
 
         /// <summary>
         /// Gets or sets Video Filter.
@@ -267,11 +288,22 @@ namespace AmigaEmulator.Core
                 settings.Version = 4;
             }
 
+            if (settings.Version < 6)
+            {
+                settings.MachineModel = AmigaMachineModel.A500;
+            }
+            if (!Enum.IsDefined(settings.MachineModel)) settings.MachineModel = AmigaMachineModel.A500;
+            if (!Enum.IsDefined(settings.RamProfile)) settings.RamProfile = AmigaRamProfile.Chip1Mb;
+            settings.RamProfile = AmigaModel.NormalizeRamProfile(settings.MachineModel, settings.RamProfile);
+            if (settings.PcmciaSramMiB != 0 && settings.PcmciaSramMiB != 1 && settings.PcmciaSramMiB != 2 && settings.PcmciaSramMiB != 4)
+                settings.PcmciaSramMiB = 0;
+
             if (settings.Version < 5)
             {
                 settings.MonitorAperture = AmigaMonitorAperture.Crt;
                 settings.Version = 5;
             }
+            settings.Version = Math.Max(settings.Version, 6);
         }
     }
 }

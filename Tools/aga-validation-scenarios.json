@@ -1,0 +1,240 @@
+[
+  {
+    "ram": "Chip2Mb",
+    "actions": [
+      {
+        "label": "cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "restore",
+        "type": "restore"
+      },
+      {
+        "label": "continued",
+        "cycles": 2000000,
+        "type": "wait"
+      },
+      {
+        "label": "warm-reset",
+        "cold": false,
+        "type": "reset"
+      },
+      {
+        "label": "warm-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "cold-reset",
+        "cold": true,
+        "type": "reset"
+      },
+      {
+        "label": "second-cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      }
+    ],
+    "name": "A4000Ec030-Chip2Mb",
+    "strict": true,
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "model": "A4000Ec030",
+    "kickstartRom": "%APPDATA%\\AmigaEmulator\\roms\\KICK4070.ROM"
+  },
+  {
+    "ram": "Chip2MbFast4Mb",
+    "actions": [
+      {
+        "label": "cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "restore",
+        "type": "restore"
+      },
+      {
+        "label": "continued",
+        "cycles": 2000000,
+        "type": "wait"
+      },
+      {
+        "label": "warm-reset",
+        "cold": false,
+        "type": "reset"
+      },
+      {
+        "label": "warm-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "cold-reset",
+        "cold": true,
+        "type": "reset"
+      },
+      {
+        "label": "second-cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      }
+    ],
+    "name": "A4000Ec030-Chip2MbFast4Mb",
+    "strict": true,
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "model": "A4000Ec030",
+    "kickstartRom": "%APPDATA%\\AmigaEmulator\\roms\\KICK4070.ROM"
+  },
+  {
+    "ram": "Chip2MbFast8Mb",
+    "actions": [
+      {
+        "label": "cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "restore",
+        "type": "restore"
+      },
+      {
+        "label": "continued",
+        "cycles": 2000000,
+        "type": "wait"
+      },
+      {
+        "label": "warm-reset",
+        "cold": false,
+        "type": "reset"
+      },
+      {
+        "label": "warm-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "cold-reset",
+        "cold": true,
+        "type": "reset"
+      },
+      {
+        "label": "second-cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      }
+    ],
+    "name": "A4000Ec030-Chip2MbFast8Mb",
+    "strict": true,
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "model": "A4000Ec030",
+    "kickstartRom": "%APPDATA%\\AmigaEmulator\\roms\\KICK4070.ROM"
+  },
+  {
+    "ram": "Chip2MbFast4Mb",
+    "actions": [
+      {
+        "label": "cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "restore",
+        "type": "restore"
+      },
+      {
+        "label": "continued",
+        "cycles": 2000000,
+        "type": "wait"
+      },
+      {
+        "label": "warm-reset",
+        "cold": false,
+        "type": "reset"
+      },
+      {
+        "label": "warm-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "label": "cold-reset",
+        "cold": true,
+        "type": "reset"
+      },
+      {
+        "label": "second-cold-boot",
+        "cycles": 40000000,
+        "type": "wait"
+      }
+    ],
+    "name": "A1200-generic-ROM-compatibility",
+    "strict": true,
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "model": "A1200",
+    "kickstartRom": "%APPDATA%\\AmigaEmulator\\roms\\KICK31.ROM"
+  },
+  {
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK4070.ROM",
+    "hardDisk": "%TEMP%/amiga-models/rtc-boot.hdf",
+    "traceExceptions": true,
+    "name": "A4000Ec030-RTC",
+    "strict": true,
+    "model": "A4000Ec030",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cli",
+        "cycles": 60000000
+      },
+      {
+        "key": 19,
+        "type": "key"
+      },
+      {
+        "key": 20,
+        "type": "key"
+      },
+      {
+        "key": 51,
+        "type": "key"
+      },
+      {
+        "key": 51,
+        "type": "key"
+      },
+      {
+        "key": 37,
+        "type": "key"
+      },
+      {
+        "key": 18,
+        "type": "key"
+      },
+      {
+        "key": 51,
+        "type": "key"
+      },
+      {
+        "key": 39,
+        "type": "key"
+      },
+      {
+        "key": 68,
+        "type": "key"
+      },
+      {
+        "type": "wait",
+        "label": "rtc-result",
+        "cycles": 2000000
+      }
+    ],
+    "ram": "Chip2MbFast4Mb",
+    "hardDiskReadOnly": true
+  }
+]

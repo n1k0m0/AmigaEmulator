@@ -1,0 +1,567 @@
+[
+  {
+    "name": "A500-Chip512KSlow512K",
+    "model": "A500",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK13.ROM",
+    "strict": true
+  },
+  {
+    "name": "A500-Chip512KSlow512KFast8Mb",
+    "model": "A500",
+    "ram": "Chip512KSlow512KFast8Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK13.ROM",
+    "strict": true
+  },
+  {
+    "name": "A500Plus-Chip1Mb",
+    "model": "A500Plus",
+    "ram": "Chip1Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "strict": true
+  },
+  {
+    "name": "A500Plus-Chip2MbFast8Mb",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast8Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "strict": true
+  },
+  {
+    "name": "A600-Chip1Mb",
+    "model": "A600",
+    "ram": "Chip1Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "strict": true
+  },
+  {
+    "name": "A600-Chip2MbFast8Mb",
+    "model": "A600",
+    "ram": "Chip2MbFast8Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "strict": true
+  },
+  {
+    "name": "A2000Ocs-Chip512KSlow512K",
+    "model": "A2000Ocs",
+    "ram": "Chip512KSlow512K",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK13.ROM",
+    "strict": true
+  },
+  {
+    "name": "A2000Ocs-Chip512KSlow512KFast8Mb",
+    "model": "A2000Ocs",
+    "ram": "Chip512KSlow512KFast8Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK13.ROM",
+    "strict": true
+  },
+  {
+    "name": "A2000Ecs-Chip1Mb",
+    "model": "A2000Ecs",
+    "ram": "Chip1Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "strict": true
+  },
+  {
+    "name": "A2000Ecs-Chip2MbFast8Mb",
+    "model": "A2000Ecs",
+    "ram": "Chip2MbFast8Mb",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "strict": true
+  },
+  {
+    "expectPcmciaRam": true,
+    "model": "A600",
+    "name": "A600-SRAM-1",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "strict": true,
+    "pcmciaSramMiB": 1,
+    "ram": "Chip2MbFast4Mb"
+  },
+  {
+    "expectPcmciaRam": true,
+    "model": "A600",
+    "name": "A600-SRAM-2",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "strict": true,
+    "pcmciaSramMiB": 2,
+    "ram": "Chip2MbFast4Mb"
+  },
+  {
+    "expectPcmciaRam": true,
+    "model": "A600",
+    "name": "A600-SRAM-4",
+    "actions": [
+      {
+        "type": "wait",
+        "label": "cold-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "restore",
+        "label": "restore"
+      },
+      {
+        "type": "wait",
+        "label": "continued",
+        "cycles": 2000000
+      },
+      {
+        "type": "reset",
+        "label": "warm-reset",
+        "cold": false
+      },
+      {
+        "type": "wait",
+        "label": "warm-boot",
+        "cycles": 40000000
+      },
+      {
+        "type": "reset",
+        "label": "cold-reset",
+        "cold": true
+      },
+      {
+        "type": "wait",
+        "label": "second-cold-boot",
+        "cycles": 40000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "strict": true,
+    "pcmciaSramMiB": 4,
+    "ram": "Chip2MbFast4Mb"
+  }
+]

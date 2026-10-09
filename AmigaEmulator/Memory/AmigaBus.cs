@@ -29,11 +29,27 @@ namespace AmigaEmulator.Core.Memory
     /// </summary>
     public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider, IM68kPlanningBus
     {
-        public GayleIdeController HardDisk { get; } = new GayleIdeController();
+        public GayleIdeController HardDisk { get; }
         public ZorroRamAutoConfig AutoConfig { get; }
-        public void BeginInstructionPlanning() => HardDisk.BeginPlanning();
-        public void EndInstructionPlanning() => HardDisk.EndPlanning();
-        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); }
+        public Msm6242Clock BatteryClock { get; }
+        public Rp5c01Clock RicohClock { get; }
+        public GaylePcmciaController Pcmcia { get; }
+        public DesktopMotherboardResources DesktopResources { get; }
+        private readonly Func<uint, bool> _scsiChipRam, _scsiDmaMemory;
+        private readonly Func<uint, byte> _scsiDmaRead;
+        private readonly Action<uint, byte> _scsiDmaWrite;
+        public bool TickStorageDma(bool chipBusAvailable) => HardDisk.Scsi != null && HardDisk.Enabled &&
+            HardDisk.Scsi.TickDma(chipBusAvailable, _scsiChipRam, _scsiDmaMemory, _scsiDmaRead, _scsiDmaWrite);
+        private readonly bool _hasMotherboardRam;
+        private readonly uint _motherboardRamStart;
+        private uint FastRamStart => _hasMotherboardRam ? _motherboardRamStart : AutoConfig.BaseAddress;
+        private readonly bool _hasPcmcia;
+        private readonly uint _addressMask;
+        private readonly byte _unmappedReadValue;
+        private readonly bool _hasBatteryClock;
+        public void BeginInstructionPlanning() { HardDisk.BeginPlanning(); if (_hasBatteryClock) BatteryClock.BeginPlanning(); if (_hasMotherboardRam) RicohClock.BeginPlanning(); }
+        public void EndInstructionPlanning() { HardDisk.EndPlanning(); if (_hasBatteryClock) BatteryClock.EndPlanning(); if (_hasMotherboardRam) RicohClock.EndPlanning(); }
+        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); if (_hasPcmcia) Pcmcia.ResetMotherboard(); }
         public void SaveExpansionState(BinaryWriter writer) { HardDisk.SaveState(writer); AutoConfig.SaveState(writer); }
         public void LoadExpansionState(BinaryReader reader) { HardDisk.LoadState(reader); AutoConfig.LoadState(reader); }
         /// <summary>
@@ -113,10 +129,32 @@ namespace AmigaEmulator.Core.Memory
                 throw new ArgumentNullException(nameof(model));
             }
 
+            HardDisk = new GayleIdeController(model.IdeModel) { Enabled = model.HasBuiltInHardDiskController };
+            _addressMask = model.Cpu == AmigaCpuModel.M68000 || model.Cpu == AmigaCpuModel.M68EC020
+                ? 0x00FFFFFFu : uint.MaxValue;
+            _unmappedReadValue = model.UnmappedReadValue;
+            _hasPcmcia = model.HasPcmcia;
+            Pcmcia = new GaylePcmciaController(_hasPcmcia, model.FastRamBytes <= 4 * 1024 * 1024);
+            if (_hasPcmcia) HardDisk.Pcmcia = Pcmcia;
+            BatteryClock = new Msm6242Clock(model.HasBatteryClock && !model.HasRicohClock);
+            RicohClock = new Rp5c01Clock(model.HasRicohClock);
+            DesktopResources = new DesktopMotherboardResources(model.HasDesktopResources, model.FastRamBytes);
+            _hasMotherboardRam = model.HasDesktopResources;
+            _motherboardRamStart = model.MotherboardFastRamStart;
+            _hasBatteryClock = BatteryClock.Enabled;
             _chipRam = new ChipRam(model.ChipRamBytes);
             _slowRam = new SlowRam(model.SlowRamBytes);
             _fastRam = new FastRam(model.FastRamBytes);
-            AutoConfig = new ZorroRamAutoConfig(model.FastRamBytes);
+            if (model.HasBuiltInScsi)
+            {
+                _scsiChipRam = a => a < (uint)model.ChipRamBytes;
+                _scsiDmaMemory = a => a < (uint)model.ChipRamBytes ||
+                    (a >= _motherboardRamStart && a - _motherboardRamStart < (uint)model.FastRamBytes);
+                // DMA sees physical RAM even while the CPU's ROM overlay is enabled.
+                _scsiDmaRead = a => a < (uint)model.ChipRamBytes ? _chipRam.Read(a) : _fastRam.Read(a - _motherboardRamStart);
+                _scsiDmaWrite = (a, v) => { if (a < (uint)model.ChipRamBytes) _chipRam.Write(a, v); else _fastRam.Write(a - _motherboardRamStart, v); };
+            }
+            AutoConfig = new ZorroRamAutoConfig(_hasMotherboardRam ? 0 : model.FastRamBytes);
             _chipRamEnd = model.ChipRamBytes > 0
                 ? (uint)model.ChipRamBytes - 1u
                 : MemoryMap.ChipRamEnd;
@@ -134,6 +172,10 @@ namespace AmigaEmulator.Core.Memory
         /// Gets or sets ROM Overlay At Zero.
         /// </summary>
         public bool RomOverlayAtZero { get; set; }
+
+        // The EC processors wrap their physical address lines; a full 32-bit
+        // processor must leave high, unpopulated addresses unmapped for ROM probes.
+        private uint Normalize(uint address) => address & _addressMask;
 
         /// <summary>
         /// Gets Kickstart.
@@ -253,10 +295,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public AmigaAddressRegion GetRegion(uint address)
         {
-            address = MemoryMap.Normalize(address);
-
-            if (HardDisk.Maps(address)) return AmigaAddressRegion.GayleIde;
-            if (AutoConfig.Maps(address)) return AmigaAddressRegion.AutoConfig;
+            address = Normalize(address);
 
             if (address <= _chipRamEnd)
             {
@@ -281,9 +320,9 @@ namespace AmigaEmulator.Core.Memory
             }
 
             if (_fastRam.Enabled &&
-                address >= AutoConfig.BaseAddress &&
-                address < AutoConfig.BaseAddress + (uint)_fastRam.Size &&
-                address <= MemoryMap.FastRamEnd)
+                address >= FastRamStart &&
+                address < FastRamStart + (uint)_fastRam.Size &&
+                (_hasMotherboardRam || address <= MemoryMap.FastRamEnd))
             {
                 return AmigaAddressRegion.FastRam;
             }
@@ -298,6 +337,11 @@ namespace AmigaEmulator.Core.Memory
                 return AmigaAddressRegion.KickstartRom;
             }
 
+            if (_hasMotherboardRam && DesktopResources.Maps(address)) return AmigaAddressRegion.MotherboardResources;
+            if (HardDisk.Maps(address)) return AmigaAddressRegion.GayleIde;
+            if (AutoConfig.Maps(address)) return AmigaAddressRegion.AutoConfig;
+            if (_hasPcmcia && Pcmcia.Maps(address)) return AmigaAddressRegion.Pcmcia;
+            if (BatteryClock.Maps(address) || (_hasMotherboardRam && RicohClock.Maps(address))) return AmigaAddressRegion.BatteryClock;
             return AmigaAddressRegion.Unmapped;
         }
 
@@ -306,7 +350,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public bool RequiresChipBus(uint address, int size)
         {
-            uint normalized = MemoryMap.Normalize(address);
+            uint normalized = Normalize(address);
             if (IsKickstartOverlayRead(normalized))
             {
                 return false;
@@ -323,7 +367,7 @@ namespace AmigaEmulator.Core.Memory
                 return false;
             }
 
-            uint last = MemoryMap.Normalize(normalized + (uint)size - 1u);
+            uint last = Normalize(normalized + (uint)size - 1u);
             return RegionRequiresChipBus(GetRegion(last));
         }
 
@@ -351,7 +395,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public byte ReadByte(uint address)
         {
-            address = MemoryMap.Normalize(address);
+            address = Normalize(address);
             byte value;
 
             if (IsKickstartOverlayRead(address))
@@ -372,10 +416,19 @@ namespace AmigaEmulator.Core.Memory
                     value = _slowRam.Read(address - MemoryMap.SlowRamStart);
                     break;
                 case AmigaAddressRegion.FastRam:
-                    value = _fastRam.Read(address - AutoConfig.BaseAddress);
+                    value = _fastRam.Read(address - FastRamStart);
+                    break;
+                case AmigaAddressRegion.MotherboardResources:
+                    value = DesktopResources.ReadByte(address);
                     break;
                 case AmigaAddressRegion.GayleIde:
                     value = HardDisk.ReadByte(address);
+                    break;
+                case AmigaAddressRegion.BatteryClock:
+                    value = _hasMotherboardRam ? RicohClock.ReadByte(address) : BatteryClock.ReadByte(address);
+                    break;
+                case AmigaAddressRegion.Pcmcia:
+                    value = Pcmcia.ReadByte(address);
                     break;
                 case AmigaAddressRegion.AutoConfig:
                     value = AutoConfig.ReadByte(address);
@@ -415,7 +468,7 @@ namespace AmigaEmulator.Core.Memory
                     value = _kickstart.Read(address - MemoryMap.KickstartStart);
                     break;
                 default:
-                    value = 0xFF;
+                    value = _unmappedReadValue;
                     break;
             }
 
@@ -429,7 +482,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public byte PeekByte(uint address)
         {
-            address = MemoryMap.Normalize(address);
+            address = Normalize(address);
             if (IsKickstartOverlayRead(address))
             {
                 return _kickstart.Read(address);
@@ -443,9 +496,15 @@ namespace AmigaEmulator.Core.Memory
                 case AmigaAddressRegion.SlowRam:
                     return _slowRam.Read(address - MemoryMap.SlowRamStart);
                 case AmigaAddressRegion.FastRam:
-                    return _fastRam.Read(address - AutoConfig.BaseAddress);
+                    return _fastRam.Read(address - FastRamStart);
+                case AmigaAddressRegion.MotherboardResources:
+                    return DesktopResources.ReadByte(address);
                 case AmigaAddressRegion.GayleIde:
                     return HardDisk.ReadByte(address, true);
+                case AmigaAddressRegion.BatteryClock:
+                    return _hasMotherboardRam ? RicohClock.ReadByte(address) : BatteryClock.ReadByte(address);
+                case AmigaAddressRegion.Pcmcia:
+                    return Pcmcia.ReadByte(address, true);
                 case AmigaAddressRegion.AutoConfig:
                     return AutoConfig.ReadByte(address);
                 case AmigaAddressRegion.CustomRegisters:
@@ -470,7 +529,7 @@ namespace AmigaEmulator.Core.Memory
                 case AmigaAddressRegion.KickstartRom:
                     return _kickstart.Read(address - MemoryMap.KickstartStart);
                 default:
-                    return 0xFF;
+                    return _unmappedReadValue;
             }
         }
 
@@ -479,8 +538,13 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public ushort ReadWord(uint address)
         {
-            uint normalized = MemoryMap.Normalize(address);
-            if (HardDisk.Maps(normalized) && GayleIdeController.IsData(normalized))
+            uint normalized = Normalize(address);
+            if (ReadObserved == null && TryPeekMemoryWord(normalized, out ushort memoryWord))
+            {
+                _lastBusValue = (byte)memoryWord;
+                return memoryWord;
+            }
+            if (HardDisk.Maps(normalized) && HardDisk.IsDataPort(normalized))
             {
                 ushort value = HardDisk.ReadData();
                 NotifyReadObserved(normalized, 2, value, AmigaAddressRegion.GayleIde);
@@ -503,8 +567,9 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public ushort PeekWord(uint address)
         {
-            uint normalized = MemoryMap.Normalize(address);
-            if (HardDisk.Maps(normalized) && GayleIdeController.IsData(normalized)) return HardDisk.ReadData(true);
+            uint normalized = Normalize(address);
+            if (TryPeekMemoryWord(normalized, out ushort memoryWord)) return memoryWord;
+            if (HardDisk.Maps(normalized) && HardDisk.IsDataPort(normalized)) return HardDisk.ReadData(true);
             if (GetRegion(normalized) == AmigaAddressRegion.CustomRegisters &&
                 _paula != null &&
                 _paula.TryPeekCustomRegisterWord(normalized, out ushort paulaWord))
@@ -521,12 +586,44 @@ namespace AmigaEmulator.Core.Memory
             return (ushort)((PeekByte(normalized) << 8) | PeekByte(normalized + 1));
         }
 
+        // A word wholly inside memory needs only one decode. Peripheral, overlay
+        // boundary and address-wrap transfers retain individual byte semantics.
+        private bool TryPeekMemoryWord(uint address, out ushort value)
+        {
+            value = 0;
+            if (address < _chipRamEnd)
+            {
+                bool overlay = IsKickstartOverlayRead(address);
+                if (overlay != IsKickstartOverlayRead(address + 1)) return false;
+                value = overlay ? (ushort)((_kickstart.Read(address) << 8) | _kickstart.Read(address + 1))
+                    : (ushort)((_chipRam.Read(address) << 8) | _chipRam.Read(address + 1));
+                return true;
+            }
+            if (address >= MemoryMap.KickstartStart && address < MemoryMap.KickstartEnd)
+            {
+                uint offset = address - MemoryMap.KickstartStart;
+                value = (ushort)((_kickstart.Read(offset) << 8) | _kickstart.Read(offset + 1)); return true;
+            }
+            if (_slowRam.Enabled && address >= MemoryMap.SlowRamStart && address < MemoryMap.SlowRamStart + (uint)_slowRam.Size - 1)
+            {
+                uint offset = address - MemoryMap.SlowRamStart;
+                value = (ushort)((_slowRam.Read(offset) << 8) | _slowRam.Read(offset + 1)); return true;
+            }
+            if (_fastRam.Enabled && address >= FastRamStart && address < FastRamStart + (uint)_fastRam.Size - 1 &&
+                (_hasMotherboardRam || address < MemoryMap.FastRamEnd))
+            {
+                uint offset = address - FastRamStart;
+                value = (ushort)((_fastRam.Read(offset) << 8) | _fastRam.Read(offset + 1)); return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Reads a big-endian longword from the Amiga bus as two consecutive words.
         /// </summary>
         public uint ReadLong(uint address)
         {
-            uint normalized = MemoryMap.Normalize(address);
+            uint normalized = Normalize(address);
             return (uint)((ReadWord(normalized) << 16) | ReadWord(normalized + 2));
         }
 
@@ -535,7 +632,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public uint PeekLong(uint address)
         {
-            uint normalized = MemoryMap.Normalize(address);
+            uint normalized = Normalize(address);
             return (uint)((PeekWord(normalized) << 16) | PeekWord(normalized + 2));
         }
 
@@ -544,7 +641,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public bool RetireCiaIcrRead(uint address, int size, uint sampledValue)
         {
-            uint normalized = MemoryMap.Normalize(address);
+            uint normalized = Normalize(address);
             if (size == 1)
             {
                 bool retired = RetireCiaIcrByteRead(normalized, (byte)sampledValue);
@@ -576,7 +673,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void WriteByte(uint address, byte value)
         {
-            address = MemoryMap.Normalize(address);
+            address = Normalize(address);
             _lastBusValue = value;
             if (IsKickstartOverlayRead(address))
             {
@@ -595,10 +692,20 @@ namespace AmigaEmulator.Core.Memory
                     _slowRam.Write(address - MemoryMap.SlowRamStart, value);
                     break;
                 case AmigaAddressRegion.FastRam:
-                    _fastRam.Write(address - AutoConfig.BaseAddress, value);
+                    _fastRam.Write(address - FastRamStart, value);
+                    break;
+                case AmigaAddressRegion.MotherboardResources:
+                    DesktopResources.WriteByte(address, value);
                     break;
                 case AmigaAddressRegion.GayleIde:
                     HardDisk.WriteByte(address, value);
+                    break;
+                case AmigaAddressRegion.BatteryClock:
+                    if (_hasMotherboardRam) RicohClock.WriteByte(address, value);
+                    else BatteryClock.WriteByte(address, value);
+                    break;
+                case AmigaAddressRegion.Pcmcia:
+                    Pcmcia.WriteByte(address, value);
                     break;
                 case AmigaAddressRegion.AutoConfig:
                     AutoConfig.WriteByte(address, value);
@@ -639,13 +746,13 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void WriteWord(uint address, ushort value)
         {
-            if (HardDisk.Maps(MemoryMap.Normalize(address)) && GayleIdeController.IsData(MemoryMap.Normalize(address)))
+            if (HardDisk.Maps(Normalize(address)) && HardDisk.IsDataPort(Normalize(address)))
             {
                 HardDisk.WriteData(value);
-                NotifyWriteObserved(MemoryMap.Normalize(address), 2, value, AmigaAddressRegion.GayleIde);
+                NotifyWriteObserved(Normalize(address), 2, value, AmigaAddressRegion.GayleIde);
                 return;
             }
-            uint normalized = MemoryMap.Normalize(address);
+            uint normalized = Normalize(address);
             if (GetRegion(normalized) == AmigaAddressRegion.CustomRegisters &&
                 GetRegion(normalized + 1) == AmigaAddressRegion.CustomRegisters)
             {
@@ -780,7 +887,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         private bool RetireCiaIcrByteRead(uint address, byte sampledValue)
         {
-            uint normalized = MemoryMap.Normalize(address);
+            uint normalized = Normalize(address);
             if (((normalized >> 8) & 0x0Fu) != 13u)
             {
                 return false;

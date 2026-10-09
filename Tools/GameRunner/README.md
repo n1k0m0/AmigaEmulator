@@ -18,11 +18,17 @@ number, presentation bounds, pixel hash and `gameplay: requires-visual-review`.
 Disk images are mounted read-only. Output filenames are replaced on reruns;
 use a fresh output directory to preserve earlier evidence.
 
-A case has `name`, `boot` (ADF filename), optional `mediaRoot`, `ram`, `strict`
+A case has `name`, `boot` (ADF filename), optional `mediaRoot`, `model`, `ram`, `strict`
 and `actions`. Default media root is `%USERPROFILE%/Documents/AmigaEmulator`;
-RAM defaults to `Chip512KSlow512K`. Set `strict: true` for Compatible contention
+`model` accepts `A500` (default), `A500Plus`, `A600`, `A2000Ocs`, `A2000Ecs`,
+`A1200`, `A3000` or `A4000Ec030`.
+RAM defaults to `Chip512KSlow512K` for A500/A2000Ocs, `Chip1Mb` for older ECS
+models, `Chip2Mb` for A1200 and `Chip2MbFast4Mb` for A3000/A4000Ec030.
+The three newer profiles require 2 MiB Chip RAM and accept optional 2/4/8 MiB Fast.
+A2000Ocs additionally accepts `Chip512KSlow512KFast2Mb`, `Chip512KSlow512KFast4Mb`
+and `Chip512KSlow512KFast8Mb`. Set `strict: true` for Compatible contention
 without tracing. `save` (absolute savestate path) can replace `boot`; RAM is then
-read from the savestate. The checkpoint records the selected accuracy profile.
+read from the savestate together with the machine model. The checkpoint records the selected accuracy profile.
 
 Actions:
 
@@ -35,16 +41,31 @@ Actions:
 - `joystick`: joystick-port button, default Fire; Up/Down/Left/Right are also
   available. `cycles` optionally changes the hold duration.
 - `disk`: `disk` ADF filename and optional `drive` index (default DF0).
+- `reset`: warm reset by default, `cold: true` for a power cycle.
+- `restore`: save the current core state, advance one frame, restore and check
+  that the captured framebuffer hash is unchanged. The HDF is not rolled back.
 
 Every action accepts a `label` for screenshots. `strict` does not imply that
 software is compatible; both profiles may require title-specific investigation.
+Actions can also specify `expectedFrameHash` (SHA-256 of presented ARGB pixels)
+and `minimumHardDiskReads`. A mismatch fails the case after writing its screenshot.
+The native-ROM HDF cases assert the manually reviewed Initial CLI image and at
+least 14 sector reads, so a black screen or an idle CPU cannot count as a pass.
+Hashes require the same formatted test volume; adapt them after reviewing a
+different HDF. Gameplay screenshots still require visual review.
 The supplied manifest is an initial smoke sweep. Real gameplay requires
 appropriate disk swaps and menu selections, as demonstrated in the review report.
 
 For HDD boot cases, omit `boot` and provide `hardDisk` (absolute whole-disk HDF
-path) and `kickstartRom` (absolute compatible A600 ROM path). `hardDiskReadOnly`
+path) and `kickstartRom` (absolute ROM path matching the selected motherboard).
+A3000 uses SCSI target 0; A4000Ec030 uses DD2020 IDE. `hardDiskReadOnly`
 defaults to true; set false only for a disposable writable test image.
 `createHardDiskMiB` optionally creates a new RDB/DH0 image before mounting it
 (refuses existing files; the partition must still be formatted/installed).
 `traceIde: true` adds `ide-trace.txt` with controller writes and Autoconfig
 accesses. Step diagnostics include HDF sector counters and Fast-RAM assignment.
+
+`pcmciaSramMiB` inserts a 1/2/4 MiB SRAM card on A600/A1200. It conflicts with
+8 MiB Fast RAM. `expectPcmciaRam: true` checks guest Exec memory registration.
+`traceExceptions: true` records synchronous CPU exceptions for investigation.
+Environment variables are expanded in ROM, HDF and media-root paths.

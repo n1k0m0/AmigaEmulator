@@ -24,6 +24,19 @@ namespace AmigaEmulator.Core.CustomChips
         /// Tracks CLXCON collision control bits.
         /// </summary>
         private ushort _control;
+        [System.NonSerialized] private ushort _extendedControl;
+        [System.NonSerialized] private int _match, _oddEnabled, _evenEnabled;
+        public ushort ExtendedControl
+        {
+            get => _extendedControl;
+            set { _extendedControl = (ushort)(value & 0xC3); DecodeMasks(); }
+        }
+        private void DecodeMasks()
+        {
+            int enabled = ((_control >> 6) & 0x3F) | (_extendedControl & 0xC0);
+            _match = (_control & 0x3F) | ((_extendedControl & 3) << 6);
+            _oddEnabled = enabled & 0x55; _evenEnabled = enabled & 0xAA;
+        }
 
         /// <summary>
         /// Gets or sets Collision Flags.
@@ -44,7 +57,7 @@ namespace AmigaEmulator.Core.CustomChips
         public ushort Control
         {
             get { return _control; }
-            set { _control = value; }
+            set { _control = value; DecodeMasks(); }
         }
 
         /// <summary>
@@ -53,6 +66,8 @@ namespace AmigaEmulator.Core.CustomChips
         public void Reset()
         {
             _control = 0;
+            _extendedControl = 0;
+            DecodeMasks();
             CollisionFlags = 0;
         }
 
@@ -76,10 +91,9 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            int enabled = (_control >> 6) & 0x3F;
-            int match = _control & 0x3F;
-            bool pf1 = IsPlayfieldMatched(bitplaneMask, 0x15, enabled, match);
-            bool pf2 = IsPlayfieldMatched(bitplaneMask, 0x2A, enabled, match);
+            int compared = bitplaneMask ^ _match;
+            bool pf1 = (compared & _oddEnabled) == 0;
+            bool pf2 = (compared & _evenEnabled) == 0;
             int spritePairs = BuildSpritePairMask(spriteMask);
 
             ushort flags = 0;
@@ -121,21 +135,11 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Returns whether one playfield group satisfies the current CLXCON mask.
-        /// </summary>
-        private static bool IsPlayfieldMatched(int bitplaneMask, int playfieldMask, int enabled, int match)
-        {
-            // CLXDAT groups odd and even planes independently. Disabled planes
-            // impose no constraint, including when the entire group is disabled.
-            int groupEnabled = enabled & playfieldMask;
-            return ((bitplaneMask ^ match) & groupEnabled) == 0;
-        }
-
-        /// <summary>
         /// Builds the CLXDAT sprite pair inputs after CLXCON odd-sprite inclusion bits.
         /// </summary>
         private int BuildSpritePairMask(int spriteMask)
         {
+            if (spriteMask == 0) return 0;
             int pairs = 0;
             for (int pair = 0; pair < 4; pair++)
             {

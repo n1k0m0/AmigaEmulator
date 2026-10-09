@@ -97,6 +97,8 @@ namespace AmigaEmulator.Core.SaveStates
         /// </summary>
         public AmigaRamProfile RamProfile { get; set; }
 
+        public AmigaMachineModel MachineModel { get; set; } = AmigaMachineModel.A500;
+
         /// <summary>
         /// Gets or sets Accuracy Profile.
         /// </summary>

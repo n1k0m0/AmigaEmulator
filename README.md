@@ -1,6 +1,6 @@
 # AmigaEmulator
 
-AmigaEmulator is a C#/.NET Amiga 500 emulator with a WinForms and SharpPixels
+AmigaEmulator is a C#/.NET Amiga emulator with a WinForms and SharpPixels
 frontend. Its structure follows the same general idea as the C64Emulator:
 a small desktop application, a local SharpPixels rendering layer, in-emulator
 overlay menus, persistent user settings, save states, and a dedicated test
@@ -19,7 +19,15 @@ This emulator is an active work-in-progress project.
 Implemented or partially implemented:
 
 - Amiga 500 PAL model with a 7.093790 MHz CPU timing base.
-- Motorola 68000 core with growing opcode and regression test coverage.
+- A500+/A600, revision-specific A2000 OCS/ECS, A1200, A3000/030 and
+  A4000/030 preview models. ECS paths
+  include extended display windows, border blank, EHB control and blitter sizes;
+  A600/A1200 include built-in IDE and PCMCIA SRAM. A3000 has SCSI/Super DMAC;
+  A4000/030 has its own IDE wiring. Desktop models include motherboard Fast RAM
+  and a Ricoh clock; A500+/A2000 include an MSM6242 battery clock. See
+  [machine models and remaining milestones](AmigaEmulator/Docs/MachineModels.md).
+- Motorola 68000 and extended 020/030 integer cores, including a 68030 MMU.
+- AGA subset: 256-color palette, eight planes, HAM8, wide DMA and sprites.
 - Kickstart ROM resolver and ROM selection through the overlay UI.
 - Real Kickstart 1.3 insert-disk path through ROM code, Copper, Blitter,
   bitplane DMA, Chip RAM, and Denise output.
@@ -38,6 +46,16 @@ Implemented or partially implemented:
 Still incomplete:
 
 - Not every game is glitch-free yet.
+- ECS/AGA previews do not yet cover all fine scrolling, superhires, interlace
+  or programmable monitor timings. Caches, fault restart and RTC timing are
+  approximate. Floating-point coprocessors and A4000/040 are not implemented.
+- Matching Kickstart 3.1/40.68 boots the test HDF to Initial CLI on A1200,
+  A3000 and A4000/030, including cold/warm restart and restore. A3000's WD
+  register mirrors and selection/completion interrupts are corrected.
+  Installed-OS verification still requires OS media. Generic-ROM runs remain
+  separate compatibility checks.
+- A2000 motherboard profiles boot, but real Zorro storage/SCSI boards and
+  Workbench installation still require implementation/verification.
 - OCS DMA timing, sprite priority, Blitter/CPU arbitration, and loader edge
   cases need broader hardware/reference validation despite implemented slot
   scheduling, per-plane fetches and region-aware bus contention.
@@ -62,7 +80,18 @@ The primary target is:
 - DF0 as the first internal floppy drive
 
 Additional RAM profiles and ROMs can be selected from the emulator menu when
-the corresponding local files are available.
+the corresponding local files are available. **MACHINE → MODEL** switches
+between A500, A500+, A600, A2000 OCS/ECS, A1200, A3000 and A4000/030 previews
+and restarts the guest. RAM remains
+separately selectable; older ECS models require 1/2 MiB Chip RAM without Slow RAM.
+A1200/A3000/A4000 require 2 MiB Chip RAM, with optional 2/4/8 MiB Fast RAM.
+A3000/A4000 use high motherboard Fast RAM instead of a Zorro II card.
+The early A2000 OCS profile uses 512 KiB Chip RAM, optional 512 KiB motherboard
+RAM at `$C00000`, and optional 2/4/8 MiB Zorro II Fast RAM. The ECS profile
+also permits a 2 MiB Chip RAM Agnus upgrade. Switching revisions preserves
+Fast RAM capacity while normalizing the motherboard RAM layout.
+Model selection is persisted and recorded in new savestates. Old savestates
+continue to load as A500.
 
 ## Hard disks and memory expansions
 
@@ -79,7 +108,9 @@ sector writes persist in the image; ejecting, reconfiguring, saving or closing
 flushes it. Changing the controller/image/write mode restarts the guest machine.
 The emulator operates on image files, not Windows physical disks.
 
-Select a compatible A600 Kickstart (2.05 or 3.1, with the Gayle IDE `scsi.device`)
+Select a Kickstart for the actual motherboard and its controller (A600/A1200
+Gayle IDE, A3000 SCSI or A4000 IDE). The optional legacy IDE expansion requires
+an A600-compatible Kickstart (2.05 or 3.1, with the Gayle IDE `scsi.device`)
 in the ROM menu. Ordinary A500 Kickstart 1.3 has no built-in driver for this
 controller. **BOOT FROM HD** enables the persistent hard-disk boot preference,
 ejects floppies for the current session and restarts. When enabled, startup does
@@ -89,7 +120,8 @@ floppies can still be inserted explicitly through MEDIA.
 Select memory through **MACHINE → RAM** (also available in SETTINGS): 512 KiB
 Chip, 512 KiB Chip + 512 KiB Slow, 1/2 MiB Chip, 1/2 MiB Chip + 2/4 MiB Fast,
 or 2 MiB Chip + 8 MiB Fast. Changing a profile restarts the machine. Fast RAM
-is exposed as a Zorro II expansion so Kickstart can register it with Exec.
+is exposed as a Zorro II expansion on older boards and A1200; A3000/A4000 use
+motherboard RAM ending at `$08000000`.
 
 Savestates preserve controller registers, partially transferred sectors and
 the mounted image path/access mode. The HDF remains an external, mutable file;
@@ -107,7 +139,7 @@ AmigaEmulator/
 |   |-- Audio/              Paula audio output and resampling
 |   |-- Cia/                CIA 8520 emulation
 |   |-- Core/               System model, settings, clock, ROM resolver
-|   |-- Cpu/                Motorola 68000 core
+|   |-- Cpu/                Motorola 68000/020/030 integer cores and MMU
 |   |-- CustomChips/        Agnus, Denise, Paula, Copper, Blitter, DMA
 |   |-- DevTools/           Tracing and diagnostics helpers
 |   |-- Docs/               Technical plans and test specifications

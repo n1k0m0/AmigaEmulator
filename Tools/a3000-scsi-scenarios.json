@@ -1,0 +1,50 @@
+[
+  {
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "%TEMP%/amiga-models",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31.ROM",
+    "name": "A3000-SCSI-GuestCheck",
+    "traceExceptions": true,
+    "model": "A3000",
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "hardDiskReadOnly": true,
+    "strict": true,
+    "actions": [
+      {
+        "cycles": 60000000,
+        "label": "scsi-cold",
+        "type": "wait"
+      },
+      {
+        "type": "restore",
+        "label": "scsi-restored"
+      },
+      {
+        "cycles": 2000000,
+        "label": "continued",
+        "type": "wait"
+      },
+      {
+        "cold": false,
+        "label": "warm-reset",
+        "type": "reset"
+      },
+      {
+        "cycles": 60000000,
+        "label": "scsi-warm",
+        "type": "wait"
+      },
+      {
+        "cold": true,
+        "label": "cold-reset",
+        "type": "reset"
+      },
+      {
+        "cycles": 60000000,
+        "label": "scsi-second-cold",
+        "type": "wait"
+      }
+    ],
+    "boot": "SCSICheck-v2.adf"
+  }
+]

@@ -17,11 +17,147 @@ using System;
 
 namespace AmigaEmulator.Core
 {
-    /// <summary>
-    /// Gets a concrete Amiga hardware profile.
-    /// </summary>
+    /// <summary>Hardware models implemented by the current core.</summary>
+    public enum AmigaMachineModel { A500, A500Plus, A600, A2000Ocs, A2000Ecs, A1200, A4000Ec030, A3000 }
+    public enum AmigaChipset { Ocs, Ecs, Aga }
+    public enum AmigaCpuModel { M68000, M68EC020, M68020, M68EC030, M68030 }
+
+    /// <summary>Immutable machine capabilities and memory configuration.</summary>
     public sealed class AmigaModel
     {
+        public AmigaMachineModel Machine { get; private set; } = AmigaMachineModel.A500;
+        public AmigaChipset Chipset { get; private set; } = AmigaChipset.Ocs;
+        public AmigaCpuModel Cpu { get; private set; } = AmigaCpuModel.M68000;
+        public int ChipMasterClockHz { get; private set; }
+        public Media.AmigaIdeModel IdeModel { get; private set; }
+        public bool HasDesktopResources { get; private set; }
+        public bool HasRicohClock => HasDesktopResources;
+        public uint MotherboardFastRamStart => HasDesktopResources ? 0x08000000u - (uint)FastRamBytes : 0;
+        public bool HasBuiltInIde => Machine == AmigaMachineModel.A600 || Machine == AmigaMachineModel.A1200 || Machine == AmigaMachineModel.A4000Ec030;
+        public bool HasBuiltInScsi => Machine == AmigaMachineModel.A3000;
+        public bool HasBuiltInHardDiskController => HasBuiltInIde || HasBuiltInScsi;
+        public string HardDiskControllerName => HasBuiltInScsi ? "A3000 SCSI" : IdeModel == Media.AmigaIdeModel.A4000 ? "A4000 IDE" : "GAYLE IDE";
+        public bool HasPcmcia => Machine == AmigaMachineModel.A600 || Machine == AmigaMachineModel.A1200;
+        public bool HasBatteryClock => Machine == AmigaMachineModel.A500Plus ||
+            Machine == AmigaMachineModel.A2000Ocs || Machine == AmigaMachineModel.A2000Ecs || HasRicohClock;
+        public bool HasMainsTodClock => Machine == AmigaMachineModel.A2000Ocs || Machine == AmigaMachineModel.A2000Ecs || Machine == AmigaMachineModel.A3000;
+        public byte UnmappedReadValue => Machine == AmigaMachineModel.A2000Ocs || Machine == AmigaMachineModel.A2000Ecs ? (byte)0 : (byte)0xFF;
+        public ushort AgnusId => Chipset == AmigaChipset.Aga ? (ushort)0x2300 : Chipset == AmigaChipset.Ecs ? (ushort)0x2000 : (ushort)0;
+
+        public static AmigaModel Create(AmigaMachineModel machine, AmigaRamProfile ram)
+        {
+            if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
+            if (!Enum.IsDefined(ram)) throw new ArgumentOutOfRangeException(nameof(ram));
+            AmigaModel memory = ForRamProfile(ram);
+            if (machine == AmigaMachineModel.A500) return memory;
+            if (NormalizeRamProfile(machine, ram) != ram)
+                throw new ArgumentException("RAM layout is not supported by the selected machine revision.", nameof(ram));
+            string name = machine switch
+            {
+                AmigaMachineModel.A500Plus => "A500+ PAL ECS",
+                AmigaMachineModel.A600 => "A600 PAL ECS",
+                AmigaMachineModel.A2000Ocs => "A2000 PAL OCS",
+                AmigaMachineModel.A1200 => "A1200 PAL AGA",
+                AmigaMachineModel.A4000Ec030 => "A4000/030 PAL AGA",
+                AmigaMachineModel.A3000 => "A3000/030 PAL ECS",
+                _ => "A2000 PAL ECS"
+            };
+            int clock = machine == AmigaMachineModel.A1200 ? 14187580 : machine == AmigaMachineModel.A4000Ec030 || machine == AmigaMachineModel.A3000 ? 25000000 : memory.CpuClockHz;
+            return new AmigaModel(name, clock, memory.ChipRamBytes, memory.SlowRamBytes, memory.FastRamBytes,
+                memory.ChipCyclesPerLine, memory.LinesPerFrame, memory.VisibleWidth, memory.VisibleHeight)
+                { Machine = machine, Chipset = GetChipset(machine), ChipMasterClockHz = memory.ChipMasterClockHz,
+                  Cpu = machine == AmigaMachineModel.A1200 ? AmigaCpuModel.M68EC020 : machine == AmigaMachineModel.A4000Ec030 ? AmigaCpuModel.M68EC030 : machine == AmigaMachineModel.A3000 ? AmigaCpuModel.M68030 : AmigaCpuModel.M68000,
+                  IdeModel = machine == AmigaMachineModel.A4000Ec030 ? Media.AmigaIdeModel.A4000 : machine == AmigaMachineModel.A3000 ? Media.AmigaIdeModel.A3000Scsi : Media.AmigaIdeModel.Gayle,
+                  HasDesktopResources = machine == AmigaMachineModel.A4000Ec030 || machine == AmigaMachineModel.A3000 };
+        }
+
+        public static AmigaChipset GetChipset(AmigaMachineModel machine)
+        {
+            if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
+            if (machine == AmigaMachineModel.A1200 || machine == AmigaMachineModel.A4000Ec030) return AmigaChipset.Aga;
+            return machine == AmigaMachineModel.A500 || machine == AmigaMachineModel.A2000Ocs
+                ? AmigaChipset.Ocs : AmigaChipset.Ecs;
+        }
+
+        public static AmigaRamProfile GetDefaultRamProfile(AmigaMachineModel machine) =>
+            machine == AmigaMachineModel.A3000 ? AmigaRamProfile.Chip2MbFast4Mb :
+            GetChipset(machine) == AmigaChipset.Aga ? machine == AmigaMachineModel.A4000Ec030 ? AmigaRamProfile.Chip2MbFast4Mb : AmigaRamProfile.Chip2Mb :
+            GetChipset(machine) == AmigaChipset.Ocs ? AmigaRamProfile.Chip512KSlow512K : AmigaRamProfile.Chip1Mb;
+
+        public static AmigaRamProfile NormalizeRamProfile(AmigaMachineModel machine, AmigaRamProfile ram)
+        {
+            if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
+            if (!Enum.IsDefined(ram)) throw new ArgumentOutOfRangeException(nameof(ram));
+            if (machine == AmigaMachineModel.A500) return ram;
+            var info = AmigaOverlaySettingCatalog.GetRamProfileInfo(ram);
+            if (GetChipset(machine) == AmigaChipset.Aga || machine == AmigaMachineModel.A3000)
+                return info.FastRamBytes switch
+                {
+                    2 * 1024 * 1024 => AmigaRamProfile.Chip2MbFast2Mb,
+                    4 * 1024 * 1024 => AmigaRamProfile.Chip2MbFast4Mb,
+                    8 * 1024 * 1024 => AmigaRamProfile.Chip2MbFast8Mb,
+                    _ => AmigaRamProfile.Chip2Mb
+                };
+            if (machine == AmigaMachineModel.A2000Ocs)
+            {
+                if (info.ChipRamBytes == 512 * 1024) return ram;
+                return info.FastRamBytes switch
+                {
+                    2 * 1024 * 1024 => AmigaRamProfile.Chip512KSlow512KFast2Mb,
+                    4 * 1024 * 1024 => AmigaRamProfile.Chip512KSlow512KFast4Mb,
+                    8 * 1024 * 1024 => AmigaRamProfile.Chip512KSlow512KFast8Mb,
+                    _ => AmigaRamProfile.Chip512KSlow512K
+                };
+            }
+            if (info.ChipRamBytes >= 1024 * 1024 && info.SlowRamBytes == 0) return ram;
+            return info.FastRamBytes switch
+            {
+                2 * 1024 * 1024 => AmigaRamProfile.Chip1MbFast2Mb,
+                4 * 1024 * 1024 => AmigaRamProfile.Chip1MbFast4Mb,
+                8 * 1024 * 1024 => AmigaRamProfile.Chip2MbFast8Mb,
+                _ => AmigaRamProfile.Chip1Mb
+            };
+        }
+
+        /// <summary>CPU bring-up on an existing motherboard; not a released hardware profile.</summary>
+        public AmigaModel WithDevelopmentProcessor(AmigaCpuModel cpu, int clockHz)
+        {
+            if (!Enum.IsDefined(cpu)) throw new ArgumentOutOfRangeException(nameof(cpu));
+            if (HasDesktopResources && (cpu == AmigaCpuModel.M68000 || cpu == AmigaCpuModel.M68EC020))
+                throw new InvalidOperationException("Motherboard Fast RAM requires 32 physical CPU address lines.");
+            if (cpu == AmigaCpuModel.M68000 && clockHz != ChipMasterClockHz) throw new ArgumentException("68000 clock upgrades are not implemented.", nameof(clockHz));
+            if (clockHz < ChipMasterClockHz || clockHz > 100000000) throw new ArgumentOutOfRangeException(nameof(clockHz));
+            return new AmigaModel(Name + " CPU DEVELOPMENT", clockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
+                ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
+                { Machine = Machine, Chipset = Chipset, Cpu = cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel, HasDesktopResources = HasDesktopResources };
+        }
+
+        /// <summary>Custom-chip bring-up; not a complete A1200/A4000 motherboard.</summary>
+        public AmigaModel WithDevelopmentChipset(AmigaChipset chipset)
+        {
+            if (!Enum.IsDefined(chipset)) throw new ArgumentOutOfRangeException(nameof(chipset));
+            return new AmigaModel(Name + " CHIPSET DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
+                ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
+                { Machine = Machine, Chipset = chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel, HasDesktopResources = HasDesktopResources };
+        }
+
+        public AmigaModel WithDevelopmentIde(Media.AmigaIdeModel ide)
+        {
+            if (!Enum.IsDefined(ide)) throw new ArgumentOutOfRangeException(nameof(ide));
+            return new AmigaModel(Name + " IDE DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
+                ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
+                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = ide, HasDesktopResources = HasDesktopResources };
+        }
+
+        public AmigaModel WithDevelopmentDesktopResources()
+        {
+            if (Cpu == AmigaCpuModel.M68000 || Cpu == AmigaCpuModel.M68EC020)
+                throw new InvalidOperationException("Motherboard Fast RAM requires 32 physical CPU address lines.");
+            return new AmigaModel(Name + " DESKTOP DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
+                ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
+                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel, HasDesktopResources = true };
+        }
+
         public static AmigaModel ForRamProfile(AmigaRamProfile profile)
         {
             switch (profile)
@@ -147,6 +283,7 @@ namespace AmigaEmulator.Core
 
             Name = name;
             CpuClockHz = cpuClockHz;
+            ChipMasterClockHz = cpuClockHz;
             ChipRamBytes = chipRamBytes;
             SlowRamBytes = slowRamBytes;
             FastRamBytes = fastRamBytes;
@@ -171,7 +308,7 @@ namespace AmigaEmulator.Core
         /// </summary>
         public double ChipClockHz
         {
-            get { return CpuClockHz / 2.0; }
+            get { return ChipMasterClockHz / 2.0; }
         }
 
         /// <summary>

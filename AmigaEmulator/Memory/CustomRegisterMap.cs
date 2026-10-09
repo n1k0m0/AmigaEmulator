@@ -99,6 +99,21 @@ namespace AmigaEmulator.Core.Memory
         /// Constant for Set Clear Bit.
         /// </summary>
         public const ushort SetClearBit = 0x8000;
+        [field: NonSerialized]
+        public AmigaChipset Chipset { get; }
+        public bool HasEcs => Chipset != AmigaChipset.Ocs;
+        public bool HasAga => Chipset == AmigaChipset.Aga;
+        [field: NonSerialized] public AgaColorTable AgaColors { get; }
+        [field: NonSerialized]
+        public bool DiwHighWritten { get; private set; }
+
+        public CustomRegisterMap(AmigaChipset chipset = AmigaChipset.Ocs)
+        {
+            Chipset = chipset;
+            if (HasAga) AgaColors = new AgaColorTable();
+        }
+
+        internal void RestoreEcsState(bool diwHighWritten) => DiwHighWritten = HasEcs && diwHighWritten;
         /// <summary>
         /// Constant for Custom Bit Mask.
         /// </summary>
@@ -313,10 +328,13 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void Reset()
         {
+            AgaColors?.Reset();
+            DiwHighWritten = false;
             for (int index = 0; index < _registers.Length; index++)
             {
                 _registers[index] = 0;
             }
+            if (HasAga) { _registers[GetIndex(0x106)] = 0x0C00; _registers[GetIndex(0x10C)] = 0x0011; }
 
             _dmacon = 0;
             _adkcon = 0;
@@ -352,6 +370,7 @@ namespace AmigaEmulator.Core.Memory
         public void AttachCollisionUnit(CollisionUnit collisionUnit)
         {
             _collisionUnit = collisionUnit;
+            if (_collisionUnit != null) _collisionUnit.ExtendedControl = HasAga ? _registers[GetIndex(0x10E)] : (ushort)0;
         }
 
         /// <summary>
@@ -360,6 +379,10 @@ namespace AmigaEmulator.Core.Memory
         public ushort ReadWord(uint address)
         {
             uint offset = GetOffset(address);
+            if (offset == 0x07C && HasAga) return 0xFFF8;
+            if (HasAga && offset >= 0x180 && offset <= 0x1BE && (_registers[GetIndex(0x104)] & 0x100) != 0)
+                return AgaColors.ReadWord((int)((offset - 0x180) / 2), _registers[GetIndex(0x106)]);
+            if (offset == 0x07C) return HasEcs ? (ushort)0xFFFC : (ushort)0xFFFF;
             if (offset == Dmaconr)
             {
                 ushort status = _dmacon;
@@ -462,11 +485,42 @@ namespace AmigaEmulator.Core.Memory
         }
 
         /// <summary>
+        /// Reads an internal write-register latch, without CPU read-port decoding.
+        /// Video DMA uses this for its control, pointer and legacy color registers.
+        /// </summary>
+        internal ushort ReadStoredWord(uint address) =>
+            GetOffset(address) == Dmacon ? _dmacon : _registers[GetIndex(address)];
+
+        /// <summary>
         /// Writes a custom-chip register word and applies Amiga set/clear side effects.
         /// </summary>
         public void WriteWord(uint address, ushort value)
         {
             uint offset = GetOffset(address);
+            if (offset == 0x07C) return; // Chip identification is read-only.
+            if (HasEcs && (offset == 0x08E || offset == 0x090))
+                DiwHighWritten = false; // Legacy window writes release the ECS high-bit interlock.
+            if (offset == 0x1E4)
+            {
+                if (!HasEcs) return;
+                DiwHighWritten = true;
+                value &= HasAga ? (ushort)0xFFFF : (ushort)0x2F2F; // ECS: vertical high bits and horizontal bit 8.
+            }
+            if (!HasEcs && (offset == 0x05A || offset == 0x05C || offset == 0x05E || offset == 0x106)) return;
+            if (offset == 0x106 && HasEcs && !HasAga) value &= 0x0035; // ECS has no AGA sprite/palette-bank controls.
+            if (!HasAga && (offset == 0x10C || offset == 0x10E || offset == 0x1FC)) return;
+            if (HasAga && offset >= 0x180 && offset <= 0x1BE)
+            {
+                if ((_registers[GetIndex(0x104)] & 0x100) == 0)
+                    AgaColors.Write((int)((offset - 0x180) / 2), _registers[GetIndex(0x106)], value);
+                return;
+            }
+            if (offset == 0x05A && HasEcs)
+            {
+                // BLTCON0L changes only the minterm, preserving channel enables and shift.
+                _registers[GetIndex(0x040)] = (ushort)((_registers[GetIndex(0x040)] & 0xFF00) | (value & 0x00FF));
+                return;
+            }
             if (offset == Copjmp1)
             {
                 RaiseCopperJumpRequested(1);
@@ -492,9 +546,20 @@ namespace AmigaEmulator.Core.Memory
                 if (_collisionUnit != null)
                 {
                     _collisionUnit.Control = value;
+                    _collisionUnit.ExtendedControl = 0;
                 }
 
+                if (HasAga) _registers[GetIndex(0x10E)] = 0;
+
                 _registers[GetIndex(address)] = value;
+                return;
+            }
+
+            if (HasAga && offset == 0x10E)
+            {
+                value &= 0xC3;
+                _registers[GetIndex(offset)] = value;
+                if (_collisionUnit != null) _collisionUnit.ExtendedControl = value;
                 return;
             }
 
@@ -621,6 +686,9 @@ namespace AmigaEmulator.Core.Memory
             }
 
             ushort current = _registers[GetIndex(wordAddress)];
+            uint offset = GetOffset(wordAddress);
+            if (HasAga && offset >= 0x180 && offset <= 0x1BE)
+                current = AgaColors.ReadWord((int)((offset - 0x180) / 2), _registers[GetIndex(0x106)]);
             ushort updated = (address & 1) == 0
                 ? (ushort)((current & 0x00FF) | (value << 8))
                 : (ushort)((current & 0xFF00) | value);

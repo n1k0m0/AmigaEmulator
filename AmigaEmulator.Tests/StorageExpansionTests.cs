@@ -20,15 +20,83 @@ namespace AmigaEmulator.Tests
             yield return Test("deferred 68000 longword FIFO reads preserve distinct words", TestCpuFifo);
             yield return Test("savestate resumes partial ATA transfer and does not snapshot the host disk", TestState);
             yield return Test("Zorro II 2/4/8 MB Autoconfig assignment registers non-aliased RAM", TestAutoConfig);
+            yield return Test("A4000 IDE uses DD2020, automatic interrupt acknowledgement and distinct board state", TestA4000Wiring);
+            yield return Test("A4000 bus transfers preserve multi-sector writes, partial restore and read-only errors", TestA4000Transfer);
         }
         private static ChipTestCase Test(string name, Action run) => new ChipTestCase("Storage/Expansion", name,
             "ATA PIO; A600 Gayle; Amiga RDB/Autoconfig hardware interfaces", run);
+        private static void TestA4000Transfer()
+        {
+            using var fixture = new Fixture();
+            using var system = new AmigaSystem(AmigaModel.Create(AmigaMachineModel.A4000Ec030, AmigaRamProfile.Chip2MbFast4Mb));
+            var bus = system.Bus; bus.HardDisk.Mount(fixture.Path, false);
+            void Command(byte opcode)
+            {
+                bus.WriteByte(0xDD202Au, 2); // two sectors
+                bus.WriteByte(0xDD202Eu, 100); bus.WriteByte(0xDD2032u, 0); bus.WriteByte(0xDD2036u, 0);
+                bus.WriteByte(0xDD203Au, 0xE0); bus.WriteByte(0xDD203Eu, opcode);
+            }
+            Command(0x30);
+            for (int i = 0; i < 123; i++) bus.WriteWord(0xDD2020, (ushort)(i ^ 0xA5A5));
+            using (var state = new MemoryStream())
+            {
+                system.SaveState(new BinaryWriter(state));
+                bus.WriteWord(0xDD2020, 0xDEAD); state.Position = 0; system.LoadState(new BinaryReader(state));
+            }
+            for (int i = 123; i < 512; i++) bus.WriteWord(0xDD2020, (ushort)(i ^ 0xA5A5));
+            Check.Equal(2L, bus.HardDisk.WrittenSectors, "Both sectors committed through motherboard data port.");
+            Command(0x20);
+            for (int i = 0; i < 512; i++) Check.Equal((ushort)(i ^ 0xA5A5), bus.ReadWord(0xDD2020), "Big-endian FIFO word and sector ordering.");
+            Check.Equal(2L, bus.HardDisk.ReadSectors, "Both sectors read through actual A4000 bus wiring.");
+            bus.HardDisk.Mount(fixture.Path, true); Command(0x30);
+            Check.True((bus.ReadByte(0xDD203E) & 1) != 0, "Read-only image reports ATA error.");
+            Check.Equal((byte)4, bus.ReadByte(0xDD2026), "ATA command aborted without host writes.");
+        }
         private sealed class Fixture : IDisposable
         {
             private readonly string _directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "AmigaStorage-" + Guid.NewGuid().ToString("N"));
             public string Path { get; }
             public Fixture() { Directory.CreateDirectory(_directory); Path = System.IO.Path.Combine(_directory, "disk.hdf"); HardDiskImage.Create(Path, 16); }
             public void Dispose() => Directory.Delete(_directory, true);
+        }
+
+        private static void TestA4000Wiring()
+        {
+            using var fixture = new Fixture();
+            var board = AmigaModel.Create(AmigaMachineModel.A600, AmigaRamProfile.Chip2MbFast4Mb)
+                .WithDevelopmentProcessor(AmigaCpuModel.M68020, 14187580)
+                .WithDevelopmentChipset(AmigaChipset.Aga).WithDevelopmentIde(AmigaIdeModel.A4000);
+            using var system = new AmigaSystem(board); var bus = system.Bus; var ide = bus.HardDisk;
+            ide.Mount(fixture.Path, true);
+            Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(0xDA2020), "A4000 does not shadow the Gayle aperture.");
+            Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(0xDE1000), "A4000 has no serial Gayle ID register.");
+            Check.Equal(AmigaAddressRegion.GayleIde, bus.GetRegion(0xDD2020), "A4000 motherboard IDE aperture.");
+            bus.WriteByte(0xDD203E, 0xEC);
+            Check.True(ide.InterruptActive, "A4000 has no Gayle interrupt enable gate.");
+            Check.Equal((byte)0x80, bus.PeekByte(0xDD3020), "A4000 interrupt status.");
+            Check.Equal((byte)0x58, bus.ReadByte(0xDD303A), "Alternate status at base plus 101A.");
+            Check.True(ide.InterruptActive, "Alternate status does not acknowledge.");
+            Check.Equal((byte)0x58, bus.PeekByte(0xDD203E), "Peek retains status and IRQ.");
+            bus.ReadByte(0xDD203E); Check.True(!ide.InterruptActive, "Task-file status acknowledges automatically.");
+            Check.Equal((ushort)0x4000, bus.ReadWord(0xDD2020), "Word read consumes one IDENTIFY FIFO word.");
+            using (var state = new MemoryStream())
+            {
+                system.SaveState(new BinaryWriter(state));
+                ushort next = bus.ReadWord(0xDD2020);
+                state.Position = 0; system.LoadState(new BinaryReader(state));
+                Check.Equal(next, bus.ReadWord(0xDD2020), "Board wiring and pending FIFO retain their position.");
+                using var wrong = new AmigaSystem(board.WithDevelopmentIde(AmigaIdeModel.Gayle));
+                state.Position = 0; bool rejected = false;
+                try { wrong.LoadState(new BinaryReader(state)); } catch (InvalidDataException) { rejected = true; }
+                Check.True(rejected, "Different IDE wiring is rejected before loading RAM or opening disk images.");
+            }
+            for (int i = 2; i < 256; i++) bus.ReadWord(0xDD2020);
+            bus.WriteByte(0xDD303A, 2); bus.WriteByte(0xDD203E, 0xEC);
+            Check.True(!ide.InterruptActive, "ATA nIEN masks the A4000 interrupt.");
+            bus.WriteByte(0xDD303A, 0); Check.True(ide.InterruptActive, "Unmask restores the pending interrupt.");
+            bus.WriteByte(0xDD303A, 4); bus.WriteByte(0xDD303A, 0);
+            Check.Equal((byte)0x50, bus.ReadByte(0xDD203E), "Soft reset restores ready status.");
+            ide.Eject(); Check.Equal((byte)0xFF, bus.ReadByte(0xDD203E), "Empty drive cannot identify a phantom disk.");
         }
         private static uint Word(byte[] block, int index) => BinaryPrimitives.ReadUInt32BigEndian(block.AsSpan(index * 4, 4));
         private static void TestRdb()

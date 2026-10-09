@@ -1,0 +1,368 @@
+[
+  {
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "ram": "Chip2MbFast4Mb",
+    "name": "A1200-native31-HDF",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A1200.ROM",
+    "traceExceptions": true,
+    "strict": true,
+    "model": "A1200",
+    "actions": [
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "label": "restored",
+        "type": "restore",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "continued",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": false,
+        "label": "warm-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "warm-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "second-cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      }
+    ]
+  },
+  {
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "ram": "Chip2MbFast4Mb",
+    "name": "A3000-native31-HDF",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "strict": true,
+    "model": "A3000",
+    "actions": [
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "label": "restored",
+        "type": "restore",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "continued",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": false,
+        "label": "warm-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "warm-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "second-cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      }
+    ]
+  },
+  {
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "ram": "Chip2MbFast4Mb",
+    "name": "A4000Ec030-native31-HDF",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A4000.ROM",
+    "traceExceptions": true,
+    "strict": true,
+    "model": "A4000Ec030",
+    "actions": [
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "label": "restored",
+        "type": "restore",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "continued",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": false,
+        "label": "warm-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "warm-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "second-cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      }
+    ]
+  },
+  {
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "ram": "Chip2Mb",
+    "name": "A3000-native31-HDF-Chip2Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "strict": true,
+    "model": "A3000",
+    "actions": [
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "label": "restored",
+        "type": "restore",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "continued",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": false,
+        "label": "warm-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "warm-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "second-cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      }
+    ]
+  },
+  {
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "ram": "Chip2MbFast2Mb",
+    "name": "A3000-native31-HDF-Chip2MbFast2Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "strict": true,
+    "model": "A3000",
+    "actions": [
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "label": "restored",
+        "type": "restore",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "continued",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": false,
+        "label": "warm-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "warm-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "second-cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      }
+    ]
+  },
+  {
+    "hardDiskReadOnly": true,
+    "hardDisk": "%TEMP%/amiga-models/ecs-boot.hdf",
+    "ram": "Chip2MbFast8Mb",
+    "name": "A3000-native31-HDF-Chip2MbFast8Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "strict": true,
+    "model": "A3000",
+    "actions": [
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "label": "restored",
+        "type": "restore",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "continued",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": false,
+        "label": "warm-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "warm-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "cycles": 60000000,
+        "type": "wait",
+        "label": "second-cold-boot",
+        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "minimumHardDiskReads": 14
+      }
+    ]
+  },
+  {
+    "traceExceptions": true,
+    "name": "A3000-native31-empty-Chip2Mb",
+    "model": "A3000",
+    "actions": [
+      {
+        "label": "boot",
+        "type": "wait",
+        "cycles": 60000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "ram": "Chip2Mb",
+    "strict": true
+  },
+  {
+    "traceExceptions": true,
+    "name": "A3000-native31-empty-Chip2MbFast4Mb",
+    "model": "A3000",
+    "actions": [
+      {
+        "label": "boot",
+        "type": "wait",
+        "cycles": 60000000
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "ram": "Chip2MbFast4Mb",
+    "strict": true
+  }
+]

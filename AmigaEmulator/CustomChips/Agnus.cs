@@ -42,6 +42,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores model.
         /// </summary>
         private readonly AmigaModel _model;
+        [System.NonSerialized] private readonly ushort _agnusId;
         /// <summary>
         /// Stores DMA Scheduler.
         /// </summary>
@@ -73,7 +74,8 @@ namespace AmigaEmulator.Core.CustomChips
         public Agnus(AmigaModel model)
         {
             _model = model;
-            CustomRegisters = new CustomRegisterMap();
+            _agnusId = model.AgnusId;
+            CustomRegisters = new CustomRegisterMap(_model.Chipset);
             Collisions = new CollisionUnit();
             Bitplanes = new BitplaneUnit(CustomRegisters, null, _model.ChipRamBytes);
             Sprites = new SpriteUnit(CustomRegisters, null, _model.ChipRamBytes);
@@ -448,7 +450,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void UpdateBeamRegisters(int beamX, int beamY, long frame)
         {
-            ushort vpos = (ushort)((beamY >> 8) & 0x0001);
+            ushort vpos = (ushort)(_agnusId | ((beamY >> 8) & 0x0007));
             if ((frame & 1) != 0)
             {
                 vpos |= 0x8000;

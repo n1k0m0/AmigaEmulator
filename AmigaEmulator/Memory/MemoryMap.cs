@@ -53,7 +53,10 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         KickstartRom,
         GayleIde,
-        AutoConfig
+        AutoConfig,
+        BatteryClock,
+        Pcmcia,
+        MotherboardResources
     }
 
     /// <summary>

@@ -21,16 +21,16 @@ using AmigaEmulator.Core.Media;
 namespace AmigaEmulator.Core.SaveStates
 {
     /// <summary>
-    /// Reads and writes complete Amiga 500 savestate files.
+    /// Reads and writes complete, model-aware Amiga savestate files.
     /// </summary>
     public static class SaveStateFile
     {
         /// <summary>
-        /// Identifies Amiga 500 savestate files.
+        /// Retains the original magic so legacy A500 states remain readable.
         /// </summary>
         public const string Magic = "AMIGA500-STATE";
 
-        private const int Version = 1;
+        private const int Version = 2;
         private const string Extension = ".amigasav";
         private const string UnknownMediaDirectory = "Unknown";
 
@@ -88,6 +88,12 @@ namespace AmigaEmulator.Core.SaveStates
                 throw new ArgumentNullException(nameof(system));
             }
 
+            var declaredModel = AmigaModel.Create(system.Model.Machine, AmigaModel.GetDefaultRamProfile(system.Model.Machine));
+            if (system.Model.Cpu != declaredModel.Cpu || system.Model.CpuClockHz != declaredModel.CpuClockHz ||
+                system.Model.Chipset != declaredModel.Chipset || system.Model.IdeModel != declaredModel.IdeModel ||
+                system.Model.HasDesktopResources != declaredModel.HasDesktopResources)
+                throw new InvalidOperationException("Development processor/chipset states require the diagnostic core-state API.");
+
             string directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrWhiteSpace(directory))
             {
@@ -104,6 +110,7 @@ namespace AmigaEmulator.Core.SaveStates
                 writer.Write((int)kickstart);
                 writer.Write((int)ramProfile);
                 writer.Write((int)accuracyProfile);
+                writer.Write((int)system.Model.Machine);
                 writer.Write(screenshotWidth);
                 writer.Write(screenshotHeight);
                 StateSerializer.WriteUIntArray(writer, screenshotPixels);
@@ -119,12 +126,13 @@ namespace AmigaEmulator.Core.SaveStates
             using (var stream = File.OpenRead(path))
             using (var reader = new BinaryReader(stream))
             {
-                ValidateHeader(reader);
+                int fileVersion = ValidateHeader(reader);
                 long ticksUtc = reader.ReadInt64();
                 MountedMediaInfo mediaInfo = ReadMountedMediaInfo(reader);
                 var kickstart = (AmigaKickstart)reader.ReadInt32();
                 var ramProfile = (AmigaRamProfile)reader.ReadInt32();
                 var accuracyProfile = (AmigaAccuracyProfile)reader.ReadInt32();
+                var machineModel = fileVersion >= 2 ? (AmigaMachineModel)reader.ReadInt32() : AmigaMachineModel.A500;
                 int screenshotWidth = reader.ReadInt32();
                 int screenshotHeight = reader.ReadInt32();
                 uint[] pixels = StateSerializer.ReadUIntArray(reader);
@@ -132,7 +140,8 @@ namespace AmigaEmulator.Core.SaveStates
                 bool compatible =
                     Enum.IsDefined(typeof(AmigaKickstart), kickstart) &&
                     Enum.IsDefined(typeof(AmigaRamProfile), ramProfile) &&
-                    Enum.IsDefined(typeof(AmigaAccuracyProfile), accuracyProfile);
+                    Enum.IsDefined(typeof(AmigaAccuracyProfile), accuracyProfile) &&
+                    Enum.IsDefined(machineModel) && AmigaModel.NormalizeRamProfile(machineModel, ramProfile) == ramProfile;
 
                 return new SaveStateSlotMetadata
                 {
@@ -144,6 +153,7 @@ namespace AmigaEmulator.Core.SaveStates
                     MountedMedia = mediaInfo,
                     Kickstart = kickstart,
                     RamProfile = ramProfile,
+                    MachineModel = machineModel,
                     AccuracyProfile = accuracyProfile,
                     ScreenshotWidth = screenshotWidth,
                     ScreenshotHeight = screenshotHeight,
@@ -173,12 +183,19 @@ namespace AmigaEmulator.Core.SaveStates
             using (var stream = File.OpenRead(path))
             using (var reader = new BinaryReader(stream))
             {
-                ValidateHeader(reader);
+                int fileVersion = ValidateHeader(reader);
                 reader.ReadInt64();
                 MountedMediaInfo mediaInfo = ReadMountedMediaInfo(reader);
-                reader.ReadInt32();
-                reader.ReadInt32();
-                reader.ReadInt32();
+                var kickstart = (AmigaKickstart)reader.ReadInt32();
+                var ram = (AmigaRamProfile)reader.ReadInt32();
+                var accuracy = (AmigaAccuracyProfile)reader.ReadInt32();
+                var machine = fileVersion >= 2 ? (AmigaMachineModel)reader.ReadInt32() : AmigaMachineModel.A500;
+                if (machine != system.Model.Machine) throw new InvalidDataException("Savestate machine model does not match the current machine.");
+                if (!Enum.IsDefined(kickstart) || !Enum.IsDefined(ram) || !Enum.IsDefined(accuracy) || !Enum.IsDefined(machine))
+                    throw new InvalidDataException("Savestate contains unsupported machine settings.");
+                AmigaModel required = AmigaModel.Create(machine, ram);
+                if (required.ChipRamBytes != system.Model.ChipRamBytes || required.SlowRamBytes != system.Model.SlowRamBytes || required.FastRamBytes != system.Model.FastRamBytes)
+                    throw new InvalidDataException("Savestate RAM configuration does not match the current machine.");
                 reader.ReadInt32();
                 reader.ReadInt32();
                 StateSerializer.ReadUIntArray(reader);
@@ -243,7 +260,7 @@ namespace AmigaEmulator.Core.SaveStates
         /// <summary>
         /// Validates the file header.
         /// </summary>
-        private static void ValidateHeader(BinaryReader reader)
+        private static int ValidateHeader(BinaryReader reader)
         {
             string magic = reader.ReadString();
             int version = reader.ReadInt32();
@@ -251,6 +268,7 @@ namespace AmigaEmulator.Core.SaveStates
             {
                 throw new InvalidDataException("Unsupported Amiga savestate format.");
             }
+            return version;
         }
 
         /// <summary>

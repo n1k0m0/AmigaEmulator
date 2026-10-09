@@ -5,6 +5,8 @@ using System.Text;
 
 namespace AmigaEmulator.Core.Media
 {
+    // Persisted controller IDs: retain the historical enum name for existing states.
+    public enum AmigaIdeModel { Gayle, A4000, A3000Scsi }
     /// <summary>A600 Gayle ATA PIO master, with 512-byte sectors, CHS/LBA28 and level-2 interrupts.</summary>
     public sealed class GayleIdeController : IDisposable
     {
@@ -16,15 +18,50 @@ namespace AmigaEmulator.Core.Media
         private byte _status, _error, _control, _interruptEnable, _irqLatch, _configuration;
         private bool _writing, _identify, _irq, _planning;
         public bool Enabled { get; set; }
+        public AmigaIdeModel Model { get; }
+        public A3000ScsiController Scsi { get; }
+        public GayleIdeController(AmigaIdeModel model = AmigaIdeModel.Gayle)
+        {
+            if (!Enum.IsDefined(model)) throw new ArgumentOutOfRangeException(nameof(model));
+            Model = model;
+            if (model == AmigaIdeModel.A3000Scsi)
+                Scsi = new A3000ScsiController(() => _image, writing => { if (writing) WrittenSectors++; else ReadSectors++; });
+        }
+        internal GaylePcmciaController Pcmcia { get; set; }
         public HardDiskImage Image => _image;
         public long ReadSectors { get; private set; }
         public long WrittenSectors { get; private set; }
-        public bool InterruptActive => Enabled && _irq && (_control & 2) == 0 && (_interruptEnable & 0x80) != 0;
+        public bool InterruptActive => Scsi != null ? Enabled && Scsi.InterruptActive : Enabled && _irq && (_control & 2) == 0 &&
+            (Model == AmigaIdeModel.A4000 || (_interruptEnable & 0x80) != 0);
         private bool Master => (_registers[6] & 0x10) == 0;
         public void Mount(string path, bool readOnly)
         {
+            string fullPath = Path.GetFullPath(path);
+            if (_image != null && string.Equals(fullPath, _image.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                _image.Flush();
+                if (_image.ReadOnly != readOnly)
+                {
+                    // Writable HDFs are exclusively locked. A mode change on the
+                    // same file must release our own handle before reopening it.
+                    bool previousMode = _image.ReadOnly;
+                    _image.Dispose(); _image = null;
+                    try { _image = new HardDiskImage(fullPath, readOnly); }
+                    catch (Exception replacementError)
+                    {
+                        try { _image = new HardDiskImage(fullPath, previousMode); }
+                        catch (Exception recoveryError)
+                        {
+                            throw new IOException("Cannot reopen the current hard disk after a mode change failed.",
+                                new AggregateException(replacementError, recoveryError));
+                        }
+                        throw;
+                    }
+                }
+                Enabled = true; Reset(); return;
+            }
             // Open first, so a failed replacement keeps the current disk available.
-            var candidate = new HardDiskImage(path, readOnly);
+            var candidate = new HardDiskImage(fullPath, readOnly);
             try { _image?.Flush(); }
             catch { candidate.Dispose(); throw; }
             _image?.Dispose(); _image = candidate;
@@ -35,6 +72,7 @@ namespace AmigaEmulator.Core.Media
         public void Dispose() { _image?.Dispose(); _image = null; }
         public void Reset()
         {
+            Scsi?.Reset();
             Array.Clear(_registers); Array.Clear(_buffer);
             _registers[2] = _registers[3] = 1; _registers[6] = 0xA0;
             _status = _image == null ? (byte)0 : (byte)0x50; _error = 1;
@@ -42,13 +80,20 @@ namespace AmigaEmulator.Core.Media
             _writing = _identify = _irq = _planning = false; ReadSectors = WrittenSectors = 0;
         }
         public bool Maps(uint address) => Enabled &&
-            ((address >= 0xDA0000 && address <= 0xDAFFFF) || (address >= 0xDE0000 && address <= 0xDEFFFF));
+            (Scsi != null ? Scsi.Maps(address) : Model == AmigaIdeModel.A4000 ? address >= 0xDD2000 && address <= 0xDD3FFF :
+            (address >= 0xDA0000 && address <= 0xDAFFFF) || (address >= 0xDE0000 && address <= 0xDEFFFF));
         public static bool IsData(uint address) => address >= 0xDA0000 && address < 0xDA4000 && Register(address) == 0;
+        public bool IsDataPort(uint address) => Scsi == null && (Model == AmigaIdeModel.A4000
+            ? address >= 0xDD2000 && address < 0xDD3000 && Register(address) == 0 : IsData(address));
         private static int Register(uint address) => (int)(((address & 0xFFFF) & ~0x2020u) >> 2);
-        public void BeginPlanning() { _planning = true; _previewPosition = _position; _previewId = _idPosition; }
-        public void EndPlanning() => _planning = false;
+        public void BeginPlanning() { _planning = true; _previewPosition = _position; _previewId = _idPosition; Pcmcia?.BeginPlanning(); Scsi?.BeginPlanning(); }
+        public void EndPlanning() { _planning = false; Pcmcia?.EndPlanning(); Scsi?.EndPlanning(); }
         public byte ReadByte(uint address, bool peek = false)
         {
+            if (Scsi != null) return Scsi.ReadByte(address, peek);
+            if (Model == AmigaIdeModel.A4000 && !Maps(address)) return 0xFF;
+            if (Model == AmigaIdeModel.A4000 && (address & 0xFFFF) == 0x3020)
+                return (byte)(_irq && (_control & 2) == 0 ? 0x80 : 0);
             if (address >= 0xDE0000)
             {
                 if ((address & 0xFFFF) != 0x1000) return 0;
@@ -56,14 +101,15 @@ namespace AmigaEmulator.Core.Media
                 return bit == 0 || bit == 1 || bit == 3 ? (byte)0x80 : (byte)0;
             }
             uint offset = address & 0xFFFF;
-            if (offset == 0x8000) return _irq && (_control & 2) == 0 ? (byte)0x80 : (byte)0;
-            if (offset == 0x9000) return (byte)(_irqLatch | (_irq && (_control & 2) == 0 ? 0x80 : 0));
+            if (offset == 0x8000) return (byte)((Pcmcia?.Status ?? 0) | (_irq && (_control & 2) == 0 ? 0x80 : 0));
+            if (offset == 0x9000) return (byte)(_irqLatch | (Pcmcia?.Changes ?? 0) | (_irq && (_control & 2) == 0 ? 0x80 : 0));
             if (offset == 0xA000) return _interruptEnable;
-            if (offset == 0xB000) return _configuration;
+            if (offset == 0xB000) return Pcmcia?.Configuration ?? _configuration;
             if (offset >= 0x4000) return 0;
             int reg = Register(address);
             if (reg == 0) return (byte)(ReadData(peek) >> 8);
-            if (!Master || _image == null) return reg == 7 || reg == 0x406 ? (byte)0 : (byte)0xFF;
+            if (_image == null) return reg == 7 || reg == 0x406 ? (byte)0xFF : (byte)0;
+            if (!Master) return reg == 7 || reg == 0x406 ? (byte)0 : (byte)0xFF;
             if (reg == 1) return _error;
             if (reg == 7 || reg == 0x406)
             {
@@ -74,8 +120,12 @@ namespace AmigaEmulator.Core.Media
         }
         public void WriteByte(uint address, byte value)
         {
+            if (_planning) return;
+            if (Scsi != null) { Scsi.WriteByte(address, value); return; }
+            if (Model == AmigaIdeModel.A4000 && (!Maps(address) || (address & 0xFFFF) == 0x3020)) return;
             if (address >= 0xDE0000) { _idPosition = 0; return; }
             uint offset = address & 0xFFFF;
+            Pcmcia?.WriteRegister(offset, value);
             if (offset == 0x9000) { _irqLatch &= value; return; }
             if (offset == 0xA000) { _interruptEnable = value; return; }
             if (offset == 0xB000) { _configuration = (byte)(value & 15); return; }
@@ -209,6 +259,7 @@ namespace AmigaEmulator.Core.Media
             writer.Write(_registers); writer.Write(_buffer); writer.Write(_position); writer.Write(_remaining); writer.Write(_idPosition); writer.Write(_sector);
             writer.Write(_status); writer.Write(_error); writer.Write(_control); writer.Write(_interruptEnable); writer.Write(_irqLatch); writer.Write(_configuration);
             writer.Write(_writing); writer.Write(_identify); writer.Write(_irq); writer.Write(ReadSectors); writer.Write(WrittenSectors);
+            Scsi?.SaveState(writer);
         }
         public void LoadState(BinaryReader reader)
         {
@@ -221,6 +272,7 @@ namespace AmigaEmulator.Core.Media
             _status = reader.ReadByte(); _error = reader.ReadByte(); _control = reader.ReadByte(); _interruptEnable = reader.ReadByte(); _irqLatch = reader.ReadByte(); _configuration = reader.ReadByte();
             _writing = reader.ReadBoolean(); _identify = reader.ReadBoolean(); _irq = reader.ReadBoolean(); ReadSectors = reader.ReadInt64(); WrittenSectors = reader.ReadInt64(); _planning = false;
             if (_position < 0 || _position >= 512 || (_position & 1) != 0 || _remaining < 0 || _remaining > 256) throw new InvalidDataException("Invalid ATA transfer state.");
+            Scsi?.LoadState(reader);
         }
     }
 }

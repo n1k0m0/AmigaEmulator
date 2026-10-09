@@ -22,7 +22,7 @@ namespace AmigaEmulator.Core.CustomChips
     /// <summary>
     /// Tracks sprite pointer DMA, sprite data latches, and sprite pixel output.
     /// </summary>
-    public sealed class SpriteUnit
+    public sealed partial class SpriteUnit
     {
         /// <summary>
         /// Defines the DMACON custom register offset or bit mask.
@@ -69,6 +69,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores states.
         /// </summary>
         private readonly SpriteState[] _states = new SpriteState[8];
+        [NonSerialized] private readonly bool _hasAga;
         /// <summary>
         /// Stores last Beam Y.
         /// </summary>
@@ -100,6 +101,7 @@ namespace AmigaEmulator.Core.CustomChips
         public SpriteUnit(AmigaEmulator.Core.Memory.CustomRegisterMap registers, System.Func<uint, ushort> readChipWord, int chipRamBytes)
         {
             _registers = registers;
+            _hasAga = registers?.HasAga == true;
             _readChipWord = readChipWord;
             _dmaAddress = new ChipDmaAddress(chipRamBytes);
             for (int sprite = 0; sprite < _states.Length; sprite++)
@@ -138,6 +140,7 @@ namespace AmigaEmulator.Core.CustomChips
         public void SaveState(BinaryWriter writer)
         {
             StateSerializer.WriteObjectFields(writer, this, "_registers", "_readChipWord");
+            if (_hasAga) SaveAgaState(writer);
         }
 
         /// <summary>
@@ -146,6 +149,7 @@ namespace AmigaEmulator.Core.CustomChips
         public void LoadState(BinaryReader reader)
         {
             StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord");
+            if (_hasAga) LoadAgaState(reader);
             foreach (SpriteState state in _states)
             {
                 if (!state.DmaStateKnown)
@@ -177,7 +181,8 @@ namespace AmigaEmulator.Core.CustomChips
             for (int sprite = 0; sprite < _states.Length; sprite++)
             {
                 SpriteState state = _states[sprite];
-                if (state.LineActive && (state.DataA != 0 || state.DataB != 0))
+                if ((state.LineActive && HasSpriteData(state)) ||
+                    (state.OutputValid && (state.OutputDataA | state.OutputDataB) != 0))
                 {
                     return true;
                 }
@@ -203,7 +208,8 @@ namespace AmigaEmulator.Core.CustomChips
             for (int sprite = 0; sprite < 8; sprite++)
             {
                 _spritePointers[sprite] = ReadSpritePointer(sprite);
-                if (_spritePointers[sprite] != 0 || HasDirectSpriteRegisters(sprite))
+                if (_spritePointers[sprite] != 0 || HasDirectSpriteRegisters(sprite) ||
+                    (_states[sprite].OutputValid && (_states[sprite].OutputDataA | _states[sprite].OutputDataB) != 0))
                 {
                     HasActiveSprites = true;
                 }
@@ -247,6 +253,9 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
+            // Copper can write DATA before the first DMA slot of a new line.
+            // Begin the line first so the later slot cannot discard that arm.
+            UpdateForBeamY(beamY);
             SpriteState state = _states[spriteIndex];
             HasActiveSprites = true;
             if (localOffset == 0u || localOffset == 2u)
@@ -263,16 +272,19 @@ namespace AmigaEmulator.Core.CustomChips
                 // POS can reuse the data at another horizontal comparison on
                 // this line. CTL disarms; old nonzero data cannot rearm it.
                 state.LineActive = localOffset == 0u && wasArmed && !state.Terminated;
+                if (localOffset == 2u) state.OutputValid = false;
                 return;
             }
 
             if (localOffset == 4u)
             {
                 state.DataA = value;
+                if (_hasAga) SetAgaDirectData(state, value, true);
             }
             else if (localOffset == 6u)
             {
                 state.DataB = value;
+                if (_hasAga) SetAgaDirectData(state, value, false);
             }
             else
             {
@@ -335,7 +347,7 @@ namespace AmigaEmulator.Core.CustomChips
                         spriteMask |= 1 << (sprite + 1);
                         if (!rendered)
                         {
-                            argb = ReadColor(16 + color);
+                            argb = ReadSpriteColor(16 + color, sprite + 1);
                             spriteGroup = sprite >> 1;
                             rendered = true;
                         }
@@ -353,7 +365,7 @@ namespace AmigaEmulator.Core.CustomChips
                         if (!rendered)
                         {
                             int group = sprite >> 1;
-                            argb = ReadColor(16 + (group * 4) + colorIndex);
+                            argb = ReadSpriteColor(16 + (group * 4) + colorIndex, sprite);
                             spriteGroup = group;
                             rendered = true;
                         }
@@ -410,10 +422,10 @@ namespace AmigaEmulator.Core.CustomChips
             int sourceRight = int.MinValue;
             foreach (SpriteState state in _states)
             {
-                if (!state.LineActive || (state.DataA | state.DataB) == 0) continue;
+                if (!state.LineActive || !HasSpriteData(state)) continue;
                 int left = state.HStart * 2;
                 sourceLeft = System.Math.Min(sourceLeft, left);
-                sourceRight = System.Math.Max(sourceRight, left + 32);
+                sourceRight = System.Math.Max(sourceRight, left + GetSpriteOutputWidth(state));
             }
             sourceWidth = sourceRight > sourceLeft ? sourceRight - sourceLeft : 0;
             if (sourceWidth == 0)
@@ -438,11 +450,11 @@ namespace AmigaEmulator.Core.CustomChips
                 SpriteState oddState = _states[odd];
                 if (!oddState.LineActive || (oddState.Ctl & 0x80) == 0 ||
                     !evenState.LineActive || evenState.HStart != oddState.HStart ||
-                    (evenState.DataA | evenState.DataB | oddState.DataA | oddState.DataB) == 0)
+                    (!HasSpriteData(evenState) && !HasSpriteData(oddState)))
                     continue;
                 int left = oddState.HStart * 2;
                 sourceLeft = System.Math.Min(sourceLeft, left);
-                right = System.Math.Max(right, left + 32);
+                right = System.Math.Max(right, left + GetSpriteOutputWidth(oddState));
                 pairs++;
             }
             sourceWidth = right > sourceLeft ? right - sourceLeft : 0;
@@ -476,6 +488,7 @@ namespace AmigaEmulator.Core.CustomChips
             _lastBeamY = beamY;
             for (int sprite = 0; sprite < 8; sprite++)
             {
+                _states[sprite].OutputValid = false;
                 if (_dmaEnabled && _spritePointers[sprite] != 0)
                 {
                     _states[sprite].LineActive = false;
@@ -511,6 +524,7 @@ namespace AmigaEmulator.Core.CustomChips
 
             UpdateForBeamY(beamY);
             SpriteState state = _states[sprite];
+            if (_hasAga) { TickAgaDma(state, phase, beamY); return; }
             if (phase == 0)
             {
                 state.PendingFetch = SelectFetchKind(state, beamY);
@@ -540,7 +554,7 @@ namespace AmigaEmulator.Core.CustomChips
             state.Pointer = _dmaAddress.Add(state.Pointer, 4u);
             state.LineActive = true;
             state.Active = beamY >= state.VStart && beamY < state.VStop;
-            if (beamY >= state.VStop)
+            if (beamY == state.VStop)
             {
                 state.Active = false;
             }
@@ -570,7 +584,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return SpriteFetchKind.Control;
             }
 
-            if (beamY >= state.VStop)
+            if (beamY == state.VStop)
             {
                 state.DmaActive = false;
                 return SpriteFetchKind.Control;
@@ -612,13 +626,14 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             uint address = start;
+            uint stride = _hasAga ? (uint)(AgaSpriteWords * 4) : 4u;
             for (int block = 0; block < 128; block++)
             {
                 ushort pos = ReadChip(address);
-                ushort ctl = ReadChip(address + 2u);
+                ushort ctl = ReadChip(address + stride / 2);
                 if (pos == 0 && ctl == 0)
                 {
-                    uint terminatorEnd = _dmaAddress.Add(address, 4u);
+                    uint terminatorEnd = _dmaAddress.Add(address, stride);
                     if (IsAddressAtOrAfter(state.Pointer, terminatorEnd, start))
                     {
                         state.ResetForFrame(start);
@@ -632,13 +647,18 @@ namespace AmigaEmulator.Core.CustomChips
 
                 int vStart = ((pos >> 8) & 0xFF) | ((ctl & 0x0004) != 0 ? 0x100 : 0);
                 int vStop = ((ctl >> 8) & 0xFF) | ((ctl & 0x0002) != 0 ? 0x100 : 0);
+                if (_hasAga)
+                {
+                    vStart |= (ctl & 0x40) != 0 ? 0x200 : 0;
+                    vStop |= (ctl & 0x20) != 0 ? 0x200 : 0;
+                }
                 if (vStop <= vStart)
                 {
                     vStop += 256;
                 }
 
-                uint dataStart = _dmaAddress.Add(address, 4u);
-                uint dataEnd = _dmaAddress.Add(dataStart, (uint)Math.Max(0, vStop - vStart) * 4u);
+                uint dataStart = _dmaAddress.Add(address, stride);
+                uint dataEnd = _dmaAddress.Add(dataStart, (uint)Math.Max(0, vStop - vStart) * stride);
                 if (IsAddressInRange(state.Pointer, address, dataEnd, start))
                 {
                     return;
@@ -684,23 +704,31 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 state.DataA = ReadSpriteRegister(sprite, 4);
                 state.DataB = ReadSpriteRegister(sprite, 6);
+                if (_hasAga)
+                {
+                    SetAgaDirectData(state, state.DataA, true);
+                    SetAgaDirectData(state, state.DataB, false);
+                }
             }
         }
 
         /// <summary>
         /// Applies Control Words to the current state.
         /// </summary>
-        private static void ApplyControlWords(SpriteState state, ushort pos, ushort ctl, bool clearOutputLatch)
+        private void ApplyControlWords(SpriteState state, ushort pos, ushort ctl, bool clearOutputLatch)
         {
             state.Pos = pos;
             state.Ctl = ctl;
             state.Attached = (ctl & 0x0080) != 0;
             state.VStart = ((pos >> 8) & 0xFF) | ((ctl & 0x0004) != 0 ? 0x100 : 0);
             state.VStop = ((ctl >> 8) & 0xFF) | ((ctl & 0x0002) != 0 ? 0x100 : 0);
-            if (state.VStop <= state.VStart)
+            if (_hasAga)
             {
-                state.VStop += 256;
+                state.VStart |= (ctl & 0x40) != 0 ? 0x200 : 0;
+                state.VStop |= (ctl & 0x20) != 0 ? 0x200 : 0;
             }
+            // These are independent beam comparators, not a wrapped height.
+            // A zero VSTOP must not create a fictitious stop at line 256.
 
             state.HStart = (((pos & 0x00FF) << 1) | (ctl & 0x0001)) - FramebufferLowresStart;
             // A zero pair is a loaded terminator, not an uninitialized latch.
@@ -728,20 +756,25 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             SpriteState state = _states[sprite];
-            if (!state.LineActive)
-            {
-                return false;
-            }
-
             attached = state.Attached;
+            if (_hasAga) return TryReadAgaPixel(state, screenX, out color);
             int lowresX = screenX >> 1;
-            if (lowresX < state.HStart || lowresX >= state.HStart + 16)
+            if (state.LineActive && lowresX >= state.HStart && lowresX < state.HStart + 16 &&
+                (!state.OutputValid || state.OutputHStart != state.HStart))
+            {
+                state.OutputValid = true;
+                state.OutputHStart = state.HStart;
+                state.OutputDataA = state.DataA;
+                state.OutputDataB = state.DataB;
+                state.OutputWidth = 16;
+            }
+            if (!state.OutputValid || lowresX < state.OutputHStart || lowresX >= state.OutputHStart + 16)
             {
                 return false;
             }
 
-            int bit = 15 - (lowresX - state.HStart);
-            color = ((state.DataA >> bit) & 1) | (((state.DataB >> bit) & 1) << 1);
+            int bit = 15 - (lowresX - state.OutputHStart);
+            color = (int)((state.OutputDataA >> bit) & 1) | (int)(((state.OutputDataB >> bit) & 1) << 1);
             return true;
         }
 
@@ -769,7 +802,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private ushort ReadRegister(uint offset)
         {
-            return _registers != null ? _registers.ReadWord(offset) : (ushort)0;
+            return _registers != null ? _registers.ReadStoredWord(offset) : (ushort)0;
         }
 
         /// <summary>
@@ -801,6 +834,17 @@ namespace AmigaEmulator.Core.CustomChips
             byte green = ExpandNibble((color >> 4) & 0x0F);
             byte blue = ExpandNibble(color & 0x0F);
             return 0xFF000000u | ((uint)red << 16) | ((uint)green << 8) | blue;
+        }
+
+        private uint ReadSpriteColor(int index, int sprite)
+        {
+            if (_registers.HasAga)
+            {
+                ushort control = ReadRegister(0x10C);
+                int bank = ((control >> ((sprite & 1) == 0 ? 4 : 0)) & 15) * 16;
+                return _registers.AgaColors.ReadArgb(bank + (index & 15));
+            }
+            return ReadColor(index);
         }
 
         /// <summary>
@@ -868,6 +912,14 @@ namespace AmigaEmulator.Core.CustomChips
             public bool DmaActive;
             /// <summary>Distinguishes saved DMA activation from legacy state layouts.</summary>
             public bool DmaStateKnown;
+            // The comparator copies DATA/DATB into a separate output shifter.
+            // Early POS writes for horizontal reuse cannot cut off that burst.
+            public bool OutputValid;
+            public int OutputHStart;
+            public ulong OutputDataA;
+            public ulong OutputDataB;
+            public int OutputWidth;
+            public int OutputShift;
             /// <summary>
             /// Stores Line Active.
             /// </summary>
@@ -880,6 +932,10 @@ namespace AmigaEmulator.Core.CustomChips
             /// Stores first word fetched by the first slot of a sprite DMA pair.
             /// </summary>
             public ushort PendingFirstWord;
+            [NonSerialized] public ulong AgaDataA;
+            [NonSerialized] public ulong AgaDataB;
+            [NonSerialized] public ulong AgaPendingA;
+            [NonSerialized] public int AgaWidth = 16;
 
             /// <summary>
             /// Resets the value state.
@@ -909,9 +965,12 @@ namespace AmigaEmulator.Core.CustomChips
                 Active = false;
                 DmaActive = false;
                 DmaStateKnown = true;
+                OutputValid = false;
                 LineActive = false;
                 PendingFetch = SpriteFetchKind.None;
                 PendingFirstWord = 0;
+                AgaDataA = AgaDataB = AgaPendingA = 0;
+                AgaWidth = 16;
             }
         }
 

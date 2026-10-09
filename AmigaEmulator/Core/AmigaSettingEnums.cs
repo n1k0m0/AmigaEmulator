@@ -147,7 +147,10 @@ namespace AmigaEmulator.Core
         Chip1MbFast2Mb,
         Chip1MbFast4Mb,
         Chip2MbFast2Mb,
-        Chip2MbFast4Mb
+        Chip2MbFast4Mb,
+        Chip512KSlow512KFast2Mb,
+        Chip512KSlow512KFast4Mb,
+        Chip512KSlow512KFast8Mb
     }
 
     /// <summary>

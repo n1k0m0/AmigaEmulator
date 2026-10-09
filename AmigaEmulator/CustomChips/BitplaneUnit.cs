@@ -23,8 +23,10 @@ namespace AmigaEmulator.Core.CustomChips
     /// <summary>
     /// Tracks bitplane registers, DMA fetches, modulos, and latched pixel data.
     /// </summary>
-    public sealed class BitplaneUnit
+    public sealed partial class BitplaneUnit
     {
+        [NonSerialized]
+        private readonly bool _hasEcs;
         /// <summary>
         /// Constant for Pal Visible Top.
         /// </summary>
@@ -101,7 +103,13 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Constant for Max Planes.
         /// </summary>
-        private const int MaxPlanes = 6;
+        [NonSerialized] private readonly int MaxPlanes;
+        [NonSerialized] private readonly bool _hasAga;
+        [NonSerialized] private int _fetchWords = 1, _fetchStep = 8, _fetchUnit = 8, _fetchStopExclusive;
+        [NonSerialized] private int[] _fetchSequence = s_hiresFetchSequence;
+        [NonSerialized] private static readonly ulong[] s_expandedPlaneBytes = BuildExpandedPlaneBytes();
+        [NonSerialized] private int _pixelCacheRow = int.MinValue, _pixelCacheWord = -1, _pixelCachePlanes;
+        [NonSerialized] private ulong _pixelCacheFirst, _pixelCacheSecond;
         /// <summary>
         /// Constant for Max Fetched Words.
         /// </summary>
@@ -182,6 +190,7 @@ namespace AmigaEmulator.Core.CustomChips
         private bool _decodedRegistersValid;
         private ulong _decodedControlKey;
         private ulong _decodedWindowKey;
+        private int _decodedDiwHighKey;
         private bool _fetchRowsMonotonic;
         /// <summary>
         /// Stores completed DMA Line.
@@ -381,6 +390,9 @@ namespace AmigaEmulator.Core.CustomChips
         public BitplaneUnit(CustomRegisterMap registers, Func<uint, ushort> readChipWord, int chipRamBytes)
         {
             _registers = registers;
+            _hasEcs = registers != null && registers.HasEcs;
+            _hasAga = registers != null && registers.HasAga;
+            MaxPlanes = _hasAga ? 8 : 6;
             _readChipWord = readChipWord;
             _dmaAddress = new ChipDmaAddress(chipRamBytes);
             _fetchedWords = new ushort[MaxPlanes, MaxFetchedWords];
@@ -426,6 +438,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Reset()
         {
+            _pixelCacheRow = int.MinValue;
             _decodedRegistersValid = false;
             _fetchRowsMonotonic = true;
             EnabledPlanes = 0;
@@ -476,6 +489,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void ResetDmaLineTracking()
         {
+            _pixelCacheRow = int.MinValue;
             _fetchRowsMonotonic = true;
             _alignNewPlaneFetchMask = 0;
             for (int plane = 0; plane < MaxPlanes; plane++)
@@ -512,7 +526,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void SaveState(BinaryWriter writer)
         {
-            StateSerializer.WriteObjectFields(writer, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_fetchRowsMonotonic");
+            StateSerializer.WriteObjectFields(writer, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_decodedDiwHighKey", "_fetchRowsMonotonic");
         }
 
         /// <summary>
@@ -520,8 +534,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
-            StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_fetchRowsMonotonic");
+            StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_decodedDiwHighKey", "_fetchRowsMonotonic");
             _decodedRegistersValid = false;
+            _pixelCacheRow = int.MinValue;
             _fetchRowsMonotonic = false;
             _paletteDirty = true;
         }
@@ -548,9 +563,12 @@ namespace AmigaEmulator.Core.CustomChips
 
             if (registerOffset == Bplcon0 ||
                 registerOffset == Bplcon1 ||
+                (registerOffset == Bplcon2 && _registers != null && _registers.HasEcs) ||
+                (_hasAga && registerOffset == 0x1FC) ||
                 registerOffset == Dmacon ||
                 registerOffset == Diwstrt ||
                 registerOffset == Diwstop ||
+                registerOffset == 0x1E4 ||
                 registerOffset == Ddfstrt ||
                 registerOffset == Ddfstop)
             {
@@ -570,17 +588,30 @@ namespace AmigaEmulator.Core.CustomChips
             ushort diwStop = Read(Diwstop);
             ushort ddfStart = Read(Ddfstrt);
             ushort ddfStop = Read(Ddfstop);
-            int enabledPlanes = Math.Min(6, (bplcon0 >> 12) & 0x07);
+            int enabledPlanes = _hasAga && (bplcon0 & 0x10) != 0 ? 8 : Math.Min(MaxPlanes, (bplcon0 >> 12) & 7);
             bool hasValidDataLatch = HasValidDataLatch(enabledPlanes);
+            int fmode = _hasAga ? Read(0x1FC) & 3 : 0;
 
             ulong controlKey = bplcon0 | ((ulong)bplcon1 << 16) | ((ulong)(dmacon & 0x0300) << 32) |
                 (hasValidDataLatch ? 1UL << 48 : 0);
+            bool ecs = _hasEcs;
+            bool killEhb = ecs && (Read(Bplcon2) & 0x0200) != 0;
+            if (killEhb) controlKey |= 1UL << 49;
+            if (_hasAga) controlKey |= (ulong)fmode << 50;
             ulong windowKey = diwStart | ((ulong)diwStop << 16) | ((ulong)ddfStart << 32) | ((ulong)ddfStop << 48);
-            if (_decodedRegistersValid && controlKey == _decodedControlKey && windowKey == _decodedWindowKey)
+            int diwHighKey = _registers != null && _registers.DiwHighWritten ? Read(0x1E4) | 0x10000 : 0;
+            if (_decodedRegistersValid && controlKey == _decodedControlKey && windowKey == _decodedWindowKey && diwHighKey == _decodedDiwHighKey)
                 return;
             _decodedControlKey = controlKey;
             _decodedWindowKey = windowKey;
+            _decodedDiwHighKey = diwHighKey;
             _decodedRegistersValid = true;
+            _fetchWords = fmode == 3 ? 4 : fmode != 0 ? 2 : 1;
+            bool hires = (bplcon0 & 0x8000) != 0;
+            _fetchStep = (hires ? 4 : 8) * _fetchWords;
+            _fetchUnit = 8 * _fetchWords;
+            _fetchSequence = (_hasAga && enabledPlanes > 4 && _fetchStep >= 8) || (!hires && enabledPlanes > 4)
+                ? s_lowresFetchSequence : s_hiresFetchSequence;
 
             if (enabledPlanes > EnabledPlanes && _activeDmaRow != int.MinValue)
             {
@@ -595,7 +626,8 @@ namespace AmigaEmulator.Core.CustomChips
             _ham = (bplcon0 & 0x0800) != 0;
             _dualPlayfield = (bplcon0 & 0x0400) != 0;
             bool previousEhb = _ehb;
-            _ehb = !_ham && EnabledPlanes == 6;
+            _ehb = !_ham && EnabledPlanes == 6 &&
+                (!ecs || (!_hires && !_dualPlayfield && !killEhb));
             if (previousEhb != _ehb)
             {
                 _paletteDirty = true;
@@ -614,6 +646,7 @@ namespace AmigaEmulator.Core.CustomChips
             int span = _ddfStop - _ddfStart;
             int fetchGroups = span < 0 ? 0 : ((span + fetchUnit - 1) / fetchUnit) + 1;
             _wordsPerFetchedLine = fetchGroups * fetchUnit / fetchStart;
+            _fetchStopExclusive = _ddfStart + _wordsPerFetchedLine / _fetchWords * _fetchStep;
             int bitplaneBits = _wordsPerFetchedLine * 16;
             _planeDisplayWidth = bitplaneBits;
             _displayFetchWidth = _hires ? bitplaneBits : bitplaneBits * 2;
@@ -630,6 +663,24 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void RefreshHorizontalDisplayWindow(ushort diwStart, ushort diwStop)
         {
+            if (_registers != null && _registers.HasEcs && !_registers.DiwHighWritten &&
+                (diwStart != 0 || diwStop != 0))
+            {
+                // Legacy Denise comparators imply HSTART bit 8=0 and HSTOP bit 8=1.
+                _diwLeft = ((diwStart & 0xFF) - 0x81) * 2;
+                _diwRight = (((diwStop & 0xFF) | 0x100) - 0x81) * 2;
+                return;
+            }
+            if (_registers != null && _registers.DiwHighWritten)
+            {
+                ushort high = Read(0x1E4);
+                int left = (diwStart & 0xFF) | ((high & 0x20) << 3);
+                int right = (diwStop & 0xFF) | ((high & 0x2000) >> 5);
+                // DIW horizontal values are lowres pixels; host X=0 is the standard $81 edge.
+                _diwLeft = (left - 0x81) * 2;
+                _diwRight = (right - 0x81) * 2;
+                return;
+            }
             int rawLeft = diwStart & 0x00FF;
             int rawRight = diwStop & 0x00FF;
             _diwLeft = Math.Min(0, GetDisplayLeft());
@@ -667,6 +718,19 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         public bool IsHiresMode => _hires;
+        public bool IsAga => _hasAga;
+        public bool ClipSpritesToDisplayWindow => _hasEcs;
+        public bool BorderBlankEnabled => _hasEcs &&
+            (Read(Bplcon0) & 1) != 0 && (Read(0x106) & 0x0020) != 0;
+        public uint BorderColorArgb => BorderBlankEnabled ? 0xFF000000u : ReadColorArgb(0);
+
+        public bool TryGetDisplayWindowOnLine(int beamY, out int left, out int right)
+        {
+            left = _diwLeft;
+            right = _diwRight;
+            return IsInsideDiw(beamY) && right > left;
+        }
+        public bool IsInsideDisplayWindow(int screenX, int beamY) => IsInsideDiw(screenX, beamY);
 
         public bool IsBitplaneDisplayActiveOnLine(int beamY) => _displayActive && IsInsideDiw(beamY);
 
@@ -682,7 +746,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int fetchStep = GetFetchStep();
-            int fetchStopExclusive = _ddfStart + (_wordsPerFetchedLine * fetchStep);
+            int fetchStopExclusive = _fetchStopExclusive;
             return beamX >= _ddfStart && beamX < fetchStopExclusive && ((beamX - _ddfStart) % fetchStep) == 0;
         }
 
@@ -721,6 +785,7 @@ namespace AmigaEmulator.Core.CustomChips
                 _dmaPointers[plane] = _dmaAddress.Add(_dmaPointers[plane], 2u);
             }
 
+            InvalidatePixelWord(row, wordIndex);
             _lastFetchedWordIndex = wordIndex;
             if (wordIndex + 1 >= _wordsPerFetchedLine)
             {
@@ -740,7 +805,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             int fetchStep = GetFetchStep();
-            int fetchStopExclusive = _ddfStart + (_wordsPerFetchedLine * fetchStep);
+            int fetchStopExclusive = _fetchStopExclusive;
             int fetchOffset = beamX - _ddfStart;
             if (fetchOffset < 0 || beamX >= fetchStopExclusive)
             {
@@ -766,6 +831,8 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 return;
             }
+
+            if (_hasAga) { FetchAgaPlaneGroup(beamX, row); return; }
 
             int fetchStep = GetFetchStep();
             int fetchOffset = beamX - _ddfStart;
@@ -845,6 +912,7 @@ namespace AmigaEmulator.Core.CustomChips
                 _dataLatchValid[committedPlane] = true;
             }
 
+            InvalidatePixelWord(row, wordIndex);
             _lastFetchedWordIndex = wordIndex;
             if (wordIndex + 1 >= _wordsPerFetchedLine)
             {
@@ -908,7 +976,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             planeMask = ReadPlaneMask(displayX, row);
-            return _dualPlayfield ? ResolveDualPlayfieldColorIndex(planeMask) : planeMask & 0x3F;
+            return _dualPlayfield ? ResolveDualPlayfieldColorIndex(planeMask) : planeMask;
         }
 
         /// <summary>
@@ -941,7 +1009,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public uint ReadColorArgb(int index)
         {
-            return ReadColor(index);
+            // BPLAM applies to playfield indices, never COLOR00 borders or the HAM seed.
+            return _hasAga ? _registers.AgaColors.ReadArgb(index) : ReadColor(index);
         }
 
         /// <summary>
@@ -949,14 +1018,29 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public uint ResolveColorArgb(int index, uint previousArgb)
         {
+            if (!_hasAga) return ResolveLegacyColorArgb(index, previousArgb);
+            index &= 0xFF;
+            if (_ham && EnabledPlanes == 8) return ResolveHam8(index, previousArgb);
+            return ResolveHam6Color(index, previousArgb, true);
+        }
+
+        public uint ResolveLegacyColorArgb(int index, uint previousArgb)
+        {
             index &= 0x3F;
+            if (!_ham) { EnsurePaletteCache(); return _paletteArgb[index]; }
+            return ResolveHam6Color(index, previousArgb, false);
+        }
+
+        private uint ResolveHam6Color(int index, uint previousArgb, bool aga)
+        {
             if (_ham)
             {
                 int control = (index >> 4) & 0x03;
                 int data = index & 0x0F;
                 if (control == 0)
                 {
-                    return ReadColor(data);
+                    if (aga) return ReadAgaColor(data);
+                    EnsurePaletteCache(); return _paletteArgb[data];
                 }
 
                 byte component = ExpandNibble(data);
@@ -973,7 +1057,7 @@ namespace AmigaEmulator.Core.CustomChips
                 return (previousArgb & 0xFFFF00FFu) | ((uint)component << 8);
             }
 
-            return ReadColor(index);
+            return ReadAgaColor(index);
         }
 
         /// <summary>
@@ -1032,7 +1116,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int ReadSinglePlayfieldColorIndex(int displayX, int row)
         {
-            return ReadPlaneMask(displayX, row) & 0x3F;
+            return ReadPlaneMask(displayX, row);
         }
 
         /// <summary>
@@ -1042,6 +1126,18 @@ namespace AmigaEmulator.Core.CustomChips
         {
             int mask = 0;
             int bitplaneX = _hires ? displayX : displayX >> 1;
+            if (_dmaActive && _scrollOdd == _scrollEven)
+            {
+                int firstX = bitplaneX - _scrollOdd;
+                if ((uint)firstX >= (uint)_planeDisplayWidth) return 0;
+                int word = firstX >> 4;
+                if ((_pixelCacheRow == row && _pixelCacheWord == word && _pixelCachePlanes == EnabledPlanes) ||
+                    TryCachePixelWord(row, word))
+                {
+                    ulong pixels = (firstX & 8) == 0 ? _pixelCacheFirst : _pixelCacheSecond;
+                    return (int)(pixels >> ((firstX & 7) * 8)) & 255;
+                }
+            }
             for (int plane = 0; plane < EnabledPlanes; plane++)
             {
                 int firstX = bitplaneX - (((plane & 1) == 0) ? _scrollOdd : _scrollEven);
@@ -1056,7 +1152,40 @@ namespace AmigaEmulator.Core.CustomChips
                 mask |= ((word >> bit) & 1) << plane;
             }
 
-            return mask & 0x3F;
+            // EnabledPlanes is bounded by the chipset at register decoding.
+            return mask;
+        }
+
+        private bool TryCachePixelWord(int row, int word)
+        {
+            if ((uint)word >= MaxFetchedWords) return false;
+            ulong first = 0, second = 0;
+            for (int plane = 0; plane < EnabledPlanes; plane++)
+            {
+                // Do not cache an incomplete DMA group: a later chip slot can
+                // supply the missing planes before the next output pixel.
+                if (_fetchedRows[plane, word] != row) return false;
+                ushort bits = _fetchedWords[plane, word];
+                first |= s_expandedPlaneBytes[bits >> 8] << plane;
+                second |= s_expandedPlaneBytes[bits & 255] << plane;
+            }
+            _pixelCacheRow = row; _pixelCacheWord = word; _pixelCachePlanes = EnabledPlanes;
+            _pixelCacheFirst = first; _pixelCacheSecond = second;
+            return true;
+        }
+
+        private void InvalidatePixelWord(int row, int word)
+        {
+            if (_pixelCacheRow == row && _pixelCacheWord == word) _pixelCacheRow = int.MinValue;
+        }
+
+        private static ulong[] BuildExpandedPlaneBytes()
+        {
+            var expanded = new ulong[256];
+            for (int bits = 0; bits < 256; bits++)
+            for (int pixel = 0; pixel < 8; pixel++)
+                expanded[bits] |= (ulong)((bits >> (7 - pixel)) & 1) << (pixel * 8);
+            return expanded;
         }
 
         /// <summary>
@@ -1095,7 +1224,7 @@ namespace AmigaEmulator.Core.CustomChips
             bool playfield2Priority = (Read(Bplcon2) & 0x0040) != 0;
             if (playfield2Priority)
             {
-                return playfield2 != 0 ? 8 + playfield2 : playfield1;
+                return playfield2 != 0 ? GetSecondPlayfieldOffset() + playfield2 : playfield1;
             }
 
             if (playfield1 != 0)
@@ -1103,7 +1232,17 @@ namespace AmigaEmulator.Core.CustomChips
                 return playfield1;
             }
 
-            return playfield2 != 0 ? 8 + playfield2 : 0;
+            return playfield2 != 0 ? GetSecondPlayfieldOffset() + playfield2 : 0;
+        }
+
+        public bool IsSecondPlayfieldSelected(int planeMask)
+        {
+            if (!_dualPlayfield) return false;
+            int oddMask = _hasAga ? 0x55 : 0x15;
+            int evenMask = _hasAga ? 0xAA : 0x2A;
+            bool first = (planeMask & oddMask) != 0;
+            bool second = (planeMask & evenMask) != 0;
+            return second && (!first || (Read(Bplcon2) & 0x40) != 0);
         }
 
         /// <summary>
@@ -1181,6 +1320,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void InvalidateFetchedRow(int row)
         {
+            if (_pixelCacheRow == row) _pixelCacheRow = int.MinValue;
             for (int plane = 0; plane < MaxPlanes; plane++)
             {
                 for (int word = 0; word < MaxFetchedWords; word++)
@@ -1318,6 +1458,9 @@ namespace AmigaEmulator.Core.CustomChips
             if (_dmaActive)
             {
                 fetchLeadIn += GetDmaPipelineLeadIn();
+                // Include the hires DMA/shifter word in ECS output coordinates.
+                // DIWHIGH clips display output, not the earlier DMA fetch span.
+                if (_registers != null && _registers.HasEcs && _hires) fetchLeadIn += 16;
             }
 
             return fetchLeadIn;
@@ -1388,15 +1531,15 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetFetchStep()
         {
-            return GetFetchStart();
+            return _fetchStep;
         }
 
         /// <summary>
         /// Returns the indivisible OCS DDF block size in color clocks.
         /// </summary>
-        private static int GetFetchUnit()
+        private int GetFetchUnit()
         {
-            return 8;
+            return _fetchUnit;
         }
 
         /// <summary>
@@ -1410,17 +1553,17 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Applies the A500 OCS DDFSTRT mask and default value.
         /// </summary>
-        private static int NormalizeDdfStart(ushort value)
+        private int NormalizeDdfStart(ushort value)
         {
-            return value == 0 ? 0x38 : value & 0x00FC;
+            return value == 0 ? 0x38 : value & (_registers != null && _registers.HasEcs ? 0x00FE : 0x00FC);
         }
 
         /// <summary>
         /// Applies the A500 OCS DDFSTOP mask and default value.
         /// </summary>
-        private static int NormalizeDdfStop(ushort value)
+        private int NormalizeDdfStop(ushort value)
         {
-            return value == 0 ? 0xD0 : value & 0x00FC;
+            return value == 0 ? 0xD0 : value & (_registers != null && _registers.HasEcs ? 0x00FE : 0x00FC);
         }
 
         /// <summary>
@@ -1442,12 +1585,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int[] GetFetchSequence()
         {
-            if (_hires || EnabledPlanes <= 4)
-            {
-                return s_hiresFetchSequence;
-            }
-
-            return s_lowresFetchSequence;
+            return _fetchSequence;
         }
 
         /// <summary>
@@ -1503,7 +1641,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private ushort GetEffectiveBplcon0()
         {
-            return (ushort)(Read(Bplcon0) & 0xFF0F);
+            return (ushort)(Read(Bplcon0) & (_hasAga ? 0xFFFF : 0xFF0F));
         }
 
         /// <summary>
@@ -1534,16 +1672,20 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Decodes the vertical DIW start line from the OCS display-window registers.
         /// </summary>
-        private static int CalculateDiwTop(ushort diwStart)
+        private int CalculateDiwTop(ushort diwStart)
         {
+            if (_registers != null && _registers.DiwHighWritten)
+                return ((diwStart >> 8) & 0xFF) | ((Read(0x1E4) & 0x000F) << 8);
             return diwStart == 0 ? PalVisibleTop : (diwStart >> 8) & 0xFF;
         }
 
         /// <summary>
         /// Decodes the vertical DIW stop line, including the PAL wrap used by top overscan screens.
         /// </summary>
-        private static int CalculateDiwBottom(ushort diwStart, ushort diwStop)
+        private int CalculateDiwBottom(ushort diwStart, ushort diwStop)
         {
+            if (_registers != null && _registers.DiwHighWritten)
+                return ((diwStop >> 8) & 0xFF) | (Read(0x1E4) & 0x0F00);
             int top = CalculateDiwTop(diwStart);
             int bottom = diwStop == 0 ? top + PalVisibleHeight : (diwStop >> 8) & 0xFF;
             if (bottom <= top || (top < PalVisibleTop && bottom <= PalVisibleTop + 32))
@@ -1989,6 +2131,10 @@ namespace AmigaEmulator.Core.CustomChips
         private uint ReadColor(int index)
         {
             EnsurePaletteCache();
+            if (_hasAga)
+            {
+                return ReadAgaColor(index);
+            }
             return _paletteArgb[index & 0x3F];
         }
 
@@ -2048,7 +2194,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private ushort Read(uint registerOffset)
         {
-            return _registers != null ? _registers.ReadWord(registerOffset) : (ushort)0;
+            return _registers != null ? _registers.ReadStoredWord(registerOffset) : (ushort)0;
         }
 
         /// <summary>

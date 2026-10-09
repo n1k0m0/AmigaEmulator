@@ -101,13 +101,19 @@ namespace AmigaEmulator.Tests
             tests.AddRange(RegressionSelfTests.Build());
             tests.AddRange(CpuTimingTests.Build());
             tests.AddRange(M68kOpcodeMatrixTests.Build());
+            tests.AddRange(M68k020Tests.Build());
+            tests.AddRange(M68030MmuTests.Build());
+            tests.AddRange(AgaTests.Build());
             tests.AddRange(AgnusTests.Build());
             tests.AddRange(DeniseBitplaneTests.Build());
             tests.AddRange(SpriteTests.Build());
+            tests.AddRange(SpriteShifterTests.Build());
             tests.AddRange(PaulaTests.Build());
             tests.AddRange(IntegrationTests.Build());
             tests.AddRange(SaveStateTests.Build());
             tests.AddRange(StorageExpansionTests.Build());
+            tests.AddRange(MachineModelTests.Build());
+            tests.AddRange(A3000Tests.Build());
             if (options.IncludeAdf)
             {
                 tests.AddRange(GoldenAdfTests.Build(options));
@@ -4222,7 +4228,8 @@ namespace AmigaEmulator.Tests
         {
             var settings = new AmigaEmulatorSettings();
             Check.Equal(AmigaRamProfile.Chip1Mb, settings.RamProfile, "New settings should default to the 1MB Chip RAM profile.");
-            Check.Equal(5, settings.Version, "Settings version should track the monitor aperture default migration.");
+            Check.Equal(6, settings.Version, "Settings version should track machine model migration.");
+            Check.Equal(AmigaMachineModel.A500, settings.MachineModel, "Existing settings must retain the A500 hardware model.");
             Check.Equal(AmigaMonitorAperture.Crt, settings.MonitorAperture, "New settings should default to the CRT monitor aperture.");
         }
 

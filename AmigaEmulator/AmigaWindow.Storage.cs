@@ -15,29 +15,29 @@ namespace AmigaEmulator
         private void MountConfiguredHardDisk()
         {
             var controller = _system.Bus.HardDisk;
-            controller.Enabled = _settings.HardDiskEnabled;
+            controller.Enabled = _system.Model.HasBuiltInHardDiskController || _settings.HardDiskEnabled;
             if (!controller.Enabled || string.IsNullOrWhiteSpace(_settings.HardDiskPath)) return;
             try { controller.Mount(_settings.HardDiskPath, _settings.HardDiskReadOnly); }
             catch (Exception ex)
             {
                 _statusText = "HDF MOUNT FAILED: " + ex.Message;
-                controller.Enabled = false;
+                controller.Enabled = _system.Model.HasBuiltInHardDiskController;
             }
         }
 
         private void DrawHardDiskOverlay(Graphics graphics)
         {
             var disk = _system.Bus.HardDisk.Image;
-            DrawMenu(graphics, "HARD DISK - GAYLE IDE", "ENTER SELECT  LEFT/RIGHT SIZE  ESC BACK", new[]
+            DrawMenu(graphics, "HARD DISK - " + _system.Model.HardDiskControllerName, "ENTER SELECT  LEFT/RIGHT SIZE  ESC BACK", new[]
             {
-                MenuLine("CONTROLLER", _settings.HardDiskEnabled ? "ON - A600 IDE" : "OFF"),
+                MenuLine("CONTROLLER", _system.Model.HasBuiltInHardDiskController ? "BUILT-IN " + _system.Model.HardDiskControllerName : _settings.HardDiskEnabled ? "ON - A600 IDE" : "OFF"),
                 MenuLine("NEW IMAGE SIZE", _settings.NewHardDiskSizeMiB + " MiB"),
                 MenuLine("CREATE IMAGE", "NEW HDF WITH DH0 PARTITION"),
                 MenuLine("MOUNT IMAGE", disk == null ? "SELECT .HDF" : Path.GetFileName(disk.Path)),
                 MenuLine("EJECT IMAGE", disk == null ? "EMPTY" : "FLUSH AND DISCONNECT"),
                 MenuLine("WRITE PROTECTION", _settings.HardDiskReadOnly ? "READ ONLY" : "READ / WRITE"),
                 MenuLine("BOOT FROM HD", _settings.BootFromHardDisk ? "ON - ENTER RESTARTS" : "OFF - ENTER RESTARTS"),
-                MenuLine("KICKSTART", "SELECT A600 2.05 / 3.1 ROM")
+                MenuLine("KICKSTART", "SELECT ROM FOR THIS MODEL")
             }, _hardDiskSelection);
         }
 
@@ -56,6 +56,7 @@ namespace AmigaEmulator
                 switch (_hardDiskSelection)
                 {
                     case 0:
+                        if (_system.Model.HasBuiltInHardDiskController) { _statusText = _system.Model.HardDiskControllerName + " IS BUILT IN - EJECT TO REMOVE THE DRIVE"; return; }
                         _settings.HardDiskEnabled = !_settings.HardDiskEnabled;
                         ReconfigureHardDisk();
                         break;
@@ -101,7 +102,7 @@ namespace AmigaEmulator
                         }
                         AmigaEmulatorSettingsStore.Save(_settings);
                         _system.Reset(true); ResetAudioOutput(); ResetEmulationClock();
-                        _statusText = _settings.BootFromHardDisk ? "BOOTING IDE - REQUIRES INSTALLED SYSTEM AND A600 ROM" : "HD BOOT PREFERENCE OFF";
+                        _statusText = _settings.BootFromHardDisk ? "BOOTING " + _system.Model.HardDiskControllerName + " - REQUIRES INSTALLED SYSTEM AND MATCHING ROM" : "HD BOOT PREFERENCE OFF";
                         break;
                     case 7: RefreshRomEntries(); ShowOverlay(OverlayMode.Roms); break;
                 }
@@ -116,7 +117,7 @@ namespace AmigaEmulator
             bool oldReadOnly = controller.Image?.ReadOnly ?? true, oldEnabled = controller.Enabled;
             try
             {
-                controller.Eject(); controller.Enabled = _settings.HardDiskEnabled;
+                controller.Eject(); controller.Enabled = _system.Model.HasBuiltInHardDiskController || _settings.HardDiskEnabled;
                 if (controller.Enabled && !string.IsNullOrWhiteSpace(_settings.HardDiskPath)) controller.Mount(_settings.HardDiskPath, _settings.HardDiskReadOnly);
             }
             catch

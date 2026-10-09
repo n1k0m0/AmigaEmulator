@@ -37,8 +37,11 @@ static void Run(Scenario scenario, string output)
     Directory.CreateDirectory(directory);
     string mediaRoot = Environment.ExpandEnvironmentVariables(scenario.MediaRoot ?? "%USERPROFILE%/Documents/AmigaEmulator");
     string save = scenario.Save == null ? null : Environment.ExpandEnvironmentVariables(scenario.Save);
-    var ram = save != null ? SaveStateFile.ReadMetadata(save).RamProfile : Enum.Parse<AmigaRamProfile>(scenario.Ram ?? "Chip512KSlow512K");
-    var model = AmigaModel.ForRamProfile(ram);
+    var saveMetadata = save != null ? SaveStateFile.ReadMetadata(save) : null;
+    var machine = saveMetadata != null ? saveMetadata.MachineModel : Enum.Parse<AmigaMachineModel>(scenario.Model ?? "A500");
+    var ram = saveMetadata != null ? saveMetadata.RamProfile : scenario.Ram != null
+        ? Enum.Parse<AmigaRamProfile>(scenario.Ram) : AmigaModel.GetDefaultRamProfile(machine);
+    var model = AmigaModel.Create(machine, ram);
     var accuracy = (scenario.Strict ? AmigaAccuracyOptions.Compatible : AmigaAccuracyOptions.Fast).Clone();
     using var system = new AmigaSystem(model, accuracy);
     using var exceptionTrace = scenario.TraceExceptions
@@ -59,7 +62,7 @@ static void Run(Scenario scenario, string output)
     if (ideTrace != null) system.Bus.ReadObserved += (address, size, value, region) =>
     { if (address >= 0xE80000 && address < 0xE90000) ideTrace.WriteLine($"PC={system.Cpu.PC:X6} R{size} {address:X6}={value:X8}"); };
     var mounted = MountedMediaInfo.None;
-    var kickstart = save == null ? AmigaKickstart.Kickstart13 : SaveStateFile.ReadMetadata(save).Kickstart;
+    var kickstart = save == null ? scenario.KickstartRom == null ? AmigaKickstart.Kickstart13 : AmigaKickstart.Custom : saveMetadata.Kickstart;
     if (save != null)
     {
         var metadata = SaveStateFile.ReadMetadata(save);
@@ -71,10 +74,12 @@ static void Run(Scenario scenario, string output)
         byte[] rom;
         bool loaded = scenario.KickstartRom == null
             ? KickstartRomResolver.TryLoadDefaultKickstart(out rom, out _)
-            : KickstartRomResolver.TryLoadKickstart(scenario.KickstartRom, out rom, out _);
+            : KickstartRomResolver.TryLoadKickstart(Environment.ExpandEnvironmentVariables(scenario.KickstartRom), out rom, out _);
         if (!loaded) throw new FileNotFoundException("Kickstart ROM missing");
-        if (scenario.CreateHardDiskMiB > 0) HardDiskImage.Create(scenario.HardDisk, scenario.CreateHardDiskMiB);
-        if (scenario.HardDisk != null) system.Bus.HardDisk.Mount(scenario.HardDisk, scenario.HardDiskReadOnly);
+        string hardDisk = scenario.HardDisk == null ? null : Environment.ExpandEnvironmentVariables(scenario.HardDisk);
+        if (scenario.CreateHardDiskMiB > 0) HardDiskImage.Create(hardDisk, scenario.CreateHardDiskMiB);
+        if (hardDisk != null) system.Bus.HardDisk.Mount(hardDisk, scenario.HardDiskReadOnly);
+        if (scenario.PcmciaSramMiB != 0) system.Bus.Pcmcia.InsertSram(scenario.PcmciaSramMiB * 1024 * 1024);
         system.LoadKickstart(rom);
         if (scenario.Boot != null) Mount(scenario.Boot, 0);
     }
@@ -114,10 +119,34 @@ static void Run(Scenario scenario, string output)
                 system.RunChipCycles(400_000);
                 break;
             case "disk": Mount(action.Disk, action.Drive); break;
+            case "reset": system.Reset(action.Cold); break;
+            case "restore":
+                using (var state = new MemoryStream())
+                {
+                    var beforeHash = SHA256.HashData(MemoryMarshal.AsBytes(system.PresentedFrameBuffer.Pixels.AsSpan()));
+                    uint beforePc = system.Cpu.PC;
+                    using (var writer = new BinaryWriter(state, System.Text.Encoding.UTF8, true)) system.SaveState(writer);
+                    system.RunChipCycles(model.ChipCyclesPerLine * model.LinesPerFrame);
+                    state.Position = 0;
+                    using var reader = new BinaryReader(state);
+                    system.LoadState(reader);
+                    if (system.Cpu.PC != beforePc || !beforeHash.AsSpan().SequenceEqual(
+                        SHA256.HashData(MemoryMarshal.AsBytes(system.PresentedFrameBuffer.Pixels.AsSpan()))))
+                        throw new InvalidOperationException("Restore changed the saved CPU PC or presented framebuffer.");
+                }
+                break;
             default: throw new ArgumentException($"Unknown action {action.Type}");
         }
         Capture(action.Label ?? action.Type, timer.Elapsed.TotalSeconds);
+        if (action.ExpectedFrameHash != null && !string.Equals(action.ExpectedFrameHash,
+            Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(system.PresentedFrameBuffer.Pixels.AsSpan()))),
+            StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Framebuffer differs from the reviewed reference after {action.Label ?? action.Type}.");
+        if (system.Bus.HardDisk.ReadSectors < action.MinimumHardDiskReads)
+            throw new InvalidOperationException($"Expected at least {action.MinimumHardDiskReads} HDF sector reads after {action.Label ?? action.Type}.");
     }
+    if (scenario.ExpectPcmciaRam && !GuestMemory().Any(m => m.Lower >= 0x600000 && m.Lower < 0x600400 && m.Upper == 0x600000 + system.Bus.Pcmcia.Size))
+        throw new InvalidOperationException("Guest Exec did not register the inserted PCMCIA SRAM card.");
     SaveStateFile.Write(Path.Combine(directory, "checkpoint.amigasav"), system, mounted,
         kickstart, ram, scenario.Strict ? AmigaAccuracyProfile.Compatible : AmigaAccuracyProfile.Fast, system.PresentedFrameBuffer.Pixels, 704, 288);
     Console.WriteLine($"DONE {scenario.Name} frame={system.FrameCounter} PC={system.Cpu.PC:X6}");
@@ -147,10 +176,32 @@ static void Run(Scenario scenario, string output)
             pc = system.Cpu.PC.ToString("X6"), hash = Convert.ToHexString(SHA256.HashData(bytes)),
             presentation = system.GetPresentationDebugInfo(), cpu = system.GetCpuDebugInfo(), stopped = system.Cpu.IsStopped, exceptions,
             disk = system.Bus.FloppyController.GetDebugInfo(), hardDisk = new { path = system.Bus.HardDisk.Image?.Path, reads = system.Bus.HardDisk.ReadSectors, writes = system.Bus.HardDisk.WrittenSectors },
-            fastRam = new { configured = system.Bus.AutoConfig.Configured, address = system.Bus.AutoConfig.BaseAddress }, accuracy = accuracy.Name, imagePath, gameplay = "requires-visual-review" }));
+            fastRam = new { configured = model.HasDesktopResources ? model.FastRamBytes != 0 : system.Bus.AutoConfig.Configured,
+                address = model.HasDesktopResources ? model.MotherboardFastRamStart : system.Bus.AutoConfig.BaseAddress },
+            pcmcia = new { size = system.Bus.Pcmcia.Size, status = system.Bus.PeekByte(0xDA8000), changes = system.Bus.PeekByte(0xDA9000),
+                guestMemory = scenario.ExpectPcmciaRam ? GuestMemory() : null }, accuracy = accuracy.Name, imagePath, gameplay = "requires-visual-review" }));
         log.Flush();
     }
+
+    List<GuestMemoryRegion> GuestMemory()
+    {
+        var result = new List<GuestMemoryRegion>();
+        uint exec = system.Bus.PeekLong(4);
+        if (exec < 0x400 || exec > 0x9FFF00) return result;
+        uint header = system.Bus.PeekLong(exec + 322); // ExecBase.MemList, shared by the classic 68000 ROMs.
+        var visited = new HashSet<uint>();
+        while (header >= 0x400 && header <= 0x9FFFE0 && visited.Add(header) && result.Count < 32)
+        {
+            uint next = system.Bus.PeekLong(header);
+            if (next == 0) break; // List's tail sentinel is not a MemHeader.
+            result.Add(new GuestMemoryRegion(system.Bus.PeekLong(header + 20), system.Bus.PeekLong(header + 24)));
+            header = next;
+        }
+        return result;
+    }
 }
+
+record GuestMemoryRegion(uint Lower, uint Upper);
 
 class Scenario
 {
@@ -159,11 +210,14 @@ class Scenario
     public string Boot { get; set; }
     public string Save { get; set; }
     public string Ram { get; set; }
+    public string Model { get; set; }
     public bool Strict { get; set; }
     public string KickstartRom { get; set; }
     public string HardDisk { get; set; }
     public bool HardDiskReadOnly { get; set; } = true;
     public int CreateHardDiskMiB { get; set; }
+    public int PcmciaSramMiB { get; set; }
+    public bool ExpectPcmciaRam { get; set; }
     public bool TraceIde { get; set; }
     public bool TraceExceptions { get; set; }
     public List<ScenarioAction> Actions { get; set; }
@@ -179,4 +233,7 @@ class ScenarioAction
     public string Button { get; set; }
     public string Disk { get; set; }
     public int Drive { get; set; }
+    public bool Cold { get; set; }
+    public string ExpectedFrameHash { get; set; }
+    public long MinimumHardDiskReads { get; set; }
 }
