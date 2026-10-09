@@ -627,6 +627,57 @@ Original ADFs and existing user checkpoints remain unchanged. No commit/push.
 Next for this report: replay the user's exact pre-swap save, distinguish host
 failure from Guru/reset/hang, and add a failing regression before a targeted fix.
 
+### Speedball 2 scrolling viewport correction — 2026-10-09
+
+Reproduced the reported jumping picture in actual PRACTICE gameplay on A500,
+Kickstart 1.3, Chip512KSlow512KFast2Mb, Compatible arbitration. The game changes
+DDFSTRT from $38 to $30 and varies BPLCON1 while DIW remains $2C81/$F4C1.
+The presenter incorrectly treated the additional scrolling prefetch as visible
+overscan: source geometry jumped from `132,44+640x256` to `96,44+704x256`.
+Per-line normalization also gave the scrolling pitch and stationary HUD different
+horizontal scales.
+
+Bounded displays beginning at/after the PAL left edge now use the horizontal
+DIW comparators for presentation. DDF/BPLCON1 still determine actual fetches and
+shifter output, but cannot move/resize this visible window. Existing negative-left
+overscan and sprite-framed panel handling are retained. This follows the HRM's
+[DIW comparator description](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node002E.html)
+and [scrolling prefetch description](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0086.html).
+There is no game-name workaround or hiding of guest pixels.
+
+Evidence and scope:
+
+- A new synthetic regression failed before the fix. It exercises all 16 fine
+  scroll values, early/standard DDF, changing scroll between adjacent rows and
+  the HUD split; it checks both source geometry and complete horizontal pixel
+  mapping against the fixed DIW window.
+- Paired 1,500-frame gameplay replays use the same save and Up/Right/Fire input
+  schedule. All 150 sampled raw frames are byte-identical before/after, while
+  corrected presentation stays `128,44+640x256` throughout. Reviewed captures
+  show players, ball, scrolling pitch and the stationary HUD.
+- In-memory restore preserves CPU PC and presented pixels; continuation accepts
+  Right input, and cold reset reaches the disk's trainer again. Release builds
+  have no warnings/errors. Standard plus local Siedler golden: **234 passed**,
+  no failures/skips. Turrican III and both North & South GoldenADF checks also
+  pass with strict arbitration. The optional Amiga Test Kit check could not run
+  because its external ADF fixture is absent; this is not a compatibility pass.
+- The reviewed thin dither band at native rows 88/89 includes regularly repeated
+  `$5555` words already present in fetched bitplanes. It has not been established
+  as a second renderer defect. Further arbitrary pixel-row corruption in the
+  user's exact match remains unverified; a pre-error F12 save was requested.
+  Knockout fixture/gym menus were reached, but a manually started knockout match
+  is still not claimed as tested. PRACTICE gameplay is the demonstrated scope.
+
+Durable scenarios, before/after captures, frame logs, Copper trace, regression
+logs, replay probe source and continuation saves:
+`%APPDATA%/AmigaEmulator/diagnostics/SpeedballRaster-20261009-e8ecdac5/`.
+Fresh full outputs remain under
+`%TEMP%/amiga-speedball-raster-20261009-e8ecdac5/`.
+User ADFs were mounted read-only; no user settings/saves/HDFs were changed.
+No commit/push for this follow-up. Next: replay any remaining pixel-row defect
+from the user's exact checkpoint and isolate DMA/blitter/shifter data from host
+presentation before changing hardware behavior.
+
 ## Remaining implementation order
 
 1. Complete restartable 68030 format A/B bus faults, cache semantics and ATC

@@ -899,6 +899,11 @@ namespace AmigaEmulator.Tests
                 TestBplcon1FineScrollExtendsRightEdge);
             yield return new ChipTestCase(
                 "Denise/Bitplane",
+                "scroll prefetch preserves fixed DIW geometry across rows and frames",
+                "Amiga HRM: DDF controls DMA timing; DIW fixes the visible window during BPLCON1 scrolling",
+                TestScrollPrefetchPreservesDisplayWindow);
+            yield return new ChipTestCase(
+                "Denise/Bitplane",
                 "mid-frame DDF change keeps per-line presentation apertures",
                 "Settlers-style bottom panels can widen DDF mid-frame without losing the stable playfield aperture",
                 TestMidFrameDdfChangeKeepsPerLinePresentationApertures);
@@ -1277,6 +1282,55 @@ namespace AmigaEmulator.Tests
             Check.Equal(1, bitplanes.RenderColorIndex(640, BitplaneUnit.PalVisibleTop), "The final shifted lowres bit must remain visible beyond the raw DDF fetch width.");
             Check.Equal(1, bitplanes.RenderColorIndex(641, BitplaneUnit.PalVisibleTop), "Lowres pixels duplicate horizontally at the shifted right edge.");
             Check.Equal(0, bitplanes.RenderColorIndex(642, BitplaneUnit.PalVisibleTop), "Fine-scroll extension must stop after the last shifted bitplane pixel.");
+        }
+
+        /// <summary>
+        /// Verifies that scroll prefetch cannot move or rescale a bounded visible display.
+        /// </summary>
+        private static void TestScrollPrefetchPreservesDisplayWindow()
+        {
+            using var system = new AmigaSystem(AmigaModel.A500Pal, AmigaAccuracyOptions.Compatible.Clone());
+            var registers = system.Agnus.CustomRegisters;
+            var bitplanes = system.Agnus.Bitplanes;
+            registers.WriteWord(Dmacon, 0x8300);
+            registers.WriteWord(Bplcon0, 0x5000);
+            registers.WriteWord(Diwstrt, 0x2C81);
+            registers.WriteWord(Diwstop, 0xF4C1);
+            var aperture = typeof(AmigaSystem).GetMethod("GetPresentationSourceWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+            var copy = typeof(AmigaSystem).GetMethod("CopyPresentationWindow", BindingFlags.Instance | BindingFlags.NonPublic);
+            for (int scroll = 0; scroll < 16; scroll++)
+            {
+                bitplanes.BeginFrame();
+                registers.WriteWord(Ddfstrt, scroll == 0 ? (ushort)0x38 : (ushort)0x30);
+                registers.WriteWord(Ddfstop, 0xD0);
+                registers.WriteWord(Bplcon1, (ushort)(scroll * 0x11));
+                bitplanes.RefreshFromRegisters();
+                bitplanes.ObservePresentationWindowForBeamLine(44);
+                registers.WriteWord(Bplcon1, (ushort)((15 - scroll) * 0x11));
+                bitplanes.RefreshFromRegisters();
+                bitplanes.ObservePresentationWindowForBeamLine(45);
+                registers.WriteWord(Ddfstrt, 0x38);
+                registers.WriteWord(Bplcon1, 0);
+                bitplanes.RefreshFromRegisters();
+                bitplanes.ObservePresentationWindowForBeamLine(240);
+                foreach (int row in new[] { 44, 45, 240 })
+                {
+                    Check.True(bitplanes.TryGetLinePresentationSourceWindow(row, out int left, out int width), "Observed row.");
+                    Check.Equal(0, left, "Prefetched pixels before DIW must not move the viewport.");
+                    Check.Equal(640, width, "Fine scroll must not resize a fixed display window.");
+                }
+                object[] geometry = { 0, 0, 0, 0 };
+                aperture.Invoke(system, geometry);
+                Check.Equal(128, (int)geometry[0], "Stable native source X.");
+                Check.Equal(640, (int)geometry[2], "Stable native source width.");
+                for (int y = 0; y < system.FrameBuffer.Height; y++)
+                    for (int x = 0; x < system.FrameBuffer.Width; x++)
+                        system.FrameBuffer.Pixels[y * system.FrameBuffer.Width + x] = 0xFF000000u | (uint)x;
+                var expected = new AmigaFrameBuffer(704, 288);
+                expected.CopyScaledWindowFrom(system.FrameBuffer, 128, (int)geometry[1], 640, (int)geometry[3]);
+                copy.Invoke(system, geometry);
+                Check.True(expected.Pixels.AsSpan().SequenceEqual(system.PresentedFrameBuffer.Pixels), "Every row retains the same hardware X mapping, including the HUD seam.");
+            }
         }
 
         /// <summary>
@@ -2122,7 +2176,7 @@ namespace AmigaEmulator.Tests
             registers.WriteWord(Ddfstrt, 0x003C);
             registers.WriteWord(Ddfstop, 0x00D4);
 
-            Check.Equal(4, bitplanes.PresentationSourceLeft, "A standard hires DDF start includes the DMA-to-shifter lead-in.");
+            Check.Equal(0, bitplanes.PresentationSourceLeft, "The standard DIW fixes the viewport; the DMA-to-shifter lead-in stays inside it.");
             Check.Equal(640, bitplanes.PresentationSourceWidth, "A standard $3C..$D4 hires fetch should map directly to the stable PAL presentation width.");
         }
 
@@ -2188,7 +2242,7 @@ namespace AmigaEmulator.Tests
                 }
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:132,44+640x256", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens should present the register-selected game aperture without adding host letterbox rows. " + info);
+                Check.True(info.IndexOf("source:128,44+640x256", StringComparison.Ordinal) >= 0, "Normal-height PAL title screens should present the register-selected game aperture without adding host letterbox rows. " + info);
             }
         }
 
@@ -2217,7 +2271,7 @@ namespace AmigaEmulator.Tests
                 }
 
                 string info = system.GetPresentationDebugInfo();
-                Check.True(info.IndexOf("source:132,14+640x288", StringComparison.Ordinal) >= 0, "Moderate normal-width PAL overscan should keep register-selected vertical geometry without content-based side trimming. " + info);
+                Check.True(info.IndexOf("source:128,14+640x288", StringComparison.Ordinal) >= 0, "Moderate normal-width PAL overscan should keep register-selected vertical geometry without content-based side trimming. " + info);
             }
         }
 

@@ -1782,17 +1782,14 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Gets the host presentation source width needed for wide horizontal overscan fetches.
+        /// Gets the host presentation width selected by DIW or the left-overscan aperture.
         /// </summary>
         public int PresentationSourceWidth
         {
             get
             {
                 RefreshFromRegisters();
-                int displayLeft = GetDisplayLeft();
-                int displayRight = displayLeft + GetScrolledDisplayWidth();
-                int sourceLeft = displayLeft > 0 ? displayLeft : Math.Min(0, displayLeft);
-                int sourceRight = Math.Max(PalVisibleWidth, displayRight);
+                GetHorizontalPresentationWindow(out int sourceLeft, out int sourceRight);
                 return Math.Max(0, sourceRight - sourceLeft);
             }
         }
@@ -1805,8 +1802,8 @@ namespace AmigaEmulator.Core.CustomChips
             get
             {
                 RefreshFromRegisters();
-                int displayLeft = GetDisplayLeft();
-                return displayLeft > 0 ? displayLeft : Math.Min(0, displayLeft);
+                GetHorizontalPresentationWindow(out int sourceLeft, out _);
+                return sourceLeft;
             }
         }
 
@@ -2148,12 +2145,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private void GetCurrentPresentationWindow(out int sourceLeft, out int sourceRight, out int sourceTop, out int sourceBottom)
         {
-            int displayLeft = GetDisplayLeft();
-            int displayRight = displayLeft + GetScrolledDisplayWidth();
-            sourceLeft = displayLeft > 0 ? displayLeft : Math.Min(0, displayLeft);
-            sourceRight = displayLeft > 0
-                ? Math.Max(PalVisibleWidth, displayRight)
-                : Math.Max(PalVisibleWidth, displayRight);
+            GetHorizontalPresentationWindow(out sourceLeft, out sourceRight);
             sourceTop = Math.Min(PalVisibleTop, _diwTop);
             sourceBottom = Math.Max(PalVisibleTop + PalVisibleHeight, _diwBottom);
             if (sourceRight <= sourceLeft)
@@ -2165,6 +2157,29 @@ namespace AmigaEmulator.Core.CustomChips
             {
                 sourceBottom = sourceTop + 1;
             }
+        }
+
+        /// <summary>
+        /// Separates a bounded visible window from scrolling DMA prefetch before it.
+        /// </summary>
+        private void GetHorizontalPresentationWindow(out int sourceLeft, out int sourceRight)
+        {
+            // A bounded display at/after the PAL left edge uses DIW as its
+            // viewport. DDF may fetch an extra word before it for horizontal
+            // scrolling; BPLCON1 delays that data inside the same window.
+            // Normalizing the fetch span instead moves/scales each scanline
+            // and the whole picture whenever the fine-scroll value changes.
+            if (_diwLeft >= 0 && _diwRight >= PalVisibleWidth && _diwRight != int.MaxValue)
+            {
+                sourceLeft = _diwLeft;
+                sourceRight = _diwRight;
+                return;
+            }
+
+            // Retain the existing left-overscan path, including sprite-framed
+            // displays with independently programmed bottom-panel apertures.
+            sourceLeft = GetDisplayLeft();
+            sourceRight = Math.Max(PalVisibleWidth, sourceLeft + GetScrolledDisplayWidth());
         }
 
         /// <summary>
