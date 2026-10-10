@@ -1348,3 +1348,96 @@ and intro-loader process/segment lifetimes. Disk 3's startup runs SIEDLER.EXE
 before DieSiedler; the intro loader uses LoadSeg/direct calls and UnLoadSeg.
 These launch differences are evidence to investigate, not a proved cause or
 justification for patching the game or suppressing Exec alerts.
+
+### Siedler filesystem owner trace and cold controls (2026-10-10)
+
+The exact large-RAM handoff was replayed again from the durable pre-free state
+with an external instruction and memory-write probe. Both calls to Kickstart
+Exec `FreeMem` for the 224-byte block at `$23B030` run in the **same** `File
+System` task (`$2046D8`). The first occurs at frame 19503 through ROM
+`$FFD038 -> $FF45CA -> $FC1740`; the second occurs after the game requests
+Disk 2, at frame 20170 through `$FFD45A -> $FF45CA -> $FC1740`. The block's
+BPTR `$0008EC0D` remains in the task-owned field at `$204588` between them.
+That field was cleared at frame 19420, assigned `$0008EC0D` at frame 19484,
+then not rewritten after the first free. The first ROM path branches around
+its assignment at `$FFD056` because the tested table entry is zero; the
+second ROM path attempts to free the stale pointer and clears the field only
+after the failing call. This identifies an invalid guest filesystem state,
+but not yet the emulated hardware event or earlier memory/CPU behavior that
+causes it. No guest-memory/ROM patch was made.
+
+At the first free, the handler follows a structure at `$2052AC` with value 4
+at offset `$08` (the DOS packet number for `ACTION_SET_MAP`) and zero at
+offset `$0C`. Its nearby pointers resemble a DOS packet, but the exact
+structure/operation still needs confirmation. The first ROM branch tests the
+zero field and bypasses replacement of the bitmap owner.
+The block length `$E0` is consistent with a filesystem bitmap. A separate
+read-only DMA audit of the immediately preceding Disk-3 track-40 read (frame
+19482) decodes all 11 MFM sectors with valid checksums, and all 11 payloads
+match the ADF byte-for-byte. This rules out corrupted sector delivery in that
+read, but not earlier guest-state corruption or a different filesystem
+operation.
+
+Two further **cold** A500/Kickstart 1.3 controls rule out simple fixes:
+
+- Normal A500 `Chip512KSlow512K` runs the Intro/Disk-2 exchange but remains
+  black and ROM-idle after Disk 3 and the later Disk-2 request; no gameplay.
+- With the original `Chip2MbFast8Mb` layout, explicitly ejecting Disk 2 and
+  waiting 20,000,000 chip cycles before inserting Disk 3 avoids the immediate
+  FreeTwice screen, but the guest still freezes with the green game panel.
+  No new floppy DMA occurs after the game requests Disk 2 (487 reads before
+  and after), and a further 120,000,000 cycles plus mouse input leave the
+  framebuffer unchanged. This is not a gameplay pass.
+
+A working alternative was verified with the user's existing Kickstart **2.04**
+ROM (SHA-1 `C5839F5CB98A7A8947065C3ED2F14F5F42E334A1`, identified as the
+A500+ 37.175 ROM by [FS-UAE](https://fs-uae.net/docs/kickstart-roms/)), A500 model,
+2 MiB Chip + 8 MiB Fast, and the same three ADFs. The cold
+Disk-1 Intro -> Disk-2 -> Disk-3 -> game-requested Disk-2 sequence makes 49
+additional completed floppy DMA reads (527 to 576) after the final swap. It
+reaches the animated game interface, accepts the symbol/menu mouse sequence,
+starts a mission, responds to playfield input, builds a castle, and restores
+both gameplay and construction states with identical CPU/bus/frame hashes.
+There are zero observed non-ROM CPU exceptions through frame 27507. Reviewed
+captures in the durable diagnostic directory at
+`kick20-gameplay-evidence/40-mission-started.png` and
+`48-construction-result.png` show terrain and the completed castle.
+This A500 run was executed twice (once split at a saved state and once
+continuously); both produced the same reviewed hashes.
+
+The matching **A500+** model was then tested with the same ROM, RAM, disks
+and complete input sequence. It also reaches the mission, builds the castle
+and restores both gameplay and construction state at frame 27507 with zero
+observed non-ROM CPU exceptions. The ECS model has different deterministic
+framebuffer hashes, but its reviewed terrain and castle captures match the
+expected scene. `Tools/siedler-kick20-gameplay-scenario.json` now targets
+A500+ and asserts those two reviewed golden hashes. It was validated and
+executed end-to-end from a cold boot twice, including a final run with both
+golden assertions enabled. The corresponding durable evidence is
+in `kick20-a500plus-gameplay-evidence/`. This is a practical configuration
+workaround, not a fix for the Kickstart 1.3 path.
+
+The Kickstart 1.3 ROM SHA-1 is
+`891E9A547772FE0C6C19B610BAF8BC4EA7FCB785`, matching the recognized
+34.5 image. A read-only state comparison locates the same file-system owner
+field at `$204588` in both the direct-Disk-3 and Intro routes. At the direct
+game Disk-2 request it contains BPTR `$0008E4BF`, whose `$2392F8` allocation
+has an intact `$E0` header; that route subsequently enters gameplay. At the
+Intro request it contains the already-freed `$0008EC0D`; waiting longer
+before inserting Disk 3 leaves this exact stale value unchanged. Trace logs
+and external read-only scenario outputs are under
+`%TEMP%/AmigaSiedlerSwap-2f0e4eda03734dfda99416766961afee/` as
+`dos-lifecycle-v3.log`, `dos-lifecycle-v4.log`, `dos-first-packet.log`,
+`dma-audit.log`, `cold-default-ram-run/`,
+`cold-long-eject-2-to-3-run/`, and `long-eject-continue-run/`. User media,
+ROMs, settings, and saves remain untouched.
+The key logs and reviewed Kickstart-2.04 captures/step log were also copied to
+`%APPDATA%/AmigaEmulator/diagnostics/SiedlerIntroSwap-20261010-10fd2990c1cf/`
+so the evidence does not depend on temporary files.
+
+Next: identify the structure at `$2052AC` and why the Intro route takes the
+zero branch despite a valid Disk-3 track-40 read; compare its arguments,
+return path and prior bitmap state with the direct-Disk-3 boot. Correct any
+underlying emulator behavior demonstrated by that comparison and verify
+actual Disk-1-to-game gameplay with input and new Disk-2 DMA before marking
+the handoff fixed.

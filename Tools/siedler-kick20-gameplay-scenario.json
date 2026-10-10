@@ -1,0 +1,243 @@
+[
+  {
+    "name": "Siedler-Intro-A500Plus-Kick20-Gameplay",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast8Mb",
+    "strict": false,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "boot": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 1 of 3)(Intro).adf",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "intro-boot"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "intro-part-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 360000000,
+        "label": "requested-disk-2"
+      },
+      {
+        "type": "checkpoint",
+        "label": "before-disk-2"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf",
+        "label": "insert-disk-2"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 85000000,
+        "label": "part-2-animation"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "part-2-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 240000000,
+        "label": "requested-disk-3"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 3 of 3)(Boot).adf",
+        "label": "insert-disk-3"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 360000000,
+        "label": "game-loader"
+      },
+      {
+        "type": "checkpoint",
+        "label": "game-disk2-request"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf"
+      },
+      {
+        "type": "wait",
+        "cycles": 7082400
+      },
+      {
+        "type": "click",
+        "label": "confirm-game-disk2"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "game-loaded"
+      },
+      {
+        "type": "checkpoint",
+        "label": "game-loaded"
+      },
+      {
+        "type": "click",
+        "cycles": 2000000,
+        "label": "after-animation"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "symbols"
+      },
+      {
+        "label": "symbol-origin",
+        "type": "mouse",
+        "x": -400,
+        "y": -300
+      },
+      {
+        "label": "first-symbol",
+        "type": "mouse",
+        "x": 48,
+        "y": 60
+      },
+      {
+        "type": "click",
+        "label": "symbol-1"
+      },
+      {
+        "type": "click",
+        "label": "symbol-2"
+      },
+      {
+        "type": "click",
+        "label": "symbol-3"
+      },
+      {
+        "type": "click",
+        "label": "symbol-4"
+      },
+      {
+        "type": "click",
+        "label": "symbol-5"
+      },
+      {
+        "type": "click",
+        "label": "symbol-6"
+      },
+      {
+        "type": "click",
+        "label": "symbol-7"
+      },
+      {
+        "type": "click",
+        "label": "symbol-8"
+      },
+      {
+        "type": "click",
+        "label": "symbol-9"
+      },
+      {
+        "type": "click",
+        "label": "symbol-10"
+      },
+      {
+        "type": "click",
+        "label": "symbol-11"
+      },
+      {
+        "type": "click",
+        "label": "symbol-12"
+      },
+      {
+        "label": "result",
+        "type": "wait",
+        "cycles": 10000000
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "main-menu"
+      },
+      {
+        "type": "mouse",
+        "x": -500,
+        "y": -400,
+        "label": "menu-origin"
+      },
+      {
+        "type": "mouse",
+        "x": 25,
+        "y": 85,
+        "label": "start-target"
+      },
+      {
+        "type": "click",
+        "label": "start-mission"
+      },
+      {
+        "type": "wait",
+        "cycles": 140000000,
+        "label": "mission-started",
+        "expectedFrameHash": "8521183B71F5C0BE1128122E05FC0145B7784E70C7F2A4B984D9768A6CBACC67"
+      },
+      {
+        "type": "restore",
+        "label": "restore-gameplay"
+      },
+      {
+        "type": "mouse",
+        "x": 150,
+        "y": 80,
+        "label": "field-pointer"
+      },
+      {
+        "type": "click",
+        "label": "field-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "game-continued"
+      },
+      {
+        "type": "mouse",
+        "x": -500,
+        "y": -400,
+        "label": "construction-origin"
+      },
+      {
+        "type": "mouse",
+        "x": 75,
+        "y": 240,
+        "label": "castle-menu-target"
+      },
+      {
+        "type": "click",
+        "label": "castle-menu-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "construction-result",
+        "expectedFrameHash": "5F1CDBD346DE51CF2AD9400546F42A04FBF259BD3B66675A867F4AC11E0C8B47"
+      },
+      {
+        "type": "restore",
+        "label": "restore-construction"
+      }
+    ],
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM"
+  }
+]
