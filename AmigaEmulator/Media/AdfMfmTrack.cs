@@ -18,9 +18,6 @@ using System.Collections.Generic;
 
 namespace AmigaEmulator.Core.Media
 {
-    /// <summary>
-    /// Provides ADF MFM Track functionality.
-    /// </summary>
     public sealed class AdfMfmTrack
     {
         /// <summary>
@@ -44,19 +41,10 @@ namespace AmigaEmulator.Core.Media
             _words = words;
         }
 
-        /// <summary>
-        /// Gets or sets Cylinder.
-        /// </summary>
         public int Cylinder { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Side.
-        /// </summary>
         public int Side { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Logical Track.
-        /// </summary>
         public int LogicalTrack { get; private set; }
 
         /// <summary>

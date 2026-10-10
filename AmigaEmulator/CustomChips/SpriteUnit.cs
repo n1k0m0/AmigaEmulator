@@ -162,9 +162,6 @@ namespace AmigaEmulator.Core.CustomChips
             SanitizeLoadedSpriteStates();
         }
 
-        /// <summary>
-        /// Gets or sets Has Active Sprites.
-        /// </summary>
         public bool HasActiveSprites { get; private set; }
 
         /// <summary>
@@ -855,9 +852,6 @@ namespace AmigaEmulator.Core.CustomChips
             return (byte)((value & 0x0F) * 0x11);
         }
 
-        /// <summary>
-        /// Provides Sprite State functionality.
-        /// </summary>
         private sealed class SpriteState
         {
             /// <summary>

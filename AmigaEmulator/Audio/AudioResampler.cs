@@ -20,14 +20,8 @@ namespace AmigaEmulator.Core.Audio
     /// </summary>
     public sealed class AudioResampler
     {
-        /// <summary>
-        /// Gets or sets Source Rate.
-        /// </summary>
         public int SourceRate { get; set; }
 
-        /// <summary>
-        /// Gets or sets Target Rate.
-        /// </summary>
         public int TargetRate { get; set; }
 
         /// <summary>

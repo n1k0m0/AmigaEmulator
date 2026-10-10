@@ -170,29 +170,14 @@ namespace SharpPixels
             ApplyTimerInterval();
         }
 
-        /// <summary>
-        /// Gets or sets Pixels Width.
-        /// </summary>
         public int PixelsWidth { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Pixels Height.
-        /// </summary>
         public int PixelsHeight { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Presentation Width.
-        /// </summary>
         public int PresentationWidth { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Presentation Height.
-        /// </summary>
         public int PresentationHeight { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Pixels.
-        /// </summary>
         public uint[] Pixels { get; private set; }
 
         /// <summary>
@@ -262,9 +247,6 @@ namespace SharpPixels
             Invalidate();
         }
 
-        /// <summary>
-        /// Gets or sets FPS.
-        /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int FPS { get; private set; }
 
@@ -416,9 +398,6 @@ namespace SharpPixels
         {
         }
 
-        /// <summary>
-        /// Runs Clear.
-        /// </summary>
         public void Clear(byte red, byte green, byte blue)
         {
             uint color = ToArgb(red, green, blue);
@@ -1356,9 +1335,6 @@ namespace SharpPixels
             return unchecked((int)(0xFF000000u | ((uint)red << 16) | ((uint)green << 8) | (uint)blue));
         }
 
-        /// <summary>
-        /// Runs Blend.
-        /// </summary>
         private static uint Blend(uint destination, byte red, byte green, byte blue, byte alpha)
         {
             int inverse = 255 - alpha;

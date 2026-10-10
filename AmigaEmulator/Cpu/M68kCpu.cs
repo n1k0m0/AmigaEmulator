@@ -222,9 +222,6 @@ namespace AmigaEmulator.Core.Cpu
             public uint Address;
         }
 
-        /// <summary>
-        /// Provides Address Error Exception functionality.
-        /// </summary>
         private sealed class AddressErrorException : Exception
         {
         }
@@ -303,9 +300,6 @@ namespace AmigaEmulator.Core.Cpu
             get { return _state.ExecutionState == M68kExecutionState.Stopped; }
         }
 
-        /// <summary>
-        /// Gets or sets Trace Enabled.
-        /// </summary>
         public bool TraceEnabled { get; set; }
 
         /// <summary>
@@ -528,9 +522,6 @@ namespace AmigaEmulator.Core.Cpu
             return trace;
         }
 
-        /// <summary>
-        /// Runs Step.
-        /// </summary>
         public M68kTraceEntry Step()
         {
             uint pcBefore = _state.PC;
@@ -3588,9 +3579,6 @@ namespace AmigaEmulator.Core.Cpu
             _state.ExecutionState = M68kExecutionState.FetchOpcode;
         }
 
-        /// <summary>
-        /// Builds the Bus Error Status Word.
-        /// </summary>
         private static ushort BuildBusErrorStatusWord(uint faultAddress, int size, bool write)
         {
             ushort status = 0;

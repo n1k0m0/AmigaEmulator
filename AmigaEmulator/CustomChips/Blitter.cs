@@ -1234,9 +1234,6 @@ namespace AmigaEmulator.Core.CustomChips
             return result;
         }
 
-        /// <summary>
-        /// Builds the Line Mask.
-        /// </summary>
         private ushort BuildLineMask()
         {
             return (ushort)((_adat & _afwm & _alwm) >> (_lineX & 0x0F));
@@ -1363,9 +1360,6 @@ namespace AmigaEmulator.Core.CustomChips
             return (short)value;
         }
 
-        /// <summary>
-        /// Runs Advance.
-        /// </summary>
         private uint Advance(uint address, bool descending)
         {
             return descending ? _dmaAddress.Add(address, -2) : _dmaAddress.Add(address, 2u);

@@ -34,14 +34,8 @@ namespace AmigaEmulator.Core.Video
         Tv
     }
 
-    /// <summary>
-    /// Provides Video Filters functionality.
-    /// </summary>
     public sealed class VideoFilters
     {
-        /// <summary>
-        /// Gets or sets Current.
-        /// </summary>
         public VideoFilterKind Current { get; set; }
     }
 }

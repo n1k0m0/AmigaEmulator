@@ -295,9 +295,6 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public event Action<float, float> AudioSampleGenerated;
 
-        /// <summary>
-        /// Gets or sets Audio Ticks.
-        /// </summary>
         public long AudioTicks { get; private set; }
 
         /// <summary>
@@ -324,14 +321,8 @@ namespace AmigaEmulator.Core.CustomChips
             }
         }
 
-        /// <summary>
-        /// Gets or sets Last Custom Write Address.
-        /// </summary>
         public uint LastCustomWriteAddress { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Last Custom Write Value.
-        /// </summary>
         public byte LastCustomWriteValue { get; private set; }
 
         /// <summary>
@@ -342,9 +333,6 @@ namespace AmigaEmulator.Core.CustomChips
             get { return _diskDmaActive; }
         }
 
-        /// <summary>
-        /// Gets or sets disk DMA word period in chip cycles.
-        /// </summary>
         public int DiskWordPeriodChipCycles
         {
             get { return _diskWordPeriodChipCycles; }
@@ -1284,9 +1272,6 @@ namespace AmigaEmulator.Core.CustomChips
             }
         }
 
-        /// <summary>
-        /// Builds the Disk byte register.
-        /// </summary>
         private ushort BuildDiskBytr()
         {
             ushort value = _latestDiskByte;
@@ -1331,9 +1316,6 @@ namespace AmigaEmulator.Core.CustomChips
             return (dmacon & 0x0210) == 0x0210;
         }
 
-        /// <summary>
-        /// Provides Audio Channel functionality.
-        /// </summary>
         private sealed class AudioChannel
         {
             /// <summary>
@@ -1382,39 +1364,18 @@ namespace AmigaEmulator.Core.CustomChips
                 Reset();
             }
 
-            /// <summary>
-            /// Gets or sets Location.
-            /// </summary>
             public uint Location { get; set; }
 
-            /// <summary>
-            /// Gets or sets Current Pointer.
-            /// </summary>
             public uint CurrentPointer { get; private set; }
 
-            /// <summary>
-            /// Gets or sets Length.
-            /// </summary>
             public ushort Length { get; set; }
 
-            /// <summary>
-            /// Gets or sets Period.
-            /// </summary>
             public ushort Period { get; set; }
 
-            /// <summary>
-            /// Gets or sets Volume.
-            /// </summary>
             public ushort Volume { get; set; }
 
-            /// <summary>
-            /// Gets or sets Data.
-            /// </summary>
             public ushort Data { get; private set; }
 
-            /// <summary>
-            /// Gets or sets Block Completed.
-            /// </summary>
             public bool BlockCompleted { get; private set; }
 
             /// <summary>
@@ -1433,9 +1394,6 @@ namespace AmigaEmulator.Core.CustomChips
                 get { return _dmaEnabled && !_hasPendingWord && RemainingWords > 0; }
             }
 
-            /// <summary>
-            /// Gets or sets Remaining Words.
-            /// </summary>
             public int RemainingWords { get; private set; }
 
             /// <summary>

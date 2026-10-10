@@ -37,9 +37,6 @@ namespace AmigaEmulator.Tests
     /// </summary>
     internal static class Program
     {
-        /// <summary>
-        /// Runs Main.
-        /// </summary>
         private static int Main(string[] args)
         {
             TestOptions options = TestOptions.Parse(args);
@@ -92,9 +89,6 @@ namespace AmigaEmulator.Tests
             return failures == 0 ? 0 : 1;
         }
 
-        /// <summary>
-        /// Builds the Tests.
-        /// </summary>
         private static List<ChipTestCase> BuildTests(TestOptions options)
         {
             var tests = new List<ChipTestCase>();
@@ -147,14 +141,8 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Test Options functionality.
-    /// </summary>
     internal sealed class TestOptions
     {
-        /// <summary>
-        /// Gets or sets Include ADF.
-        /// </summary>
         public bool IncludeAdf { get; private set; }
 
         /// <summary>
@@ -169,54 +157,18 @@ namespace AmigaEmulator.Tests
             accuracy.Name = StrictBus ? "StrictNoTrace" : "Fast";
             return accuracy;
         }
-        /// <summary>
-        /// Gets or sets Include V Amiga Ts.
-        /// </summary>
         public bool IncludeVAmigaTs { get; private set; }
-        /// <summary>
-        /// Gets or sets Include Amiga Devtest.
-        /// </summary>
         public bool IncludeAmigaDevtest { get; private set; }
-        /// <summary>
-        /// Gets or sets Include Local Siedler Golden.
-        /// </summary>
         public bool IncludeLocalSiedlerGolden { get; private set; }
-        /// <summary>
-        /// Gets or sets Siedler Save Path.
-        /// </summary>
         public string SiedlerSavePath { get; private set; }
-        /// <summary>
-        /// Gets or sets Amiga Devtest ADF path.
-        /// </summary>
         public string AmigaDevtestAdfPath { get; private set; }
-        /// <summary>
-        /// Gets or sets Amiga Devtest Cycles.
-        /// </summary>
         public int AmigaDevtestCycles { get; private set; }
-        /// <summary>
-        /// Gets or sets V Amiga Ts All.
-        /// </summary>
         public bool VAmigaTsAll { get; private set; }
-        /// <summary>
-        /// Gets or sets List Only.
-        /// </summary>
         public bool ListOnly { get; private set; }
-        /// <summary>
-        /// Gets or sets Filter.
-        /// </summary>
         public string Filter { get; private set; }
-        /// <summary>
-        /// Gets or sets V Amiga Ts Limit.
-        /// </summary>
         public int VAmigaTsLimit { get; private set; }
-        /// <summary>
-        /// Gets or sets V Amiga Ts Cycles.
-        /// </summary>
         public int VAmigaTsCycles { get; private set; }
 
-        /// <summary>
-        /// Runs Parse.
-        /// </summary>
         public static TestOptions Parse(string[] args)
         {
             var options = new TestOptions
@@ -291,9 +243,6 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Chip Test Case functionality.
-    /// </summary>
     internal sealed class ChipTestCase
     {
         /// <summary>
@@ -312,17 +261,8 @@ namespace AmigaEmulator.Tests
             _run = run;
         }
 
-        /// <summary>
-        /// Gets or sets Category.
-        /// </summary>
         public string Category { get; private set; }
-        /// <summary>
-        /// Gets or sets Name.
-        /// </summary>
         public string Name { get; private set; }
-        /// <summary>
-        /// Gets or sets Source.
-        /// </summary>
         public string Source { get; private set; }
 
         /// <summary>
@@ -334,14 +274,8 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Check functionality.
-    /// </summary>
     internal static class Check
     {
-        /// <summary>
-        /// Runs True.
-        /// </summary>
         public static void True(bool condition, string message)
         {
             if (!condition)
@@ -384,14 +318,8 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Regression Self Tests functionality.
-    /// </summary>
     internal static class RegressionSelfTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return SelfTest("CPU", "existing M68K regression self-test", "M68000 PRM; existing emulator regression suite", M68kSelfTest.Run);
@@ -606,9 +534,6 @@ namespace AmigaEmulator.Tests
     /// </summary>
     internal static class CpuTimingTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase(
@@ -637,9 +562,6 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Agnus Tests functionality.
-    /// </summary>
     internal static class AgnusTests
     {
         /// <summary>
@@ -683,9 +605,6 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Bpl2ptl = 0x0E6;
 
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase(
@@ -893,9 +812,6 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Denise Bitplane Tests functionality.
-    /// </summary>
     internal static class DeniseBitplaneTests
     {
         /// <summary>
@@ -967,9 +883,6 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Color01 = 0x182;
 
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase("Denise/Bitplane", "legacy OCS/ECS DIW clips wide hires fetches at both horizontal comparators",
@@ -2713,9 +2626,6 @@ namespace AmigaEmulator.Tests
 
     }
 
-    /// <summary>
-    /// Provides Sprite Tests functionality.
-    /// </summary>
     internal static class SpriteTests
     {
         /// <summary>
@@ -2739,9 +2649,6 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint Spr0datb = 0x146;
 
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase(
@@ -3237,14 +3144,8 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Paula Tests functionality.
-    /// </summary>
     internal static class PaulaTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase("Paula/Audio", "manual AUDDAT samples survive while audio DMA stays disabled",
@@ -4215,14 +4116,8 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Integration Tests functionality.
-    /// </summary>
     internal static class IntegrationTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase(
@@ -4464,9 +4359,6 @@ namespace AmigaEmulator.Tests
     /// </summary>
     internal static class SaveStateTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase("SaveState", "restore keeps the current host tracing profile instead of a saved CPU diagnostic flag",
@@ -4911,9 +4803,6 @@ namespace AmigaEmulator.Tests
     /// </summary>
     internal static class AmigaDevtestTests
     {
-        /// <summary>
-        /// Builds the Amiga devtest integration tests.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build(TestOptions options)
         {
             yield return new ChipTestCase(
@@ -5063,9 +4952,6 @@ namespace AmigaEmulator.Tests
     /// </summary>
     internal static class LocalSiedlerGoldenTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build(TestOptions options)
         {
             yield return new ChipTestCase(
@@ -5396,14 +5282,8 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides Golden ADF Tests functionality.
-    /// </summary>
     internal static class GoldenAdfTests
     {
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build(TestOptions options)
         {
             yield return new ChipTestCase(
@@ -5640,9 +5520,6 @@ namespace AmigaEmulator.Tests
         }
     }
 
-    /// <summary>
-    /// Provides V Amiga Ts Tests functionality.
-    /// </summary>
     internal static class VAmigaTsTests
     {
         /// <summary>
@@ -5688,9 +5565,6 @@ namespace AmigaEmulator.Tests
             new VAmigaTsCase("Mainboard/Input", "JOY0DAT port reference", @"Mainboard\Ports\JOYxDAT\joy0dat\joy0dat.adf", 2, 128)
         };
 
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build(TestOptions options)
         {
             VAmigaTsCase[] cases = options.VAmigaTsAll
@@ -5991,9 +5865,6 @@ namespace AmigaEmulator.Tests
                 Math.Abs(actualBlue - expectedBlue) <= tolerance;
         }
 
-        /// <summary>
-        /// Provides V Amiga Ts Case functionality.
-        /// </summary>
         private sealed class VAmigaTsCase
         {
             /// <summary>
@@ -6008,25 +5879,10 @@ namespace AmigaEmulator.Tests
                 MinDifferentPixels = minDifferentPixels;
             }
 
-            /// <summary>
-            /// Gets or sets Category.
-            /// </summary>
             public string Category { get; private set; }
-            /// <summary>
-            /// Gets or sets Name.
-            /// </summary>
             public string Name { get; private set; }
-            /// <summary>
-            /// Gets or sets Relative ADF Path.
-            /// </summary>
             public string RelativeAdfPath { get; private set; }
-            /// <summary>
-            /// Gets or sets Min Unique Colors.
-            /// </summary>
             public int MinUniqueColors { get; private set; }
-            /// <summary>
-            /// Gets or sets Min Different Pixels.
-            /// </summary>
             public int MinDifferentPixels { get; private set; }
         }
     }

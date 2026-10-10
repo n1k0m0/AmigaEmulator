@@ -310,9 +310,6 @@ namespace AmigaEmulator.Core.CustomChips
             return s_ocsPalSlotTable[slot];
         }
 
-        /// <summary>
-        /// Builds the PAL OCS fixed DMA table for refresh, audio, disk, and sprite slots.
-        /// </summary>
         private static OcsDmaSlot[] BuildOcsPalSlotTable()
         {
             var table = new OcsDmaSlot[PalSlotsPerLine];

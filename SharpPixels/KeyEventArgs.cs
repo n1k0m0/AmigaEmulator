@@ -34,34 +34,16 @@ namespace SharpPixels
             Shift = shift;
         }
 
-        /// <summary>
-        /// Gets or sets Key.
-        /// </summary>
         public Key Key { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Key Char.
-        /// </summary>
         public char KeyChar { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Alt.
-        /// </summary>
         public bool Alt { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Control.
-        /// </summary>
         public bool Control { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Shift.
-        /// </summary>
         public bool Shift { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Handled.
-        /// </summary>
         public bool Handled { get; set; }
     }
 }

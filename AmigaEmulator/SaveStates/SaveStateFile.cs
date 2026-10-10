@@ -34,9 +34,6 @@ namespace AmigaEmulator.Core.SaveStates
         private const string Extension = ".amigasav";
         private const string UnknownMediaDirectory = "Unknown";
 
-        /// <summary>
-        /// Builds the deterministic path for an overlay slot.
-        /// </summary>
         public static string GetSlotPath(string saveDirectory, int slotIndex)
         {
             Directory.CreateDirectory(saveDirectory);
@@ -303,9 +300,6 @@ namespace AmigaEmulator.Core.SaveStates
             return new MountedMediaInfo(kind, status, shortLabel, displayName, hostPath, driveIndex, writeProtected, error);
         }
 
-        /// <summary>
-        /// Builds the overlay display text.
-        /// </summary>
         private static string BuildDisplayName(long ticksUtc, MountedMediaInfo mediaInfo)
         {
             DateTime local = new DateTime(ticksUtc, DateTimeKind.Utc).ToLocalTime();

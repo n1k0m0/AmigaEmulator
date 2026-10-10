@@ -1,3 +1,5 @@
+# Copyright 2026 Nils Kopal
+# SPDX-License-Identifier: Apache-2.0
 """Framing and shared-proxy regressions. Run: python -m unittest discover -s relay_server."""
 import asyncio
 import struct
@@ -32,6 +34,17 @@ class WireTests(unittest.IsolatedAsyncioTestCase):
         reader.feed_eof()
         with self.assertRaises(ValueError):
             await relay.read_frame(reader)
+
+    async def test_clean_eof_and_truncated_frames_are_distinct(self):
+        for wire in (b"A", b"AMIGAR\x01", b"AMIGAR" + struct.pack("<BBHIi", 1, 5, 0, 1, 3) + b"ab"):
+            reader = asyncio.StreamReader()
+            reader.feed_data(wire)
+            reader.feed_eof()
+            with self.assertRaises(ValueError):
+                await relay.read_frame(reader)
+        reader = asyncio.StreamReader()
+        reader.feed_eof()
+        self.assertIsNone(await relay.read_frame(reader))
 
     async def test_shared_proxy_keeps_rooms_separate_and_forwards_opaque_data(self):
         relay.sessions.clear()

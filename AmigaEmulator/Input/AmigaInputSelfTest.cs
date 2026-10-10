@@ -19,9 +19,6 @@ using AmigaEmulator.Core.Memory;
 
 namespace AmigaEmulator.Core.Input
 {
-    /// <summary>
-    /// Provides Amiga Input Self Test functionality.
-    /// </summary>
     public static class AmigaInputSelfTest
     {
         /// <summary>

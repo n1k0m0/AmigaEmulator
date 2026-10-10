@@ -19,9 +19,6 @@ using AmigaEmulator.Core.Memory;
 
 namespace AmigaEmulator.Core.CustomChips
 {
-    /// <summary>
-    /// Provides Copper Self Test functionality.
-    /// </summary>
     public static class CopperSelfTest
     {
         /// <summary>
@@ -238,9 +235,6 @@ namespace AmigaEmulator.Core.CustomChips
             return harness.Copper.ProgramCounter == 0x0100;
         }
 
-        /// <summary>
-        /// Provides Harness functionality.
-        /// </summary>
         private sealed class Harness
         {
             /// <summary>
@@ -260,19 +254,10 @@ namespace AmigaEmulator.Core.CustomChips
                 Registers.WriteWord(Dmacon, 0x8280);
             }
 
-            /// <summary>
-            /// Gets or sets Registers.
-            /// </summary>
             public CustomRegisterMap Registers { get; private set; }
 
-            /// <summary>
-            /// Gets or sets Copper.
-            /// </summary>
             public Copper Copper { get; private set; }
 
-            /// <summary>
-            /// Gets or sets Last Kind.
-            /// </summary>
             public CopperInstructionKind LastKind { get; private set; }
 
             /// <summary>

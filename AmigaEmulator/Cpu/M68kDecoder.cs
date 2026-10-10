@@ -187,9 +187,6 @@ namespace AmigaEmulator.Core.Cpu
             }
         }
 
-        /// <summary>
-        /// Runs Immediate.
-        /// </summary>
         private static M68kInstruction Immediate(M68kInstructionKind kind, string name, ushort opcode)
         {
             int sizeCode = (opcode >> 6) & 3;
@@ -225,9 +222,6 @@ namespace AmigaEmulator.Core.Cpu
             return 2;
         }
 
-        /// <summary>
-        /// Runs Simple.
-        /// </summary>
         private static M68kInstruction Simple(M68kInstructionKind kind, string name, int sizeBytes, int cycles)
         {
             return new M68kInstruction

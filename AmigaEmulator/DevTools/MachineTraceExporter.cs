@@ -22,70 +22,31 @@ using AmigaEmulator.Core.Cpu;
 
 namespace AmigaEmulator.Core.DevTools
 {
-    /// <summary>
-    /// Provides Machine Trace Sample functionality.
-    /// </summary>
     public sealed class MachineTraceSample
     {
-        /// <summary>
-        /// Gets or sets Global Chip Cycle.
-        /// </summary>
         public long GlobalChipCycle { get; set; }
 
-        /// <summary>
-        /// Gets or sets Frame.
-        /// </summary>
         public long Frame { get; set; }
 
-        /// <summary>
-        /// Gets or sets Beam X.
-        /// </summary>
         public int BeamX { get; set; }
 
-        /// <summary>
-        /// Gets or sets Beam Y.
-        /// </summary>
         public int BeamY { get; set; }
 
-        /// <summary>
-        /// Gets or sets DMA Slot.
-        /// </summary>
         public int DmaSlot { get; set; }
 
-        /// <summary>
-        /// Gets or sets DMA Owner.
-        /// </summary>
         public string DmaOwner { get; set; }
 
-        /// <summary>
-        /// Gets or sets CPU Can Use Chip Bus.
-        /// </summary>
         public bool CpuCanUseChipBus { get; set; }
 
-        /// <summary>
-        /// Gets or sets CPU PC.
-        /// </summary>
         public uint CpuPc { get; set; }
 
-        /// <summary>
-        /// Gets or sets CPU SR.
-        /// </summary>
         public ushort CpuSr { get; set; }
 
-        /// <summary>
-        /// Gets or sets CPU Trace.
-        /// </summary>
         public M68kTraceEntry CpuTrace { get; set; }
     }
 
-    /// <summary>
-    /// Provides Machine Trace Exporter functionality.
-    /// </summary>
     public static class MachineTraceExporter
     {
-        /// <summary>
-        /// Runs Export.
-        /// </summary>
         public static void Export(int chipCycles, string path)
         {
             using (var system = new AmigaSystem(AmigaModel.A500Pal))

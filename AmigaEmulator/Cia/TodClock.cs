@@ -15,29 +15,14 @@
 */
 namespace AmigaEmulator.Core.Cia
 {
-    /// <summary>
-    /// Provides TOD Clock functionality.
-    /// </summary>
     public sealed class TodClock
     {
-        /// <summary>
-        /// Gets or sets Tenth Seconds.
-        /// </summary>
         public int TenthSeconds { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Seconds.
-        /// </summary>
         public int Seconds { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Minutes.
-        /// </summary>
         public int Minutes { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Hours.
-        /// </summary>
         public int Hours { get; private set; }
 
         /// <summary>

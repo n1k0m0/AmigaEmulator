@@ -777,9 +777,6 @@ namespace AmigaEmulator.Core.Cia
             get { return string.Equals(_name, "CIA-A", StringComparison.OrdinalIgnoreCase); }
         }
 
-        /// <summary>
-        /// Builds the Icr Value.
-        /// </summary>
         private byte BuildIcrValue()
         {
             byte value = (byte)(_interruptRequest & 0x1F);

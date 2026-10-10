@@ -55,29 +55,14 @@ namespace AmigaEmulator.Core
             StrictChipBusArbitration = true
         };
 
-        /// <summary>
-        /// Gets or sets Name.
-        /// </summary>
         public string Name { get; set; }
 
-        /// <summary>
-        /// Gets or sets Enable DMA Slot Trace.
-        /// </summary>
         public bool EnableDmaSlotTrace { get; set; }
 
-        /// <summary>
-        /// Gets or sets Enable CPU Trace.
-        /// </summary>
         public bool EnableCpuTrace { get; set; }
 
-        /// <summary>
-        /// Gets or sets Strict Chip Bus Arbitration.
-        /// </summary>
         public bool StrictChipBusArbitration { get; set; }
 
-        /// <summary>
-        /// Runs Clone.
-        /// </summary>
         public AmigaAccuracyOptions Clone()
         {
             return new AmigaAccuracyOptions

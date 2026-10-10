@@ -26,9 +26,6 @@ namespace AmigaEmulator.Core
     /// </summary>
     public sealed class AmigaEmulatorSettings
     {
-        /// <summary>
-        /// Gets or sets Version.
-        /// </summary>
         public int Version { get; set; } = 7;
 
         public AmigaMachineModel MachineModel { get; set; } = AmigaMachineModel.A500;
@@ -67,32 +64,17 @@ namespace AmigaEmulator.Core
             throw new ArgumentException("Unknown startup memory layout.", nameof(model));
         }
 
-        /// <summary>
-        /// Gets or sets Video Filter.
-        /// </summary>
         public AmigaVideoFilter VideoFilter { get; set; } = AmigaVideoFilter.Sharp;
 
-        /// <summary>
-        /// Gets or sets Upscale Mode.
-        /// </summary>
         public AmigaUpscaleMode UpscaleMode { get; set; } = AmigaUpscaleMode.None;
 
         /// <summary>Stretches the image to fill the window instead of preserving its aspect ratio.</summary>
         public bool StretchToFullWidth { get; set; }
 
-        /// <summary>
-        /// Gets or sets Render Fps.
-        /// </summary>
         public AmigaRenderFps RenderFps { get; set; } = AmigaRenderFps.Native;
 
-        /// <summary>
-        /// Gets or sets the monitor aperture used for host presentation.
-        /// </summary>
         public AmigaMonitorAperture MonitorAperture { get; set; } = AmigaMonitorAperture.Crt;
 
-        /// <summary>
-        /// Gets or sets RAM Profile.
-        /// </summary>
         public AmigaRamProfile RamProfile { get; set; } = AmigaRamProfile.Chip1Mb;
 
         public bool HardDiskEnabled { get; set; }
@@ -101,89 +83,38 @@ namespace AmigaEmulator.Core
         public int NewHardDiskSizeMiB { get; set; } = 256;
         public bool BootFromHardDisk { get; set; }
 
-        /// <summary>
-        /// Gets or sets Kickstart.
-        /// </summary>
         public AmigaKickstart Kickstart { get; set; } = AmigaKickstart.Auto;
 
-        /// <summary>
-        /// Gets or sets Custom Kickstart Path.
-        /// </summary>
         public string CustomKickstartPath { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets Floppy Speed.
-        /// </summary>
         public AmigaFloppySpeed FloppySpeed { get; set; } = AmigaFloppySpeed.Accurate;
 
-        /// <summary>
-        /// Gets or sets Paula Filter.
-        /// </summary>
         public AmigaPaulaFilter PaulaFilter { get; set; } = AmigaPaulaFilter.A500;
 
-        /// <summary>
-        /// Gets or sets Port 1 Mode.
-        /// </summary>
         public AmigaInputPortMode Port1Mode { get; set; } = AmigaInputPortMode.Mouse;
 
-        /// <summary>
-        /// Gets or sets Port 2 Mode.
-        /// </summary>
         public AmigaInputPortMode Port2Mode { get; set; } = AmigaInputPortMode.Joystick;
 
-        /// <summary>
-        /// Gets or sets Reset Mode.
-        /// </summary>
         public AmigaResetMode ResetMode { get; set; } = AmigaResetMode.Warm;
 
-        /// <summary>
-        /// Gets or sets Accuracy Profile.
-        /// </summary>
         public AmigaAccuracyProfile AccuracyProfile { get; set; } = AmigaAccuracyProfile.Compatible;
 
-        /// <summary>
-        /// Gets or sets Fullscreen.
-        /// </summary>
         public bool Fullscreen { get; set; }
 
-        /// <summary>
-        /// Gets or sets Turbo Mode.
-        /// </summary>
         public bool TurboMode { get; set; }
 
-        /// <summary>
-        /// Gets or sets Drive Overlay Enabled.
-        /// </summary>
         public bool DriveOverlayEnabled { get; set; } = true;
 
-        /// <summary>
-        /// Gets or sets Media Browser Directory.
-        /// </summary>
         public string MediaBrowserDirectory { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets Df 0 Path.
-        /// </summary>
         public string Df0Path { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets Df 1 Path.
-        /// </summary>
         public string Df1Path { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets Df 2 Path.
-        /// </summary>
         public string Df2Path { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets Df 3 Path.
-        /// </summary>
         public string Df3Path { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Gets or sets Selected Save State Slot.
-        /// </summary>
         public int SelectedSaveStateSlot { get; set; }
 
         /// <summary>
@@ -277,9 +208,6 @@ namespace AmigaEmulator.Core
             return options;
         }
 
-        /// <summary>
-        /// Runs Migrate.
-        /// </summary>
         private static void Migrate(AmigaEmulatorSettings settings)
         {
             if (settings.Version < 2)

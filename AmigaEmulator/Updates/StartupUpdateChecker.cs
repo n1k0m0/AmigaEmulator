@@ -433,9 +433,6 @@ namespace AmigaEmulator.Updates
                 name.EndsWith("-win-x64-setup.exe", StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Builds the local setup file name for a release asset.
-        /// </summary>
         /// <param name="release">Release metadata.</param>
         /// <returns>Safe setup file name.</returns>
         private static string CreateInstallerFileName(GitHubReleaseInfo release)

@@ -19,9 +19,6 @@ using AmigaEmulator.Core.Cpu;
 
 namespace AmigaEmulator.Tests
 {
-    /// <summary>
-    /// Provides 68000 Opcode Matrix Tests functionality.
-    /// </summary>
     internal static class M68kOpcodeMatrixTests
     {
         /// <summary>
@@ -33,9 +30,6 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private const uint ProgramStart = 0x00000100;
 
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static IEnumerable<ChipTestCase> Build()
         {
             yield return new ChipTestCase(
@@ -824,9 +818,6 @@ namespace AmigaEmulator.Tests
             return mode == 4 || (mode != 3 && IsAlterableMemoryEa(mode, register));
         }
 
-        /// <summary>
-        /// Provides Matrix Bus functionality.
-        /// </summary>
         private sealed class MatrixBus : IM68kBus
         {
             /// <summary>

@@ -1,3 +1,5 @@
+// Copyright 2026 Nils Kopal
+// SPDX-License-Identifier: Apache-2.0
 namespace AmigaEmulator.Core.CustomChips
 {
     public sealed partial class BitplaneUnit

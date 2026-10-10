@@ -1,3 +1,5 @@
+# Copyright 2026 Nils Kopal
+# SPDX-License-Identifier: Apache-2.0
 param([string]$Configuration = 'Release', [string]$Version = '')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'distribution-common.ps1')

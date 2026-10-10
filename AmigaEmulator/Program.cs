@@ -47,9 +47,6 @@ namespace AmigaEmulator
         /// </summary>
         private static bool _relaxedBusDiagnostics;
 
-        /// <summary>
-        /// Runs Main.
-        /// </summary>
         [STAThread]
         private static void Main(string[] args)
         {
@@ -6070,9 +6067,6 @@ namespace AmigaEmulator
             public int Gc2;
         }
 
-        /// <summary>
-        /// Provides Frame Image Metrics functionality.
-        /// </summary>
         private sealed class FrameImageMetrics
         {
             /// <summary>
@@ -6113,9 +6107,6 @@ namespace AmigaEmulator
             public string GlitchFlags;
         }
 
-        /// <summary>
-        /// Provides ADF Matrix Result functionality.
-        /// </summary>
         private sealed class AdfMatrixResult
         {
             /// <summary>
@@ -9248,9 +9239,6 @@ namespace AmigaEmulator
             public string Name;
         }
 
-        /// <summary>
-        /// Builds the Watched Custom Register List.
-        /// </summary>
         private static List<WatchedCustomRegister> BuildWatchedCustomRegisterList()
         {
             var list = new List<WatchedCustomRegister>();

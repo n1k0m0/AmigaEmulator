@@ -208,6 +208,11 @@ async def read_frame(reader: asyncio.StreamReader) -> Optional[RelayFrame]:
 
     try:
         prefix = await reader.readexactly(4)
+    except asyncio.IncompleteReadError as error:
+        if not error.partial:
+            return None
+        raise ValueError("truncated relay frame header") from error
+    try:
         wire_magic = MAGIC if prefix == MAGIC[:4] else LEGACY_MAGIC if prefix == LEGACY_MAGIC else None
         if wire_magic is None: raise ValueError("invalid relay magic")
         old_magic = getattr(reader, "wire_magic", wire_magic)
@@ -215,8 +220,8 @@ async def read_frame(reader: asyncio.StreamReader) -> Optional[RelayFrame]:
         reader.wire_magic = wire_magic
         codec = HEADER if wire_magic == MAGIC else LEGACY_HEADER
         header = prefix + await reader.readexactly(codec.size - 4)
-    except asyncio.IncompleteReadError:
-        return None
+    except asyncio.IncompleteReadError as error:
+        raise ValueError("truncated relay frame header") from error
 
     magic, version, frame_type, _flags, channel_id, payload_length = codec.unpack(header)
     if magic != wire_magic or version != VERSION:
@@ -225,7 +230,10 @@ async def read_frame(reader: asyncio.StreamReader) -> Optional[RelayFrame]:
         raise ValueError("invalid relay payload length")
     payload = b""
     if payload_length:
-        payload = await reader.readexactly(payload_length)
+        try:
+            payload = await reader.readexactly(payload_length)
+        except asyncio.IncompleteReadError as error:
+            raise ValueError("truncated relay frame payload") from error
     return RelayFrame(frame_type, channel_id, payload)
 
 

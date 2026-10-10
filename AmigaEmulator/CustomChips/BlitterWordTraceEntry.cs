@@ -15,149 +15,62 @@
 */
 namespace AmigaEmulator.Core.CustomChips
 {
-    /// <summary>
-    /// Provides Blitter Word Trace Entry functionality.
-    /// </summary>
     public sealed class BlitterWordTraceEntry
     {
-        /// <summary>
-        /// Gets or sets Line Mode.
-        /// </summary>
         public bool LineMode { get; set; }
 
-        /// <summary>
-        /// Gets or sets Line.
-        /// </summary>
         public int Line { get; set; }
 
-        /// <summary>
-        /// Gets or sets Word.
-        /// </summary>
         public int Word { get; set; }
 
-        /// <summary>
-        /// Gets or sets A Address.
-        /// </summary>
         public uint AAddress { get; set; }
 
-        /// <summary>
-        /// Gets or sets B Address.
-        /// </summary>
         public uint BAddress { get; set; }
 
-        /// <summary>
-        /// Gets or sets C Address.
-        /// </summary>
         public uint CAddress { get; set; }
 
-        /// <summary>
-        /// Gets or sets D Address.
-        /// </summary>
         public uint DAddress { get; set; }
 
-        /// <summary>
-        /// Gets or sets Raw A.
-        /// </summary>
         public ushort RawA { get; set; }
 
-        /// <summary>
-        /// Gets or sets Raw B.
-        /// </summary>
         public ushort RawB { get; set; }
 
-        /// <summary>
-        /// Gets or sets Raw C.
-        /// </summary>
         public ushort RawC { get; set; }
 
-        /// <summary>
-        /// Gets or sets Shifted A.
-        /// </summary>
         public ushort ShiftedA { get; set; }
 
-        /// <summary>
-        /// Gets or sets Shifted B.
-        /// </summary>
         public ushort ShiftedB { get; set; }
 
-        /// <summary>
-        /// Gets or sets Mask.
-        /// </summary>
         public ushort Mask { get; set; }
 
-        /// <summary>
-        /// Gets or sets Result Before Fill.
-        /// </summary>
         public ushort ResultBeforeFill { get; set; }
 
-        /// <summary>
-        /// Gets or sets Result.
-        /// </summary>
         public ushort Result { get; set; }
 
-        /// <summary>
-        /// Gets or sets Minterm.
-        /// </summary>
         public byte Minterm { get; set; }
 
-        /// <summary>
-        /// Gets or sets Use A.
-        /// </summary>
         public bool UseA { get; set; }
 
-        /// <summary>
-        /// Gets or sets Use B.
-        /// </summary>
         public bool UseB { get; set; }
 
-        /// <summary>
-        /// Gets or sets Use C.
-        /// </summary>
         public bool UseC { get; set; }
 
-        /// <summary>
-        /// Gets or sets Use D.
-        /// </summary>
         public bool UseD { get; set; }
 
-        /// <summary>
-        /// Gets or sets Fill Inclusive.
-        /// </summary>
         public bool FillInclusive { get; set; }
 
-        /// <summary>
-        /// Gets or sets Fill Exclusive.
-        /// </summary>
         public bool FillExclusive { get; set; }
 
-        /// <summary>
-        /// Gets or sets Fill Carry In.
-        /// </summary>
         public bool FillCarryIn { get; set; }
 
-        /// <summary>
-        /// Gets or sets Fill Carry Out.
-        /// </summary>
         public bool FillCarryOut { get; set; }
 
-        /// <summary>
-        /// Gets or sets Drawn.
-        /// </summary>
         public bool Drawn { get; set; }
 
-        /// <summary>
-        /// Gets or sets Line X.
-        /// </summary>
         public int LineX { get; set; }
 
-        /// <summary>
-        /// Gets or sets Line Y.
-        /// </summary>
         public int LineY { get; set; }
 
-        /// <summary>
-        /// Gets or sets Line Error.
-        /// </summary>
         public int LineError { get; set; }
     }
 }

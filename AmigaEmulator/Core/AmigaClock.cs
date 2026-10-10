@@ -65,9 +65,6 @@ namespace AmigaEmulator.Core
         /// </summary>
         public int BeamY;
 
-        /// <summary>
-        /// Runs Advance.
-        /// </summary>
         public void Advance(int chipCyclesPerLine, int linesPerFrame)
         {
             ChipCycle++;

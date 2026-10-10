@@ -1,3 +1,5 @@
+# Copyright 2026 Nils Kopal
+# SPDX-License-Identifier: Apache-2.0
 """Build an original, bootable A3000 SCSI/DMA diagnostic ADF.
 
 No ROM or OS content is included. The boot block stops the OS, reads sector

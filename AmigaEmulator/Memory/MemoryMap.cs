@@ -81,9 +81,6 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public string Name;
 
-        /// <summary>
-        /// Runs Contains.
-        /// </summary>
         public bool Contains(uint address)
         {
             return address >= Start && address <= End;

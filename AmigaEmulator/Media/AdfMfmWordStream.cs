@@ -17,9 +17,6 @@ using System;
 
 namespace AmigaEmulator.Core.Media
 {
-    /// <summary>
-    /// Provides ADF MFM Word Stream functionality.
-    /// </summary>
     public sealed class AdfMfmWordStream
     {
         /// <summary>
@@ -84,9 +81,6 @@ namespace AmigaEmulator.Core.Media
             _position = 0;
         }
 
-        /// <summary>
-        /// Runs Clear.
-        /// </summary>
         public void Clear()
         {
             _track = null;
@@ -140,9 +134,6 @@ namespace AmigaEmulator.Core.Media
             return value;
         }
 
-        /// <summary>
-        /// Runs Wrap.
-        /// </summary>
         private static int Wrap(int position, int length)
         {
             int wrapped = position % length;

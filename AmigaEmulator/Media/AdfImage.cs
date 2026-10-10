@@ -252,9 +252,6 @@ namespace AmigaEmulator.Core.Media
             }
         }
 
-        /// <summary>
-        /// Builds the Track Stream.
-        /// </summary>
         public AdfTrackStream BuildTrackStream(int track, int side)
         {
             return AdfTrackStream.Build(this, track, side);

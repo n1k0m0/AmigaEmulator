@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright 2026 Nils Kopal
+# SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
 
 SERVICE_NAME="${SERVICE_NAME:-amiga-relay-server}"

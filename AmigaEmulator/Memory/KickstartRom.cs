@@ -47,9 +47,6 @@ namespace AmigaEmulator.Core.Memory
         Kickstart204
     }
 
-    /// <summary>
-    /// Provides Kickstart ROM functionality.
-    /// </summary>
     public sealed class KickstartRom
     {
         /// <summary>
@@ -128,14 +125,8 @@ namespace AmigaEmulator.Core.Memory
             get { return _overlaySize; }
         }
 
-        /// <summary>
-        /// Gets or sets Kind.
-        /// </summary>
         public KickstartRomKind Kind { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Sha 1.
-        /// </summary>
         public string Sha1 { get; private set; }
 
         /// <summary>

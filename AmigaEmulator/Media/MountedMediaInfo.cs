@@ -122,44 +122,20 @@ namespace AmigaEmulator.Core.Media
             Error = error ?? string.Empty;
         }
 
-        /// <summary>
-        /// Gets or sets Kind.
-        /// </summary>
         public MountedMediaKind Kind { get; set; }
 
-        /// <summary>
-        /// Gets or sets Status.
-        /// </summary>
         public MountedMediaStatus Status { get; set; }
 
-        /// <summary>
-        /// Gets or sets Short Label.
-        /// </summary>
         public string ShortLabel { get; set; }
 
-        /// <summary>
-        /// Gets or sets Display Name.
-        /// </summary>
         public string DisplayName { get; set; }
 
-        /// <summary>
-        /// Gets or sets Host Path.
-        /// </summary>
         public string HostPath { get; set; }
 
-        /// <summary>
-        /// Gets or sets Drive Index.
-        /// </summary>
         public int DriveIndex { get; set; }
 
-        /// <summary>
-        /// Gets or sets Is Write Protected.
-        /// </summary>
         public bool IsWriteProtected { get; set; }
 
-        /// <summary>
-        /// Gets or sets Error.
-        /// </summary>
         public string Error { get; set; }
 
         /// <summary>

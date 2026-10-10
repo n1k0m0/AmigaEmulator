@@ -170,9 +170,6 @@ namespace AmigaEmulator.Core
             return null;
         }
 
-        /// <summary>
-        /// Runs Probe.
-        /// </summary>
         public static KickstartRomInfo Probe(string path)
         {
             var info = new KickstartRomInfo { Path = path ?? string.Empty };
@@ -220,9 +217,6 @@ namespace AmigaEmulator.Core
             }
         }
 
-        /// <summary>
-        /// Builds the Status Report.
-        /// </summary>
         public static string BuildStatusReport(string path, KickstartRomInfo info)
         {
             info = info ?? Probe(path);
@@ -300,9 +294,6 @@ namespace AmigaEmulator.Core
             directories.Add(fullPath);
         }
 
-        /// <summary>
-        /// Builds the Search Path Report.
-        /// </summary>
         private static string BuildSearchPathReport()
         {
             var builder = new System.Text.StringBuilder();

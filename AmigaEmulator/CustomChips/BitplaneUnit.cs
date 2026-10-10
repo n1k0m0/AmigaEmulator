@@ -414,9 +414,6 @@ namespace AmigaEmulator.Core.CustomChips
             Reset();
         }
 
-        /// <summary>
-        /// Gets or sets Enabled Planes.
-        /// </summary>
         public int EnabledPlanes { get; private set; }
 
         /// <summary>

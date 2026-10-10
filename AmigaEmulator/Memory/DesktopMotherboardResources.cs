@@ -1,3 +1,5 @@
+// Copyright 2026 Nils Kopal
+// SPDX-License-Identifier: Apache-2.0
 using System.IO;
 
 namespace AmigaEmulator.Core.Memory

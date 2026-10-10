@@ -94,14 +94,8 @@ namespace AmigaEmulator.Core.CustomChips
             Reset();
         }
 
-        /// <summary>
-        /// Gets or sets Custom Registers.
-        /// </summary>
         public CustomRegisterMap CustomRegisters { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Bitplanes.
-        /// </summary>
         public BitplaneUnit Bitplanes { get; private set; }
 
         /// <summary>
@@ -114,24 +108,12 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public CollisionUnit Collisions { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Copper.
-        /// </summary>
         public Copper Copper { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Blitter.
-        /// </summary>
         public Blitter Blitter { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Beam.
-        /// </summary>
         public BeamTraceEntry Beam { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Last DMA Slot.
-        /// </summary>
         public DmaSlotTraceEntry LastDmaSlot { get; private set; }
 
         /// <summary>

@@ -42,9 +42,6 @@ namespace AmigaEmulator.Core.Cpu
         IllegalInstruction
     }
 
-    /// <summary>
-    /// Provides 68000 State functionality.
-    /// </summary>
     public sealed class M68kState
     {
         /// <summary>
@@ -85,9 +82,6 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         public M68kExecutionState ExecutionState;
 
-        /// <summary>
-        /// Runs Clone.
-        /// </summary>
         public M68kState Clone()
         {
             var clone = new M68kState();

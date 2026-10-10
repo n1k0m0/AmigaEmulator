@@ -44,59 +44,26 @@ namespace AmigaEmulator.Core.Cpu
         Internal
     }
 
-    /// <summary>
-    /// Provides 68000 Trace Entry functionality.
-    /// </summary>
     public sealed class M68kTraceEntry
     {
-        /// <summary>
-        /// Gets or sets CPU Cycle.
-        /// </summary>
         public long CpuCycle { get; set; }
 
-        /// <summary>
-        /// Gets or sets PC Before.
-        /// </summary>
         public uint PcBefore { get; set; }
 
-        /// <summary>
-        /// Gets or sets PC After.
-        /// </summary>
         public uint PcAfter { get; set; }
 
-        /// <summary>
-        /// Gets or sets Opcode.
-        /// </summary>
         public ushort Opcode { get; set; }
 
-        /// <summary>
-        /// Gets or sets Instruction.
-        /// </summary>
         public string Instruction { get; set; }
 
-        /// <summary>
-        /// Gets or sets SR Before.
-        /// </summary>
         public ushort SrBefore { get; set; }
 
-        /// <summary>
-        /// Gets or sets SR After.
-        /// </summary>
         public ushort SrAfter { get; set; }
 
-        /// <summary>
-        /// Gets or sets Access Type.
-        /// </summary>
         public M68kTraceAccessType AccessType { get; set; }
 
-        /// <summary>
-        /// Gets or sets Address.
-        /// </summary>
         public uint Address { get; set; }
 
-        /// <summary>
-        /// Gets or sets Value.
-        /// </summary>
         public uint Value { get; set; }
 
         /// <summary>

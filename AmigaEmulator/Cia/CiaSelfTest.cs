@@ -18,9 +18,6 @@ using AmigaEmulator.Core.Memory;
 
 namespace AmigaEmulator.Core.Cia
 {
-    /// <summary>
-    /// Provides CIA Self Test functionality.
-    /// </summary>
     public static class CiaSelfTest
     {
         /// <summary>

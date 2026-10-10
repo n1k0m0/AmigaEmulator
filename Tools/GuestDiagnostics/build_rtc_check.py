@@ -1,3 +1,5 @@
+# Copyright 2026 Nils Kopal
+# SPDX-License-Identifier: Apache-2.0
 """Build an original 68000 AmigaDOS hunk executable without a cross compiler.
 
 RTCCheck uses the ROM's battclock.resource, restores the original clock, and

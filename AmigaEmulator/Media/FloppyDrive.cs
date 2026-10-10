@@ -115,19 +115,10 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         private int _decodedWriteSectors;
 
-        /// <summary>
-        /// Gets or sets Image.
-        /// </summary>
         public AdfImage Image { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Track.
-        /// </summary>
         public int Track { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Side.
-        /// </summary>
         public int Side { get; private set; }
 
         /// <summary>
@@ -170,9 +161,6 @@ namespace AmigaEmulator.Core.Media
             }
         }
 
-        /// <summary>
-        /// Gets or sets Disk Changed.
-        /// </summary>
         public bool DiskChanged { get; private set; }
 
         /// <summary>
@@ -266,9 +254,6 @@ namespace AmigaEmulator.Core.Media
             get { return HasDisk && _writeProtected; }
         }
 
-        /// <summary>
-        /// Gets or sets Index Pulse Pending.
-        /// </summary>
         public bool IndexPulsePending { get; private set; }
 
         /// <summary>
@@ -298,9 +283,6 @@ namespace AmigaEmulator.Core.Media
             _motorOffReadyGraceCycles = 0;
         }
 
-        /// <summary>
-        /// Runs Insert.
-        /// </summary>
         public void Insert(AdfImage image, bool writeProtected)
         {
             Insert(image);
@@ -403,9 +385,6 @@ namespace AmigaEmulator.Core.Media
             ApplyControlLines(selected, motorLineLow, _stepLineHigh, false);
         }
 
-        /// <summary>
-        /// Runs Step.
-        /// </summary>
         public void Step(int delta)
         {
             Track += delta;

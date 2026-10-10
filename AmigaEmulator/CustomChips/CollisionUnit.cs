@@ -38,9 +38,6 @@ namespace AmigaEmulator.Core.CustomChips
             _oddEnabled = enabled & 0x55; _evenEnabled = enabled & 0xAA;
         }
 
-        /// <summary>
-        /// Gets or sets Collision Flags.
-        /// </summary>
         public ushort CollisionFlags { get; private set; }
 
         /// <summary>
@@ -51,9 +48,6 @@ namespace AmigaEmulator.Core.CustomChips
             get { return (CollisionFlags & 0x7FFF) == 0x7FFF; }
         }
 
-        /// <summary>
-        /// Gets or sets the CLXCON collision control register.
-        /// </summary>
         public ushort Control
         {
             get { return _control; }
@@ -134,9 +128,6 @@ namespace AmigaEmulator.Core.CustomChips
             }
         }
 
-        /// <summary>
-        /// Builds the CLXDAT sprite pair inputs after CLXCON odd-sprite inclusion bits.
-        /// </summary>
         private int BuildSpritePairMask(int spriteMask)
         {
             if (spriteMask == 0) return 0;

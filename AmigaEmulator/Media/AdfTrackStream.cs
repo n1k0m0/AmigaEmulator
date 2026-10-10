@@ -66,9 +66,6 @@ namespace AmigaEmulator.Core.Media
             return _words[normalized];
         }
 
-        /// <summary>
-        /// Builds the Build result.
-        /// </summary>
         public static AdfTrackStream Build(AdfImage image, int track, int side)
         {
             if (image == null || !image.IsStandardDoubleDensity)

@@ -493,6 +493,8 @@ matching A4000 ROM now pass basic installed-OS checks; wider coverage remains op
 ## License
 
 This project is licensed under the Apache License 2.0. See `LICENSE`.
+Bundled third-party HQx and devtest sources retain their own licenses; see
+`THIRD-PARTY-NOTICES.md` and `external-tests/amiga_devtest/LICENSE`.
 
 Kickstart ROMs, Workbench disks, and game/ADF files are not covered by this
 repository license and must be provided separately by the user.

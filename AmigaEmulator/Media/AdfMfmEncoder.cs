@@ -23,24 +23,12 @@ namespace AmigaEmulator.Core.Media
     /// </summary>
     public sealed class AdfDecodedSector
     {
-        /// <summary>
-        /// Gets or sets Logical Track.
-        /// </summary>
         public int LogicalTrack { get; set; }
 
-        /// <summary>
-        /// Gets or sets Sector.
-        /// </summary>
         public int Sector { get; set; }
 
-        /// <summary>
-        /// Gets or sets Sectors Until Gap.
-        /// </summary>
         public int SectorsUntilGap { get; set; }
 
-        /// <summary>
-        /// Gets or sets Data.
-        /// </summary>
         public byte[] Data { get; set; }
     }
 

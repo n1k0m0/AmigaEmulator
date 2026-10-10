@@ -1,3 +1,5 @@
+# Copyright 2026 Nils Kopal
+# SPDX-License-Identifier: Apache-2.0
 """Create a separate 020/030-compatible copy of the reviewed local CSL Disk 1.
 
 The loader installs an illegal-instruction handler to enter Supervisor mode,

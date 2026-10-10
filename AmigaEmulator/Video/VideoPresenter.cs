@@ -15,19 +15,10 @@
 */
 namespace AmigaEmulator.Core.Video
 {
-    /// <summary>
-    /// Provides Video Presenter functionality.
-    /// </summary>
     public sealed class VideoPresenter
     {
-        /// <summary>
-        /// Gets or sets Last Frame.
-        /// </summary>
         public AmigaFrameBuffer LastFrame { get; private set; }
 
-        /// <summary>
-        /// Runs Present.
-        /// </summary>
         public void Present(AmigaFrameBuffer frameBuffer)
         {
             LastFrame = frameBuffer;

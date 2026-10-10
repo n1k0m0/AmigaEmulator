@@ -57,66 +57,30 @@ namespace AmigaEmulator.Core.SaveStates
             ScreenshotPixels = new uint[0];
         }
 
-        /// <summary>
-        /// Gets or sets Slot Index.
-        /// </summary>
         public int SlotIndex { get; set; }
 
-        /// <summary>
-        /// Gets or sets Status.
-        /// </summary>
         public SaveStateSlotStatus Status { get; set; }
 
-        /// <summary>
-        /// Gets or sets Path.
-        /// </summary>
         public string Path { get; set; }
 
-        /// <summary>
-        /// Gets or sets Display Name.
-        /// </summary>
         public string DisplayName { get; set; }
 
-        /// <summary>
-        /// Gets or sets Created Local Time.
-        /// </summary>
         public DateTime CreatedLocalTime { get; set; }
 
-        /// <summary>
-        /// Gets or sets Mounted Media.
-        /// </summary>
         public MountedMediaInfo MountedMedia { get; set; }
 
-        /// <summary>
-        /// Gets or sets Kickstart.
-        /// </summary>
         public AmigaKickstart Kickstart { get; set; }
 
-        /// <summary>
-        /// Gets or sets RAM Profile.
-        /// </summary>
         public AmigaRamProfile RamProfile { get; set; }
 
         public AmigaMachineModel MachineModel { get; set; } = AmigaMachineModel.A500;
 
-        /// <summary>
-        /// Gets or sets Accuracy Profile.
-        /// </summary>
         public AmigaAccuracyProfile AccuracyProfile { get; set; }
 
-        /// <summary>
-        /// Gets or sets Screenshot Width.
-        /// </summary>
         public int ScreenshotWidth { get; set; }
 
-        /// <summary>
-        /// Gets or sets Screenshot Height.
-        /// </summary>
         public int ScreenshotHeight { get; set; }
 
-        /// <summary>
-        /// Gets or sets Screenshot Pixels.
-        /// </summary>
         public uint[] ScreenshotPixels { get; set; }
 
         /// <summary>
@@ -135,9 +99,6 @@ namespace AmigaEmulator.Core.SaveStates
             get { return Status == SaveStateSlotStatus.Occupied; }
         }
 
-        /// <summary>
-        /// Runs Empty.
-        /// </summary>
         public static SaveStateSlotMetadata Empty(int slotIndex, string path)
         {
             return new SaveStateSlotMetadata

@@ -19,9 +19,6 @@ using AmigaEmulator.Core.Memory;
 
 namespace AmigaEmulator.Core.Cpu
 {
-    /// <summary>
-    /// Provides 68000 Self Test functionality.
-    /// </summary>
     public static class M68kSelfTest
     {
         /// <summary>
@@ -1445,9 +1442,6 @@ namespace AmigaEmulator.Core.Cpu
             return cpu;
         }
 
-        /// <summary>
-        /// Runs Step.
-        /// </summary>
         private static void Step(M68kCpu cpu, int instructions)
         {
             for (int index = 0; index < instructions; index++)
@@ -1476,9 +1470,6 @@ namespace AmigaEmulator.Core.Cpu
             }
         }
 
-        /// <summary>
-        /// Runs Expect.
-        /// </summary>
         private static int Expect(StringBuilder log, string name, bool condition, string detail)
         {
             if (condition)

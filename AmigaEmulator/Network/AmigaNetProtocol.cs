@@ -170,8 +170,8 @@ namespace AmigaEmulator.Network
             byte[] payload = payloadLength == 0 ? EmptyPayload : new byte[payloadLength];
             if (payloadLength > 0 && !ReadExact(stream, payload, 0, payloadLength))
             {
-                // The frame header was valid, but the peer closed before the body arrived.
-                return null;
+                // A complete header commits the peer to this payload length.
+                throw new EndOfStreamException("Truncated AmigaNet payload.");
             }
             return new AmigaNetMessage
             {
@@ -1134,11 +1134,14 @@ namespace AmigaEmulator.Network
         }
         private static bool ReadExact(Stream stream, byte[] buffer, int offset, int count)
         {
+            int initialOffset = offset;
             while (count > 0)
             {
                 int read = stream.Read(buffer, offset, count);
                 if (read <= 0)
                 {
+                    if (offset != initialOffset)
+                        throw new EndOfStreamException("Truncated AmigaNet header or payload.");
                     return false;
                 }
                 // Stream.Read can return partial data even when the connection is

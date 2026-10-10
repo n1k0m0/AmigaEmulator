@@ -21,9 +21,6 @@ using AmigaEmulator.Core.SaveStates;
 
 namespace AmigaEmulator.Core.Input
 {
-    /// <summary>
-    /// Provides Amiga Input Device functionality.
-    /// </summary>
     public sealed class AmigaInputDevice
     {
         /// <summary>
@@ -77,14 +74,8 @@ namespace AmigaEmulator.Core.Input
             Port1Mode = AmigaInputPortMode.Joystick;
         }
 
-        /// <summary>
-        /// Gets or sets Port 0 Mode.
-        /// </summary>
         public AmigaInputPortMode Port0Mode { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Port 1 Mode.
-        /// </summary>
         public AmigaInputPortMode Port1Mode { get; private set; }
 
         /// <summary>
@@ -256,9 +247,6 @@ namespace AmigaEmulator.Core.Input
             SetJoystickButton(port, button, pressed);
         }
 
-        /// <summary>
-        /// Builds the JOYDAT register value for the selected mouse or joystick port.
-        /// </summary>
         public ushort ReadJoyDat(AmigaControlPort port)
         {
             PortState state = GetPort(port);
@@ -318,9 +306,6 @@ namespace AmigaEmulator.Core.Input
             return value;
         }
 
-        /// <summary>
-        /// Builds the POTINP register value from current button and potentiometer inputs.
-        /// </summary>
         public ushort ReadPotInp(ushort potgo)
         {
             ushort value = 0x5500;
@@ -465,9 +450,6 @@ namespace AmigaEmulator.Core.Input
             return (byte)(rawKeyCode & 0x7F);
         }
 
-        /// <summary>
-        /// Provides Port State functionality.
-        /// </summary>
         private sealed class PortState
         {
             /// <summary>

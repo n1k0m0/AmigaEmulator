@@ -17,9 +17,6 @@ using System;
 
 namespace AmigaEmulator.Core.Memory
 {
-    /// <summary>
-    /// Provides Slow RAM functionality.
-    /// </summary>
     public sealed class SlowRam
     {
         /// <summary>
@@ -75,9 +72,6 @@ namespace AmigaEmulator.Core.Memory
             }
         }
 
-        /// <summary>
-        /// Runs Clear.
-        /// </summary>
         public void Clear()
         {
             Array.Clear(_bytes, 0, _bytes.Length);

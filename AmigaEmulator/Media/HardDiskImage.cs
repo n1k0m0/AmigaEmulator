@@ -1,3 +1,5 @@
+// Copyright 2026 Nils Kopal
+// SPDX-License-Identifier: Apache-2.0
 using System;
 using System.Buffers.Binary;
 using System.IO;
@@ -10,6 +12,8 @@ namespace AmigaEmulator.Core.Media
         public const int SectorSize = 512;
         public const int Heads = 16;
         public const int SectorsPerTrack = 63;
+        // Current ATA/SCSI geometry and guest filesystem paths are validated only up to 2 GiB.
+        // Keep this limit aligned with Create() until larger images are covered end to end.
         public const long MaximumBytes = 2L * 1024 * 1024 * 1024;
         private readonly FileStream _stream;
         public string Path { get; }

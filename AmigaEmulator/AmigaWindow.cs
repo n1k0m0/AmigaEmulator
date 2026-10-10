@@ -355,13 +355,7 @@ namespace AmigaEmulator
         /// Runs Start New.
         /// </summary>
         private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
-        /// <summary>
-        /// Runs Font.
-        /// </summary>
         private readonly Font _smallFont = new Font(FontFamily.GenericMonospace, 11.0f, FontStyle.Regular);
-        /// <summary>
-        /// Runs Font.
-        /// </summary>
         private readonly Font _titleFont = new Font(FontFamily.GenericMonospace, 18.0f, FontStyle.Bold);
         /// <summary>
         /// Stores main Menu Items.

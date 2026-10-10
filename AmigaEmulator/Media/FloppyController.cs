@@ -81,24 +81,12 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public event System.Action MediaChanged;
 
-        /// <summary>
-        /// Gets or sets Drive 0.
-        /// </summary>
         public FloppyDrive Drive0 { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Drive 1.
-        /// </summary>
         public FloppyDrive Drive1 { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Drive 2.
-        /// </summary>
         public FloppyDrive Drive2 { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Drive 3.
-        /// </summary>
         public FloppyDrive Drive3 { get; private set; }
 
         /// <summary>
@@ -275,9 +263,6 @@ namespace AmigaEmulator.Core.Media
             }
         }
 
-        /// <summary>
-        /// Builds the CIA A Status Bits.
-        /// </summary>
         public byte BuildCiaAStatusBits()
         {
             byte value = CiaAStatusMask;

@@ -65,9 +65,6 @@ namespace AmigaEmulator.Core
 
 
 
-        /// <summary>
-        /// Runs object.
-        /// </summary>
         private readonly object _syncRoot = new object();
         /// <summary>
         /// Stores model.
@@ -687,9 +684,6 @@ namespace AmigaEmulator.Core
             }
         }
 
-        /// <summary>
-        /// Runs Dispose.
-        /// </summary>
         public void Dispose()
         {
             lock (_syncRoot)
@@ -1349,54 +1343,24 @@ namespace AmigaEmulator.Core
         }
     }
 
-    /// <summary>
-    /// Provides Amiga System Component Profile functionality.
-    /// </summary>
     public sealed class AmigaSystemComponentProfile
     {
-        /// <summary>
-        /// Gets or sets Cycles.
-        /// </summary>
         public int Cycles { get; set; }
 
-        /// <summary>
-        /// Gets or sets Stopwatch Frequency.
-        /// </summary>
         public long StopwatchFrequency { get; set; }
 
-        /// <summary>
-        /// Gets or sets Total Ticks.
-        /// </summary>
         public long TotalTicks { get; set; }
 
-        /// <summary>
-        /// Gets or sets Agnus Ticks.
-        /// </summary>
         public long AgnusTicks { get; set; }
 
-        /// <summary>
-        /// Gets or sets Paula Ticks.
-        /// </summary>
         public long PaulaTicks { get; set; }
 
-        /// <summary>
-        /// Gets or sets CIA Ticks.
-        /// </summary>
         public long CiaTicks { get; set; }
 
-        /// <summary>
-        /// Gets or sets CPU Ticks.
-        /// </summary>
         public long CpuTicks { get; set; }
 
-        /// <summary>
-        /// Gets or sets Denise Ticks.
-        /// </summary>
         public long DeniseTicks { get; set; }
 
-        /// <summary>
-        /// Gets or sets Trace Ticks.
-        /// </summary>
         public long TraceTicks { get; set; }
     }
 }

@@ -168,9 +168,6 @@ namespace AmigaEmulator.Core.Memory
             _lastBusValue = 0xFF;
         }
 
-        /// <summary>
-        /// Gets or sets ROM Overlay At Zero.
-        /// </summary>
         public bool RomOverlayAtZero { get; set; }
 
         // The EC processors wrap their physical address lines; a full 32-bit

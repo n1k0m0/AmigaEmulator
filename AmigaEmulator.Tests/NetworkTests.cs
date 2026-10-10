@@ -1,3 +1,5 @@
+// Copyright 2026 Nils Kopal
+// SPDX-License-Identifier: Apache-2.0
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -49,6 +51,10 @@ internal static class NetworkTests
         stream.Position = 0; var decoded = AmigaNetProtocol.ReadMessage(stream);
         Require(decoded.Payload.Single() == 42, "Wire payload round trip.");
         wire[0] = 0; ExpectFailure(() => AmigaNetProtocol.ReadMessage(new MemoryStream(wire)));
+        Require(AmigaNetProtocol.ReadMessage(new MemoryStream()) == null, "Clean EOF ends a session.");
+        byte[] validWire = stream.ToArray();
+        ExpectEndOfStream(() => AmigaNetProtocol.ReadMessage(new MemoryStream(validWire[..10])));
+        ExpectEndOfStream(() => AmigaNetProtocol.ReadMessage(new MemoryStream(validWire[..^1])));
     }
 
     private static void Frames()
@@ -213,7 +219,14 @@ internal static class NetworkTests
         try { action(); }
         catch (InvalidDataException) { return; }
         catch (CryptographicException) { return; }
+        catch (EndOfStreamException) { return; }
         throw new InvalidOperationException("Malformed or unauthenticated data was accepted.");
+    }
+    private static void ExpectEndOfStream(Action action)
+    {
+        try { action(); }
+        catch (EndOfStreamException) { return; }
+        throw new InvalidOperationException("Truncated message was accepted as a clean disconnect.");
     }
     private static int FreePort() { var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); int port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop(); return port; }
 

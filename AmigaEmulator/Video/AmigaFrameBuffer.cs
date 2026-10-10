@@ -19,9 +19,6 @@ using AmigaEmulator.Core.SaveStates;
 
 namespace AmigaEmulator.Core.Video
 {
-    /// <summary>
-    /// Provides Amiga Frame Buffer functionality.
-    /// </summary>
     public sealed class AmigaFrameBuffer
     {
         /// <summary>
@@ -59,14 +56,8 @@ namespace AmigaEmulator.Core.Video
             _pixelsBehindSprites = new uint[width * height];
         }
 
-        /// <summary>
-        /// Gets or sets Width.
-        /// </summary>
         public int Width { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Height.
-        /// </summary>
         public int Height { get; private set; }
 
         /// <summary>
@@ -77,9 +68,6 @@ namespace AmigaEmulator.Core.Video
             get { return _pixels; }
         }
 
-        /// <summary>
-        /// Runs Clear.
-        /// </summary>
         public void Clear(uint argb)
         {
             Array.Clear(_spritePixels);

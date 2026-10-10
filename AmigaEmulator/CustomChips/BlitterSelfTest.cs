@@ -18,9 +18,6 @@ using AmigaEmulator.Core.Memory;
 
 namespace AmigaEmulator.Core.CustomChips
 {
-    /// <summary>
-    /// Provides Blitter Self Test functionality.
-    /// </summary>
     public static class BlitterSelfTest
     {
         /// <summary>
@@ -572,17 +569,11 @@ namespace AmigaEmulator.Core.CustomChips
                 harness.ReadWord(0x0302) == 0x0000;
         }
 
-        /// <summary>
-        /// Runs Size.
-        /// </summary>
         private static ushort Size(int widthWords, int heightLines)
         {
             return (ushort)(((heightLines & 0x03FF) << 6) | (widthWords & 0x003F));
         }
 
-        /// <summary>
-        /// Provides Harness functionality.
-        /// </summary>
         private sealed class Harness
         {
             /// <summary>
@@ -600,14 +591,8 @@ namespace AmigaEmulator.Core.CustomChips
                 Blitter.AttachChipMemory(ReadWord, WriteWord);
             }
 
-            /// <summary>
-            /// Gets or sets Registers.
-            /// </summary>
             public CustomRegisterMap Registers { get; private set; }
 
-            /// <summary>
-            /// Gets or sets Blitter.
-            /// </summary>
             public Blitter Blitter { get; private set; }
 
             /// <summary>

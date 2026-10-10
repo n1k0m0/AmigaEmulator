@@ -51,64 +51,28 @@ namespace AmigaEmulator.Core.CustomChips
         BlockedMove
     }
 
-    /// <summary>
-    /// Provides Copper Trace Entry functionality.
-    /// </summary>
     public sealed class CopperTraceEntry
     {
-        /// <summary>
-        /// Gets or sets Global Chip Cycle.
-        /// </summary>
         public long GlobalChipCycle { get; set; }
 
-        /// <summary>
-        /// Gets or sets Beam X.
-        /// </summary>
         public int BeamX { get; set; }
 
-        /// <summary>
-        /// Gets or sets Beam Y.
-        /// </summary>
         public int BeamY { get; set; }
 
-        /// <summary>
-        /// Gets or sets Program Counter.
-        /// </summary>
         public uint ProgramCounter { get; set; }
 
-        /// <summary>
-        /// Gets or sets First Word.
-        /// </summary>
         public ushort FirstWord { get; set; }
 
-        /// <summary>
-        /// Gets or sets Second Word.
-        /// </summary>
         public ushort SecondWord { get; set; }
 
-        /// <summary>
-        /// Gets or sets Kind.
-        /// </summary>
         public CopperInstructionKind Kind { get; set; }
 
-        /// <summary>
-        /// Gets or sets Register Offset.
-        /// </summary>
         public uint RegisterOffset { get; set; }
 
-        /// <summary>
-        /// Gets or sets Value.
-        /// </summary>
         public ushort Value { get; set; }
 
-        /// <summary>
-        /// Gets or sets Target.
-        /// </summary>
         public uint Target { get; set; }
 
-        /// <summary>
-        /// Gets or sets Waiting.
-        /// </summary>
         public bool Waiting { get; set; }
     }
 
@@ -191,14 +155,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private ushort _firstWord;
 
-        /// <summary>
-        /// Gets or sets Program Counter.
-        /// </summary>
         public uint ProgramCounter { get; private set; }
 
-        /// <summary>
-        /// Gets or sets Enabled.
-        /// </summary>
         public bool Enabled { get; set; }
 
         /// <summary>
@@ -553,9 +511,6 @@ namespace AmigaEmulator.Core.CustomChips
             }
         }
 
-        /// <summary>
-        /// Runs Move.
-        /// </summary>
         private bool Move(ushort instruction, ushort value, int beamX, int beamY, long globalChipCycle)
         {
             if (_registers == null)

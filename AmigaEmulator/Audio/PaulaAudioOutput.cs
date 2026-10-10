@@ -134,9 +134,6 @@ namespace AmigaEmulator.Core.Audio
             get { return _droppedFrames; }
         }
 
-        /// <summary>
-        /// Runs Submit.
-        /// </summary>
         public void Submit(float left, float right, float volume)
         {
             if (!_available)
@@ -155,9 +152,6 @@ namespace AmigaEmulator.Core.Audio
             }
         }
 
-        /// <summary>
-        /// Runs Clear.
-        /// </summary>
         public void Clear()
         {
             if (_available)
@@ -168,9 +162,6 @@ namespace AmigaEmulator.Core.Audio
             _stagingOffset = 0;
         }
 
-        /// <summary>
-        /// Runs Dispose.
-        /// </summary>
         public void Dispose()
         {
             if (!_available)
@@ -199,9 +190,6 @@ namespace AmigaEmulator.Core.Audio
             _available = false;
         }
 
-        /// <summary>
-        /// Runs Flush.
-        /// </summary>
         private void Flush()
         {
             if (!_available || _stagingOffset <= 0)
@@ -380,9 +368,6 @@ namespace AmigaEmulator.Core.Audio
             public IntPtr Reserved;
         }
 
-        /// <summary>
-        /// Provides Wave Buffer functionality.
-        /// </summary>
         private sealed class WaveBuffer : IDisposable
         {
             /// <summary>
@@ -448,9 +433,6 @@ namespace AmigaEmulator.Core.Audio
                 }
             }
 
-            /// <summary>
-            /// Gets or sets In Use.
-            /// </summary>
             public bool InUse { get; private set; }
 
             /// <summary>
@@ -464,9 +446,6 @@ namespace AmigaEmulator.Core.Audio
                 }
             }
 
-            /// <summary>
-            /// Runs Prepare.
-            /// </summary>
             public void Prepare(IntPtr waveOut)
             {
                 if (_prepared)
@@ -478,9 +457,6 @@ namespace AmigaEmulator.Core.Audio
                 _prepared = true;
             }
 
-            /// <summary>
-            /// Runs Unprepare.
-            /// </summary>
             public void Unprepare(IntPtr waveOut)
             {
                 if (!_prepared)
@@ -519,9 +495,6 @@ namespace AmigaEmulator.Core.Audio
                 InUse = true;
             }
 
-            /// <summary>
-            /// Runs Dispose.
-            /// </summary>
             public void Dispose()
             {
                 Marshal.FreeHGlobal(_data);
