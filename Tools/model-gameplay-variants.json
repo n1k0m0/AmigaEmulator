@@ -1,0 +1,199 @@
+[
+  {
+    "game": "Siedler",
+    "models": [
+      "A500Plus",
+      "A600",
+      "A2000Ecs",
+      "A1200",
+      "A3000",
+      "A4000Ec030"
+    ],
+    "beforeLabel": "symbol-origin",
+    "actions": [
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf",
+        "drive": 0,
+        "label": "requested-disk-2"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "disk-2-loaded"
+      },
+      {
+        "type": "click",
+        "cycles": 2000000,
+        "label": "left-click-after-animation"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "after-animation"
+      }
+    ]
+  },
+  {
+    "game": "ManiacM1",
+    "models": [
+      "A500Plus"
+    ],
+    "beforeLabel": "before-player-input",
+    "actions": [
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -16,
+        "label": "start-target"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "confirm-character-selection"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "character-selection-finished"
+      }
+    ]
+  },
+  {
+    "game": "ManiacM1",
+    "models": [
+      "A2000Ocs",
+      "A1200",
+      "A3000",
+      "A4000Ec030"
+    ],
+    "beforeLabel": "before-player-input",
+    "actions": [
+      {
+        "type": "mouse",
+        "x": -800,
+        "y": -600
+      },
+      {
+        "type": "mouse",
+        "x": 240,
+        "y": 210
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "first-character"
+      },
+      {
+        "type": "mouse",
+        "x": 80,
+        "y": 0
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "second-character"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000
+      },
+      {
+        "type": "mouse",
+        "x": 280,
+        "y": -70,
+        "label": "start-target"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "confirm-character-selection"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "character-selection-finished"
+      }
+    ]
+  },
+  {
+    "game": "ManiacM1",
+    "models": [
+      "A600"
+    ],
+    "beforeLabel": "restore-walking",
+    "actions": [
+      {
+        "type": "mouse",
+        "x": 40,
+        "y": 0,
+        "label": "gate-target"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "walk-again"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "walking"
+      }
+    ]
+  },
+  {
+    "game": "HOSTAGES",
+    "models": [
+      "A600",
+      "A3000"
+    ],
+    "beforeLabel": "restore-mission",
+    "actions": [
+      {
+        "type": "key",
+        "key": 68,
+        "label": "return"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "after-return"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "menu-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "space"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "live-mission"
+      }
+    ]
+  }
+]

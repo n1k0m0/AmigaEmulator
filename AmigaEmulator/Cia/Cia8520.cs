@@ -187,6 +187,9 @@ namespace AmigaEmulator.Core.Cia
         /// Tracks keyboard/serial bytes waiting for the emulated CNT/SP shift.
         /// </summary>
         private readonly Queue<byte> _serialInputQueue = new Queue<byte>();
+        private readonly Queue<int> _serialInputPeriods = new Queue<int>();
+        private int _serialInputBitPeriodEClocks = 1;
+        private int _serialInputClockCountdown;
         /// <summary>
         /// Stores serial Shift Byte.
         /// </summary>
@@ -198,6 +201,10 @@ namespace AmigaEmulator.Core.Cia
         // Timer A supplies two underflows per outgoing CNT pulse, eight pulses per byte.
         private int _serialOutputHalfClocks;
         private bool _serialOutputBufferPending;
+        // Retain the host's serial-output-to-input transition even when it falls
+        // between peripheral ticks. CIA-A's keyboard uses it as KDAT handshake.
+        private uint _serialInputHandshakeSequence;
+        internal uint SerialInputHandshakeSequence => _serialInputHandshakeSequence;
 
         /// <summary>
         /// Initializes a new instance of the Cia8520 class.
@@ -243,6 +250,10 @@ namespace AmigaEmulator.Core.Cia
             // output-mode transfer from their saved SDR/timer state.
             _serialOutputHalfClocks = -1;
             _serialOutputBufferPending = false;
+            _serialInputHandshakeSequence = 0;
+            _serialInputPeriods.Clear();
+            _serialInputBitPeriodEClocks = 1;
+            _serialInputClockCountdown = 0;
             StateSerializer.ReadObjectFields(reader, this);
             if (_serialOutputHalfClocks < 0)
                 _serialOutputHalfClocks = SerialOutputMode && TimerStarted(RegisterCra) && (_interruptRequest & InterruptSerial) == 0 ? 16 : 0;
@@ -255,6 +266,9 @@ namespace AmigaEmulator.Core.Cia
         {
             get { return _registers[RegisterPra]; }
         }
+
+        /// <summary>Active-low CIA-A /LED output selects the audio low-pass circuit.</summary>
+        public bool AudioFilterLedEnabled => IsCiaA && !GetEffectivePortBit(RegisterPra, 1);
 
         /// <summary>
         /// Gets PRB.
@@ -430,10 +444,14 @@ namespace AmigaEmulator.Core.Cia
             _interruptMask = 0;
             _interruptRequest = 0;
             _serialInputQueue.Clear();
+            _serialInputPeriods.Clear();
+            _serialInputBitPeriodEClocks = 1;
+            _serialInputClockCountdown = 0;
             _serialShiftByte = 0;
             _serialBitsRemaining = 0;
             _serialOutputHalfClocks = 0;
             _serialOutputBufferPending = false;
+            _serialInputHandshakeSequence = 0;
             _lastOverlayAtZero = OverlayAtZero;
             RaiseOverlayChanged(_lastOverlayAtZero);
             RaiseInterruptChanged();
@@ -529,6 +547,7 @@ namespace AmigaEmulator.Core.Cia
         {
             _registers[RegisterSdr] = value;
             _serialBitsRemaining = 0;
+            _serialInputClockCountdown = 0;
             RequestInterrupt(InterruptSerial);
         }
 
@@ -537,7 +556,16 @@ namespace AmigaEmulator.Core.Cia
         /// </summary>
         public void QueueSerialInputByte(byte value)
         {
+            QueueSerialInputByte(value, 1);
+        }
+
+        public void QueueSerialInputByte(byte value, int eClocksPerBit)
+        {
+            if (eClocksPerBit < 1) throw new ArgumentOutOfRangeException(nameof(eClocksPerBit));
+            // Old snapshots can contain queued bytes without period metadata.
+            while (_serialInputPeriods.Count < _serialInputQueue.Count) _serialInputPeriods.Enqueue(1);
             _serialInputQueue.Enqueue(value);
+            _serialInputPeriods.Enqueue(eClocksPerBit);
         }
 
         /// <summary>
@@ -727,7 +755,9 @@ namespace AmigaEmulator.Core.Cia
             {
                 if (((previousValue ^ value) & 0x40) != 0)
                 {
+                    if ((previousValue & 0x40) != 0) _serialInputHandshakeSequence++;
                     _serialBitsRemaining = 0;
+                    _serialInputClockCountdown = 0;
                     _serialOutputHalfClocks = 0;
                     _serialOutputBufferPending = false;
                 }
@@ -916,9 +946,14 @@ namespace AmigaEmulator.Core.Cia
 
                 _serialShiftByte = _serialInputQueue.Dequeue();
                 _serialBitsRemaining = 8;
+                // Legacy snapshots retain their one-edge-per-tick queued bytes.
+                _serialInputBitPeriodEClocks = _serialInputPeriods.Count > 0 ? _serialInputPeriods.Dequeue() : 1;
+                _serialInputClockCountdown = _serialInputBitPeriodEClocks;
             }
 
+            if (_serialInputClockCountdown > 0 && --_serialInputClockCountdown > 0) return;
             _serialBitsRemaining--;
+            _serialInputClockCountdown = _serialInputBitPeriodEClocks;
             if (_serialBitsRemaining == 0)
             {
                 _registers[RegisterSdr] = _serialShiftByte;

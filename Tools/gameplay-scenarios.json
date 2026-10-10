@@ -7,57 +7,361 @@
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "ab-00-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "ab-01-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "ab-02-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "ab-03-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "ab-04-after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "ab-05-baseline-right"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "ab-06-baseline-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "ab-07-baseline-continued"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "ab-08-alien-00-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "ab-09-alien-01-continued"
+      },
+      {
+        "type": "click",
+        "button": "Second",
+        "cycles": 200000,
+        "label": "ab-10-alien-02-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "ab-11-alien-03-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "ab-12-alien-04-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "ab-13-alien-05-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "ab-14-alien-06-continued"
+      },
+      {
+        "type": "disk",
+        "disk": "Alien Breed - Special Edition 92 (1992)(Team 17)(Disk 2 of 2).adf",
+        "label": "ab-15-alien-07-disk"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "ab-16-alien-08-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "ab-17-alien-09-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Right,Fire",
+        "cycles": 3000000,
+        "label": "ab-18-alien-10-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Left",
+        "cycles": 1000000,
+        "label": "ab-19-alien-11-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "ab-20-alien-12-load-00"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "ab-21-alien-13-load-01"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "ab-22-alien-14-load-02"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "ab-23-alien-15-start"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "ab-24-alien-16-after-start"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "ab-25-alien-17-input"
+      },
+      {
+        "type": "key",
+        "cycles": 1000000,
+        "label": "ab-26-alien-18-return",
+        "key": 68
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "ab-27-alien-19-return-continued"
+      },
+      {
+        "type": "key",
+        "cycles": 1000000,
+        "label": "ab-28-alien-20-space",
+        "key": 64
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "ab-29-alien-21-space-continued"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "ab-30-alien-22-left-mouse",
+        "button": "Fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "ab-31-alien-23-left-mouse-continued"
+      },
+      {
+        "type": "joystick",
+        "cycles": 1000000,
+        "label": "ab-32-alien-24-joystick-fire",
+        "button": "Fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "ab-33-alien-25-joystick-fire-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "ab-34-alien-26-movement"
+      },
+      {
+        "type": "restore",
+        "label": "ab-35-alien-full-restore"
       }
     ]
   },
   {
     "name": "Canfod-1",
     "boot": "Canfod-1.adf",
-    "ram": "Chip512KSlow512K",
+    "ram": "Chip1Mb",
     "actions": [
+      {
+        "type": "disk",
+        "disk": "Canfod-2.adf",
+        "drive": 1,
+        "label": "cannon-00-cf-00-data-df1"
+      },
+      {
+        "type": "disk",
+        "disk": "Canfod-3.adf",
+        "drive": 2,
+        "label": "cannon-01-cf-01-data-df2"
+      },
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "cannon-02-cf-02-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "cannon-03-cf-03-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "cannon-04-cf-04-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "cannon-05-cf-05-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "cannon-06-cf-06-after-space"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "cannon-07-cf-07-post-script-right",
+        "button": "Right"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "cannon-08-cf-08-post-script-continued"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "label": "cannon-09-cf-09-exit-crystal-intro"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "cannon-10-cf-10-trainer"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "label": "cannon-11-cf-11-exit-trainer"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "cannon-12-cf-12-game-loaded"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "cannon-13-cf-13-game-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "cannon-14-cf-14-continued"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-15-cf-15-trainer-left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "cannon-16-cf-16-after-trainer"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "cannon-17-cf-17-game-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "cannon-18-cf-18-after-game-fire"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-19-cf-19-skip-cast"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "cannon-20-cf-20-cast-exited"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-21-cf-21-briefing"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "cannon-22-cf-22-briefing-loaded"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-23-cf-23-start-mission"
+      },
+      {
+        "type": "wait",
+        "cycles": 160000000,
+        "label": "cannon-24-cf-24-mission"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-25-cf-25-confirm-mission"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "cannon-26-cf-26-mission-live"
+      },
+      {
+        "type": "mouse",
+        "x": 70,
+        "y": 50,
+        "label": "cannon-27-order-pointer"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-28-squad-order"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "cannon-29-controlled"
+      },
+      {
+        "type": "restore",
+        "label": "cannon-30-restore-mission"
       }
     ]
   },
@@ -67,6 +371,24 @@
     "ram": "Chip512KSlow512K",
     "actions": [
       {
+        "type": "disk",
+        "disk": "Civ2.adf",
+        "drive": 1,
+        "label": "preboot-disk-2"
+      },
+      {
+        "type": "disk",
+        "disk": "Civ3.adf",
+        "drive": 2,
+        "label": "preboot-disk-3"
+      },
+      {
+        "type": "disk",
+        "disk": "Civ4.adf",
+        "drive": 3,
+        "label": "preboot-disk-4"
+      },
+      {
         "type": "wait",
         "cycles": 120000000,
         "label": "boot"
@@ -89,6 +411,297 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "legacy-baseline-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "legacy-baseline-wait"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "menu-00-input-menu-loaded"
+      },
+      {
+        "type": "key",
+        "key": 1,
+        "cycles": 400000,
+        "label": "menu-01-choose-mouse-keyboard"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "menu-02-accept-choice"
+      },
+      {
+        "type": "wait",
+        "cycles": 140000000,
+        "label": "menu-03-title-loaded"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "cycles": 400000,
+        "label": "menu-04-continue-title"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "menu-05-title-idle"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "menu-06-title-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "menu-07-after-title-click"
+      },
+      {
+        "type": "key",
+        "key": 69,
+        "cycles": 400000,
+        "label": "menu-08-title-escape"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "menu-09-main-menu"
+      },
+      {
+        "type": "key",
+        "key": 77,
+        "cycles": 400000,
+        "label": "earth-down-0"
+      },
+      {
+        "type": "key",
+        "key": 77,
+        "cycles": 400000,
+        "label": "earth-down-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "earth-menu-selection"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "earth-accept"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "earth-load-0"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "earth-load-7"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-default-0"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-default-0"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-default-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-default-1"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-default-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-default-2"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-default-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-default-3"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-default-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-default-4"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-default-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-default-5"
+      },
+      {
+        "type": "click",
+        "cycles": 400000,
+        "label": "dismiss-help"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-help"
+      },
+      {
+        "type": "key",
+        "key": 69,
+        "cycles": 400000,
+        "label": "close-help"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "map-before-city"
+      },
+      {
+        "type": "key",
+        "key": 53,
+        "cycles": 400000,
+        "label": "build-city"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "city-name-dialog"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept-Rome"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "first-city"
+      },
+      {
+        "type": "key",
+        "key": 69,
+        "cycles": 400000,
+        "label": "return-to-map"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "map-with-city"
+      },
+      {
+        "type": "key",
+        "key": 78,
+        "cycles": 400000,
+        "label": "map-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "after-right"
+      },
+      {
+        "type": "key",
+        "key": 79,
+        "cycles": 400000,
+        "label": "map-left"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "after-left"
+      },
+      {
+        "type": "click",
+        "cycles": 400000,
+        "label": "ack-city"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "city-loaded"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "city-return"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-return"
       }
     ]
   },
@@ -131,26 +744,168 @@
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "fi-00-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "fi-01-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "fi-02-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "fi-03-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "fi-04-after-space"
+      },
+      {
+        "label": "fi-05-restore",
+        "type": "restore"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "fi-06-post-script-right",
+        "button": "Right"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "fi-07-post-script-continued"
+      },
+      {
+        "type": "click",
+        "button": "Second",
+        "cycles": 2000000,
+        "label": "fi-08-right-mouse"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "fi-09-after-right-mouse"
+      },
+      {
+        "type": "click",
+        "cycles": 2000000,
+        "label": "fi-10-left-mouse"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "fi-11-after-left-mouse"
+      },
+      {
+        "type": "disk",
+        "disk": "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 2 of 2)[cr FSN].adf",
+        "drive": 0,
+        "label": "fi-12-requested-disk-2-df0"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "fi-13-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "fi-14-disk-loaded"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 1000000,
+        "label": "fi-15-player-input"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "fi-16-controlled"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "label": "fi-17-return"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "fi-18-return-continued"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "fi-19-mouse-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "fi-20-mouse-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "fi-21-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "fi-22-fire-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 1000000,
+        "label": "fi-23-player-input"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "fi-24-controlled"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "fi-25-disk-left-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 160000000,
+        "label": "fi-26-after-confirm"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "fi-27-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "fi-28-after-fire"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "fi-29-level-player-input"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "fi-30-live-level"
+      },
+      {
+        "type": "restore",
+        "label": "fi-31-restore-level"
       }
     ]
   },
@@ -182,6 +937,54 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "start-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "mission-intro"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "start-mission"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "mission-loaded"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "player-input"
+      },
+      {
+        "type": "mouse",
+        "x": 50,
+        "y": 20,
+        "label": "aim"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "shoot"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "live-mission"
+      },
+      {
+        "type": "restore",
+        "label": "restore-mission"
       }
     ]
   },
@@ -193,26 +996,185 @@
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "lotus-00-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "lotus-01-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "lotus-02-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "lotus-03-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "lotus-04-after-space"
+      },
+      {
+        "label": "lotus-05-before-restore",
+        "type": "checkpoint"
+      },
+      {
+        "label": "lotus-06-restore",
+        "type": "restore"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "lotus-07-post-script-right",
+        "button": "Right"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "lotus-08-post-script-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-09-lotus-09-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "lotus-10-lotus-10-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-11-lotus-11-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "lotus-12-lotus-12-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Up",
+        "cycles": 2000000,
+        "label": "lotus-13-lotus-13-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-14-lotus-14-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "lotus-15-lotus-15-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-16-lotus-16-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "lotus-17-lotus-17-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Up",
+        "cycles": 3000000,
+        "label": "lotus-18-lotus-18-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "lotus-19-lotus-19-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Left",
+        "cycles": 1000000,
+        "label": "lotus-20-lotus-20-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-21-lotus-21-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "lotus-22-lotus-22-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-23-lotus-23-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "lotus-24-lotus-24-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Up",
+        "cycles": 5000000,
+        "label": "lotus-25-lotus-25-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 2000000,
+        "label": "lotus-26-lotus-26-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-27-lotus-27-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "lotus-28-lotus-28-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "lotus-29-lotus-29-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "lotus-30-lotus-30-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Up",
+        "cycles": 5000000,
+        "label": "lotus-31-lotus-31-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 3000000,
+        "label": "lotus-32-lotus-32-joystick"
+      },
+      {
+        "type": "restore",
+        "label": "lotus-33-restore-race"
       }
     ]
   },
@@ -236,14 +1198,90 @@
         "label": "after-click"
       },
       {
-        "type": "key",
-        "key": 64,
-        "label": "space"
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "intro-continued"
+      },
+      {
+        "type": "mouse",
+        "x": -800,
+        "y": -600,
+        "label": "origin"
+      },
+      {
+        "type": "mouse",
+        "x": 240,
+        "y": 210
+      },
+      {
+        "type": "click",
+        "label": "first-character"
+      },
+      {
+        "type": "mouse",
+        "x": 80,
+        "y": 0
+      },
+      {
+        "type": "click",
+        "label": "second-character"
+      },
+      {
+        "type": "mouse",
+        "x": 280,
+        "y": -54,
+        "label": "start-target"
+      },
+      {
+        "type": "click",
+        "label": "start"
       },
       {
         "type": "wait",
-        "cycles": 60000000,
-        "label": "after-space"
+        "cycles": 180000000,
+        "label": "opening"
+      },
+      {
+        "type": "key",
+        "key": 69
+      },
+      {
+        "type": "wait",
+        "cycles": 220000000,
+        "label": "opening-finished"
+      },
+      {
+        "type": "restore",
+        "label": "restore-game"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "before-player-input"
+      },
+      {
+        "type": "mouse",
+        "x": -800,
+        "y": -600
+      },
+      {
+        "type": "mouse",
+        "x": 120,
+        "y": 220,
+        "label": "walk-target"
+      },
+      {
+        "type": "click",
+        "label": "walk-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "after-player-input"
+      },
+      {
+        "type": "restore",
+        "label": "restore-walking"
       }
     ]
   },
@@ -286,26 +1324,151 @@
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "moon-00-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "moon-01-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "moon-02-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "moon-03-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "moon-04-after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "moon-05-baseline-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "moon-06-baseline-continued"
+      },
+      {
+        "type": "disk",
+        "drive": 0,
+        "disk": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 1 of 3)[cr CSL].adf",
+        "label": "moon-07-df0"
+      },
+      {
+        "type": "disk",
+        "drive": 1,
+        "disk": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 2 of 3).adf",
+        "label": "moon-08-df1"
+      },
+      {
+        "type": "disk",
+        "drive": 2,
+        "disk": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 3 of 3).adf",
+        "label": "moon-09-df2"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "moon-10-left-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "moon-11-after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "cycles": 1000000,
+        "label": "moon-12-space"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "moon-13-after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "moon-14-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "moon-15-after-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 600000000,
+        "label": "moon-16-main-menu"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "moon-17-menu-idle"
+      },
+      {
+        "type": "joystick",
+          "button": "Down",
+          "cycles": 500000,
+          "label": "moon-18-gore-row"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "moon-19-gore-debounce"
+      },
+      {
+        "type": "joystick",
+          "button": "Down",
+          "cycles": 500000,
+          "label": "moon-20-practice-row"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "moon-21-practice-debounce"
+      },
+      {
+        "type": "joystick",
+          "button": "Fire",
+          "cycles": 2000000,
+          "label": "moon-22-start-practice"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "moon-23-fight-loaded"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "moon-24-sword-right"
+      },
+      {
+        "type": "joystick",
+        "button": "Left",
+        "cycles": 2000000,
+        "label": "moon-25-move-left"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "moon-26-live-fight"
+      },
+      {
+        "type": "restore",
+        "label": "moon-27-restore"
       }
     ]
   },
@@ -337,6 +1500,163 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "label": "intro-checkpoint",
+        "type": "checkpoint"
+      },
+      {
+        "label": "intro-restore",
+        "type": "restore"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "post-script-right",
+        "button": "Right"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "post-script-continued"
+      },
+      {
+        "type": "mouse",
+        "x": 85,
+        "y": 180
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "continued"
+      },
+      {
+        "type": "click",
+        "label": "title-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-title"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "label": "menu-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "menu-result"
+      },
+      {
+        "type": "key",
+        "key": 68
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "after-return"
+      },
+      {
+        "type": "key",
+        "key": 69
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "after-escape"
+      },
+      {
+        "type": "key",
+        "key": 64
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "after-space"
+      },
+      {
+        "type": "click",
+        "button": "Fire, Second",
+        "cycles": 2000000
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "after-buttons"
+      },
+      {
+        "type": "mouse",
+        "x": -800,
+        "y": -600
+      },
+      {
+        "type": "mouse",
+        "x": 185,
+        "y": 185,
+        "label": "go-target"
+      },
+      {
+        "type": "click",
+        "label": "go-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "start-result"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "map-loaded"
+      },
+      {
+        "type": "restore",
+        "label": "restore-map"
+      },
+      {
+        "type": "mouse",
+        "x": -800,
+        "y": -600
+      },
+      {
+        "type": "mouse",
+        "x": 160,
+        "y": 120,
+        "label": "welcome-ok-target"
+      },
+      {
+        "type": "click",
+        "label": "welcome-ok"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "welcome-closed"
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": 20
+      },
+      {
+        "type": "click",
+        "label": "map-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "controlled-map"
+      },
+      {
+        "type": "restore",
+        "label": "restore-map"
       }
     ]
   },
@@ -368,6 +1688,132 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "type": "mouse",
+        "x": -800,
+        "y": -600
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": 151
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "continued"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "continued"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "continued"
+      },
+      {
+        "type": "mouse",
+        "x": 75,
+        "y": -20
+      },
+      {
+        "type": "key",
+        "key": 84,
+        "cycles": 200000
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 4000000,
+        "label": "continued"
+      },
+      {
+        "type": "restore"
+      },
+      {
+        "type": "mouse",
+        "x": 50,
+        "y": 0
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "continued"
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "continued"
+      },
+      {
+        "type": "mouse",
+        "x": -50,
+        "y": 30
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "continued"
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -45
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 1000000
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "continued"
+      },
+      {
+        "type": "restore"
+      },
+      {
+        "type": "mouse",
+        "x": 50,
+        "y": 0
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "continued"
       }
     ]
   },
@@ -379,26 +1825,120 @@
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "pinball-00-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "pinball-01-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "pinball-02-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "pinball-03-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "pinball-04-after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "pinball-05-baseline-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "pinball-06-baseline-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "pinball-07-boot-finished"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "pinball-08-intro-left"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "cycles": 1000000,
+        "label": "pinball-09-skip-publisher"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "pinball-10-course-request"
+      },
+      {
+        "type": "disk",
+        "disk": "PDREMS22.ADF",
+        "drive": 0,
+        "label": "pinball-11-course-disk2"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "pinball-12-confirm-course"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "pinball-13-table-menu"
+      },
+      {
+        "type": "key",
+        "key": 80,
+        "cycles": 1000000,
+        "label": "pinball-14-partyland-f1"
+      },
+      {
+        "type": "wait",
+        "cycles": 350000000,
+        "label": "pinball-15-table-loaded"
+      },
+      {
+        "type": "key",
+        "key": 80,
+        "cycles": 400000,
+        "label": "pinball-16-start-one-player"
+      },
+      {
+        "type": "wait",
+        "cycles": 3000000,
+        "label": "pinball-17-ball-ready"
+      },
+      {
+        "type": "key",
+        "key": 77,
+        "cycles": 2000000,
+        "label": "pinball-18-launch-ball"
+      },
+      {
+        "type": "key",
+        "key": 96,
+        "modifiers": [
+          97
+        ],
+        "cycles": 1000000,
+        "label": "pinball-19-flippers"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "pinball-20-live-ball"
+      },
+      {
+        "type": "restore",
+        "label": "pinball-21-restore"
       }
     ]
   },
@@ -461,6 +2001,154 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "loader-continued"
+      },
+      {
+        "type": "click"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "before-symbols"
+      },
+      {
+        "label": "symbol-origin",
+        "type": "mouse",
+        "x": -400,
+        "y": -300
+      },
+      {
+        "label": "first-symbol",
+        "type": "mouse",
+        "x": 48,
+        "y": 60
+      },
+      {
+        "type": "click",
+        "label": "symbol-1"
+      },
+      {
+        "type": "click",
+        "label": "symbol-2"
+      },
+      {
+        "type": "click",
+        "label": "symbol-3"
+      },
+      {
+        "type": "click",
+        "label": "symbol-4"
+      },
+      {
+        "type": "click",
+        "label": "symbol-5"
+      },
+      {
+        "type": "click",
+        "label": "symbol-6"
+      },
+      {
+        "type": "click",
+        "label": "symbol-7"
+      },
+      {
+        "type": "click",
+        "label": "symbol-8"
+      },
+      {
+        "type": "click",
+        "label": "symbol-9"
+      },
+      {
+        "type": "click",
+        "label": "symbol-10"
+      },
+      {
+        "type": "click",
+        "label": "symbol-11"
+      },
+      {
+        "type": "click",
+        "label": "symbol-12"
+      },
+      {
+        "label": "result",
+        "type": "wait",
+        "cycles": 10000000
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "main-menu"
+      },
+      {
+        "type": "mouse",
+        "x": -500,
+        "y": -400,
+        "label": "menu-origin"
+      },
+      {
+        "type": "mouse",
+        "x": 25,
+        "y": 85,
+        "label": "start-target"
+      },
+      {
+        "type": "click",
+        "label": "start-mission"
+      },
+      {
+        "type": "wait",
+        "cycles": 140000000,
+        "label": "mission-started"
+      },
+      {
+        "type": "restore",
+        "label": "restore-gameplay"
+      },
+      {
+        "type": "mouse",
+        "x": 150,
+        "y": 80,
+        "label": "field-pointer"
+      },
+      {
+        "type": "click",
+        "label": "field-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "game-continued"
+      },
+      {
+        "type": "mouse",
+        "x": -500,
+        "y": -400,
+        "label": "construction-origin"
+      },
+      {
+        "type": "mouse",
+        "x": 75,
+        "y": 240,
+        "label": "castle-menu-target"
+      },
+      {
+        "type": "click",
+        "label": "castle-menu-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "construction-result"
+      },
+      {
+        "type": "restore",
+        "label": "restore-construction"
       }
     ]
   },
@@ -472,26 +2160,213 @@
       {
         "type": "wait",
         "cycles": 120000000,
-        "label": "boot"
+        "label": "speedball-00-boot"
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "speedball-01-left-click"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-click"
+        "label": "speedball-02-after-click"
       },
       {
         "type": "key",
         "key": 64,
-        "label": "space"
+        "label": "speedball-03-space"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "speedball-04-after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "speedball-05-baseline-right"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-06-baseline-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "speedball-07-baseline-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "speedball-08-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-09-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 25000000,
+        "label": "speedball-10-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-11-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 25000000,
+        "label": "speedball-12-continued"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-13-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "speedball-14-continued"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 200000,
+        "label": "speedball-15-key"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "speedball-16-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-17-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "speedball-18-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "speedball-19-continued"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 200000,
+        "label": "speedball-20-key"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "speedball-21-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-22-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "speedball-23-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 150000000,
+        "label": "speedball-24-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-25-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "speedball-26-continued"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 200000,
+        "label": "speedball-27-key"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "speedball-28-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Down",
+        "cycles": 200000,
+        "label": "speedball-29-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Down",
+        "cycles": 200000,
+        "label": "speedball-30-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Down",
+        "cycles": 200000,
+        "label": "speedball-31-joystick"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-32-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "speedball-33-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 200000,
+        "label": "speedball-34-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "speedball-35-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right,Fire",
+        "cycles": 3000000,
+        "label": "speedball-36-joystick"
+      },
+      {
+        "type": "restore",
+        "label": "speedball-37-restore"
+      },
+      {
+        "type": "joystick",
+        "button": "Left",
+        "cycles": 1000000,
+        "label": "speedball-38-joystick"
       }
     ]
   },
@@ -523,6 +2398,79 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "type": "disk",
+        "disk": "TURRI3-2.ADF",
+        "drive": 1,
+        "label": "disk-2-df1"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "label": "continue-disk-request"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "disk-2-load"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "label": "continue-intro"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "intro-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "label": "intro-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "title-ready"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "title-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "title-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "second-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "game-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "player-input"
+      },
+      {
+        "type": "restore",
+        "label": "restore-player"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "level-continued"
       }
     ]
   },
@@ -531,6 +2479,12 @@
     "boot": "Zak1.adf",
     "ram": "Chip512KSlow512K",
     "actions": [
+      {
+        "type": "disk",
+        "drive": 1,
+        "disk": "Zak2.adf",
+        "label": "preboot-Disk-2"
+      },
       {
         "type": "wait",
         "cycles": 120000000,
@@ -546,14 +2500,68 @@
         "label": "after-click"
       },
       {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "intro-continued"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "post-script-continued"
+      },
+      {
         "type": "key",
-        "key": 64,
-        "label": "space"
+        "key": 69,
+        "cycles": 400000,
+        "label": "skip-intro"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "after-escape"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 400000,
+        "label": "accept"
       },
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "after-space"
+        "label": "with-Disk2-in-DF1"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000000,
+        "label": "keep-boot-intro-continued"
+      },
+      {
+        "type": "key",
+        "key": 69,
+        "cycles": 400000,
+        "label": "keep-boot-skip-cutscene"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "keep-boot-after-cutscene"
+      },
+      {
+        "type": "mouse",
+        "dx": -180,
+        "dy": 110,
+        "label": "bedroom-floor-pointer"
+      },
+      {
+        "type": "click",
+        "cycles": 400000,
+        "label": "walk-to-floor"
+      },
+      {
+        "type": "wait",
+        "cycles": 15000000,
+        "label": "character-walked"
       }
     ]
   }

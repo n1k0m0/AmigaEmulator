@@ -16,8 +16,6 @@ namespace AmigaEmulator.Tests
         {
             yield return Test("Scale2x and Scale3x reconstruct a diagonal", TestDiagonal);
             yield return Test("All modes isolate crop edges and preserve source", TestCrop);
-            yield return Test("Smooth interpolation uses pixel centers and opaque RGB", TestSmooth);
-            yield return Test("Sharp 4x equals two Scale2x passes", TestClean4);
             yield return Test("Changed frames invalidate cache without steady state allocations", TestCache);
             yield return Test("Upscale modes share viewport; stretch fills client despite margins", () => InSta(TestGeometry));
             yield return Test("Real DIB paint applies upscale with correct crop and row stride", () => InSta(TestPaint));
@@ -26,7 +24,7 @@ namespace AmigaEmulator.Tests
         }
 
         private static ChipTestCase Test(string name, Action action) => new("Presentation", name,
-            "Published Scale2x/3x rules; pixel-center interpolation; Win32 DIB and viewport regression", action);
+            "Published Scale2x/3x rules; HQx; Win32 DIB and viewport regression", action);
 
         private static void TestDiagonal()
         {
@@ -66,43 +64,45 @@ namespace AmigaEmulator.Tests
             Check.True(input.AsSpan().SequenceEqual(original), "Source framebuffer remains unchanged.");
         }
 
-        private static void TestSmooth()
-        {
-            var up = new PixelUpscaler();
-            up.Render(new uint[] { 0xFFFF0000, 0xFF0000FF }, 2, 1, new Rectangle(0, 0, 2, 1), SharpPixelsGpuUpscaleMode.Hq2x);
-            uint[] expected = { 0xFFFF0000, 0xFFBF0040, 0xFF4000BF, 0xFF0000FF };
-            for (int y = 0; y < 2; y++) for (int x = 0; x < 4; x++)
-                Check.Equal(expected[x], up.Pixels[y * 4 + x], "Bilinear center sampling.");
-        }
-
-        private static void TestClean4()
-        {
-            uint[] input = { 1, 1, 2, 1, 2, 2, 2, 2, 2 };
-            var first = new PixelUpscaler(); var second = new PixelUpscaler(); var clean = new PixelUpscaler();
-            first.Render(input, 3, 3, new Rectangle(0, 0, 3, 3), SharpPixelsGpuUpscaleMode.Scale2x);
-            second.Render(first.Pixels, 6, 6, new Rectangle(0, 0, 6, 6), SharpPixelsGpuUpscaleMode.Scale2x);
-            clean.Render(input, 3, 3, new Rectangle(0, 0, 3, 3), SharpPixelsGpuUpscaleMode.Clean4);
-            Check.True(clean.Pixels.AsSpan().SequenceEqual(second.Pixels), "Clean4 = two complete Scale2x passes.");
-        }
-
         private static void TestCache()
         {
             var up = new PixelUpscaler(); uint[] input = new uint[64 * 32]; Array.Fill(input, 0xFF112233u);
             var crop = new Rectangle(2, 1, 60, 30);
-            up.Render(input, 64, 32, crop, SharpPixelsGpuUpscaleMode.Clean4);
-            uint[] buffer = up.Pixels;
-            for (int i = 0; i < 20; i++) up.Render(input, 64, 32, crop, SharpPixelsGpuUpscaleMode.Clean4);
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 100; i++)
+            foreach (var mode in Enum.GetValues<SharpPixelsGpuUpscaleMode>())
             {
-                input[64 + 2] = (uint)(0xFF000000 | i);
-                up.Render(input, 64, 32, crop, SharpPixelsGpuUpscaleMode.Clean4);
-                Check.Equal(input[64 + 2], up.Pixels[0], "Changed frame reaches top left.");
+                up.Render(input, 64, 32, crop, mode);
+                uint[] buffer = up.Pixels;
+                for (int i = 0; i < 20; i++) up.Render(input, 64, 32, crop, mode);
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; i++)
+                {
+                    Array.Fill(input, (uint)(0xFF000000 | i));
+                    up.Render(input, 64, 32, crop, mode);
+                    Check.Equal(input[64 + 2], up.Pixels[0], "Changed frame reaches top left.");
+                    up.Render(input, 64, 32, crop, mode);
+                }
+                Check.True(GC.GetAllocatedBytesForCurrentThread() - before <= 1024, "No per-frame upscale buffer allocation " + mode);
+                Check.True(ReferenceEquals(buffer, up.Pixels), "Buffer reused after input changes " + mode);
+                // Exercise the non-uniform edge/interpolation path as well as the solid-color fast path.
+                Array.Fill(input, 0xFF000000u);
+                input[15 * 64 + 32] = 0xFFFFFFFF;
+                up.Render(input, 64, 32, crop, mode);
+                before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 100; i++)
+                {
+                    input[15 * 64 + 32] ^= 1;
+                    up.Render(input, 64, 32, crop, mode);
+                }
+                Check.True(GC.GetAllocatedBytesForCurrentThread() - before <= 1024, "No per-frame edge interpolation allocation " + mode);
+                Check.True(ReferenceEquals(buffer, up.Pixels), "Edge interpolation reuses output " + mode);
             }
-            Check.True(GC.GetAllocatedBytesForCurrentThread() - before <= 1024, "No per-frame upscale buffer allocation.");
-            Check.True(ReferenceEquals(buffer, up.Pixels), "Buffer reused after input changes.");
-            up.Render(input, 64, 32, crop, SharpPixelsGpuUpscaleMode.Hq4x);
-            Check.True(ReferenceEquals(buffer, up.Pixels), "Same size mode reuses buffer but recomputes image.");
+            uint[] diagonal = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000 };
+            up.Render(diagonal, 3, 3, new Rectangle(0, 0, 3, 3), SharpPixelsGpuUpscaleMode.Scale2x);
+            uint[] sharpBuffer = up.Pixels;
+            up.Render(diagonal, 3, 3, new Rectangle(0, 0, 3, 3), SharpPixelsGpuUpscaleMode.Hq2x);
+            Check.True(ReferenceEquals(sharpBuffer, up.Pixels), "Same size mode reuses buffer.");
+            // FFmpeg hqx=n=2 reference for this complete 3x3 fixture.
+            Check.Equal(0xFF7F7F7Fu, up.Pixels[2 * 6 + 2], "Changing mode recomputes even when source is unchanged.");
         }
 
         private static void TestGeometry()
@@ -138,14 +138,15 @@ namespace AmigaEmulator.Tests
                 using Bitmap painted = window.PaintFrame();
                 Check.Equal(unchecked((int)0xFF00FF00), painted.GetPixel(0, 0).ToArgb(), "Top left crop " + mode);
                 Check.Equal(Color.Black.ToArgb(), painted.GetPixel(599, 399).ToArgb(), "Bottom right crop/stride " + mode);
-                if (mode == SharpPixelsGpuUpscaleMode.Scale2x || mode == SharpPixelsGpuUpscaleMode.Scale3x || mode == SharpPixelsGpuUpscaleMode.Clean4)
+                if (mode == SharpPixelsGpuUpscaleMode.Scale2x || mode == SharpPixelsGpuUpscaleMode.Scale3x)
                     Check.Equal(Color.Lime.ToArgb(), painted.GetPixel(201, 201).ToArgb(), "Actual painted diagonal corner is upscaled " + mode);
                 if (mode == SharpPixelsGpuUpscaleMode.None)
                     Check.Equal(Color.Black.ToArgb(), painted.GetPixel(201, 201).ToArgb(), "Native nearest-neighbor diagonal.");
-                if (mode == SharpPixelsGpuUpscaleMode.Hq2x || mode == SharpPixelsGpuUpscaleMode.Hq3x || mode == SharpPixelsGpuUpscaleMode.Hq4x || mode == SharpPixelsGpuUpscaleMode.Xbrz)
+                if (mode == SharpPixelsGpuUpscaleMode.Hq2x || mode == SharpPixelsGpuUpscaleMode.Hq3x || mode == SharpPixelsGpuUpscaleMode.Hq4x)
                 {
-                    int green = painted.GetPixel(299, 250).G;
-                    Check.True(green > 0 && green < 255, "Smooth mode affects real paint " + mode);
+                    // Independent ffmpeg -vf hqx=n=2/3/4 outputs for this cropped 3x2 source.
+                    int expected = mode == SharpPixelsGpuUpscaleMode.Hq2x ? unchecked((int)0xFF00BF00) : Color.Lime.ToArgb();
+                    Check.Equal(expected, painted.GetPixel(201, 201).ToArgb(), "HQx reference color reaches real paint " + mode);
                 }
             }
         }

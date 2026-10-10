@@ -384,6 +384,7 @@ namespace AmigaEmulator.Core.CustomChips
                 Copper.RestartAtCopperList1();
             }
 
+            if (beamX == 0) Bitplanes.SampleVerticalDisplayWindow(beamY);
             bool dmaMasterEnabled = (CustomRegisters.DmaControl & 0x0200) != 0;
             DmaSlotTraceEntry slot = _dmaScheduler.GetSlot(_globalCycle, beamX, beamY);
             slot.CpuCanUseChipBus = !dmaMasterEnabled || slot.Owner == DmaOwner.Cpu;

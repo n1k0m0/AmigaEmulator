@@ -124,14 +124,17 @@ namespace AmigaEmulator.Core.Input
             input.AttachCiaA(cia);
             input.KeyboardKeyDown(0x20);
             input.TickEClock();
-            TickCiaSerial(cia, 8);
+            TickCiaSerial(cia, 344);
 
             byte expectedDown = AmigaInputDevice.EncodeKeyboardSerialByte(0x20, false);
             bool downOk = cia.SerialData == expectedDown && cia.IsSerialInputPending;
             cia.ReadByte(0x00BFED00);
+            // The keyboard waits for KDAT acknowledgement after the CIA ICR read.
+            cia.WriteByte(0x00BFEE00, 0x40);
+            cia.WriteByte(0x00BFEE00, 0);
 
             input.KeyboardKeyUp(0x20);
-            for (int index = 0; index < 24; index++)
+            for (int index = 0; index < 400; index++)
             {
                 input.TickEClock();
                 cia.Tick();

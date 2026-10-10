@@ -142,31 +142,23 @@ namespace AmigaEmulator.Core
             /// <summary>
             /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale2x, "2X SHARP", "Nearest-neighbor 2x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale2x, "SCALE2X", "Scale2x pixel-edge reconstruction at 2x source resolution."),
             /// <summary>
             /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale3x, "3X SHARP", "Nearest-neighbor 3x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Scale3x, "SCALE3X", "Scale3x pixel-edge reconstruction at 3x source resolution."),
             /// <summary>
             /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq2x, "2X SMOOTH", "Bicubic 2x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq2x, "HQ2X", "HQ2x color-aware edge interpolation at 2x source resolution."),
             /// <summary>
             /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq3x, "3X SMOOTH", "Bicubic 3x source upscale."),
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq3x, "HQ3X", "HQ3x color-aware edge interpolation at 3x source resolution."),
             /// <summary>
             /// Gets upscale.
             /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq4x, "4X SMOOTH", "Bicubic 4x source upscale."),
-            /// <summary>
-            /// Gets upscale.
-            /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Xbrz, "4X SOFT", "Bicubic 4x source upscale for legacy xBRZ settings."),
-            /// <summary>
-            /// Gets upscale.
-            /// </summary>
-            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Clean4, "4X SHARP", "Nearest-neighbor 4x source upscale.")
+            new AmigaSettingOption<AmigaUpscaleMode>(AmigaUpscaleMode.Hq4x, "HQ4X", "HQ4x color-aware edge interpolation at 4x source resolution.")
         };
 
         /// <summary>
@@ -308,15 +300,15 @@ namespace AmigaEmulator.Core
             /// <summary>
             /// Gets filtering.
             /// </summary>
-            new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.A500, "A500", "A500-style low-pass filtering."),
+            new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.A500, "A500", "A500 fixed output stages; LED filter follows the game."),
             /// <summary>
             /// Gets filtering.
             /// </summary>
-            new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.A1200, "A1200", "A1200-style brighter filtering."),
+            new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.A1200, "A1200", "Clear A1200 output; LED filter follows the game."),
             /// <summary>
             /// Gets filter.
             /// </summary>
-            new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.Led, "LED", "Apply the stronger LED filter.")
+            new AmigaSettingOption<AmigaPaulaFilter>(AmigaPaulaFilter.Led, "LED", "Force A500 output stages and the LED filter on.")
         };
 
         /// <summary>

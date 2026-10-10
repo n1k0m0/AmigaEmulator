@@ -71,8 +71,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// Defines the AUD3 END custom register offset or bit mask.
         /// </summary>
         private const uint Aud3End = 0x0DE;
-        // PAL DD disks rotate once per ~709379 chip cycles. A standard ADF
-        // track contains 0x1900 MFM words, so one word arrives every ~108 cycles.
+        // Retain the modeled DD data-word cadence. FloppyDrive pads the
+        // synthesized ADF track with gap flux until the physical INDEX edge;
+        // 0x1900 encoded words alone do not define the revolution period.
         private const int DefaultDiskWordPeriodChipCycles = 108;
         // Paula can buffer a short burst between disk slots, but the physical
         // track keeps rotating even when software or DMA falls behind.
@@ -88,7 +89,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Constant for Paula Clock Hz.
         /// </summary>
-        private const double PaulaClockHz = 3546895.0;
+        private readonly double _audioClockHz;
 
         /// <summary>
         /// Stores floppy Controller.
@@ -261,6 +262,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores audio Sample Accumulator.
         /// </summary>
         private double _audioSampleAccumulator;
+        private double _audioIntegralLeft, _audioIntegralRight;
+        private int _audioIntervalTicks, _audioMixLeft, _audioMixRight;
+        private bool _audioMixDirty = true, _audioIntegrationStateValid;
         /// <summary>
         /// Stores audio Samples Generated.
         /// </summary>
@@ -307,8 +311,11 @@ namespace AmigaEmulator.Core.CustomChips
         /// <summary>
         /// Initializes a new instance of the Paula class.
         /// </summary>
-        public Paula(int chipRamBytes)
+        public Paula(int chipRamBytes, double audioClockHz = 3546895.0)
         {
+            if (!double.IsFinite(audioClockHz) || audioClockHz < AudioOutputRate)
+                throw new ArgumentOutOfRangeException(nameof(audioClockHz));
+            _audioClockHz = audioClockHz;
             _dmaAddress = new ChipDmaAddress(chipRamBytes);
             _audioChannels = new AudioChannel[AudioChannelCount];
             for (int index = 0; index < _audioChannels.Length; index++)
@@ -457,7 +464,8 @@ namespace AmigaEmulator.Core.CustomChips
                 "_requestInterrupt",
                 "_readDmaControl",
                 "_readAdkControl",
-                "_diskWordPeriodChipCycles");
+                "_diskWordPeriodChipCycles",
+                "_audioClockHz");
         }
 
         /// <summary>
@@ -465,6 +473,12 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
+            // Missing fields in legacy states must not inherit values from the
+            // machine that was running before Restore was selected.
+            _audioIntegrationStateValid = false;
+            _audioIntegralLeft = _audioIntegralRight = 0;
+            _audioIntervalTicks = _audioMixLeft = _audioMixRight = 0;
+            _audioMixDirty = true;
             StateSerializer.ReadObjectFields(
                 reader,
                 this,
@@ -474,9 +488,23 @@ namespace AmigaEmulator.Core.CustomChips
                 "_requestInterrupt",
                 "_readDmaControl",
                 "_readAdkControl",
-                "_diskWordPeriodChipCycles");
+                "_diskWordPeriodChipCycles",
+                "_audioClockHz");
 
             _lastAudioDmaMask = -1;
+            foreach (AudioChannel channel in _audioChannels) channel.NormalizeAfterLoad();
+            if (!_audioIntegrationStateValid)
+            {
+                _audioMixLeft = _audioChannels[0].Output + _audioChannels[3].Output;
+                _audioMixRight = _audioChannels[1].Output + _audioChannels[2].Output;
+                // The partial host sample in a legacy state has no saved area.
+                // Approximate it with the current DAC level, preserving phase.
+                _audioIntegralLeft = _audioMixLeft * _audioSampleAccumulator / AudioOutputRate;
+                _audioIntegralRight = _audioMixRight * _audioSampleAccumulator / AudioOutputRate;
+                _audioIntervalTicks = 0;
+                _audioMixDirty = true;
+            }
+            _audioIntegrationStateValid = true;
             NormalizeDiskDmaStateAfterLoad();
         }
 
@@ -539,6 +567,10 @@ namespace AmigaEmulator.Core.CustomChips
             _lastDiskBlockWords = 0;
             _audioDmaRoundRobin = 0;
             _audioSampleAccumulator = 0.0;
+            _audioIntegralLeft = _audioIntegralRight = 0;
+            _audioIntervalTicks = _audioMixLeft = _audioMixRight = 0;
+            _audioMixDirty = true;
+            _audioIntegrationStateValid = true;
             _audioSamplesGenerated = 0;
             _audioDmaWordsFetched = 0;
             _audioInterrupts = 0;
@@ -851,11 +883,26 @@ namespace AmigaEmulator.Core.CustomChips
                 TickAudioDmaSlot(dmaSlotChannel);
             }
 
+            bool changed = _audioMixDirty;
+            _audioMixDirty = false;
             for (int channel = 0; channel < _audioChannels.Length; channel++)
             {
-                _audioChannels[channel].TickPeriod();
+                changed |= _audioChannels[channel].TickPeriod();
             }
 
+            _audioIntervalTicks++;
+            if (changed)
+            {
+                // Integrate held DAC levels only on transitions and host sample
+                // boundaries, rather than doing four mixes every chip clock.
+                _audioIntegralLeft += (double)_audioMixLeft * (_audioIntervalTicks - 1);
+                _audioIntegralRight += (double)_audioMixRight * (_audioIntervalTicks - 1);
+                _audioIntervalTicks = 1;
+                _audioMixLeft = _audioChannels[0].Output + _audioChannels[3].Output;
+                _audioMixRight = _audioChannels[1].Output + _audioChannels[2].Output;
+            }
+
+            _audioIntegrationStateValid = true;
             EmitAudioSamples();
         }
 
@@ -911,11 +958,17 @@ namespace AmigaEmulator.Core.CustomChips
         private void EmitAudioSamples()
         {
             _audioSampleAccumulator += AudioOutputRate;
-            while (_audioSampleAccumulator >= PaulaClockHz)
+            while (_audioSampleAccumulator >= _audioClockHz)
             {
-                _audioSampleAccumulator -= PaulaClockHz;
-                float left = (_audioChannels[0].Output + _audioChannels[3].Output) * (1.0f / (2.0f * 128.0f * 64.0f));
-                float right = (_audioChannels[1].Output + _audioChannels[2].Output) * (1.0f / (2.0f * 128.0f * 64.0f));
+                _audioSampleAccumulator -= _audioClockHz;
+                double spill = _audioSampleAccumulator / AudioOutputRate;
+                double duration = _audioIntervalTicks - spill;
+                double gain = AudioOutputRate / (_audioClockHz * 2 * 128 * 64);
+                float left = (float)((_audioIntegralLeft + _audioMixLeft * duration) * gain);
+                float right = (float)((_audioIntegralRight + _audioMixRight * duration) * gain);
+                _audioIntegralLeft = _audioMixLeft * spill;
+                _audioIntegralRight = _audioMixRight * spill;
+                _audioIntervalTicks = 0;
                 _audioSamplesGenerated++;
                 float absLeft = Math.Abs(left);
                 float absRight = Math.Abs(right);
@@ -989,6 +1042,7 @@ namespace AmigaEmulator.Core.CustomChips
                     break;
                 case 0x08:
                     channel.Volume = value;
+                    _audioMixDirty = true;
                     break;
                 case 0x0A:
                     channel.WriteData(value);
@@ -1314,6 +1368,10 @@ namespace AmigaEmulator.Core.CustomChips
             /// Stores current Sample.
             /// </summary>
             private int _currentSample;
+            // AUDDAT is the DMA holding register, separate from the word whose
+            // high/low bytes are currently being clocked into the DAC.
+            private ushort _currentWord;
+            private bool _currentWordStateValid;
 
             /// <summary>
             /// Initializes a new instance of the AudioChannel class.
@@ -1400,6 +1458,16 @@ namespace AmigaEmulator.Core.CustomChips
                 _nextByteHigh = true;
                 _periodCounter = 1;
                 _currentSample = 0;
+                _currentWord = 0;
+                _currentWordStateValid = true;
+            }
+
+            public void NormalizeAfterLoad()
+            {
+                // Legacy states had only Data. Keep them readable and recover
+                // their best available word; new states preserve both latches.
+                if (!_currentWordStateValid) _currentWord = Data;
+                _currentWordStateValid = true;
             }
 
             /// <summary>
@@ -1469,22 +1537,24 @@ namespace AmigaEmulator.Core.CustomChips
             /// <summary>
             /// Advances the Period state by one emulator tick.
             /// </summary>
-            public void TickPeriod()
+            public bool TickPeriod()
             {
                 int period = Period;
                 if (period < 1)
                 {
-                    period = 1;
+                    period = 65536;
                 }
 
                 _periodCounter--;
                 if (_periodCounter > 0)
                 {
-                    return;
+                    return false;
                 }
 
                 _periodCounter = period;
+                int previousSample = _currentSample;
                 AdvanceSample();
+                return _currentSample != previousSample;
             }
 
             /// <summary>
@@ -1532,9 +1602,10 @@ namespace AmigaEmulator.Core.CustomChips
                     _hasPendingWord = false;
                     _hasCurrentWord = true;
                     _nextByteHigh = true;
+                    _currentWord = Data;
                 }
 
-                byte raw = _nextByteHigh ? (byte)(Data >> 8) : (byte)(Data & 0xFF);
+                byte raw = _nextByteHigh ? (byte)(_currentWord >> 8) : (byte)(_currentWord & 0xFF);
                 _currentSample = unchecked((sbyte)raw);
                 _nextByteHigh = !_nextByteHigh;
                 if (_nextByteHigh)

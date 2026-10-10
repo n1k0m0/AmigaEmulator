@@ -1,0 +1,79 @@
+[
+  {
+    "name": "fast2-k31",
+    "game": "North-&-South",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast2Mb",
+    "rom": "KICK31.ROM"
+  },
+  {
+    "name": "fast2-native",
+    "game": "North-&-South",
+    "model": "A600",
+    "ram": "Chip2MbFast2Mb",
+    "rom": "KICK31.ROM"
+  },
+  {
+    "name": "fast2-native",
+    "game": "North-&-South",
+    "model": "A2000Ecs",
+    "ram": "Chip2MbFast2Mb",
+    "rom": "KICK31.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "North-&-South",
+    "model": "A3000",
+    "ram": "Chip2MbFast4Mb",
+    "rom": "KICK13.ROM"
+  },
+  {
+    "game": "Canfod-1",
+    "model": "A1200",
+    "name": "chip2-only",
+    "ram": "Chip2Mb",
+    "rom": "KICK31-A1200.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "LOTUS",
+    "model": "A500Plus",
+    "ram": "Chip2Mb",
+    "rom": "KICK13.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "LOTUS",
+    "model": "A600",
+    "ram": "Chip2Mb",
+    "rom": "KICK13.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "LOTUS",
+    "model": "A2000Ecs",
+    "ram": "Chip2Mb",
+    "rom": "KICK13.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "Tinyus",
+    "model": "A500Plus",
+    "ram": "Chip2Mb",
+    "rom": "KICK13.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "Tinyus",
+    "model": "A600",
+    "ram": "Chip2Mb",
+    "rom": "KICK13.ROM"
+  },
+  {
+    "name": "kick13",
+    "game": "Tinyus",
+    "model": "A2000Ecs",
+    "ram": "Chip2Mb",
+    "rom": "KICK13.ROM"
+  }
+]

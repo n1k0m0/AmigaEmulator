@@ -28,7 +28,7 @@ namespace AmigaEmulator
         private void DrawHardDiskOverlay(Graphics graphics)
         {
             var disk = _system.Bus.HardDisk.Image;
-            DrawMenu(graphics, "HARD DISK - " + _system.Model.HardDiskControllerName, "ENTER SELECT  LEFT/RIGHT SIZE  ESC BACK", new[]
+            DrawMenu(graphics, "SETTINGS / HARD DISK - " + _system.Model.HardDiskControllerName, "ENTER SELECT  LEFT/RIGHT SIZE  ESC BACK", new[]
             {
                 MenuLine("CONTROLLER", _system.Model.HasBuiltInHardDiskController ? "BUILT-IN " + _system.Model.HardDiskControllerName : _settings.HardDiskEnabled ? "ON - A600 IDE" : "OFF"),
                 MenuLine("NEW IMAGE SIZE", _settings.NewHardDiskSizeMiB + " MiB"),

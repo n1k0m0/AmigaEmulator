@@ -15,6 +15,7 @@ namespace AmigaEmulator.Tests
             yield return Test("odd data transfers work while odd instruction fetch creates an address-error frame", TestAlignment);
             yield return Test("EC020 wraps at 24 bits and 68020 preserves the full physical address", TestAddressWidth);
             yield return Test("MOVEC relocates vectors and format zero restores through RTE", TestControlAndFrames);
+            yield return Test("user-mode MOVEC probes distinguish a 68000 illegal opcode from 020/030 privilege faults", TestUserMovecProbe);
             yield return Test("master interrupts restore both stacks through the throwaway frame", TestMasterInterrupt);
             yield return Test("long branches and LINK/RTD preserve complete displacements and return addresses", TestControlFlow);
             yield return Test("bitfields cover every register offset/width and signed memory offsets", TestBitFields);
@@ -44,6 +45,26 @@ namespace AmigaEmulator.Tests
             for (int i = 0; i < code.Length; i++) bus.WriteWord(0x1000u + (uint)i * 2, code[i]);
             bus.WriteWord(0x2000, 0x4E73);
             var cpu = new M68kCpu(bus, model); cpu.Reset(); return (cpu, bus);
+        }
+
+        private static void TestUserMovecProbe()
+        {
+            foreach (var model in new[] { AmigaCpuModel.M68000, AmigaCpuModel.M68EC020,
+                AmigaCpuModel.M68020, AmigaCpuModel.M68EC030, AmigaCpuModel.M68030 })
+            {
+                var (cpu, bus) = Prepare(model, 0x46FC, 0x0000, 0x4E7A, 0x0002);
+                bus.WriteLong(4 * 4, 0x2100); bus.WriteLong(8 * 4, 0x2200);
+                cpu.SetD(0, 0xCAFEBABE);
+                cpu.Step(); cpu.Step();
+                bool originalCpu = model == AmigaCpuModel.M68000;
+                Check.Equal(originalCpu ? 0x2100u : 0x2200u, cpu.PC,
+                    "An unavailable 68000 opcode and a privileged control read use distinct vectors.");
+                Check.Equal(0xCAFEBABEu, cpu.GetD(0), "A rejected control read must not change its destination.");
+                Check.Equal(originalCpu ? 0x7FFAu : 0x7FF8u, cpu.A7, "Use the processor's real exception frame.");
+                Check.Equal((ushort)0, bus.ReadWord(cpu.A7), "The saved status retains user mode.");
+                Check.Equal(0x1004u, bus.ReadLong(cpu.A7 + 2), "The frame identifies the faulting MOVEC instruction.");
+                if (!originalCpu) Check.Equal((ushort)32, bus.ReadWord(cpu.A7 + 6), "Format zero records vector eight.");
+            }
         }
 
         private static void TestAddressing()

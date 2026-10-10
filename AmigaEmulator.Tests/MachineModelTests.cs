@@ -41,6 +41,8 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models", "battery clock rolls over dates and supports HOLD, STOP and 12-hour mode", "MSM6242 calendar and control registers", TestClockCalendar);
             yield return new ChipTestCase("Models", "version 4 machine states still load without battery-clock data", "Pre-RTC state migration", TestPreClockState);
             yield return new ChipTestCase("Models/ECS", "legacy display writes release DIWHIGH even when values are unchanged", "DIWHIGH interlock and byte writes", TestWindowInterlock);
+            yield return new ChipTestCase("Models/ECS", "vertical display comparators retain an open window after a passed stop is programmed", "Raster splits, next-field stop/start and mid-window restore", TestVerticalWindowComparators);
+            yield return new ChipTestCase("Models/Bitplanes", "DMA pointers retain their progress across scanlines without bitplane DMA", "Commodore HRM chapter 3; alternating-row dot-matrix display", TestDmaPointersAcrossBlankLines);
             yield return new ChipTestCase("Models/ECS", "border blank gates on ECSENA and respects both display-window edges", "ECS border rendering and empty-playfield fast path", TestBorderBlank);
             yield return new ChipTestCase("Models/ECS", "raster border changes apply immediately and preserve sprite palette colors", "Active playfield border and sprite composition", TestActiveBorderBlank);
             yield return new ChipTestCase("Models/ECS", "KILLEHB changes the palette immediately and remains ECS-only", "EHB disable, dual playfield and restore", TestKillEhb);
@@ -48,6 +50,50 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models/A2000", "A2000 revision RAM rules preserve Zorro expansions and reject invalid layouts", "Revision capabilities, RAM mapping and model state", TestA2000Ram);
             yield return new ChipTestCase("Models/A2000", "A2000 CIA-A follows an independent 50 Hz clock and restores phase", "Mains TOD source and state migration", TestA2000Tod);
             yield return new ChipTestCase("Models/A2000", "A2000 savestate file records model and RAM and rejects a different revision", "Public savestate metadata and revision validation", TestA2000StateFile);
+        }
+
+        private static void TestDmaPointersAcrossBlankLines()
+        {
+            foreach (var chipset in new[] { AmigaChipset.Ocs, AmigaChipset.Ecs, AmigaChipset.Aga })
+            foreach (ushort fmode in chipset == AmigaChipset.Aga ? new ushort[] { 0, 1, 3 } : new ushort[] { 0 })
+            {
+                var regs = new CustomRegisterMap(chipset);
+                var reads = new List<uint>();
+                var planes = new BitplaneUnit(regs, address => { reads.Add(address); return 0xFFFF; });
+                regs.WriteWord(0x08E, 0x2C81); regs.WriteWord(0x090, 0x3CC1);
+                regs.WriteWord(0x092, 0x0038); regs.WriteWord(0x094, 0x0038);
+                regs.WriteWord(0x0E2, 0x1000); regs.WriteWord(0x108, 8);
+                regs.WriteWord(0x100, 0x1200); regs.WriteWord(0x096, 0x8300);
+                regs.WriteWord(0x1FC, fmode);
+                planes.BeginFrame();
+                Fetch(44);
+                int words = reads.Count;
+                Check.True(words > 0, "The active scanline must fetch bitplane data.");
+                Check.Equal(0x1000u, reads[0], "The first fetch starts at the programmed pointer.");
+                regs.WriteWord(0x100, 0x0200);
+                Fetch(45);
+                Check.Equal(words, reads.Count, "A zero-plane scanline must not consume data or modulo.");
+                regs.WriteWord(0x100, 0x1200);
+                Fetch(46);
+                Check.Equal(0x1000u + (uint)(words * 2 + 8), reads[words],
+                    $"{chipset}/FMODE={fmode}: DMA resumes after the fetched words and one modulo, not at row zero.");
+                regs.WriteWord(0x100, 0x0200);
+                Fetch(47); Fetch(48); Fetch(49);
+                Check.Equal(words * 2, reads.Count, "Several blank scanlines must leave the pointer untouched.");
+                regs.WriteWord(0x100, 0x1200);
+                Fetch(50);
+                Check.Equal(0x1000u + (uint)(2 * (words * 2 + 8)), reads[words * 2],
+                    "The next enabled line continues after exactly two completed fetches.");
+                regs.WriteWord(0x0E2, 0x2000);
+                Fetch(52);
+                Check.Equal(0x2000u, reads[words * 3], "An explicit pointer rewrite still takes effect after a gap.");
+
+                void Fetch(int line)
+                {
+                    for (int x = 0; x < 227; x++)
+                        if (planes.IsPlaneFetchSlot(x, line)) planes.FetchDmaPlaneWord(x, line);
+                }
+            }
         }
 
         private static void TestMemoryWords()
@@ -646,6 +692,53 @@ namespace AmigaEmulator.Tests
             Check.Equal(1, planes.RenderColorIndex(8, 44), "The new left edge must be visible.");
             Set(0x1E4, 0x2000);
             Check.Equal(1, planes.RenderColorIndex(32, 44), "HSTOP bit 8 must extend the window across $100.");
+        }
+
+        private static void TestVerticalWindowComparators()
+        {
+            foreach (var machine in new[] { AmigaMachineModel.A600, AmigaMachineModel.A1200 })
+            {
+                var model = AmigaModel.Create(machine, AmigaRamProfile.Chip2Mb);
+                using var system = new AmigaSystem(model);
+                void Set(uint offset, ushort value) => system.Bus.WriteWord(0xDFF000 + offset, value);
+                void Line(int y)
+                {
+                    while (system.Agnus.Beam.BeamY != y || system.Agnus.Beam.BeamX != 0)
+                        system.Agnus.Tick();
+                }
+                Set(0x100, 0x1000); Set(0x110, 0xFFFF);
+                Set(0x08E, 0x2C81); Set(0x090, 0xF4C1);
+                Line(60);
+                Check.True(system.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(60), "The start comparator at line 44 opened the display.");
+                Set(0x090, 0x2BC1); Set(0x1E4, 0x2000);
+                Line(100);
+                Check.True(system.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(100), "A stop moved behind the beam must not erase the open display.");
+                using var state = new MemoryStream();
+                using (var writer = new BinaryWriter(state, System.Text.Encoding.UTF8, true)) system.SaveState(writer);
+                using var restored = new AmigaSystem(model);
+                state.Position = 0;
+                using (var reader = new BinaryReader(state, System.Text.Encoding.UTF8, true)) restored.LoadState(reader);
+                Check.True(restored.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(100), "The vertical comparator latch must survive a mid-window restore.");
+                using var legacy = new MemoryStream();
+                using (var writer = new BinaryWriter(legacy, System.Text.Encoding.UTF8, true))
+                    StateSerializer.WriteObjectFields(writer, system.Agnus.Bitplanes,
+                        "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey",
+                        "_decodedWindowKey", "_decodedDiwHighKey", "_fetchRowsMonotonic",
+                        "_verticalComparatorLine", "_verticalWindowActive");
+                legacy.Position = 0;
+                using (var reader = new BinaryReader(legacy, System.Text.Encoding.UTF8, true)) restored.Agnus.Bitplanes.LoadState(reader);
+                Check.True(!restored.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(100), "An old snapshot must not inherit a different running machine's open latch.");
+                Line(43);
+                Check.True(!system.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(43), "Vertical blank resets the latch before the next start.");
+                Line(44);
+                Check.True(system.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(44), "The next start reopens the display.");
+                Set(0x090, 0x2EC1); Set(0x1E4, 0x2000);
+                Line(46);
+                Check.True(!system.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(46), "A future stop comparator still closes the window normally.");
+                Set(0x08E, 0x2E81); Set(0x1E4, 0x2000);
+                Line(47); Line(46);
+                Check.True(!system.Agnus.Bitplanes.IsBitplaneDisplayActiveOnLine(46), "Coincident start/stop comparators give the stop priority.");
+            }
         }
 
         private static void TestWindowInterlock()

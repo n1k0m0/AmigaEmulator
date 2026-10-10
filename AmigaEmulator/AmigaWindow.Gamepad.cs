@@ -7,10 +7,12 @@ namespace AmigaEmulator
         private void PollGamepads()
         {
             _gamepads.Poll();
+            if (IsNetworkClient) { SendNetworkJoystick(); return; }
             if (_system == null) return;
             _system.Input.SetGamepadButtons(AmigaControlPort.Port0, AmigaJoystickButtons.None);
             _system.Input.SetGamepadButtons(AmigaControlPort.Port1, AmigaJoystickButtons.None);
             // Menus and other applications must not send held buttons to the game.
+            if (RemoteOwnsControl) return;
             if ((!Focused && !ContainsFocus) || _overlayMode != OverlayMode.None) return;
             if (_gamepads.States.Count > 0)
             {

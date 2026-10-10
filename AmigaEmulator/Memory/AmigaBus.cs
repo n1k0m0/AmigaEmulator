@@ -279,7 +279,9 @@ namespace AmigaEmulator.Core.Memory
             StateSerializer.ReadObjectFields(reader, _fastRam);
             StateSerializer.ReadObjectFields(reader, _kickstart);
             StateSerializer.ReadObjectFields(reader, _floppyController);
-            UpdateCiaAFloppyInputs();
+            // CIA control lines still belong to the previous machine state here.
+            // AmigaSystem refreshes them after both CIAs have been restored;
+            // applying them now would clock a spurious drive-select motor latch.
         }
 
         /// <summary>

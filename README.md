@@ -208,6 +208,31 @@ Common Kickstart file names that can be detected:
 The ROM resolver checks file size, reset-vector structure, and known hashes.
 Kickstart 1.3 is recommended for the main Amiga 500 target.
 
+On GUI startup, missing ROMs open a dialog for your own ROM file or ROM folder.
+The selected external path is remembered; ROMs are never downloaded or supplied.
+Cancel or an invalid/missing ROM closes startup cleanly. Headless diagnostics
+continue without this dialog.
+
+## Windows Installer and Updates
+
+Build the same Inno Setup / GitHub update system used by the C64 frontend:
+
+```powershell
+./scripts/build-installer.ps1
+```
+
+Setup is written to `artifacts/installer/AmigaEmulator-<version>-win-x64-setup.exe`
+with a SHA-256 checksum. It contains the Windows x64 runtime and no ROMs/media.
+GUI startup checks the [GitHub Releases](https://github.com/n1k0m0/AmigaEmulator/releases)
+in the background, offers a newer Setup, and shows download progress and
+cancel/retry. Install closes the emulator cleanly before starting Setup. Own ROMs,
+saves and hard disks are retained during update and uninstall.
+
+The root `VERSION` controls application/setup versions. A matching `v*` tag builds,
+tests and publishes the Windows assets through GitHub Actions. See
+[Installation and updates](AmigaEmulator/Docs/InstallationAndUpdates.md) for
+first-run behavior, release instructions and regression tests.
+
 ## Building
 
 Release build:
@@ -241,6 +266,14 @@ Global hotkeys:
 | `F10` | Open or close the main menu |
 | `F11` | Toggle fullscreen/windowed mode |
 | `F12` | Open the save state menu |
+| `Ctrl` + `Alt` + `F8` | Release the mouse |
+
+The mouse starts free. Click inside the Amiga image to capture it for relative
+mouse input; that first click is not sent to the guest. Release it using
+`Ctrl` + `Alt` + `F8` or click `F10` > `RELEASE MOUSE`. Menus retain capture
+inside the emulator window and show a pointer for menu selection. Closing a
+menu resumes guest mouse control without another click. Switching to another
+window or minimizing releases capture; returning focus requires an image click.
 
 Overlay navigation:
 
@@ -249,12 +282,19 @@ Overlay navigation:
 - `Esc` to close or go back
 - Mouse wheel to scroll long menus
 
-The main menu contains submenus for media, ROMs, machine/RAM settings, input,
-display, reset options, and save states.
+The main menu contains `SETTINGS`, `NETWORK`, `MEDIA`, `RESET`, and `RELEASE MOUSE`.
+The settings navigation matches the C64 frontend. `SETTINGS` contains `HARDWARE` (including `INPUT`), `ROMS`, `RAM`,
+`GRAPHICS`, `SOUND`, and `HARD DISK`. F12 opens save states separately.
+
+LAN and relay multiplayer use the C64 transport design: TLS with pinning, relay
+ECDH P-256/AES-GCM, native full/delta video and packed stereo sound. Clients choose
+local scaling; the host grants keyboard, mouse, joystick or complete control.
+The new relay supports both `AMIGAR` and existing C64 clients on one proxy.
+See [setup and network play](AmigaEmulator/Docs/NetworkPlay.md).
 
 ## Video
 
-`F10` > Display (or Settings) > `IMAGE SIZE` selects `KEEP ASPECT` or
+`F10` > `SETTINGS` > `GRAPHICS` > `IMAGE SIZE` selects `KEEP ASPECT` or
 `FILL SCREEN`. Fill stretches the cropped picture across the entire client area;
 with `F11` fullscreen it fills the monitor, including the area normally occupied
 by the taskbar. The setting is saved. All upscale modes keep the same displayed
@@ -269,21 +309,22 @@ Host presentation uses DIW/DDF and per-line display metadata for its source
 geometry. Black backgrounds and sparse top-edge artwork are preserved; frame
 brightness does not automatically shift or crop the picture.
 
-Available video options include:
+The presentation filters are `SHARP`, `CRT` and `TV`. `F10` > `SETTINGS` > `GRAPHICS` > `VIDEO UPSCALE` cycles through these source upscalers:
 
-- Sharp
-- CRT
-- TV
-- No upscaling
-- 2x/3x sharp (Scale2x/Scale3x neighbor rules)
-- 4x sharp (two Scale2x passes)
-- 2x/3x/4x smooth (pixel-center bilinear interpolation)
-- 4x soft (sharp edges mixed with smooth interpolation)
+- `NONE`: native source pixels.
+- `SCALE2X`: Scale2x neighbor rules at twice the source resolution.
+- `SCALE3X`: Scale3x neighbor rules at three times the source resolution.
+- `HQ2X`: HQx color-aware edge interpolation at twice the source resolution.
+- `HQ3X`: HQx color-aware edge interpolation at three times the source resolution.
+- `HQ4X`: HQx color-aware edge interpolation at four times the source resolution.
 
 Upscaling is applied by the CPU presentation renderer before the final display
-stretch. Source crop boundaries clamp the neighbors, and buffers are reused.
-The serialized `Hq2x`, `Hq3x`, `Hq4x` and `Xbrz` names remain for compatibility;
-these smooth/soft options do not implement the HQx or xBRZ algorithms.
+stretch. All modes preserve the native displayed bounds, aspect/stretch setting
+and mouse coordinates. Source crop boundaries clamp the neighbors, buffers are
+reused, and unchanged frames reuse the previous result. HQx uses the actual
+pattern rules and YUV color thresholds; see [third-party notices](THIRD-PARTY-NOTICES.md).
+Saved `Xbrz` and `Clean4` settings migrate to `HQ4X`; existing `Hq2x`, `Hq3x`
+and `Hq4x` settings select the corresponding HQx algorithm.
 
 Managed failures during GUI frame updates or painting create a fresh
 `%APPDATA%/AmigaEmulator/logs/host-error-*.txt` containing the original exception
@@ -301,12 +342,20 @@ profile choices are preserved.
 
 ## Audio
 
-Paula produces the emulator's audio output. The overlay exposes audio filter
-options:
+Paula produces 48 kHz stereo audio with separate DMA holding/output words and
+integration of held DAC levels across each host sample. In **Settings / Sound**,
+the four independent filter profiles are:
 
-- Off
-- LED
-- LowPass
+- **OFF**: clear output without analog filtering, regardless of the software LED.
+- **A500 (AUTO LED)**: fixed A500 output stages; the game controls the LED filter.
+- **A1200 (AUTO LED)**: clear output without fixed stages; the game controls the LED filter.
+- **LED (ALWAYS ON)**: fixed A500 stages with the LED filter forced on.
+
+Existing filter preferences are preserved. Use OFF for maximum clarity. Hardware
+profiles retain their intentional analog attenuation. Network clients choose
+their own filter and receive the host game's LED state with each audio chunk;
+host filtering is not applied twice. Measurements, remaining audio limitations
+and repeatable recording instructions are in [Audio.md](AmigaEmulator/Docs/Audio.md).
 
 The disk debug/status overlay includes a drive activity LED similar to the
 original Amiga 500 drive LED.

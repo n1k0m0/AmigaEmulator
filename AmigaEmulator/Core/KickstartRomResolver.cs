@@ -111,9 +111,14 @@ namespace AmigaEmulator.Core
         /// </summary>
         public static IReadOnlyList<KickstartRomInfo> FindAvailableKickstartRoms()
         {
+            return FindAvailableKickstartRoms(GetSearchDirectories());
+        }
+
+        public static IReadOnlyList<KickstartRomInfo> FindAvailableKickstartRoms(IEnumerable<string> directories)
+        {
             var roms = new List<KickstartRomInfo>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (string directory in GetSearchDirectories())
+            foreach (string directory in directories)
             {
                 AddRomCandidates(roms, seen, directory, "*.rom");
                 AddRomCandidates(roms, seen, directory, "*.bin");
@@ -181,6 +186,14 @@ namespace AmigaEmulator.Core
                     return info;
                 }
 
+                long length = new FileInfo(path).Length;
+                info.Exists = true;
+                if (length != 256 * 1024 && length != 512 * 1024 && length != 1024 * 1024)
+                {
+                    info.Size = (int)Math.Min(length, int.MaxValue);
+                    info.Error = "Kickstart ROM must be 256 KB, 512 KB, or 1 MB.";
+                    return info;
+                }
                 byte[] bytes = File.ReadAllBytes(path);
                 var rom = new KickstartRom(bytes);
                 info.Exists = true;
@@ -234,6 +247,7 @@ namespace AmigaEmulator.Core
         {
             var directories = new List<string>();
             AddDirectory(directories, explicitBasePath);
+            AddDirectory(directories, AmigaEmulatorSettingsStore.Load().RomSearchDirectory);
             if (!skipUserRomDirectory)
             {
                 AddDirectory(directories, UserDataPaths.GetRomDirectory(), false);

@@ -38,6 +38,11 @@ namespace AmigaEmulator.Core.Media
         /// Constant for the emulated MFM stream word period in chip cycles.
         /// </summary>
         private const int MfmWordPeriodChipCycles = 108;
+        // A replacement must be physically absent long enough for trackdisk's
+        // change polling to invalidate the old volume. This is emulated time,
+        // independent of host frame rate and disk DMA acceleration.
+        public const int MediaChangeChipCycles = 2 * 50 * 312 * 227;
+        private int _mediaChangeChipCycles;
 
         /// <summary>
         /// Stores step Line High.
@@ -51,6 +56,11 @@ namespace AmigaEmulator.Core.Media
         /// Stores the previous active-low motor control line as seen during the last CIA-B update.
         /// </summary>
         private bool _motorLineLow;
+        // Inserting media attaches an external drive; ejecting the disk does not unplug it.
+        private bool _driveAttached;
+        // Only standard 3.5-inch DD drives are offered. Their serial ID consists
+        // entirely of ones, so its motor-off data bit needs no varying shift index.
+        private bool _identificationActive;
         /// <summary>
         /// Stores write Protected.
         /// </summary>
@@ -144,6 +154,7 @@ namespace AmigaEmulator.Core.Media
                 _motorOn = value;
                 if (value)
                 {
+                    _identificationActive = false;
                     bool stillSpinning = _motorOffReadyGraceCycles > 0;
                     _motorReady = HasDisk && stillSpinning;
                     _motorReadySpinUpCycles = HasDisk && !stillSpinning ? MotorReadySpinUpChipCycles : 0;
@@ -151,6 +162,7 @@ namespace AmigaEmulator.Core.Media
                 }
                 else
                 {
+                    _identificationActive = true;
                     _motorReadySpinUpCycles = 0;
                     _motorOffReadyGraceCycles = _motorReady ? MotorOffReadyGraceChipCycles : 0;
                     _motorReady = false;
@@ -164,11 +176,11 @@ namespace AmigaEmulator.Core.Media
         public bool DiskChanged { get; private set; }
 
         /// <summary>
-        /// Returns whether Disk is present.
+        /// Returns whether the selected image is physically present after its insertion interval.
         /// </summary>
         public bool HasDisk
         {
-            get { return Image != null; }
+            get { return Image != null && _mediaChangeChipCycles == 0; }
         }
 
         /// <summary>
@@ -185,6 +197,17 @@ namespace AmigaEmulator.Core.Media
         public bool Ready
         {
             get { return Selected && HasDisk && (_motorReady || _motorOffReadyGraceCycles > 0); }
+        }
+
+        public bool HasPhysicalDrive { get { return _driveAttached || HasDisk; } }
+
+        /// <summary>
+        /// Standard DD external-drive identification on RDY while its motor is off.
+        /// This is independent of media readiness and never enables flux or DMA.
+        /// </summary>
+        public bool IdentificationReadySignal
+        {
+            get { return Selected && HasPhysicalDrive && !MotorOn && _identificationActive; }
         }
 
         /// <summary>
@@ -253,7 +276,15 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void Insert(AdfImage image)
         {
+            // A disk swap must commit the outgoing medium before replacing it.
+            // Keep it mounted if persistence fails so its buffered writes are recoverable.
+            FlushImage();
+            if (Image != null)
+            {
+                _mediaChangeChipCycles = MediaChangeChipCycles;
+            }
             Image = image;
+            _driveAttached |= image != null;
             DiskChanged = true;
             _writeProtected = true;
             _trackStream = null;
@@ -262,12 +293,9 @@ namespace AmigaEmulator.Core.Media
             _capturedWriteWords.Clear();
             _decodedWriteSectors = 0;
             IndexPulsePending = false;
-            if (MotorOn)
-            {
-                _motorReady = false;
-                _motorReadySpinUpCycles = MotorReadySpinUpChipCycles;
-                _motorOffReadyGraceCycles = 0;
-            }
+            _motorReady = false;
+            _motorReadySpinUpCycles = MotorOn && HasDisk ? MotorReadySpinUpChipCycles : 0;
+            _motorOffReadyGraceCycles = 0;
         }
 
         /// <summary>
@@ -284,7 +312,17 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void RestoreMedia(AdfImage image, bool writeProtected)
         {
+            if (Image != null && image != null && string.Equals(
+                System.IO.Path.GetFullPath(Image.Path), System.IO.Path.GetFullPath(image.Path),
+                StringComparison.OrdinalIgnoreCase))
+            {
+                // The savestate already contains the disk buffer and the partially
+                // received MFM sector. Reopening its host path must not erase either.
+                _writeProtected = writeProtected;
+                return;
+            }
             Image = image;
+            _mediaChangeChipCycles = 0;
             _writeProtected = writeProtected;
             _trackStream = null;
             _streamTrack = -1;
@@ -300,6 +338,11 @@ namespace AmigaEmulator.Core.Media
         public void Eject()
         {
             FlushImage();
+            if (Image != null)
+            {
+                _mediaChangeChipCycles = MediaChangeChipCycles;
+            }
+            _driveAttached |= Image != null; // Also retain attachment inferred from legacy states.
             Image = null;
             DiskChanged = true;
             _writeProtected = true;
@@ -329,9 +372,9 @@ namespace AmigaEmulator.Core.Media
         {
             bool wasSelected = _selected;
             bool wasStepLineHigh = _stepLineHigh;
-            bool wasMotorLineLow = _motorLineLow;
-
-            if (selected && (!wasSelected || wasMotorLineLow != motorLineLow))
+            // MTRXD is sampled by the drive's D flip-flop on SEL's inactive-to-active
+            // edge. Changing the shared motor line while selected does not clock it.
+            if (selected && !wasSelected)
             {
                 MotorOn = motorLineLow;
             }
@@ -386,6 +429,11 @@ namespace AmigaEmulator.Core.Media
         public void Tick()
         {
             IndexPulsePending = false;
+            if (_mediaChangeChipCycles > 0 && --_mediaChangeChipCycles == 0 && HasDisk)
+            {
+                DiskChanged = true;
+                _motorReadySpinUpCycles = MotorOn ? MotorReadySpinUpChipCycles : 0;
+            }
             if (_motorReadySpinUpCycles > 0)
             {
                 _motorReadySpinUpCycles--;
@@ -405,6 +453,8 @@ namespace AmigaEmulator.Core.Media
             if (!HasDisk || !rotating)
             {
                 _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
+                _streamWordPosition = 0;
+                _streamRotationCycleAccumulator = 0;
                 return;
             }
 
@@ -414,6 +464,11 @@ namespace AmigaEmulator.Core.Media
             if (_indexPulseCountdown <= 0)
             {
                 _indexPulseCountdown = PalIndexPulsePeriodChipCycles;
+                // ADF supplies sectors, not an independent physical bitstream.
+                // Its generated gap origin and INDEX must describe one rotation.
+                // Hold gap flux after the encoded words until this physical edge.
+                _streamWordPosition = 0;
+                _streamRotationCycleAccumulator = 0;
                 IndexPulsePending = Selected;
             }
         }
@@ -429,7 +484,8 @@ namespace AmigaEmulator.Core.Media
             }
 
             EnsureTrackStream();
-            ushort word = _trackStream != null ? _trackStream.ReadWord(_streamWordPosition) : (ushort)0xAAAA;
+            ushort word = _trackStream != null && _streamWordPosition < _trackStream.WordCount
+                ? _trackStream.ReadWord(_streamWordPosition) : (ushort)0xAAAA;
             return word;
         }
 
@@ -535,11 +591,7 @@ namespace AmigaEmulator.Core.Media
             _streamSide = Side;
             if (_trackStream != null && _trackStream.WordCount > 0)
             {
-                _streamWordPosition %= _trackStream.WordCount;
-                if (_streamWordPosition < 0)
-                {
-                    _streamWordPosition += _trackStream.WordCount;
-                }
+                _streamWordPosition = Math.Clamp(_streamWordPosition, 0, _trackStream.WordCount);
             }
         }
 
@@ -558,11 +610,9 @@ namespace AmigaEmulator.Core.Media
             while (_streamRotationCycleAccumulator >= MfmWordPeriodChipCycles)
             {
                 _streamRotationCycleAccumulator -= MfmWordPeriodChipCycles;
-                _streamWordPosition++;
-                if (_streamWordPosition >= _trackStream.WordCount)
-                {
-                    _streamWordPosition = 0;
-                }
+                // The sampler retains its word cadence. Unencoded time at the
+                // end of this revolution is padding, not another sector zero.
+                if (_streamWordPosition < _trackStream.WordCount) _streamWordPosition++;
             }
         }
     }

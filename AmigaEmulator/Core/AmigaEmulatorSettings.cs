@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,10 +29,25 @@ namespace AmigaEmulator.Core
         /// <summary>
         /// Gets or sets Version.
         /// </summary>
-        public int Version { get; set; } = 6;
+        public int Version { get; set; } = 7;
 
         public AmigaMachineModel MachineModel { get; set; } = AmigaMachineModel.A500;
         public int PcmciaSramMiB { get; set; }
+        public string RomSearchDirectory { get; set; } = string.Empty;
+
+        public bool AudioEnabled { get; set; } = true;
+        public float MasterVolume { get; set; } = 0.80f;
+        public string NetworkTransportMode { get; set; } = "Lan";
+        public int NetworkServerPort { get; set; } = 6464;
+        public string NetworkServerPassword { get; set; } = string.Empty;
+        public string NetworkClientHost { get; set; } = "127.0.0.1";
+        public int NetworkClientPort { get; set; } = 6464;
+        public int NetworkRelayPort { get; set; } = 6465;
+        public string NetworkConnectionId { get; set; } = "amiga";
+        public string NetworkRelayPassword { get; set; } = string.Empty;
+        public string NetworkClientPassword { get; set; } = string.Empty;
+        public string NetworkPlayerName { get; set; } = "player";
+        public string NetworkRequestedRole { get; set; } = "Player";
 
         public void ApplyStartupModel(AmigaModel model)
         {
@@ -257,6 +272,7 @@ namespace AmigaEmulator.Core
                 PropertyNameCaseInsensitive = true,
                 WriteIndented = true
             };
+            options.Converters.Add(new AmigaUpscaleModeJsonConverter());
             options.Converters.Add(new JsonStringEnumConverter());
             return options;
         }
@@ -303,7 +319,20 @@ namespace AmigaEmulator.Core
                 settings.MonitorAperture = AmigaMonitorAperture.Crt;
                 settings.Version = 5;
             }
-            settings.Version = Math.Max(settings.Version, 6);
+            settings.NetworkTransportMode = string.Equals(settings.NetworkTransportMode, "Relay", StringComparison.OrdinalIgnoreCase) ? "Relay" : "Lan";
+            settings.RomSearchDirectory = settings.RomSearchDirectory?.Trim() ?? string.Empty;
+            settings.NetworkServerPort = Math.Clamp(settings.NetworkServerPort, 1, 65535);
+            settings.NetworkClientPort = Math.Clamp(settings.NetworkClientPort, 1, 65535);
+            settings.NetworkRelayPort = Math.Clamp(settings.NetworkRelayPort, 1, 65535);
+            settings.NetworkClientHost = string.IsNullOrWhiteSpace(settings.NetworkClientHost) ? "127.0.0.1" : settings.NetworkClientHost.Trim();
+            settings.NetworkConnectionId = string.IsNullOrWhiteSpace(settings.NetworkConnectionId) ? "amiga" : settings.NetworkConnectionId.Trim();
+            settings.NetworkPlayerName = string.IsNullOrWhiteSpace(settings.NetworkPlayerName) ? "player" : settings.NetworkPlayerName.Trim();
+            settings.NetworkRequestedRole = string.Equals(settings.NetworkRequestedRole, "Observer", StringComparison.OrdinalIgnoreCase) ? "Observer" : "Player";
+            settings.NetworkServerPassword ??= string.Empty;
+            settings.NetworkClientPassword ??= string.Empty;
+            settings.NetworkRelayPassword ??= string.Empty;
+            settings.MasterVolume = float.IsFinite(settings.MasterVolume) ? Math.Clamp(settings.MasterVolume, 0f, 1.5f) : 0.8f;
+            settings.Version = Math.Max(settings.Version, 7);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿/*
+/*
    Copyright 2026 Nils Kopal <Nils.Kopal<at>kopaldev.de
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,13 +107,23 @@ namespace AmigaEmulator.Tests
             tests.AddRange(AgnusTests.Build());
             tests.AddRange(BlitterDiagnosticsTests.Build());
             tests.AddRange(PresentationTests.Build());
+            tests.AddRange(MouseCaptureTests.Build());
+            tests.AddRange(HqxTests.Build());
+            tests.AddRange(NetworkTests.Build());
+            tests.AddRange(NetworkWindowTests.Build());
+            tests.AddRange(StartupDistributionTests.Build());
             tests.AddRange(DeniseBitplaneTests.Build());
             tests.AddRange(SpriteTests.Build());
             tests.AddRange(SpriteShifterTests.Build());
             tests.AddRange(PaulaTests.Build());
+            tests.AddRange(AudioTests.Build());
             tests.AddRange(IntegrationTests.Build());
             tests.AddRange(SaveStateTests.Build());
             tests.AddRange(StorageExpansionTests.Build());
+            tests.AddRange(FloppyPersistenceTests.Build());
+            tests.AddRange(FloppyIdentificationTests.Build());
+            tests.AddRange(FloppyRotationTests.Build());
+            tests.AddRange(FloppyMediaChangeTests.Build());
             tests.AddRange(MachineModelTests.Build());
             tests.AddRange(A3000Tests.Build());
             if (options.IncludeAdf)
@@ -395,6 +405,12 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("CIA/Serial", "serial output resumes exactly across new and legacy savestates",
                 "CIA serial transfer state and compatibility with pre-output snapshots", TestSerialOutputSave);
             yield return SelfTest("Input", "existing keyboard/joystick/mouse regression self-test", "Amiga HRM input register descriptions; existing emulator regression suite", AmigaInputSelfTest.Run);
+            yield return new ChipTestCase("Input/Keyboard", "queued keys wait for the host handshake after ICR acknowledgement and restore",
+                "Amiga HRM Appendix G: keyboard waits for KDAT handshake, not merely CIA ICR read", TestKeyboardHandshake);
+            yield return new ChipTestCase("Input/Keyboard", "keyboard serial bit clock and partial transfer restore",
+                "Amiga HRM Appendix G: approximately 60 microseconds per bit, eight bits per keycode", TestKeyboardSerialBitClock);
+            yield return new ChipTestCase("CIA/Serial", "queued input clocks and legacy transfer restore",
+                "Externally supplied serial clocks remain attached to each queued byte and survive snapshots", TestSerialInputClockPeriods);
         }
 
         /// <summary>
@@ -409,6 +425,102 @@ namespace AmigaEmulator.Tests
             cia.WriteByte(0x0E00, 0x41);
             cia.WriteByte(0x0C00, 0xA5);
             return cia;
+        }
+
+        private static void TestKeyboardSerialBitClock()
+        {
+            var cia = new Cia8520("CIA-A");
+            var input = new AmigaInputDevice(); input.AttachCiaA(cia);
+            void Tick(int count) { for (int i = 0; i < count; i++) { cia.Tick(); input.TickEClock(); } }
+            input.KeyboardKeyDown(0x35);
+            input.TickEClock();
+            // 43 E clocks approximate the keyboard's 60 us bit period on PAL/NTSC.
+            Tick(73);
+            Check.Equal(0, cia.ReadByte(0x0D00) & 8, "A partial keycode must not raise the serial interrupt.");
+            using var state = new MemoryStream();
+            using (var writer = new BinaryWriter(state, Encoding.UTF8, true)) { cia.SaveState(writer); input.SaveState(writer); }
+            Tick(270);
+            Check.Equal(0, cia.ReadByte(0x0D00) & 8, "The eighth serial edge has not arrived after 343 E clocks.");
+            Tick(1);
+            byte expected = AmigaInputDevice.EncodeKeyboardSerialByte(0x35, false);
+            Check.Equal(expected, cia.SerialData, "All eight bits arrive after 344 E clocks.");
+            Check.Equal(8, cia.ReadByte(0x0D00) & 8, "The completed keycode raises the serial interrupt.");
+            state.Position = 0;
+            using (var reader = new BinaryReader(state, Encoding.UTF8, true)) { cia.LoadState(reader); input.LoadState(reader); }
+            Tick(270);
+            Check.Equal(0, cia.ReadByte(0x0D00) & 8, "Restore retains the partial bit's remaining clocks.");
+            Tick(1);
+            Check.Equal(expected, cia.SerialData, "Restored transmission completes with the same keycode.");
+            Check.Equal(8, cia.ReadByte(0x0D00) & 8, "Restored transmission completes at the same edge.");
+        }
+
+        private static void TestKeyboardHandshake()
+        {
+            var cia = new Cia8520("CIA-A");
+            var input = new AmigaInputDevice(); input.AttachCiaA(cia);
+            void Tick(int count) { for (int i = 0; i < count; i++) { cia.Tick(); input.TickEClock(); } }
+            input.KeyboardKeyDown(102); input.KeyboardKeyDown(52);
+            input.KeyboardKeyUp(52); input.KeyboardKeyUp(102);
+            Tick(400);
+            byte first = AmigaInputDevice.EncodeKeyboardSerialByte(102, false);
+            Check.Equal(first, cia.SerialData, "First modifier is delivered.");
+            Check.Equal(8, cia.ReadByte(0x0D00) & 8, "ICR acknowledges the received interrupt.");
+            Tick(64);
+            Check.Equal(first, cia.SerialData, "Reading ICR is not the keyboard handshake; the next key must not overwrite SDR.");
+            Check.Equal(3, input.QueuedKeyboardEvents, "No key may start before the host pulses KDAT.");
+            using var snapshot = new MemoryStream();
+            using (var writer = new BinaryWriter(snapshot, Encoding.UTF8, true)) { cia.SaveState(writer); input.SaveState(writer); }
+            cia.WriteByte(0x0E00, 0x40); Tick(64); cia.WriteByte(0x0E00, 0); Tick(400);
+            snapshot.Position = 0;
+            using (var reader = new BinaryReader(snapshot, Encoding.UTF8, true)) { cia.LoadState(reader); input.LoadState(reader); }
+            Tick(64);
+            Check.Equal(first, cia.SerialData, "Restore must retain the pending handshake, not resume another byte.");
+            foreach (var key in new[] { (code: (byte)52, up: false), (code: (byte)52, up: true), (code: (byte)102, up: true) })
+            {
+                // Both transitions may occur between E-clock samples. The CIA
+                // must retain the completion rather than relying on polling CRA.
+                cia.WriteByte(0x0E00, 0x40); cia.WriteByte(0x0E00, 0);
+                Tick(400);
+                Check.Equal(AmigaInputDevice.EncodeKeyboardSerialByte(key.code, key.up), cia.SerialData, "Modifier/key up and down keep their order.");
+                Check.Equal(8, cia.ReadByte(0x0D00) & 8, "Each delivered key has a new interrupt.");
+                Tick(64);
+            }
+            Check.Equal(0, input.QueuedKeyboardEvents, "The complete chord, including releases, is delivered.");
+        }
+
+        private static void TestSerialInputClockPeriods()
+        {
+            var cia = new Cia8520("CIA-A");
+            void Tick(int count) { for (int i = 0; i < count; i++) cia.Tick(); }
+            cia.QueueSerialInputByte(0xA5, 2); cia.QueueSerialInputByte(0x5A, 3);
+            Tick(5);
+            using var state = new MemoryStream();
+            using (var writer = new BinaryWriter(state, Encoding.UTF8, true)) cia.SaveState(writer);
+            for (int repeat = 0; repeat < 2; repeat++)
+            {
+                Tick(10); Check.Equal(0, cia.PeekByte(0x0D00) & 8, "The first byte is not complete at 15 clocks.");
+                Tick(1); Check.Equal((byte)0xA5, cia.SerialData, "First queued period is two clocks per bit.");
+                Check.Equal(8, cia.ReadByte(0x0D00) & 8, "First byte completes after sixteen clocks.");
+                Tick(23); Check.Equal(0, cia.PeekByte(0x0D00) & 8, "The second byte retains its independent period.");
+                Tick(1); Check.Equal((byte)0x5A, cia.SerialData, "Second queued period is three clocks per bit.");
+                Check.Equal(8, cia.ReadByte(0x0D00) & 8, "Second byte completes after twenty-four clocks.");
+                state.Position = 0;
+                using var reader = new BinaryReader(state, Encoding.UTF8, true); cia.LoadState(reader);
+            }
+            var legacy = new Cia8520("CIA-A"); legacy.QueueSerialInputByte(0x11); legacy.QueueSerialInputByte(0x22);
+            for (int i = 0; i < 3; i++) legacy.Tick();
+            state.SetLength(0); state.Position = 0;
+            using (var writer = new BinaryWriter(state, Encoding.UTF8, true))
+                StateSerializer.WriteObjectFields(writer, legacy, "_serialInputPeriods", "_serialInputBitPeriodEClocks", "_serialInputClockCountdown");
+            state.Position = 0;
+            using (var reader = new BinaryReader(state, Encoding.UTF8, true)) cia.LoadState(reader);
+            cia.QueueSerialInputByte(0x33, 2);
+            Tick(5); Check.Equal((byte)0x11, cia.SerialData, "Legacy partial byte retains its original one-clock period.");
+            cia.ReadByte(0x0D00);
+            Tick(8); Check.Equal((byte)0x22, cia.SerialData, "Existing legacy queued bytes retain their original period.");
+            cia.ReadByte(0x0D00);
+            Tick(15); Check.Equal(0, cia.PeekByte(0x0D00) & 8, "Appending a new period must not change older queued clocks.");
+            Tick(1); Check.Equal((byte)0x33, cia.SerialData, "The appended byte uses its own two-clock period.");
         }
 
         private static void TestSerialOutputTiming()
@@ -3335,10 +3447,10 @@ namespace AmigaEmulator.Tests
 
             controller.ApplyCiaBPort(0xF7, 0xFF);
             Check.True(controller.Drive0.Selected, "DF0 should remain selected while only MOTOR changes.");
-            Check.True(!controller.Drive0.MotorOn, "DF0 motor should follow MOTOR high while selected.");
+            Check.True(controller.Drive0.MotorOn, "MOTOR changes while selected must not clock the drive's motor latch.");
 
             controller.ApplyCiaBPort(0x77, 0xFF);
-            Check.True(controller.Drive0.MotorOn, "DF0 motor should relatch on while the drive remains selected.");
+            Check.True(controller.Drive0.MotorOn, "The already-selected drive must retain its latched motor state.");
 
             controller.ApplyCiaBPort(0xFF, 0xFF);
             Check.True(!controller.Drive0.Selected, "DF0 should deselect when CIA-B SEL0 is high.");
@@ -3702,12 +3814,16 @@ namespace AmigaEmulator.Tests
 
                 controller.InsertDrive0(AdfImage.Load(secondPath), true);
 
-                Check.True(controller.Drive0.HasDisk, "DF0 should contain the replacement media.");
+                Check.True(controller.Drive0.Image != null && !controller.Drive0.HasDisk, "DF0 should queue replacement media during the physical empty interval.");
                 Check.True(controller.Drive0.DiskChanged, "DF0 should assert disk-change after media replacement.");
                 Check.True(controller.Drive0.Selected, "DF0 selection should survive media replacement.");
                 Check.True(controller.Drive0.MotorOn, "DF0 motor state should survive media replacement.");
                 Check.Equal(36, controller.Drive0.Track, "DF0 head position should survive media replacement.");
                 Check.Equal(1, controller.Drive0.Side, "DF0 side select should survive media replacement.");
+                for (int cycle = 0; cycle < FloppyDrive.MediaChangeChipCycles; cycle++) controller.Drive0.Tick();
+                Check.True(controller.Drive0.HasDisk, "DF0 replacement should arrive after the empty interval.");
+                Check.Equal(36, controller.Drive0.Track, "Insertion completion must retain the head position.");
+                Check.Equal(1, controller.Drive0.Side, "Insertion completion must retain the side select.");
 
                 controller.EjectDrive0();
 
@@ -4308,7 +4424,7 @@ namespace AmigaEmulator.Tests
         {
             var settings = new AmigaEmulatorSettings();
             Check.Equal(AmigaRamProfile.Chip1Mb, settings.RamProfile, "New settings should default to the 1MB Chip RAM profile.");
-            Check.Equal(6, settings.Version, "Settings version should track machine model migration.");
+            Check.Equal(7, settings.Version, "Settings version should include grouped frontend and network preferences.");
             Check.Equal(AmigaMachineModel.A500, settings.MachineModel, "Existing settings must retain the A500 hardware model.");
             Check.Equal(AmigaMonitorAperture.Crt, settings.MonitorAperture, "New settings should default to the CRT monitor aperture.");
         }

@@ -30,11 +30,16 @@ namespace AmigaEmulator.Core.Input
         /// Constant for Keyboard Send Delay E Clocks.
         /// </summary>
         private const int KeyboardSendDelayEClocks = 8;
+        // HRM Appendix G specifies approximately 60 us per keyboard clock bit.
+        // PAL/NTSC E clocks are about 0.71 MHz; 43 ticks approximate that period.
+        private const int KeyboardBitPeriodEClocks = 43;
 
         /// <summary>
         /// Stores keyboard Queue.
         /// </summary>
         private readonly Queue<byte> _keyboardQueue = new Queue<byte>();
+        private bool _keyboardAwaitingHandshake;
+        private uint _keyboardHandshakeSequence;
         /// <summary>
         /// Stores pressed Raw Keys.
         /// </summary>
@@ -111,8 +116,15 @@ namespace AmigaEmulator.Core.Input
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
+            // Older snapshots predate explicit keyboard acknowledgement.
+            _keyboardAwaitingHandshake = false;
+            _keyboardHandshakeSequence = 0;
             StateSerializer.ReadObjectFields(reader, this, "_ciaA");
-            foreach (PortState port in _ports) port.GamepadButtons = AmigaJoystickButtons.None;
+            foreach (PortState port in _ports)
+            {
+                port.GamepadButtons = AmigaJoystickButtons.None;
+                port.NetworkButtons = AmigaJoystickButtons.None;
+            }
         }
 
         /// <summary>
@@ -123,6 +135,8 @@ namespace AmigaEmulator.Core.Input
             _keyboardQueue.Clear();
             _pressedRawKeys.Clear();
             _keyboardDelay = 0;
+            _keyboardAwaitingHandshake = false;
+            _keyboardHandshakeSequence = 0;
             EnqueueKeyboardSpecialCode(0xFD);
             EnqueueKeyboardSpecialCode(0xFE);
             for (int index = 0; index < _ports.Length; index++)
@@ -146,6 +160,7 @@ namespace AmigaEmulator.Core.Input
             {
                 _ports[index].JoystickButtons = AmigaJoystickButtons.None;
                 _ports[index].GamepadButtons = AmigaJoystickButtons.None;
+                _ports[index].NetworkButtons = AmigaJoystickButtons.None;
             }
         }
 
@@ -195,6 +210,8 @@ namespace AmigaEmulator.Core.Input
         }
 
         /// <summary>Physical controller state is independent of keyboard/mouse input.</summary>
+        public void SetNetworkButtons(AmigaControlPort port, AmigaJoystickButtons buttons) => GetPort(port).NetworkButtons = buttons;
+
         public void SetGamepadButtons(AmigaControlPort port, AmigaJoystickButtons buttons)
         {
             GetPort(port).GamepadButtons = buttons;
@@ -255,7 +272,7 @@ namespace AmigaEmulator.Core.Input
                 mode == AmigaInputPortMode.KeyboardJoystick ||
                 mode == AmigaInputPortMode.Gamepad)
             {
-                return EncodeJoystickDirections(state.JoystickButtons | state.GamepadButtons);
+                return EncodeJoystickDirections(state.JoystickButtons | state.GamepadButtons | state.NetworkButtons);
             }
 
             return 0;
@@ -287,13 +304,13 @@ namespace AmigaEmulator.Core.Input
         {
             byte value = GetCiaAPortAInputMask();
             if (UsesFireButton(AmigaControlPort.Port0) &&
-                ((_ports[0].JoystickButtons | _ports[0].GamepadButtons) & AmigaJoystickButtons.Fire) != 0)
+                ((_ports[0].JoystickButtons | _ports[0].GamepadButtons | _ports[0].NetworkButtons) & AmigaJoystickButtons.Fire) != 0)
             {
                 value &= unchecked((byte)~0x40);
             }
 
             if (UsesFireButton(AmigaControlPort.Port1) &&
-                ((_ports[1].JoystickButtons | _ports[1].GamepadButtons) & AmigaJoystickButtons.Fire) != 0)
+                ((_ports[1].JoystickButtons | _ports[1].GamepadButtons | _ports[1].NetworkButtons) & AmigaJoystickButtons.Fire) != 0)
             {
                 value &= unchecked((byte)~0x80);
             }
@@ -307,22 +324,22 @@ namespace AmigaEmulator.Core.Input
         public ushort ReadPotInp(ushort potgo)
         {
             ushort value = 0x5500;
-            if (((_ports[0].JoystickButtons | _ports[0].GamepadButtons) & AmigaJoystickButtons.Third) != 0)
+            if (((_ports[0].JoystickButtons | _ports[0].GamepadButtons | _ports[0].NetworkButtons) & AmigaJoystickButtons.Third) != 0)
             {
                 value &= unchecked((ushort)~0x0100);
             }
 
-            if (((_ports[0].JoystickButtons | _ports[0].GamepadButtons) & AmigaJoystickButtons.Second) != 0)
+            if (((_ports[0].JoystickButtons | _ports[0].GamepadButtons | _ports[0].NetworkButtons) & AmigaJoystickButtons.Second) != 0)
             {
                 value &= unchecked((ushort)~0x0400);
             }
 
-            if (((_ports[1].JoystickButtons | _ports[1].GamepadButtons) & AmigaJoystickButtons.Third) != 0)
+            if (((_ports[1].JoystickButtons | _ports[1].GamepadButtons | _ports[1].NetworkButtons) & AmigaJoystickButtons.Third) != 0)
             {
                 value &= unchecked((ushort)~0x1000);
             }
 
-            if (((_ports[1].JoystickButtons | _ports[1].GamepadButtons) & AmigaJoystickButtons.Second) != 0)
+            if (((_ports[1].JoystickButtons | _ports[1].GamepadButtons | _ports[1].NetworkButtons) & AmigaJoystickButtons.Second) != 0)
             {
                 value &= unchecked((ushort)~0x4000);
             }
@@ -341,6 +358,16 @@ namespace AmigaEmulator.Core.Input
                 return;
             }
 
+            // An ICR read only acknowledges the CIA interrupt. Sending another
+            // byte at that point races the keyboard ISR's subsequent CRA output
+            // handshake, which aborts the new transfer and can lose key releases.
+            if (_keyboardAwaitingHandshake)
+            {
+                if (_ciaA.SerialInputHandshakeSequence == _keyboardHandshakeSequence) return;
+                _keyboardAwaitingHandshake = false;
+                _keyboardDelay = KeyboardSendDelayEClocks;
+            }
+
             if (_keyboardDelay > 0)
             {
                 _keyboardDelay--;
@@ -352,7 +379,9 @@ namespace AmigaEmulator.Core.Input
                 return;
             }
 
-            _ciaA.QueueSerialInputByte(_keyboardQueue.Dequeue());
+            _ciaA.QueueSerialInputByte(_keyboardQueue.Dequeue(), KeyboardBitPeriodEClocks);
+            _keyboardHandshakeSequence = _ciaA.SerialInputHandshakeSequence;
+            _keyboardAwaitingHandshake = true;
             _keyboardDelay = KeyboardSendDelayEClocks;
         }
 
@@ -454,6 +483,8 @@ namespace AmigaEmulator.Core.Input
             /// </summary>
             public AmigaJoystickButtons JoystickButtons;
             public AmigaJoystickButtons GamepadButtons;
+            [NonSerialized]
+            public AmigaJoystickButtons NetworkButtons;
 
             /// <summary>
             /// Resets the value state.
@@ -463,7 +494,7 @@ namespace AmigaEmulator.Core.Input
                 MouseX = 0;
                 MouseY = 0;
                 JoystickButtons = AmigaJoystickButtons.None;
-                GamepadButtons = AmigaJoystickButtons.None;
+                GamepadButtons = AmigaJoystickButtons.None; NetworkButtons = AmigaJoystickButtons.None;
             }
         }
     }

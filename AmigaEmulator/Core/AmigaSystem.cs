@@ -197,7 +197,7 @@ namespace AmigaEmulator.Core
             _accuracyOptions = (accuracyOptions ?? AmigaAccuracyOptions.Compatible).Clone();
             _frameBuffer = new AmigaFrameBuffer(_model.VisibleWidth + PresentationCropLeft + HorizontalOverscanPixels, _model.LinesPerFrame);
             _presentedFrameBuffer = new AmigaFrameBuffer(PresentationViewportWidth, PresentationViewportHeight);
-            _paula = new Paula(_model.ChipRamBytes);
+            _paula = new Paula(_model.ChipRamBytes, _model.ChipClockHz);
             _ciaA = new Cia8520("CIA-A");
             _ciaB = new Cia8520("CIA-B");
             _input = new AmigaInputDevice();
@@ -692,7 +692,11 @@ namespace AmigaEmulator.Core
         /// </summary>
         public void Dispose()
         {
-            _bus.HardDisk.Dispose();
+            lock (_syncRoot)
+            {
+                try { _bus.FloppyController.FlushAllDrives(); }
+                finally { _bus.HardDisk.Dispose(); }
+            }
         }
 
         /// <summary>

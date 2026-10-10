@@ -51,7 +51,6 @@ namespace AmigaEmulator.Core.Media
         /// <summary>
         /// Tracks whether the in-memory ADF differs from its host file.
         /// </summary>
-        [NonSerialized]
         private bool _dirty;
 
         /// <summary>

@@ -297,6 +297,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores diw Bottom.
         /// </summary>
         private int _diwBottom;
+        // Agnus opens/closes vertical DMA on comparator matches. A Copper
+        // split can move the stop behind the beam without closing that latch.
+        private int _verticalComparatorLine = -1;
+        private bool _verticalWindowActive;
         /// <summary>
         /// Stores diw Left.
         /// </summary>
@@ -440,6 +444,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void Reset()
         {
+            _verticalComparatorLine = -1;
+            _verticalWindowActive = false;
             _pixelCacheRow = int.MinValue;
             _decodedRegistersValid = false;
             _fetchRowsMonotonic = true;
@@ -481,6 +487,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void BeginFrame()
         {
+            _verticalComparatorLine = -1;
+            _verticalWindowActive = false;
             SnapshotLinePresentationWindow();
             ResetFramePresentationWindow();
             ResetDmaLineTracking();
@@ -536,6 +544,10 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public void LoadState(BinaryReader reader)
         {
+            // Old snapshots lack these fields. Loading into a used system must
+            // not inherit the running machine's vertical comparator latch.
+            _verticalComparatorLine = -1;
+            _verticalWindowActive = false;
             StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord", "_decodedRegistersValid", "_decodedControlKey", "_decodedWindowKey", "_decodedDiwHighKey", "_fetchRowsMonotonic");
             _decodedRegistersValid = false;
             _pixelCacheRow = int.MinValue;
@@ -621,7 +633,8 @@ namespace AmigaEmulator.Core.CustomChips
             _fetchSequence = (_hasAga && enabledPlanes > 4 && _fetchStep >= 8) || (!hires && enabledPlanes > 4)
                 ? s_lowresFetchSequence : s_hiresFetchSequence;
 
-            if (enabledPlanes > EnabledPlanes && _activeDmaRow != int.MinValue)
+            if (enabledPlanes > EnabledPlanes && _activeDmaRow != int.MinValue &&
+                (EnabledPlanes != 0 || !_completedDmaLine))
             {
                 _alignNewPlaneFetchMask |= ((1 << enabledPlanes) - 1) & ~((1 << EnabledPlanes) - 1);
                 // A raster split can finish rewriting newly enabled pointers after
@@ -857,7 +870,9 @@ namespace AmigaEmulator.Core.CustomChips
                 return;
             }
 
-            if (_hasAga) { FetchAgaPlaneGroup(beamX, row); return; }
+            // FMODE=0 keeps the legacy complete-group latches and pointer
+            // progression. Only wider AGA transfers need the wide-group path.
+            if (_hasAga && _fetchWords > 1) { FetchAgaPlaneGroup(beamX, row); return; }
 
             int fetchStep = GetFetchStep();
             int fetchOffset = beamX - _ddfStart;
@@ -1311,7 +1326,11 @@ namespace AmigaEmulator.Core.CustomChips
             bool pointerRegistersChanged = forcePointerReload || HavePointerRegistersChanged();
             bool sequentialLine = row == _activeDmaRow + 1 && _completedDmaLine;
             bool partialPointerRewrite = !forcePointerReload && pointerRegistersChanged && sequentialLine && !HaveAllEnabledPointerRegistersChanged();
-            bool continuesPreviousLine = sequentialLine && !forcePointerReload && (!pointerRegistersChanged || partialPointerRewrite);
+            // Disabled scanlines consume neither data nor modulo. Retain the
+            // last completed DMA pointers when fetching resumes after a gap.
+            // Partial pointer-write deferral still applies only to adjacent rows.
+            bool continuesPreviousLine = _completedDmaLine && row > _activeDmaRow &&
+                !forcePointerReload && (!pointerRegistersChanged || partialPointerRewrite);
             bool revisitingFetchedRow = row <= _activeDmaRow;
             if (revisitingFetchedRow)
                 _fetchRowsMonotonic = false;
@@ -1643,7 +1662,21 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool IsInsideDiw(int beamY)
         {
+            if (beamY == _verticalComparatorLine) return _verticalWindowActive;
             return beamY >= _diwTop && beamY < _diwBottom;
+        }
+
+        /// <summary>
+        /// Samples the vertical start/stop comparators at the beginning of a
+        /// physical scanline. Register writes do not retroactively undo matches.
+        /// Fixed PAL vertical blank resets the latch at the field boundary.
+        /// </summary>
+        internal void SampleVerticalDisplayWindow(int beamY)
+        {
+            RefreshFromRegisters();
+            _verticalComparatorLine = beamY;
+            if (beamY == _diwBottom) _verticalWindowActive = false;
+            else if (beamY == _diwTop) _verticalWindowActive = true;
         }
 
         /// <summary>

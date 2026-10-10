@@ -44,32 +44,24 @@ namespace SharpPixels
         /// </summary>
         None,
         /// <summary>
-        /// Uses a sharp 2x integer upscale.
+        /// Reconstructs pixel edges with the Scale2x neighbor rules.
         /// </summary>
         Scale2x,
         /// <summary>
-        /// Uses a sharp 3x integer upscale.
+        /// Reconstructs pixel edges with the Scale3x neighbor rules.
         /// </summary>
         Scale3x,
         /// <summary>
-        /// Uses a smooth 2x upscale path.
+        /// Uses the HQ2x pattern and color difference interpolation rules.
         /// </summary>
         Hq2x,
         /// <summary>
-        /// Uses a smooth 3x upscale path.
+        /// Uses the HQ3x pattern and color difference interpolation rules.
         /// </summary>
         Hq3x,
         /// <summary>
-        /// Uses a smooth 4x upscale path.
+        /// Uses the HQ4x pattern and color difference interpolation rules.
         /// </summary>
-        Hq4x,
-        /// <summary>
-        /// Uses the legacy xBRZ-compatible smooth 4x setting.
-        /// </summary>
-        Xbrz,
-        /// <summary>
-        /// Uses a sharp 4x integer upscale.
-        /// </summary>
-        Clean4
+        Hq4x
     }
 }

@@ -237,6 +237,14 @@ namespace AmigaEmulator.Core.Media
         }
 
         /// <summary>
+        /// Persists pending writes on every mounted floppy drive.
+        /// </summary>
+        public void FlushAllDrives()
+        {
+            foreach (FloppyDrive drive in GetDrives()) drive.FlushImage();
+        }
+
+        /// <summary>
         /// Applies CIA B Port to the current state.
         /// </summary>
         public void ApplyCiaBPort(byte prb, byte ddrb)
@@ -277,13 +285,13 @@ namespace AmigaEmulator.Core.Media
             if (drive != null)
             {
                 int selectedIndex = GetSelectedDriveIndex();
-                bool physicalDrivePresent = selectedIndex == 0 || drive.HasDisk;
+                bool physicalDrivePresent = selectedIndex == 0 || drive.HasPhysicalDrive;
                 if (!physicalDrivePresent)
                 {
                     return value;
                 }
 
-                if ((selectedIndex == 0 && !drive.HasDisk) || drive.DiskChanged)
+                if (!drive.HasDisk || drive.DiskChanged)
                 {
                     value = (byte)(value & ~CiaADiskChangeBit);
                 }
@@ -298,7 +306,9 @@ namespace AmigaEmulator.Core.Media
                     value = (byte)(value & ~CiaATrack0Bit);
                 }
 
-                if (drive.ReadySignal)
+                bool readyPin = selectedIndex > 0 && !drive.MotorOn
+                    ? drive.IdentificationReadySignal : drive.ReadySignal;
+                if (readyPin)
                 {
                     value = (byte)(value & ~CiaAReadyBit);
                 }

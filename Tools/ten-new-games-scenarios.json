@@ -6,20 +6,69 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"cycles": 400000, "type": "joystick"},
-      {"cycles": 80000000, "type": "wait"},
-      {"cycles": 400000, "type": "joystick"},
-      {"cycles": 80000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 20000000, "type": "wait"},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "cycles": 400000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 80000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 400000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 80000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 20000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right"
+      }
     ]
   },
   {
@@ -29,20 +78,69 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"cycles": 400000, "type": "joystick"},
-      {"cycles": 80000000, "type": "wait"},
-      {"cycles": 400000, "type": "joystick"},
-      {"cycles": 80000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 20000000, "type": "wait"},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "cycles": 400000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 80000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 400000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 80000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 20000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right"
+      }
     ]
   },
   {
@@ -52,23 +150,84 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 20000000, "type": "wait"},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 4000000, "type": "wait", "label": "get-ready"},
-      {"cycles": 200000, "type": "joystick", "label": "start-level"},
-      {"cycles": 2000000, "type": "wait", "label": "level"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 20000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 4000000,
+        "type": "wait",
+        "label": "get-ready"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick",
+        "label": "start-level"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "level"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right"
+      }
     ]
   },
   {
@@ -78,26 +237,93 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 20000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 20000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right"
+      }
     ]
   },
   {
@@ -107,38 +333,141 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 20000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 10000000, "type": "wait"},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 20000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 10000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right"
+      }
     ]
   },
   {
@@ -148,19 +477,65 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"cycles": 160000000, "type": "wait"},
-      {"cycles": 400000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"cycles": 200000, "type": "joystick"},
-      {"cycles": 20000000, "type": "wait"},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "cycles": 160000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 400000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 20000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right"
+      }
     ]
   },
   {
@@ -170,18 +545,61 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"cycles": 160000000, "type": "wait"},
-      {"cycles": 400000, "type": "joystick"},
-      {"cycles": 40000000, "type": "wait"},
-      {"type": "wait", "cycles": 200000000},
-      {"type": "joystick", "cycles": 200000},
-      {"type": "wait", "cycles": 40000000},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right,Fire"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "cycles": 160000000,
+        "type": "wait"
+      },
+      {
+        "cycles": 400000,
+        "type": "joystick"
+      },
+      {
+        "cycles": 40000000,
+        "type": "wait"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000
+      },
+      {
+        "type": "joystick",
+        "cycles": 200000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up,Right,Fire"
+      }
     ]
   },
   {
@@ -191,13 +609,53 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"type": "joystick", "cycles": 400000, "label": "start-game"},
-      {"type": "wait", "cycles": 12000000, "label": "level"},
-      {"type": "joystick", "label": "move", "cycles": 1000000, "button": "Right"},
-      {"type": "joystick", "label": "jump-or-fire", "cycles": 700000, "button": "Up,Right,Fire"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000,
+        "label": "start-game"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "level"
+      },
+      {
+        "type": "joystick",
+        "label": "move",
+        "cycles": 1000000,
+        "button": "Right"
+      },
+      {
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "cycles": 700000,
+        "button": "Up,Right,Fire"
+      },
+      {
+        "type": "wait",
+        "label": "transition-continued-without-input",
+        "cycles": 30000000
+      },
+      {
+        "type": "joystick",
+        "label": "move-left-after-transition",
+        "cycles": 700000,
+        "button": "Left"
+      }
     ]
   },
   {
@@ -207,15 +665,49 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"type": "wait", "cycles": 80000000},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Down"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "move",
+        "button": "Down"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "jump-or-fire",
+        "button": "Up"
+      }
     ]
   },
   {
@@ -225,22 +717,153 @@
     "strict": true,
     "traceExceptions": true,
     "actions": [
-      {"type": "wait", "cycles": 100000000, "label": "boot"},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000, "label": "after-fire"},
-      {"type": "wait", "cycles": 80000000},
-      {"type": "joystick", "cycles": 400000},
-      {"type": "wait", "cycles": 40000000},
-      {"type": "wait", "cycles": 200000000},
-      {"type": "joystick", "cycles": 200000},
-      {"type": "wait", "cycles": 40000000},
-      {"cycles": 1000000, "type": "wait", "label": "level-before-input"},
-      {"cycles": 1000000, "type": "joystick", "label": "move", "button": "Right"},
-      {"cycles": 700000, "type": "joystick", "label": "jump-or-fire", "button": "Up,Right,Fire"},
-      {"label": "start-player-game", "cycles": 200000, "type": "joystick"},
-      {"label": "player-round1", "cycles": 2000000, "type": "wait"},
-      {"button": "Right", "cycles": 1000000, "type": "joystick", "label": "player-move"},
-      {"button": "Up,Right,Fire", "cycles": 700000, "type": "joystick", "label": "player-jump-and-bubble"}
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "tb-00-boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000,
+        "label": "tb-01-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "tb-02-after-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "tb-03-wait"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000,
+        "label": "tb-04-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "tb-05-wait"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "tb-06-wait"
+      },
+      {
+        "type": "joystick",
+        "cycles": 200000,
+        "label": "tb-07-joystick"
+      },
+      {
+        "type": "wait",
+        "cycles": 40000000,
+        "label": "tb-08-wait"
+      },
+      {
+        "cycles": 1000000,
+        "type": "wait",
+        "label": "tb-09-level-before-input"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "tb-10-move",
+        "button": "Right"
+      },
+      {
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "tb-11-jump-or-fire",
+        "button": "Up,Right,Fire"
+      },
+      {
+        "label": "tb-12-start-player-game",
+        "cycles": 200000,
+        "type": "joystick"
+      },
+      {
+        "label": "tb-13-player-round1",
+        "cycles": 2000000,
+        "type": "wait"
+      },
+      {
+        "button": "Right",
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "tb-14-player-move"
+      },
+      {
+        "button": "Up,Right,Fire",
+        "cycles": 700000,
+        "type": "joystick",
+        "label": "tb-15-player-jump-and-bubble"
+      },
+      {
+        "label": "tb-16-restore",
+        "type": "restore"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "tb-17-post-script-right",
+        "button": "Right"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "tb-18-post-script-continued"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "tb-19-fire-0"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "tb-20-after-fire-0"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "tb-21-fire-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "tb-22-after-fire-1"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "tb-23-fire-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "tb-24-after-fire-2"
+      },
+      {
+        "type": "joystick",
+        "button": "Right, Fire",
+        "cycles": 2000000,
+        "label": "tb-25-level-input"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "tb-26-live"
+      },
+      {
+        "type": "restore",
+        "label": "tb-27-restore"
+      }
     ]
   }
 ]

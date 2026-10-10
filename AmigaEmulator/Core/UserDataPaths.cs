@@ -28,6 +28,8 @@ namespace AmigaEmulator.Core
         /// </summary>
         public static string GetBaseDirectory()
         {
+            string isolatedDirectory = Environment.GetEnvironmentVariable("AMIGAEMULATOR_USER_DATA_DIRECTORY");
+            if (!string.IsNullOrWhiteSpace(isolatedDirectory)) return Path.GetFullPath(isolatedDirectory);
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             if (string.IsNullOrWhiteSpace(appData))
             {

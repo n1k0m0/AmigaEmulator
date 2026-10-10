@@ -252,8 +252,8 @@ broader application and all-model storage coverage remain open.
 
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
-| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes | Fix defects discovered by the broader matrix |
-| 2. Native gameplay | Tinyus and Sqrxz 2 swept on all eight boards with model-specific ROMs, movement/fire and restore | Tinyus/new-Kickstart/68000 blank output remains open; investigate Sqrxz 2 text output; native AGA-specific software, longer sessions and disk swaps |
+| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing | Current Siedler border report and later intro-to-game failures remain open; fix defects discovered by the broader matrix |
+| 2. Native gameplay | Initial Tinyus/Sqrxz 2 sweep extended to the full local ADF catalog; ECS vertical-window defect in Boxx 4 reproduced and fixed, with a failing-before regression | Complete the 240-case visual/control review and title-specific disk/menu continuations; intermittent Tinyus/new-Kickstart/68000 blank phases, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
 | 3. Performance | Cache unchanged display controls and opcode-derived descriptions; remove bitfield-name arrays; restore respects host trace settings; unobserved blitter tracing no longer allocates; paired CPU/frame hashes match | Continue profiling remaining allocations and repeat measurements after further changes |
 | 4. Installed OS | Purchased AmigaOS 3.1.4 installed on a new A4000/030 HDF; separate A3000/SCSI copy passes native 46.143 boot, Shell, Clock, ShowConfig, persistence and cold/warm/restore | Broader applications, install/boot on remaining models and complete storage-controller coverage |
 | 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested | Native superhires, interlace fields/weaving, programmable timing, scan doubling, additional references |
@@ -367,11 +367,11 @@ and minimum sector-read assertions pass throughout. These tests use existing
 read-only user media and fresh output savestates; they do not install an OS
 or complete the all-model gameplay acceptance gate.
 
-Next concrete gameplay step: capture the Tinyus object/animation-pointer list
-immediately before the second Fire on the working 1.3/68000 control and the
-failing 3.1/68000 configuration. Trace the first unexpected null animation
-pointer backwards through its guest writes before changing CPU/DMA behavior;
-do not force BPLCON0 to hide the guest-side transition failure. Continue
+The full-library follow-up below supersedes the earlier claim that Tinyus never
+recovers after a longer wait. Its blank transition is intermittent, rather than
+proven to be a permanent hang. Next: review the longer deterministic transitions
+and distinguish intended game phases from erroneous guest behavior before
+changing CPU/DMA behavior; do not force BPLCON0. Continue
 restartable 030 fault and display-mode implementation independently of the
 user's pending OS media. The roadmap and recurring continuation remain active.
 
@@ -627,6 +627,10 @@ Original ADFs and existing user checkpoints remain unchanged. No commit/push.
 Next for this report: replay the user's exact pre-swap save, distinguish host
 failure from Guru/reset/hang, and add a failing regression before a targeted fix.
 
+Follow-up: the exact requested Intro Disk 1 -> Disk 2 crash was reproduced and
+fixed on 2026-10-10. See the later section on Siedler intro disk changes and
+the separate, still-open game-handoff failures.
+
 ### Speedball 2 scrolling viewport correction — 2026-10-09
 
 Reproduced the reported jumping picture in actual PRACTICE gameplay on A500,
@@ -678,6 +682,426 @@ No commit/push for this follow-up. Next: replay any remaining pixel-row defect
 from the user's exact checkpoint and isolate DMA/blitter/shifter data from host
 presentation before changing hardware behavior.
 
+### Full local-library/model audit and ECS vertical-window fix — 2026-10-09
+
+The preceding Speedball work was committed and pushed as `464ce54` at the
+user's request. The subsequent all-game/all-board check covers 29 named games,
+one unidentified three-disk set and all eight exposed model variants with native
+ROMs. SELECTOR is a utility and is excluded from the 240-case game acceptance
+matrix. Original media remain read-only and checksummed; fresh outputs are
+outside the repository. Script completion never becomes a gameplay pass.
+
+Found and fixed a real Boxx 4 ECS/native-A3000 missing-playfield defect: its
+Copper changes DIWSTOP/DIWHIGH after the vertical start. Image data remains
+present in Chip RAM, but the old instantaneous rectangle calculation blanked
+the already-open window. Agnus now retains the vertical comparator latch until
+a matching stop or fixed PAL vertical blank, including restore and legacy-state
+handling. A failing-before ECS/AGA regression now passes, as do all 235 standard
+plus local Siedler frame/menu/mouse checks. Targeted cold and control/restore
+runs reached Boxx gameplay on all eight boards. The 240-case cold sweep is now
+complete (the invalid A2000 OCS RAM case has its valid replacement). Its
+reviewed per-title/per-board stage table is in the linked audit; execution
+success is still not full gameplay acceptance.
+
+The same matrix exposed Fred's Journey AGA noisy pixel rows on A1200 and
+A4000/030. FMODE=0 now uses the legacy complete-group latches/pointer path;
+wide AGA transfers retain their separate implementation. Two actual-game
+golden replays fail before and pass after the correction, movement/restore
+retains a clean level, all 60 AGA title states were replayed and reviewed,
+and the 235 regressions remain passing.
+
+Speedball 2 Practice runs on all five 68000 profiles. The local disk version's
+Line-F loader at $8518 consumes a six-byte exception frame via ADDQ/RTS,
+leaving an 020/030 format word on the stack. Paired traces establish this
+disk-version restriction; Copylock checksum/register results match and the
+already implemented format-two trace frame is not the missing feature.
+Use a compatible 68000 profile for this image, or separately test a patched
+version. Do not weaken CPU exception frames to accommodate it.
+
+Tinyus's earlier permanent-blank diagnosis was too strong: an A600 replay
+recovers after additional waiting without Fire or restore. A paired restore
+control retains identical full registers, Chip RAM and pixels. Further input
+can produce another blank phase, so the intermittent problem is still open.
+Several older scripts stop in trainer/menu/loading phases or inadvertently pause
+the game; their title-specific continuations remain acceptance work. Lotus
+reaches the race on A500/A2000 OCS, but the same sequence leaves the other six
+profiles in a guest-programmed planes-off phase. Lemmings has spawned figures,
+an advancing timer and mouse/restore evidence on A500. Further native disk
+transitions, control/restart acceptance and those unresolved phases are the
+next concrete game work. All 50 ADF hashes still match the original inventory.
+
+Detailed profiles, findings, test limits, preserved evidence and next steps:
+[Game/model compatibility audit](GameModelCompatibility-2026-10-09.md).
+No new commit/push for this follow-up. Neither this audit nor the full hardware
+roadmap is complete.
+
+### Full-library gameplay continuations and complete-state restore — 2026-10-10
+
+The stronger runner restore gate compares serialized CPU and bus state,
+including Chip/Slow/Fast RAM, ROM overlay and floppy controller, plus beam
+timing and presented pixels. All 240 continuation cases pass; this does not
+turn their unfinished intro/menu states into gameplay acceptance. Both Fred
+AGA image goldens pass with this gate. Preflight rejects unsupported numeric
+controller bits and accepts legitimate combined mouse buttons.
+
+Oh No! More Lemmings now has actual spawned figures, advancing timer and mouse
+input on all eight boards. Its corrected source sequence also passes eight
+fresh native-ROM cold boots. The old Space input is removed from Maniac/Zak
+smoke sequences because it pauses them.
+
+Siedler's apparently empty larger-memory screen was a blinking Disk-2 request,
+not missing menu rendering. Providing the requested disk and later left-clicking
+through the animation reaches symbol input, the main menu and mission terrain
+on all six larger-memory profiles. Together with the two smaller-memory paths,
+all eight boards show the playfield and respond to mouse selection/restore.
+The tested transition does not crash the host. The earlier user's exact
+intro-disk swap report remains open without its pre-swap state. Model-specific
+disk steps are retained in `Tools/model-gameplay-variants.json`. All eight
+fresh source cold boots now reach the mission. Continuing those states builds
+the first castle on every board, then verifies live frames and complete-state
+restore. The common source sequence retains the construction menu actions.
+A long populated-settlement stress test remains open.
+
+Evidence: the existing full-library diagnostics root, particularly
+`restore-matrix/`, `lemmings-models/`, `lemmings-cold-verified/`,
+`siedler-required-disk/`, `siedler-left-transition/`, `siedler-finish-games/`
+and `siedler-classic-gameplay/`, followed by eight `siedler-cold-verified/`
+cold boots and eight `siedler-cold-construct/` first-castle runs. Maniac Mansion now has walking input on all eight boards, followed by eight fresh
+native-ROM source cold boots into the controllable scene. Turrican III's corrected
+DF1 Disk-2 and Fire sequence also passes eight fresh native source cold boots into
+the level, input and complete-state restore. Hostages reaches its mission scene
+on all eight native boards, with extra menu inputs on A600/A3000; eight fresh
+source cold boots now confirm mission entry and restore. Fire and Ice reaches
+the icy level on all eight boards. Sixteen matched-cycle input/control runs
+show camera/coyote/projectile movement and pass full-state restore; its source
+sequence is retained and all eight fresh cold replays now reach the level
+with input/full-state restore.
+
+The North & South A3000 map was stale: the guest had already taken a Line-F fault
+at `$02030406`, which an older filter incorrectly missed by excluding addresses
+above 24 bits. It is corrected to an open failure, not gameplay acceptance. The
+three native-ROM 68000/ECS loaders also fault. Cold controls plus campaign inputs
+work on A600/A2000 ECS with 2 MiB Chip + 2 MiB Fast and native Kickstart 3.1; A500+
+works with the same memory and Kickstart 3.1. Its native 2.0/Fast-RAM control still
+fails. Explicit additional profiles preserve the failing defaults and can be
+included with `-IncludeCompatibilityProfiles` (North & South initially 244 cases
+instead of 240; a subsequent Cannon Fodder A1200 Chip-only profile brings it to 245). Eleven
+fresh source cold runs confirm working and failing configurations. A separate
+A3000 Kickstart-1.3 cold run, retaining M68030, reaches campaign/input/restore
+without guest instruction faults. This flat-ROM diagnostic does not implement
+SuperKickstart or certify native installed OS/SCSI. Four explicit compatibility
+profiles now provide a campaign path across all eight boards; native failures
+remain visible. The 244-case manifest passes preflight, not gameplay acceptance. The runner now
+records counts/first synchronous instruction exceptions outside ROM, including
+32-bit addresses; positive A3000 and clean A500 controls pass, along with the two
+Fred AGA pixel goldens and full-state restore. Protection exceptions still require
+review, not automatic failure labels.
+
+Cannon Fodder's Return/left-click intro/trainer flow and memory controls now reach
+its cast intro on A500 1-MiB Chip and three ECS boards, also on an A500
+512-KiB-Chip/Slow/2-MiB-Fast control. Five Disk-2 continuations clear the request
+but remain black; alternative Disk-3 and three-drive controls are running.
+Three-drive continuations now reach Mission 1 with squad/mouse input on six
+boards (A500 with 1-MiB Chip, A500+, A600, A2000 ECS, A3000, A4000/030). A1200
+with Fast and A2000 OCS/Fast remain black; fresh early-data and Chip-only
+controls show fresh A1200 Chip-only Mission-1 gameplay; its Fast counterpart stays
+black. A4000 Chip-only stays black; native motherboard Fast reaches the mission.
+The source retains three data drives, preferred A500 one-MiB Chip and an explicit
+A1200 Chip-only profile; nine fresh source cold replays are running. OCS/Fast
+controls remain unresolved. Tiny Bobble also reaches Round 1 on all eight boards,
+with all eight fresh source cold replays now passed. Lotus reaches a race on an A500+ Kickstart-1.3
+control; its A1200 counterpart still fails. Its native keyboard IRQ storm is
+retained for diagnosis.
+The official Speedball 2 WHDLoad patch on three separate disposable HDFs also
+fails before gameplay; an A600/68000 cold control fails at the same $07FFBC
+Line-F as A1200, so this is not specific to the 020/030 CPU. It is not certified. Actual mission entry and remaining
+native disk/menu/intro phases remain the next concrete game work. All 50 original ADF hashes were rechecked
+unchanged. No new commit/push; neither the library audit nor the hardware roadmap
+is complete.
+
+
+2026-10-10 game-library continuation: all nine fresh Cannon Fodder source cold
+runs are reviewed. Seven native models and the additional A1200 Chip-only
+control reach Mission 1 and restore exactly; A2000 OCS remains black. Native
+A1200 Fast is successful on cold boot, so the earlier warm-loader failure is
+not classified as a hardware restriction. Pinball Fantasies reaches Partyland
+on five classic boards plus native A1200. Its missing dot-matrix text is fixed:
+DMA retains completed pointer/modulo progress across zero-plane scanline gaps,
+without the erroneous zero-to-enabled raster-split reload. The independent
+OCS/ECS/AGA 16/32/64-bit regression and real-game pixel golden both fail before
+and pass after; paired full CPU/Chip-RAM hashes and beam remain identical.
+All 235 standard regressions, Fred AGA goldens and the Siedler frame golden pass.
+Native desktop-Fast Pinball configurations fault at $200002; fresh A3000/A4000
+Chip-only cold controls are in progress. Moonstone reaches a controlled A500
+Practice fight with debounced menu input and restore; native eight-model
+Practice replays are in progress. Lotus K1.3/68000/ECS races additionally pass
+on A600 and A2000 ECS, while native advanced CPU controls still fail. Remaining
+loaders, native desktop faults, longer gameplay and reset acceptance are open.
+See GameModelCompatibility-2026-10-09.md for exact evidence. No further commit
+or push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 final-core library checks: all six Pinball Fantasies source cold
+replays and all five 68000 Moonstone source cold replays are reviewed in actual
+gameplay with inputs and complete restore. Moonstone's local CSL stub runs
+user-mode MOVEC after installing only vector 4; the three 020/030 profiles
+correctly take privilege vector 8 and fail this particular media version.
+An independent five-CPU regression verifies the fault PC, saved SR, destination
+and frame layout. The standard suite now passes 236/236; all 240 library/model
+continuations also pass full CPU/bus/beam/pixel restore with the Pinball DMA fix.
+These restore and 248-case preflight results are not gameplay certification.
+All 50 original ADF hashes remain unchanged. Civilization reaches the main menu
+on all eight boards and eventually requests Disk 4 after its lengthy world-birth
+animation. Its subsequent DOS `Disk corrupt - task held` requester remains open,
+despite valid independently unpacked source OFS files/checksums and an empty-drive
+swap control. A guest DOS read fixture is the next diagnostic gate. Alien Breed
+now reaches a controlled A500 level after its actual Disk-2 request and long data
+load; the other native models are undergoing that continuation. Exact evidence
+and remaining failures are recorded in GameModelCompatibility-2026-10-09.md.
+No further commit/push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 further library evidence: Alien Breed's proper Disk-2/long-load flow
+now reaches a controlled level on all eight native boards; fresh source cold
+replays are underway. All five Speedball 2 source cold starts reach Practice
+with input and exact restore on the fixed core. All 240 library/model states
+also pass warm-reset and power-cycle restore with full CPU/bus/beam/pixel
+equality. Independent guest DOS probes read the same Civilization Disk-4 file
+under Kickstart 1.3 and 3.1 with the host-verified checksum 9EF884A5; the specific
+A500 game's corrupt-disk requester persists even without duplicate data drives.
+Native A600/A1200 world-creation controls and Speedball consecutive-field
+scrolling checks are underway. No generic filesystem bypass has been added.
+Original media remain unchanged; no further commit/push has been made.
+
+2026-10-10 completed library controls: all eight source Alien Breed cold replays
+now reach a controlled level and exact restore. Speedball 2 passes 32 consecutive
+scrolling fields on each of the five 68000 boards, with fixed source geometry,
+160 distinct frame hashes and no non-ROM exceptions. Native A600/A1200
+Civilization world creation reaches Disk 4, but acknowledgment remains unresolved;
+A500's requester occurs during Lock("CIV4:nuke1.pix", SHARED_LOCK).
+Independent guest DOS reads of the complete adscreen.pix match checksum 8C6EB102
+on Kickstart 1.3 and 3.1; host validation of all 307 files/5,064 OFS data blocks
+finds no data-chain errors. Source cold-flow preflight again passes all 248 cases.
+These are bounded tests, not certification of every title/model. Exact evidence
+and the next diagnostic steps remain in GameModelCompatibility-2026-10-09.md.
+No further commit/push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 Moonstone compatibility option: a separate Disk-1 copy using
+ILLEGAL/NOP to enter the local CSL loader's existing vector-4 Supervisor handler
+now passes fresh cold Practice/combat, inputs and full restore on native A1200,
+A3000 and A4000Ec030. The exact original cracked set remains separately marked
+incompatible on those CPUs. A hash/signature/OFS-validated copy tool preserves
+all originals; the explicit matrix option adds three reviewed profiles and passes
+251-case preflight. Existing-destination and unknown-source rejection controls
+pass. The guest DOS control also successfully locks/reads CIV4:nuke1.pix under
+Kickstart 1.3/3.1 (checksum 3EFE4AE7), so the game's specific cache/swap failure
+requires further investigation. Next: single-drive A500 world creation and swap,
+then unresolved Tinyus/loader/menu flows. See GameModelCompatibility-2026-10-09.md.
+No further commit/push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 keyboard and swap progress: an independent modifier/down/up fixture
+reproduces a lost queued key when the CIA ICR read precedes the host's KDAT
+handshake. CIA now retains handshake completion, and keyboard delivery waits
+for it; both states restore correctly, with safe legacy defaults. This removes
+the real OS Retry shortcut's sustained V repeat. The suite passes 237/237.
+A new external read-only HDF probe locks CIV1, swaps to original CIV4 and fully
+locks/reads nuke1.pix with checksum 3EFE4AE7 after Retry. The actual game's A500
+single-drive swap still corrupts; A600/A1200 remain at the request. Generic DOS
+swap success is not game success. Full 240-case reset/restore revalidation is
+running on the new keyboard core; 16 fresh Tinyus/Cannon cold controls follow.
+Mega lo Mania reaches intro/title but its post-intro copy/privilege failures
+remain unresolved. No title-specific hardware bypass is accepted. See the
+compatibility report for exact evidence and remaining keyboard timing limits.
+No further commit/push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 new-core validation: all 240 warm-reset/power-cycle restore cases pass
+with the keyboard fix. All eight native Tinyus cold states are visually reviewed;
+the three newer-ROM 68000/ECS transitions remain open. Separate Kickstart-1.3
+profiles on the same native A500+/A600/A2000 ECS CPUs and 2-MiB Chip RAM pass cold
+gameplay, five directional/shooting intervals, Continue/restart into gameplay and
+full restore with zero non-ROM exceptions. Those three reviewed ROM alternatives
+are retained explicitly, bringing the profile sweep to 251 cases, or 254 with
+the separate Moonstone-disk option. No silent CPU substitution is introduced.
+Fresh Civilization world/swap controls complete with the Disk-4 issue still open.
+All eight native Cannon cold flows are reviewed on the keyboard-fixed core;
+seven reach Mission 1, while A2000 OCS still recovers through the ROM.
+No further commit/push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 floppy persistence: actual OS MFM writes decode correctly but were
+not committed on replacement/disposal, and file-state reattachment discarded
+the saved buffer and partial write. Three old-core-failing fixtures now pass:
+flush the outgoing medium before replacement, flush all four drives on disposal
+and menu persistence, save the pending-write flag, and retain the same-path
+saved buffer/partial MFM sector. The standard suite passes 240/240. Actual DOS
+writes on fresh external ADF copies pass all eight native models, exact
+power-cycle restore and independent host payload readback (64 bytes 00..3F).
+All 240 full reset/restore cases pass again and all 50 original ADF hashes are
+unchanged. Writable Civ4 copies do not fix the game's Disk-4 request/cache issue.
+A persistence-core 254-case cold sweep started in four disjoint workers under
+all-254-floppy-fixed-cold/, with its remaining cases later continued in eight.
+Review its captures before accepting gameplay; trace
+Civilization's filesystem error before requester rendering next. Evidence and
+worker metadata are in the compatibility report's diagnostics root. No further
+commit/push; the library audit and hardware roadmap remain unfinished.
+
+2026-10-10 floppy identification and state order: the motor now samples MOTOR
+only on an inactive-to-active SELECT edge. External standard DD drives expose
+their motor-off 32-bit ID even without media; ejection keeps them attached.
+Independent old-core-failing motor/ID fixtures now pass. A separate failing
+restore fixture also proved that bus loading applied the old CIA state to
+the restored motor latch; line refresh is now deferred until both CIAs load.
+The standard suite passes 243/243, all 240 full warm-reset/power-cycle restores
+pass, and Siedler/Pinball image regressions pass on the final core. Actual native
+Kickstart cold boots on the preceding motor/ID-fixed core read all 5974 bytes
+of CIV4:nuke1.pix from preboot DF3 on all eight models (CRC 3EFE4AE7); the
+old core leaves A500/A600/A1200 at the missing-volume requester. This proves DOS
+drive registration, not game completion. HD/electrical timing/reset details
+remain open. Primary signal specification:
+[Commodore HRM Appendix H](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_h.html).
+
+The old cold sweep's 47 + 126 completed cases are retained as baseline; its
+unfinished workers were stopped. The final-core 254-case sweep now uses eight
+disjoint workers under all-254-floppy-id-restore-fixed-cold/. No current full
+library pass is claimed. Civilization's early trace found a Disk-1 directory
+block number used against Disk-4 pixel data despite a correctly recognized
+CIV4 volume; the precise cache/lookup cause is open. Three new preboot-four-drive
+Earth Game controls preserve a visually verified menu selection and loading.
+Next: inspect their actual map/input transitions, then review the 254 fresh
+cases and retain/fix changed failures. Evidence/worker locations are recorded
+in GameModelCompatibility-2026-10-09.md. No further commit/push; the broader
+hardware roadmap and game acceptance remain unfinished.
+
+2026-10-10 multi-drive gameplay and menu: Civilization now reaches its real
+Earth map, accepts city naming and displays Rome on native A500/A600/A1200
+cold/restore lineages. The merged source flow also has reviewed fresh A500+ and
+A2000 OCS city screens; the remaining native cold confirmations are running in
+civ-reviewed-four-drive-final-cold/. Its condition is all four original disks
+attached before boot; the single-drive K13 stale-root lookup remains open and
+is reproduced by a minimal DOS program. Zak reaches its bedroom and visibly
+walks in response to mouse clicks on native A500/A1200 when Zak2 is in DF1
+before boot and Zak1 remains in DF0. The source flow is now under fresh all-eight
+cold confirmation in zak-reviewed-two-drive-final-cold/; other models are not
+pre-accepted. Original RAM/CPU/ROM profiles are retained.
+
+MEDIA now selects/inserts/ejects DF0..DF3 and requests reset when a new external
+drive needs enumeration. Saving DF0 no longer clears the other configured
+paths. Additional disks mount before startup and survive model changes/reset;
+state loading keeps DF0 as the boot disk even if metadata names last data DF3.
+A no-window/no-user-settings offscreen smoke test exercises the actual methods,
+path persistence and drive selection; its menu rendering is reviewed. The
+standard suite remains 243/243. The broad 254-case run's Civ/Zak entries are
+superseded by these two dedicated eight-case flows; its other 238 cases retain
+the same core/source. Finish/review all three runs and remaining game failures
+next, using the compatibility report's worker metadata and evidence folders.
+No further commit/push; complete library acceptance and the hardware roadmap
+remain open.
+
+2026-10-10 all-eight data-drive confirmation: Civilization and Zak's corrected
+merged-source cold flows finish and reach actual gameplay on every native
+board, with original CPU/ROM/RAM and zero observed non-ROM exceptions. City/map
+screens and the bedroom's mouse-controlled walk are visually reviewed. Sixteen
+gameplay checkpoints additionally pass warm-reset and power-cycle exact
+CPU/bus/beam/pixel restore assertions. Evidence:
+civ-zak-eight-native-gameplay-reviewed.json and
+civ-zak-gameplay-reset-proof-run/. All fifty original ADF hashes remain
+unchanged; updated complete 254-case scenario preflight passes. The library
+sweep has 244/254 raw cases at this checkpoint, with its sixteen old Civ/Zak
+flows superseded by the new gameplay evidence. Both preboot data-drive layouts
+remain required; single-drive K13 stale-root handling remains open.
+Low-Chip Cannon tests fail on both A500 and A2000 OCS even with added Fast RAM;
+this is not yet a proven copy restriction or accepted profile workaround.
+Finish/review the sweep and test preboot data drives for Desert/Mega next.
+No further commit/push; library acceptance and hardware roadmap remain open.
+
+2026-10-10 completed library sweep and follow-up: all 254 final floppy/ID/core
+cases execute without harness errors; all 240 native captures are reviewed,
+with sixteen Civ/Zak flows superseded by their actual gameplay cold runs.
+Current capture coverage is not a universal gameplay/graphics pass. Pinball's
+native A500+/K20 cold result is withdrawn after a new depacker failure exposed
+by the keyboard handshake change. Identical older-core and same-board K31
+controls reach Partyland. An actual-menu trace confirms proper F1 down/up
+acknowledgements before the depacker leaves its output buffer; compare packed
+data at the first depacker entry next. Keyboard backlogs after the hang are not
+accepted as its cause.
+An independent serial-clock correction now spaces keyboard bits by 43 E clocks
+(approximately 60 us), with per-byte periods and partial/legacy restore tests.
+The standard suite passes 245/245. Full electrical handshake pulse measurement
+and 143 ms resync remain unimplemented; this clock fix alone does not fix
+Pinball's K20 hang. Moonstone's two short K31 menu holds are corrected to about
+seven frames and confirmed through native A600/A2000 ECS combat/input/restore.
+A fresh 22-case Moonstone/Tinyus native and explicit-ROM/copy sweep is running
+under moon-tinyus-bitclock-cold/. Desert now reaches story/loading after a
+correctly timed late intro click, but mission entry remains open. Full evidence
+and next steps are in GameModelCompatibility-2026-10-09.md. No further
+commit/push; complete library acceptance and hardware work remain unfinished.
+
+2026-10-10 physical floppy INDEX follow-up: paired native K20 Pinball menu
+states load identical first packed/unpacked data, but the failing second
+packet skips ten sectors at logical track 39. The synthesized MFM stream
+wrapped after 691200 clocks independently of the 709379-clock physical INDEX;
+startup timing exposed its drifting sector origin. FloppyDrive now pads gap
+flux until INDEX and aligns its track origin at that edge, retaining modeled
+data cadence and physical period. Three independent fixtures fail before/pass
+after; full suite 248/248, Siedler alignment and exact Pinball DMD golden pass.
+The formerly failing menu now reads the exact good second packet. Eight
+native Pinball cold starts finish and are reviewed: all five 68000 boards and
+A1200 reach Partyland with inputs; all six pass warm/power-cycle exact restores.
+A500+/K20 is reinstated, while both native desktop cases remain loader failures.
+All 22
+previous-bitclock Moonstone/Tinyus cases are reviewed, with sixteen accepted
+gameplay warm/power-cycle restores; newer-ROM Tinyus transitions remain open.
+New full final-INDEX-core 254-case source validates and is running in eight
+disjoint workers under diagnostics/AllGamesModels-20261009-bdfaa5f7/
+all-254-index-fixed-cold/ (workers.txt records owned PIDs). Frozen binary
+hashes are in index-fixed-runtime-provenance.json. Do not stop these workers,
+duplicate their cases or substitute earlier-core results without a reason.
+Complete/review that sweep, examine Pinball's K20 cold result and follow the
+remaining game restrictions recorded in GameModelCompatibility-2026-10-09.md.
+Final-core Desert A500/A1200 loading continuations reach the carrier cinematic
+with coherent captures and zero new non-ROM exceptions; Fire/click/Return
+controls finish under desert-carrier-input-run/ and retain that animated screen.
+Mission entry is still open. All fifty original ADF hashes
+remain unchanged. Do not promote this cinematic to mission gameplay.
+No further commit/push; whole library and hardware roadmap remain unfinished.
+
+### Requested upscale replacement (2026-10-10)
+
+The presentation menu now exposes exactly `NONE`, `SCALE2X`, `SCALE3X`,
+`HQ2X`, `HQ3X`, `HQ4X`, in that order. Scale2x/3x retain their published
+neighbor rules. HQ2x/3x/4x now implement HQx pattern interpolation and YUV
+thresholds through a managed adaptation of the permissively licensed FFmpeg
+filter, rather than the earlier generic bilinear smooth options. Retired
+`Xbrz`/`Clean4` string and numeric settings migrate to HQ4x without losing ROM,
+disk, boot, stretch or other saved configuration. Unknown upscale values fall
+back to NONE. The license notice is included in build outputs.
+
+Independent FFmpeg 9.0.1 BGRA reference hashes verify all 256 binary neighbor
+patterns and a deterministic colored/YUV-threshold fixture for each HQx
+factor. Cropped copies match the same hashes without overscan contamination.
+The complete 704x288 Siedler construction capture also matches FFmpeg exactly
+at all three factors; the six-mode visual comparison is inspected. Win32 DIB
+paint tests cover native crop/stride and reference edge colors. All modes retain
+the original viewport and mouse geometry; FILL SCREEN still fills the client.
+The Release build has zero warnings/errors and the full regression suite is
+254/254, with no skipped tests.
+
+HQx precomputes 4,096 compact interpolation rules per factor and normalizes
+weights to a constant denominator. It reuses source/YUV/output buffers and
+skips unchanged pictures. Three alternating baseline/optimized process pairs
+on the same frozen Siedler frame use 60 warm-up renders, 100 changed renders
+and disabled tiered compilation. Median filter times for the initial scalar
+HQx port versus the final rule lookup are HQ2x 15.48 -> 13.05 ms, HQ3x
+28.05 -> 16.40 ms, HQ4x 37.16 -> 22.45 ms. All three HQx outputs have identical
+baseline/final hashes and zero allocations during the measured changed-frame
+loops. These are presentation-filter timings under the current host load,
+not complete emulation FPS or a comparison with the previous bilinear modes.
+
+Evidence: `%APPDATA%/AmigaEmulator/diagnostics/Upscalers-20261010/`, particularly
+`hqx-reference-results.json`, `siedler-reference-check.json`,
+`siedler-six-upscalers.png`, `paired-performance-summary.json`, the six
+`paired-*/` runs and `full-final-regression-tests.log`. No user settings, ROMs,
+media, installed disks or game states are rewritten. Existing frozen game-sweep
+snapshots are preserved. No new commit/push was requested for this change.
+The broader game/model and hardware roadmap remains open.
+
 ## Remaining implementation order
 
 1. Complete restartable 68030 format A/B bus faults, cache semantics and ATC
@@ -709,3 +1133,218 @@ instruction behavior; Linux drivers identify Amiga IDE wiring.
 - [Western Digital WD33C93A datasheet](https://www.msxarchive.nl/pub/msx/docs/datasheets/wd33c93a.pdf)
 - [Linux A3000 hardware register mapping](https://github.com/torvalds/linux/blob/master/drivers/scsi/a3000.h)
 - [Commodore A3000+ system specification, backward-compatible SDMAC register table](https://www.theflatnet.de/pub/cbm/amiga/hayniefiles/research/a3000p/docs/a3000p.pdf)
+
+### Shared setup and C64-compatible relay infrastructure (2026-10-10)
+
+Amiga and C64 now share F10 main entries and six settings categories: hardware,
+ROMs, RAM, graphics, sound and hard disk. The Amiga retains its GDI overlay style,
+adds proper nested back navigation and selection scrolling, and saves volume/audio
+preferences. C64 retains all existing settings; unsupported hard disks are explicitly
+marked. No machine preview or unfinished hardware is promoted to full compatibility.
+
+The C64 transport was ported with literal six-byte AMIGAR framing. LAN TLS pinning
+and relay ECDH P-256/AES-GCM, full/Deflate/sparse/XOR-RLE delta codecs, local
+upscaling, observers, keyboard/joystick grants and host/client roles are implemented.
+Amiga extends the payload with exact ARGB colors, stereo ADPCM, crop metadata,
+three joystick buttons, queued relative mouse transitions and full control handover.
+Remote clients park and preserve their local Amiga and media; hardware/reset/media
+actions stay with the host. Queue and allocation limits prevent accumulating
+unbounded traffic. The new Python relay supports unchanged C64 clients on the
+same TLS endpoint, with separate room namespaces.
+
+Evidence: the complete 265-test Release suite passes with zero failures/skips,
+including 11 network/frontend regressions; 4 independent Python relay tests also
+pass. Real LAN and TLS/ECDH relay sessions transfer native full/delta frames,
+stereo and input between two peers, and verify permission revoke, disconnect,
+kick, wrong password, changed certificate pin, GCM tamper/replay and quick clicks.
+Host input-layout changes synchronize without replacing the client profile and
+release held input. An intermittent grant/UI race that swallowed the first key
+press was fixed by atomically publishing input configuration and synchronizing
+before input callbacks; the regression deliberately presses between UI updates.
+The actual AmigaWindow test additionally passed with KICK13 booted for 80 frames
+and HQ4x selected only on the client. An external C64 harness confirms six menu
+categories and the unchanged C64 TLS/ECDH/AES-GCM video/input transport against
+the new relay. Detailed protocol and commands: [NetworkPlay.md](NetworkPlay.md).
+The build has zero warnings/errors; both service scripts pass Bash syntax checks.
+Fresh external evidence is under
+`%APPDATA%/AmigaEmulator/diagnostics/SetupNetwork-20261010-090319`, including
+`all-regressions-final.log` and the C64 shared-relay smoke harness. No user ROM,
+disk, save or hard disk image was changed by these network tests.
+
+The existing public proxy has not been redeployed: replace its relay program
+with the new dual-protocol server and preserve its certificate/key and port.
+The previously listed machine/game/performance roadmap remains open; these
+network tests do not prove gameplay compatibility for every model or game.
+
+### Installer, user ROM startup and GitHub updates (2026-10-10)
+
+The Amiga now uses the C64-style Inno Setup / self-contained Windows x64 release
+and GitHub startup update flow. VERSION controls executable/setup versions.
+The build audits ROM/media exclusion, emits Setup plus SHA-256, and the version-tag
+workflow runs regressions and an actual install/update/uninstall test before
+publishing assets. The stable Amiga installer ID is separate from C64's ID;
+an extra closing brace inherited from the reference installer was found and
+fixed during a real installation test. Silent upgrade handling and /NOICONS
+were also verified. User-owned ROMs, media and AppData survive update/uninstall.
+
+GUI startup asks for a user ROM file/folder when no usable ROM is available.
+Selected external paths persist and appear in the ROM menu; no ROM is downloaded
+or copied into the distribution. Cancel/invalid/absent ROMs exit before emulator
+and updater creation. CLI diagnostics remain noninteractive. The actual entry
+point was tested with a fresh empty profile and its dialog visually checked.
+
+Nine distribution regressions cover startup validation/persistence, stable release
+and repository selection, version comparison, streamed SHA-256 verification,
+wrong hashes, truncated/empty/failed downloads, pre/mid-transfer cancellation,
+and closing the completed download dialog without accepting installation.
+All 274 .NET regressions pass. The actual self-contained Setup installs, upgrades,
+runs ROM diagnostics and uninstalls in fresh external directories, with synthetic
+user ROM/HDF fixtures unchanged and registration cleaned up. The GitHub workflow
+passes actionlint; no public tag/release, commit or push was performed.
+
+Evidence: `%TEMP%/AmigaInstaller-20261010-101520` and the external directory named
+in `permanent-installer-smoke-final.log`. Reproducible commands and retained-user-data
+behavior: [InstallationAndUpdates.md](InstallationAndUpdates.md). The hardware,
+gameplay and performance work listed above remains open.
+
+### Explicit mouse capture and release (2026-10-10)
+
+GUI startup, focus and hover now leave the Windows mouse free. An explicit
+image click enables the existing centered relative input and clips to the
+actual presentation rectangle. The capture click and matching release are
+consumed locally, preventing accidental guest actions. Ctrl+Alt+F8 and the
+main menu's RELEASE MOUSE action restore the normal cursor, remove Windows
+clipping and discard buffered local motion/deferred or held mouse buttons.
+Menus retain capture, clip the visible menu pointer to the emulator client area,
+and consume pointer movement/clicks as host UI input. RELEASE MOUSE is clickable;
+closing a menu restores centered relative guest input without a pointer jump or
+another capture click. Loss of focus, minimize and window/handle teardown release
+capture. Returning to the window after focus loss requires another image click.
+Keyboard F8 remains available outside the release chord; the shortcut releases
+its guest modifier inputs. Host release preserves remote owners' input, while
+client release sends its own mouse button release to the host.
+
+Five regressions exercise actual shown WinForms windows and Win32 clipping,
+capture-click suppression, guest CIA/POT/JOY registers, shortcut repeat/up,
+clickable menu release/back navigation, scrolled disk/ROM click mapping, focus
+and close, all six upscalers, stretch and
+fullscreen. The existing real host/client transport regression additionally
+checks client release and retention of remote input when the host releases.
+All 279 regressions pass; the Release build has no warnings/errors. Fresh
+evidence is in `%TEMP%/AmigaMouseCaptureVerification-20261010` and isolated
+`%TEMP%/AmigaMouseCaptureTests` profiles, including a visually checked menu
+capture. ROMs, saves, disk images and existing user profiles were not changed.
+
+### Paula clarity and sample correctness (2026-10-10)
+
+The user's muffled Siedler music exposed overly strong host filtering and a
+Paula holding-word/output-word bug. Four independent OFF/A500/A1200/LED profiles
+now use rate-correct circuit approximations; hardware profiles obey CIA-A /LED,
+and remote audio carries that state per chunk. A prefetched word cannot overwrite
+the playing low byte. AUDPER zero, PAL/NTSC output rate, fractional DAC-area
+integration and old/new audio savestate continuation are covered.
+
+All 294 regressions pass with no skips; Release builds have no warnings/errors.
+Four paired Siedler intro runs preserve CPU/image hashes and show no meaningful
+core slowdown (4.0371 s baseline vs 4.0086 s corrected median). Corrected A500
+output preserves substantially more 2–8 kHz detail, with no clipping. Actual
+mission-selection and older user gameplay saves also continue with unchanged final CPU/image state.
+Evidence, reproducible WAV capture and remaining audio limitations are documented
+in [Audio.md](Audio.md); fresh output is in
+`%TEMP%/AmigaAudio-2dd393b5345b47a689fb8b2378dbd697`. User media and preferences
+were preserved. This audio work does not complete the wider hardware/gameplay
+roadmap. Next audio checks are subjective listening and long-session underruns,
+followed by ADKCON modulation and fuller DMA/interrupt state-machine coverage.
+
+### Siedler wood-frame report: reproduction still open (2026-10-10)
+
+The user reports incorrect wood borders / black margins again. Current-core
+continuations of the older user gameplay save and recent mission-selection
+checkpoint were inspected in Fast and Compatible modes, including pointer
+movement to opposite edges. The optional local Siedler wood-frame/menu/mouse
+regression passes. Eight previously verified model gameplay checkpoints also
+continue with coherent wood borders and bottom controls. This is continuation
+coverage, not a new cold-boot or full-game compatibility claim.
+
+An external STA probe exercised the actual AmigaWindow / SharpPixels OnPaint
+path with NONE, SCALE2X, SCALE3X, HQ2X, HQ3X and HQ4X, with preserved aspect
+(704x576) and stretch (1280x720). All modes keep the same presentation rectangle;
+NONE matches independent pixel-center nearest-neighbor sampling exactly in both
+sizes. The inspected NONE output shows a full frame and menu. No graphics fix
+has been made: the reported current defect has not yet been reproduced.
+
+Fresh read-only evidence is in
+`%TEMP%/AmigaSiedlerPicture-9bf78e68c1b14c92a25b0fa67e52c48d`:
+`before/`, `models-current/`, `golden-fast.log`, `ui-probe.log` and twelve actual
+window-paint PNGs. The probe has its own isolated profile. User ROMs, disk
+images, settings and original saves were preserved. Next concrete step: obtain
+the user's current screenshot (and a pre-error save if needed), identify the
+exact missing frame/margin, reproduce it before changing aperture logic, then
+add a regression for that defect. This issue remains open.
+
+### Siedler intro disk-change fix and separate game-handoff failures (2026-10-10)
+
+The user confirmed starting with Disk 1 (Intro). A fresh A500 / Kickstart 1.3 /
+2 MiB Chip + 8 MiB Fast cold boot reaches the actual Disk-2 request. Immediate
+physical replacement leaves stale volume data: the RLE unpacker overruns its
+input and overwrites its own code/pointers. The first non-ROM address error is
+at $20E428, frame 10174; 116,407 faults accumulate after 85 million post-click
+chip clocks, freezing the image and sustaining the sound note. Compatible
+reproduces at frame 10175. An explicit five-million-clock empty interval removes
+this failure; waiting after an immediate replacement does not.
+
+Replacement now exposes physical absence for two emulated PAL seconds
+(7,082,400 chip clocks), followed by insertion and motor-ready spin-up. Head,
+side, selection and motor lines remain intact. Explicit eject time counts
+toward the interval; initial boot insertion is immediate. Queued media provides
+no flux, index or writes. Pending insertion survives file restore; legacy states
+default to immediate presence and retain the physical drive after eject. This
+uses the removal approach also documented in
+[WinUAE's disk-change implementation](https://raw.githubusercontent.com/tonioni/WinUAE/master/disk.cpp);
+no reference source code was copied.
+
+Exact pre-swap replays now continue the second intro animation/music with zero
+non-ROM faults in Fast and Compatible. The intro finishes and requests Disk 3.
+The actual AmigaWindow MEDIA action and buffered mouse-button path also reach
+the advancing movie. Tools/siedler-intro-swap-scenarios.json retains cold boot,
+requested media, immediate confirmation and pending-insertion restore coverage.
+Its scripts end at the later game-loader Disk-2 request, not completed gameplay.
+GameRunner logs Paula audio and offers an explicit non-ROM fault limit. The
+same guarded runner rejects the old 116,407-fault replay and continues with the
+fixed core. This guard does not detect software Exec alerts.
+
+All 299 regressions pass (zero failures/skips), including four new media-change/
+restore/legacy tests and the local Siedler wood/menu/mouse golden. Persistence
+tests still verify outgoing flush and incoming protection/readiness. Release,
+test and runner builds have no warnings/errors. The local 0.1.0 Windows
+installer was rebuilt; no installation, publication, commit or push occurred.
+
+**Separate failures remain open.** The full Intro -> Disk 3 -> game-requested
+Disk 2 route with 2 MiB Chip + 8 MiB Fast raises Exec AN_FreeTwice ($81000009)
+before new disk DMA. DOS frees an already-released 224-byte block at $23B030;
+the allocation and first free are traced. A cold run without any restore also
+fails. Waiting for insertion before clicking or explicitly ejecting Disk 3
+longer does not fix it; 1 MiB Chip + 4 MiB Fast also fails. No speculative
+mouse delay, guest-memory patch or automatic RAM-profile change was added.
+
+A 1 MiB Chip/no-Fast cold intro path reaches symbols, menu and mission terrain,
+but construction later triggers address errors at $02D5DE. A 2 MiB Chip/no-Fast
+control stalls in the intro ($FC0F94) and is not a pass. Direct Disk-3 boot with
+the user's 2 MiB Chip + 8 MiB Fast layout reaches the playfield, responds to
+input, builds the first castle and passes complete-state restore without
+non-ROM exceptions. This is a verified temporary start route, not intro-handoff
+acceptance. The current wood-border report and wider roadmap also remain open.
+
+Fresh read-only evidence: %TEMP%/AmigaSiedlerSwap-2f0e4eda03734dfda99416766961afee
+(swap-before/, swap-fixed/, guard-before/, guard-after/, window-menu-swap.png,
+cold-no-restore/, cold-ram-controls/, mission-controls/ and heap traces).
+Durable selected logs, reviewed captures and pre-error/first-castle states:
+%APPDATA%/AmigaEmulator/diagnostics/SiedlerIntroSwap-20261010-10fd2990c1cf.
+User ROMs, ADF/HDFs, settings and original saves were preserved.
+
+Next: replay the durable large-RAM game-request state and trace DOS file-handle
+owners from the first $23B030 free through the second close; compare direct-boot
+and intro-loader process/segment lifetimes. Disk 3's startup runs SIEDLER.EXE
+before DieSiedler; the intro loader uses LoadSeg/direct calls and UnLoadSeg.
+These launch differences are evidence to investigate, not a proved cause or
+justification for patching the game or suppressing Exec alerts.

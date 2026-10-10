@@ -31,6 +31,9 @@ using AmigaEmulator.Core.Input;
 using AmigaEmulator.Core.Media;
 using AmigaEmulator.Core.Memory;
 using AmigaEmulator.Core.SaveStates;
+using AmigaEmulator.Startup;
+using AmigaEmulator.Updates;
+using System.Threading;
 
 namespace AmigaEmulator
 {
@@ -1694,7 +1697,16 @@ namespace AmigaEmulator
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            using (var window = new AmigaWindow(ParseModelArgument(args, 0), "Amiga Emulator", HasOption(args, "--model")))
+            var startupSettings = AmigaEmulatorSettingsStore.Load();
+            var startupModel = ParseModelArgument(args, 0);
+            if (HasOption(args, "--model"))
+            {
+                startupSettings.ApplyStartupModel(startupModel);
+            }
+            if (!RomStartup.EnsureRequiredRom(startupSettings)) return;
+
+            using (var updates = new CancellationTokenSource())
+            using (var window = new AmigaWindow(startupModel, "Amiga Emulator"))
             {
                 string startupSavePath = ParseStringOption(args, "--gui-savestate", string.Empty);
                 if (!string.IsNullOrWhiteSpace(startupSavePath))
@@ -1702,6 +1714,11 @@ namespace AmigaEmulator
                     window.TryLoadStartupSaveState(startupSavePath);
                 }
 
+                window.Shown += (_, _) => StartupUpdateChecker.CheckForUpdatesOnStartup(() =>
+                {
+                    if (!window.IsDisposed && window.IsHandleCreated) window.BeginInvoke((Action)window.RequestClose);
+                }, updates.Token);
+                window.FormClosed += (_, _) => updates.Cancel();
                 window.Run();
             }
         }

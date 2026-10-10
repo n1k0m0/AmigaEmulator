@@ -1,0 +1,146 @@
+[
+  {
+    "name": "Siedler-Intro-Fast",
+    "model": "A500",
+    "ram": "Chip2MbFast8Mb",
+    "strict": false,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "boot": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 1 of 3)(Intro).adf",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "intro-boot"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "intro-part-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 360000000,
+        "label": "requested-disk-2"
+      },
+      {
+        "type": "checkpoint",
+        "label": "before-disk-2"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf",
+        "label": "insert-disk-2"
+      },
+      {
+        "type": "restore",
+        "label": "restore-pending-insertion"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 85000000,
+        "label": "part-2-animation"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "part-2-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 240000000,
+        "label": "requested-disk-3"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 3 of 3)(Boot).adf",
+        "label": "insert-disk-3"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 360000000,
+        "label": "game-loader"
+      }
+    ]
+  },
+  {
+    "name": "Siedler-Intro-Compatible",
+    "model": "A500",
+    "ram": "Chip2MbFast8Mb",
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "boot": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 1 of 3)(Intro).adf",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "intro-boot"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "intro-part-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 360000000,
+        "label": "requested-disk-2"
+      },
+      {
+        "type": "checkpoint",
+        "label": "before-disk-2"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf",
+        "label": "insert-disk-2"
+      },
+      {
+        "type": "restore",
+        "label": "restore-pending-insertion"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 85000000,
+        "label": "part-2-animation"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "part-2-continued"
+      },
+      {
+        "type": "wait",
+        "cycles": 240000000,
+        "label": "requested-disk-3"
+      },
+      {
+        "type": "disk",
+        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 3 of 3)(Boot).adf",
+        "label": "insert-disk-3"
+      },
+      {
+        "type": "click",
+        "label": "confirm-disk-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 360000000,
+        "label": "game-loader"
+      }
+    ]
+  }
+]
