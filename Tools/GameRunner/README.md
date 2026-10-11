@@ -2,6 +2,10 @@
 
 Run from the solution directory with the local Kickstart ROM and your own ADFs:
 
+The source manifests now expect `Game Title (disk N).adf`, including single-disk
+games. See `AmigaEmulator/Docs/GameMediaNames.md` for the completed local rename,
+preserved originals and savestate migration.
+
 ```powershell
 dotnet build Tools/GameRunner/GameRunner.csproj -c Release -p:Platform=x64
 dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/gameplay-scenarios.json ../tmp/gameplay-review Alien-Breed
@@ -78,15 +82,35 @@ reviewed paths: some software deliberately generates such exceptions.
 requested Disk 2 -> requested Boot Disk 3 path on A500 / 2 MiB Chip + 8 MiB Fast,
 with both Fast and Compatible timing and a restore during pending insertion.
 It rejects guest CPU faults instead of allowing a frozen black frame to count
-as successful script execution. The scripts stop at the subsequent game-loader
-Disk-2 request. The later intro-to-game handoff still raises an Exec AN_FreeTwice
-alert on this RAM profile; the non-ROM exception guard cannot detect software
-alerts. See the follow-up in Docs/MachineModels.md.
+as successful script execution. These shorter cases deliberately retain the
+original Disk 1 and stop at the subsequent game-loader Disk-2 request. That
+image has damaged filesystem allocation metadata: its delayed Kickstart-1.3
+Validator reply can cause an Exec AN_FreeTwice alert during the later handoff.
+The non-ROM exception guard alone cannot detect software alerts.
 Use a fresh output and your own PDX disks:
 
 ```powershell
 dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/siedler-intro-swap-scenarios.json C:/fresh/siedler-intro Siedler-Intro-Fast
 ```
+
+For the full Kickstart-1.3 route, first create a new repaired Disk 1 with
+`Tools/prepare_siedler_intro_disk.py`. It accepts only the reviewed PDX image
+(source SHA-256 `ce24f8af192683c6b143bb9c4d6d3e3da707dc79541da99398e62ad11fe38de0`),
+fixes the root/bitmap metadata and checksums, and refuses to overwrite any file.
+Only four 32-bit metadata words change; no boot/game code changes. No ADFs or
+ROMs are distributed. Place the new ADF alongside your original three disks:
+
+```powershell
+$media = Join-Path $env:USERPROFILE 'Documents/AmigaEmulator'
+python Tools/prepare_siedler_intro_disk.py "$media/Originale/Die Siedler (disk 1).adf" "$media/Die Siedler (disk 1).adf"
+dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/siedler-kick13-gameplay-scenario.json C:/fresh/siedler-kick13
+```
+
+The full scenarios use your `%APPDATA%/AmigaEmulator/roms/KICK13.ROM`, A500,
+2 MiB Chip + 8 MiB Fast, Fast and Compatible timing, all requested disk changes,
+the symbol/menu inputs, mission start, castle construction and exact state restore. Reviewed framebuffer
+hashes reject frozen loader/alert screens as well as guest CPU faults. See the
+filesystem-repair evidence in `AmigaEmulator/Docs/MachineModels.md`.
 
 Every action accepts a `label` for screenshots. `strict` does not imply that
 software is compatible; both profiles may require title-specific investigation.
@@ -203,9 +227,9 @@ attachment. The emulated external drive identifies as standard 3.5-inch DD
 even when empty; identification does not make an empty disk readable. HD drives
 are not implemented.
 
-The reviewed Civilization source starts an Earth game with Civ1–Civ4 attached
+The reviewed Civilization source starts an Earth game with Civilization disks 1–4 attached
 to DF0–DF3 before boot, waits for evolution/setup, names Rome and continues into
-the city screen. The Zak source keeps Zak1 in DF0, puts Zak2 in preboot DF1,
+the city screen. The Zak source keeps disk 1 in DF0, puts disk 2 in preboot DF1,
 allows the full intro and checks bedroom mouse walking. These replace earlier
 menu/intro-only scripts; compatibility still needs capture/input review on
 each model. The normal MEDIA menu now exposes all four drive targets. After

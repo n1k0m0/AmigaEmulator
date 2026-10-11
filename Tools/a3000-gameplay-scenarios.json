@@ -1,7 +1,7 @@
 [
   {
     "name": "A3000-generic-ROM-SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip2MbFast4Mb",
     "strict": true,
     "actions": [
@@ -74,7 +74,7 @@
   },
   {
     "name": "A3000-generic-ROM-CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip2MbFast4Mb",
     "strict": true,
     "actions": [
@@ -157,7 +157,7 @@
   },
   {
     "name": "A3000-native31-SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip2MbFast4Mb",
     "strict": true,
     "actions": [
@@ -230,7 +230,7 @@
   },
   {
     "name": "A3000-native31-CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip2MbFast4Mb",
     "strict": true,
     "actions": [

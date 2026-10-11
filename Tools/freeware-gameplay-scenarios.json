@@ -1,7 +1,7 @@
 [
   {
     "name": "SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "actions": [
@@ -20,7 +20,7 @@
   },
   {
     "name": "CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "actions": [
@@ -41,7 +41,7 @@
   },
   {
     "name": "Sqrxz",
-    "boot": "Sqrxz.adf",
+    "boot": "Sqrxz (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "actions": [

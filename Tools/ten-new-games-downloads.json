@@ -3,7 +3,7 @@
     "page": "https://www.retroguru.com/trap-runner/",
     "url": "https://www.retroguru.com/trap-runner/trap-runner-v.latest-amigaocs.adf",
     "name": "TrapRunner",
-    "file": "TrapRunner.adf",
+    "file": "Trap Runner (disk 1).adf",
     "sha256": "9FB4F4E78E44377EA340583F97FEB986D87DE751E015ACF94B7EDBD0E96AEC91",
     "bytes": 901120
   },
@@ -11,7 +11,7 @@
     "page": "https://night.owl.de/index.php?id=62",
     "url": "https://server.owl.de/~frank/BlkStberries.adf",
     "name": "BlackStrawberryCake",
-    "file": "BlackStrawberryCake.adf",
+    "file": "Black Strawberry Cake (disk 1).adf",
     "sha256": "F00C5C5F59B5B990C2D24FA0292AE820148CC18BC3D8B021455192619F6A6CBB",
     "bytes": 901120
   },
@@ -19,7 +19,7 @@
     "page": "https://www.sqrxz.de/sqrxz-2/",
     "url": "https://www.retroguru.com/sqrxz2/sqrxz2-v.latest-amigaocs.adf.gz",
     "name": "Sqrxz2",
-    "file": "Sqrxz2.adf",
+    "file": "Sqrxz 2 (disk 1).adf",
     "sha256": "F854F0570935091B092BE87438D4BD5BE73AB855A7DD6F68EE826469664620EC",
     "bytes": 901120
   },
@@ -27,7 +27,7 @@
     "page": "https://www.sqrxz.de/sqrxz-3/",
     "url": "https://www.retroguru.com/sqrxz3/sqrxz3-v.latest-amigaocs.adf",
     "name": "Sqrxz3",
-    "file": "Sqrxz3.adf",
+    "file": "Sqrxz 3 (disk 1).adf",
     "sha256": "9D74702E69BF60AA67EB95A0420F68E7444E5C22589EC7E99D186179C4F42C93",
     "bytes": 901120
   },
@@ -35,7 +35,7 @@
     "page": "https://www.sqrxz.de/sqrxz-4/",
     "url": "https://retroguru.com/sqrxz4/sqrxz4-v.latest-amigaocs.adf",
     "name": "Sqrxz4",
-    "file": "Sqrxz4.adf",
+    "file": "Sqrxz 4 (disk 1).adf",
     "sha256": "5218A1AD66E73A7E571D17E3F77665D48355111511F7285839E9661D8FF413C1",
     "bytes": 901120
   },
@@ -43,7 +43,7 @@
     "page": "https://www.retroguru.com/freds-journey/",
     "url": "https://www.retroguru.com/freds-journey/freds-journey-v.latest-amigaocs.zip",
     "name": "FredsJourney",
-    "file": "FredsJourney.adf",
+    "file": "Fred's Journey (disk 1).adf",
     "sha256": "97C19281D0D072DF0B4DBD0386A52D60DB7EAEDC9242192DACA129168DD9D05F",
     "bytes": 901120
   },
@@ -51,7 +51,7 @@
     "page": "https://www.retroguru.com/boxx4/",
     "url": "https://www.retroguru.com/boxx4/boxx4-v.latest-amigaocs.adf",
     "name": "Boxx4",
-    "file": "Boxx4.adf",
+    "file": "Boxx 4 (disk 1).adf",
     "sha256": "D08BFA6EA34010976B622069C2C42670612A129B690B3AF1A5307F7E40BA64B3",
     "bytes": 901120
   },
@@ -59,7 +59,7 @@
     "page": "https://whdload.de/games/Tinyus.html",
     "url": "https://www.abyss-online.de/eab/aYs_Tinyus.adf",
     "name": "Tinyus",
-    "file": "Tinyus.adf",
+    "file": "Tinyus (disk 1).adf",
     "sha256": "B0FB8284E1319ACA4923E3B12B91B2D98B7AF0A79ABD1CE2B0BBDB45CA543FAA",
     "bytes": 901120
   },
@@ -67,7 +67,7 @@
     "page": "https://www.pouet.net/prod.php?which=88705",
     "url": "https://archive.scene.org/pub/demos/groups/abyss/ays_wrongwaydriver.adf",
     "name": "WrongWayDriver",
-    "file": "WrongWayDriver.adf",
+    "file": "Wrong Way Driver (disk 1).adf",
     "sha256": "6FE8DCE06ABAB4EA8EDF5C60A2C64CA56DE9A63A23EF0C1B2F0881B75839D23B",
     "bytes": 901120
   },
@@ -75,7 +75,7 @@
     "page": "https://www.pouet.net/prod.php?which=86851",
     "name": "TinyBobble",
     "url": "https://www.abyss-online.de/static/download/aYs_TinyBobble.adf",
-    "file": "TinyBobble.adf",
+    "file": "Tiny Bobble (disk 1).adf",
     "sha256": "9293CAACF1E446CB956220CD9F969D06A3059FDC20374F70A6338995D8A3DACF",
     "bytes": 901120
   }

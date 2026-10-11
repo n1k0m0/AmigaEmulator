@@ -1,7 +1,7 @@
 [
   {
     "name": "A500Plus-SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip1Mb",
     "strict": true,
     "actions": [
@@ -74,7 +74,7 @@
   },
   {
     "name": "A500Plus-CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip1Mb",
     "strict": true,
     "actions": [
@@ -157,7 +157,7 @@
   },
   {
     "name": "A600-SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip1Mb",
     "strict": true,
     "actions": [
@@ -230,7 +230,7 @@
   },
   {
     "name": "A600-CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip1Mb",
     "strict": true,
     "actions": [
@@ -313,7 +313,7 @@
   },
   {
     "name": "A2000Ocs-SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "actions": [
@@ -386,7 +386,7 @@
   },
   {
     "name": "A2000Ocs-CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "actions": [
@@ -469,7 +469,7 @@
   },
   {
     "name": "A2000Ecs-SolidGold",
-    "boot": "SolidGold.adf",
+    "boot": "Solid Gold (disk 1).adf",
     "ram": "Chip1Mb",
     "strict": true,
     "actions": [
@@ -542,7 +542,7 @@
   },
   {
     "name": "A2000Ecs-CelticHeart",
-    "boot": "CelticHeart.adf",
+    "boot": "Celtic Heart (disk 1).adf",
     "ram": "Chip1Mb",
     "strict": true,
     "actions": [

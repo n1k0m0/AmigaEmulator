@@ -32,10 +32,11 @@ was a source review and automated test pass, not a new full game/model matrix.
 - `python Tools/audit_source_headers.py`: 0 repository-owned sources missing a
   license header.
 
-## Still open
+## Siedler follow-up
 
-The Siedler Intro/Disk-1 route with Kickstart 1.3 still reaches an invalid
-filesystem state during the later Disk-2 handoff. Its owner and bitmap traces,
-working Kickstart-2.04 gameplay route, and next comparison are documented in
-`MachineModels.md`. This review did not establish the earlier emulator event
-that causes that guest-state corruption, so it is not marked fixed.
+At the end of the source review, the Siedler Intro/Disk-1 route with Kickstart
+1.3 still reached an invalid filesystem state during the later Disk-2 handoff.
+The subsequent investigation confirmed damaged allocation metadata in the
+source ADF. A separately repaired copy now reaches gameplay and castle
+construction; the original is preserved. The repair, Validator packet trace,
+cold gameplay checks and remaining scope are documented in `MachineModels.md`.

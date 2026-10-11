@@ -1,7 +1,7 @@
 [
   {
     "name": "TrapRunner",
-    "boot": "TrapRunner.adf",
+    "boot": "Trap Runner (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -73,7 +73,7 @@
   },
   {
     "name": "BlackStrawberryCake",
-    "boot": "BlackStrawberryCake.adf",
+    "boot": "Black Strawberry Cake (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -145,7 +145,7 @@
   },
   {
     "name": "Sqrxz2",
-    "boot": "Sqrxz2.adf",
+    "boot": "Sqrxz 2 (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -232,7 +232,7 @@
   },
   {
     "name": "Sqrxz3",
-    "boot": "Sqrxz3.adf",
+    "boot": "Sqrxz 3 (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -328,7 +328,7 @@
   },
   {
     "name": "Sqrxz4",
-    "boot": "Sqrxz4.adf",
+    "boot": "Sqrxz 4 (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -472,7 +472,7 @@
   },
   {
     "name": "FredsJourney",
-    "boot": "FredsJourney.adf",
+    "boot": "Fred's Journey (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -540,7 +540,7 @@
   },
   {
     "name": "Boxx4",
-    "boot": "Boxx4.adf",
+    "boot": "Boxx 4 (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -604,7 +604,7 @@
   },
   {
     "name": "Tinyus",
-    "boot": "Tinyus.adf",
+    "boot": "Tinyus (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -660,7 +660,7 @@
   },
   {
     "name": "WrongWayDriver",
-    "boot": "WrongWayDriver.adf",
+    "boot": "Wrong Way Driver (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,
@@ -712,7 +712,7 @@
   },
   {
     "name": "TinyBobble",
-    "boot": "TinyBobble.adf",
+    "boot": "Tiny Bobble (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "strict": true,
     "traceExceptions": true,

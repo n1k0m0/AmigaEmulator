@@ -252,7 +252,7 @@ broader application and all-model storage coverage remain open.
 
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
-| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing | Current Siedler border report and later intro-to-game failures remain open; fix defects discovered by the broader matrix |
+| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 intro-to-game handoff (see follow-up below) | Current Siedler border report remains open; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
 | 2. Native gameplay | Initial Tinyus/Sqrxz 2 sweep extended to the full local ADF catalog; ECS vertical-window defect in Boxx 4 reproduced and fixed, with a failing-before regression | Complete the 240-case visual/control review and title-specific disk/menu continuations; intermittent Tinyus/new-Kickstart/68000 blank phases, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
 | 3. Performance | Cache unchanged display controls and opcode-derived descriptions; remove bitfield-name arrays; restore respects host trace settings; unobserved blitter tracing no longer allocates; paired CPU/frame hashes match | Continue profiling remaining allocations and repeat measurements after further changes |
 | 4. Installed OS | Purchased AmigaOS 3.1.4 installed on a new A4000/030 HDF; separate A3000/SCSI copy passes native 46.143 boot, Shell, Clock, ShowConfig, persistence and cold/warm/restore | Broader applications, install/boot on remaining models and complete storage-controller coverage |
@@ -1441,3 +1441,91 @@ return path and prior bitmap state with the direct-Disk-3 boot. Correct any
 underlying emulator behavior demonstrated by that comparison and verify
 actual Disk-1-to-game gameplay with input and new Disk-2 DMA before marking
 the handoff fixed.
+
+### Siedler Kickstart-1.3 handoff: damaged Disk-1 bitmap repaired (2026-10-10)
+
+The subsequent source-media and packet inspection resolves the preceding
+unknown. The local PDX Intro Disk 1 has inconsistent OFS allocation metadata:
+root block 880, word 78 is zero (not validated), while bitmap block 881,
+word 28 is `$00002000`. That bit marks block 879 free even though block 879
+is the valid, occupied header of the zero-length `.info` file in the root.
+Root, bitmap and file-header checksums are otherwise valid. The independent
+`amitools 0.8.1 xdfscan -v` scan reports exactly one root-validity warning and
+one allocation error; Disk 2 and Disk 3 have no errors/warnings.
+
+The old-state trace confirms that `$2052AC` is a DosPacket: type 4 is
+`ACTION_SET_MAP`, its primary result at offset `$0C` is zero, and its reply
+port points to the `Validator` task at `$205130`. This failed asynchronous
+reply reaches the filesystem at frame 19503, after Disk 3 has loaded its
+bitmap at frame 19484. ROM `$FFD026 -> $FFD038` frees that current 224-byte
+bitmap allocation at `$23B030`, but the zero result branches around the
+replacement/clear at `$FFD056`. The stale BPTR at `$204588` is subsequently
+freed again through `$FFD45A` at the game-requested Disk-2 handoff, producing
+`AN_FreeTwice`. The packet layout is consistent with the official
+[Amiga ROM Kernel Reference Manual: DOS](https://developer.amigaos3.net/sites/default/files/downloads/2024-10/Amiga_ROM_Kernel_Reference_Manual_DOS.pdf).
+
+`Tools/prepare_siedler_intro_disk.py` creates an exclusive new ADF and accepts
+only the exact reviewed source SHA-256
+`ce24f8af192683c6b143bb9c4d6d3e3da707dc79541da99398e62ad11fe38de0`.
+It sets root word 78 to `$FFFFFFFF`, clears bitmap word 28 and recomputes
+their two checksums. Exactly four 32-bit metadata words change; all boot,
+directory entries and game code remain byte-identical. The new SHA-256 is
+`5810ceafc46757a7d39b3693fb05afdaf041621e5f1463fa618aac0c21dce375`.
+Independent filesystem validation is clean. Guard checks prove that an
+existing destination/original cannot be overwritten and an unsupported disk
+is rejected without producing output. The user's ready-to-use copy is
+`%USERPROFILE%/Documents/AmigaEmulator/Die Siedler (disk 1).adf`
+(renamed with the collection on 2026-10-11; see `GameMediaNames.md`).
+Boot afresh from this copy; an old failed savestate still contains its stale
+guest filesystem owner. Original ADFs, ROMs, HDFs, settings and saves remain
+unchanged. No ROM/guest-memory patch, filesystem-read interception or alert
+suppression was added to the emulator.
+
+Fresh cold A500 / Kickstart 1.3 34.5 / 2 MiB Chip + 8 MiB Fast runs in both
+Fast and Compatible complete Intro Disk 1 -> requested Disk 2 -> Disk 3 ->
+game-requested Disk 2, with 58 new completed DMA reads after the final swap
+(486 -> 544). It accepts symbol/menu input, starts the mission, responds to
+playfield input, builds the first castle and restores both gameplay and
+construction with identical serialized CPU/bus state, beam and framebuffer.
+There are zero observed non-ROM CPU exceptions through frame 27507. The
+mission and constructed-castle screenshots in both profiles were reviewed.
+The deterministic profiles have slightly different rendered pixels but show
+the same terrain, pointer response and completed castle:
+
+| Profile | Mission frame 26306 SHA-256 | Castle frame 27507 SHA-256 |
+| --- | --- | --- |
+| Fast | `B43551D042CC26C6F563BCE1F9D33B25AEF57C6BA71BF44AF096D0A761CD2B72` | `6064FA30C427332946BF0185DB0AD1DC777B6DE42D0710049A87DBE9103E2A7D` |
+| Compatible | `9C8E5449BD528265320F4CD8E2C40B98F9F25916B172ADE96FD96904091CB75D` | `BCA70BD58520752560CE2B5D55217ECFFBD37C0C831AE110941903E6E2F2D6D2` |
+
+The permanent `Tools/siedler-kick13-gameplay-scenario.json` asserts these
+reviewed frame hashes and documents the required private media and ROM in
+`Tools/GameRunner/README.md`.
+The Fast case was cold-booted a second time using the user's new Documents
+copy, with both golden assertions enabled; it passed through frame 27507.
+The Compatible case's saved game-loaded state was replayed with the same
+input sequence and its two golden assertions enabled; both passed, including
+the exact gameplay/construction restores. The two complete cold runs and
+these assertion replays are distinct checks, not a full all-model matrix.
+
+Selected validator traces, before/after filesystem scans, guard verification
+and gameplay evidence are preserved in
+`%APPDATA%/AmigaEmulator/diagnostics/SiedlerKick13BitmapRepair-20261010-0cc937b0564e/`.
+This resolves the reviewed source image's Kickstart-1.3 handoff, not arbitrary
+damaged-media handling or complete filesystem/hardware conformance. The full
+model roadmap and unreproduced border report remain open.
+
+Next: reproduce the remaining wood-border report in the frontend with the
+active scaling/fullscreen configuration, using the repaired media for the
+positive intro route; continue the separate native-model/CPU roadmap gates.
+
+### Game-media filenames normalized (2026-10-11)
+
+The user's collection now uses `Game Title (disk N).adf`. All 51 ADF hashes
+are unchanged, including the repaired primary and archived original Siedler
+Disk 1. Active source manifests/catalogs and local ADF goldens refer to the
+new names; stable scenario IDs and historical evidence remain intact. Ten
+save directories, 22 serialized savestates and startup drive references were
+migrated, with identical restored CPU/bus/beam/framebuffer state verified for
+all 22. `GameMediaNames.md` records scope, validation and the durable path-map
+and original-save backup location. This migration does not close any open
+hardware/gameplay roadmap gate.

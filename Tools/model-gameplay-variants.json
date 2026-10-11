@@ -13,7 +13,7 @@
     "actions": [
       {
         "type": "disk",
-        "disk": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf",
+        "disk": "Die Siedler (disk 2).adf",
         "drive": 0,
         "label": "requested-disk-2"
       },

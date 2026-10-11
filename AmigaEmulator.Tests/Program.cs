@@ -5289,20 +5289,20 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase(
                 "GoldenADF",
                 "Kickstart 1.3 plus Turrican III reaches a nonblank boot/trainer frame",
-                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\TURRI3-1.ADF",
+                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\Turrican III (disk 1).adf",
                 /// <summary>
                 /// Runs Test Adf Non Blank.
                 /// </summary>
-                delegate { TestAdfNonBlank("TURRI3-1.ADF", 90_000_000); });
+                delegate { TestAdfNonBlank("Turrican III (disk 1).adf", 90_000_000); });
             yield return new ChipTestCase(
                 "GoldenADF",
                 "Kickstart 1.3 plus North & South reaches a stable intro/language frame without fetch stripes",
-                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\North & South.adf",
+                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\North & South (disk 1).adf",
                 TestNorthSouthFrameQuality);
             yield return new ChipTestCase(
                 "GoldenADF",
                 "North & South accepts mouse language selection and reaches the main menu",
-                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\North & South.adf",
+                "Golden regression using local Kickstart ROM and Documents\\AmigaEmulator\\North & South (disk 1).adf",
                 TestNorthSouthLanguageSelectionToMainMenu);
             yield return new ChipTestCase(
                 "GoldenADF",
@@ -5327,7 +5327,7 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private static void TestNorthSouthFrameQuality()
         {
-            WithAdfFrame("North & South.adf", 240_000_000, delegate(AmigaSystem system, KickstartRomInfo romInfo)
+            WithAdfFrame("North & South (disk 1).adf", 240_000_000, delegate(AmigaSystem system, KickstartRomInfo romInfo)
             {
                 CheckNonBlank(system.PresentedFrameBuffer.Pixels, romInfo);
                 int darkColumns = CountMostlyDarkColumns(system.PresentedFrameBuffer.Pixels, system.PresentedFrameBuffer.Width, system.PresentedFrameBuffer.Height, 30, 180);
@@ -5340,7 +5340,7 @@ namespace AmigaEmulator.Tests
         /// </summary>
         private static void TestNorthSouthLanguageSelectionToMainMenu()
         {
-            WithAdfFrame("North & South.adf", 260_000_000, delegate(AmigaSystem system, KickstartRomInfo romInfo)
+            WithAdfFrame("North & South (disk 1).adf", 260_000_000, delegate(AmigaSystem system, KickstartRomInfo romInfo)
             {
                 long startsBeforeClick = system.Paula.DiskDmaStarts;
                 MoveMouseGradually(system, AmigaControlPort.Port0, 100, 180, 120_000);

@@ -1,7 +1,7 @@
 [
   {
     "name": "Alien-Breed",
-    "boot": "Alien Breed - Special Edition 92 (1992)(Team 17)(Disk 1 of 2)[cr Flashtro].adf",
+    "boot": "Alien Breed - Special Edition 92 (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -85,7 +85,7 @@
       },
       {
         "type": "disk",
-        "disk": "Alien Breed - Special Edition 92 (1992)(Team 17)(Disk 2 of 2).adf",
+        "disk": "Alien Breed - Special Edition 92 (disk 2).adf",
         "label": "ab-15-alien-07-disk"
       },
       {
@@ -201,18 +201,18 @@
   },
   {
     "name": "Canfod-1",
-    "boot": "Canfod-1.adf",
+    "boot": "Cannon Fodder (disk 1).adf",
     "ram": "Chip1Mb",
     "actions": [
       {
         "type": "disk",
-        "disk": "Canfod-2.adf",
+        "disk": "Cannon Fodder (disk 2).adf",
         "drive": 1,
         "label": "cannon-00-cf-00-data-df1"
       },
       {
         "type": "disk",
-        "disk": "Canfod-3.adf",
+        "disk": "Cannon Fodder (disk 3).adf",
         "drive": 2,
         "label": "cannon-01-cf-01-data-df2"
       },
@@ -367,24 +367,24 @@
   },
   {
     "name": "Civ1",
-    "boot": "Civ1.adf",
+    "boot": "Civilization (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
         "type": "disk",
-        "disk": "Civ2.adf",
+        "disk": "Civilization (disk 2).adf",
         "drive": 1,
         "label": "preboot-disk-2"
       },
       {
         "type": "disk",
-        "disk": "Civ3.adf",
+        "disk": "Civilization (disk 3).adf",
         "drive": 2,
         "label": "preboot-disk-3"
       },
       {
         "type": "disk",
-        "disk": "Civ4.adf",
+        "disk": "Civilization (disk 4).adf",
         "drive": 3,
         "label": "preboot-disk-4"
       },
@@ -707,7 +707,7 @@
   },
   {
     "name": "DESERTS1",
-    "boot": "DESERTS1.ADF",
+    "boot": "Desert Strike (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -738,7 +738,7 @@
   },
   {
     "name": "Fire-and-Ice",
-    "boot": "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 1 of 2)[cr FSN][t +1 FSN].adf",
+    "boot": "Fire and Ice (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -803,7 +803,7 @@
       },
       {
         "type": "disk",
-        "disk": "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 2 of 2)[cr FSN].adf",
+        "disk": "Fire and Ice (disk 2).adf",
         "drive": 0,
         "label": "fi-12-requested-disk-2-df0"
       },
@@ -911,7 +911,7 @@
   },
   {
     "name": "HOSTAGES",
-    "boot": "HOSTAGES.ADF",
+    "boot": "Hostages (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -990,7 +990,7 @@
   },
   {
     "name": "LOTUS",
-    "boot": "LOTUS.ADF",
+    "boot": "Lotus (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1180,7 +1180,7 @@
   },
   {
     "name": "ManiacM1",
-    "boot": "ManiacM1.adf",
+    "boot": "Maniac Mansion (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1287,7 +1287,7 @@
   },
   {
     "name": "Mega-lo-Mania",
-    "boot": "Mega lo Mania v1.00 (1991-08-16)(Image Works)(DE)(Disk 1 of 2)[cr SSP - AI].adf",
+    "boot": "Mega lo Mania (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1318,7 +1318,7 @@
   },
   {
     "name": "Moonstone",
-    "boot": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 1 of 3)[cr CSL].adf",
+    "boot": "Moonstone (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1359,19 +1359,19 @@
       {
         "type": "disk",
         "drive": 0,
-        "disk": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 1 of 3)[cr CSL].adf",
+        "disk": "Moonstone (disk 1).adf",
         "label": "moon-07-df0"
       },
       {
         "type": "disk",
         "drive": 1,
-        "disk": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 2 of 3).adf",
+        "disk": "Moonstone (disk 2).adf",
         "label": "moon-08-df1"
       },
       {
         "type": "disk",
         "drive": 2,
-        "disk": "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 3 of 3).adf",
+        "disk": "Moonstone (disk 3).adf",
         "label": "moon-09-df2"
       },
       {
@@ -1474,7 +1474,7 @@
   },
   {
     "name": "North-&-South",
-    "boot": "North & South.adf",
+    "boot": "North & South (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1662,7 +1662,7 @@
   },
   {
     "name": "Oh-No",
-    "boot": "Oh No! More Lemmings.adf",
+    "boot": "Oh No! More Lemmings (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1819,7 +1819,7 @@
   },
   {
     "name": "PDREMS21",
-    "boot": "PDREMS21.ADF",
+    "boot": "Pinball Fantasies (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1880,7 +1880,7 @@
       },
       {
         "type": "disk",
-        "disk": "PDREMS22.ADF",
+        "disk": "Pinball Fantasies (disk 2).adf",
         "drive": 0,
         "label": "pinball-11-course-disk2"
       },
@@ -1944,7 +1944,7 @@
   },
   {
     "name": "SELECTOR",
-    "boot": "SELECTOR.ADF",
+    "boot": "Selector (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -1975,7 +1975,7 @@
   },
   {
     "name": "Siedler",
-    "boot": "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 3 of 3)(Boot).adf",
+    "boot": "Die Siedler (disk 3).adf",
     "ram": "Chip1Mb",
     "actions": [
       {
@@ -2154,7 +2154,7 @@
   },
   {
     "name": "Speedball-2",
-    "boot": "Speedball 2.adf",
+    "boot": "Speedball 2 (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -2372,7 +2372,7 @@
   },
   {
     "name": "TURRI3-1",
-    "boot": "TURRI3-1.ADF",
+    "boot": "Turrican III (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
@@ -2401,7 +2401,7 @@
       },
       {
         "type": "disk",
-        "disk": "TURRI3-2.ADF",
+        "disk": "Turrican III (disk 2).adf",
         "drive": 1,
         "label": "disk-2-df1"
       },
@@ -2476,13 +2476,13 @@
   },
   {
     "name": "Zak1",
-    "boot": "Zak1.adf",
+    "boot": "Zak McKracken (disk 1).adf",
     "ram": "Chip512KSlow512K",
     "actions": [
       {
         "type": "disk",
         "drive": 1,
-        "disk": "Zak2.adf",
+        "disk": "Zak McKracken (disk 2).adf",
         "label": "preboot-Disk-2"
       },
       {

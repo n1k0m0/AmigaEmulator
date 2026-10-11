@@ -99,20 +99,20 @@ function Get-MatrixPriority {
     param([string]$AdfName)
 
     $priority1 = @(
-        "Zak1",
-        "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 2 of 2)",
-        "Civ1",
-        "DESERTS1",
+        "Zak McKracken",
+        "Fire and Ice (disk 2)",
+        "Civilization",
+        "Desert Strike",
         "LOTUS",
-        "ManiacM1",
+        "Maniac Mansion",
         "Oh No! More Lemmings"
     )
     $priority2 = @(
-        "Canfod-1",
+        "Cannon Fodder",
         "Moonstone",
         "North & South",
         "Turrican 3",
-        "TURRI3",
+        "Turrican III",
         "Speedball 2"
     )
 

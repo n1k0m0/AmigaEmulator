@@ -67,9 +67,12 @@ $templates = @($templates | Sort-Object @{Expression={if ($_.name -in @('Tinyus'
 $cases = @()
 $inventory = @(Get-ChildItem -LiteralPath $MediaDirectory -Recurse -File -Filter '*.adf' | ForEach-Object {
     $file = $_
-    $entry = @($catalog | Where-Object { $file.Name -in $_.media })
+    $relative = [IO.Path]::GetRelativePath($MediaDirectory, $file.FullName).Replace('\', '/')
+    $entry = @($catalog | Where-Object { $relative -in $_.media -or $relative -in $_.archivedMedia })
+    $archived = [bool](@($entry | Where-Object { $relative -in $_.archivedMedia }).Count)
     [ordered]@{path=$file.FullName; bytes=$file.Length; sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash;
-        title=@($entry.name); kind=@($entry.kind); coveredByManifest=[bool](@($entry.name | Where-Object { $_ -in $templates.name }).Count)}
+        title=@($entry.name); kind=@($entry.kind); archivedOriginal=$archived;
+        coveredByManifest=(-not $archived -and [bool](@($entry.name | Where-Object { $_ -in $templates.name }).Count))}
 })
 foreach ($model in $Models) {
     if (-not $profiles.ContainsKey($model)) { throw "Unknown model: $model" }

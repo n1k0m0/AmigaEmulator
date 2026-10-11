@@ -3,106 +3,118 @@
     "name": "Alien-Breed",
     "kind": "game",
     "media": [
-      "Alien Breed - Special Edition 92 (1992)(Team 17)(Disk 1 of 2)[cr Flashtro].adf",
-      "Alien Breed - Special Edition 92 (1992)(Team 17)(Disk 2 of 2).adf"
-    ]
+      "Alien Breed - Special Edition 92 (disk 1).adf",
+      "Alien Breed - Special Edition 92 (disk 2).adf"
+    ],
+    "displayName": "Alien Breed - Special Edition 92"
   },
   {
     "name": "Canfod-1",
     "kind": "game",
     "media": [
-      "Canfod-1.adf",
-      "Canfod-2.adf",
-      "Canfod-3.adf"
-    ]
+      "Cannon Fodder (disk 1).adf",
+      "Cannon Fodder (disk 2).adf",
+      "Cannon Fodder (disk 3).adf"
+    ],
+    "displayName": "Cannon Fodder"
   },
   {
     "name": "Civ1",
     "kind": "game",
     "media": [
-      "Civ1.adf",
-      "Civ2.adf",
-      "Civ3.adf",
-      "Civ4.adf"
-    ]
+      "Civilization (disk 1).adf",
+      "Civilization (disk 2).adf",
+      "Civilization (disk 3).adf",
+      "Civilization (disk 4).adf"
+    ],
+    "displayName": "Civilization"
   },
   {
     "name": "DESERTS1",
     "kind": "game",
     "media": [
-      "DESERTS1.ADF",
-      "DESERTS2.ADF",
-      "DESERTS3.ADF"
-    ]
+      "Desert Strike (disk 1).adf",
+      "Desert Strike (disk 2).adf",
+      "Desert Strike (disk 3).adf"
+    ],
+    "displayName": "Desert Strike"
   },
   {
     "name": "Fire-and-Ice",
     "kind": "game",
     "media": [
-      "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 1 of 2)[cr FSN][t +1 FSN].adf",
-      "Fire and Ice - The Daring Adventures of Cool Coyote (1992)(Renegade)(Disk 2 of 2)[cr FSN].adf"
-    ]
+      "Fire and Ice (disk 1).adf",
+      "Fire and Ice (disk 2).adf"
+    ],
+    "displayName": "Fire and Ice"
   },
   {
     "name": "HOSTAGES",
     "kind": "game",
     "media": [
-      "HOSTAGES.ADF"
-    ]
+      "Hostages (disk 1).adf"
+    ],
+    "displayName": "Hostages"
   },
   {
     "name": "LOTUS",
     "kind": "game",
     "media": [
-      "LOTUS.ADF"
-    ]
+      "Lotus (disk 1).adf"
+    ],
+    "displayName": "Lotus"
   },
   {
     "name": "ManiacM1",
     "kind": "game",
     "media": [
-      "ManiacM1.adf",
-      "ManiacM2.adf"
-    ]
+      "Maniac Mansion (disk 1).adf",
+      "Maniac Mansion (disk 2).adf"
+    ],
+    "displayName": "Maniac Mansion"
   },
   {
     "name": "Mega-lo-Mania",
     "kind": "game",
     "media": [
-      "Mega lo Mania v1.00 (1991-08-16)(Image Works)(DE)(Disk 1 of 2)[cr SSP - AI].adf",
-      "Mega lo Mania v1.00 (1991-08-16)(Image Works)(DE)(Disk 2 of 2)[cr SSP - AI].adf"
-    ]
+      "Mega lo Mania (disk 1).adf",
+      "Mega lo Mania (disk 2).adf"
+    ],
+    "displayName": "Mega lo Mania"
   },
   {
     "name": "Moonstone",
     "kind": "game",
     "media": [
-      "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 1 of 3)[cr CSL].adf",
-      "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 2 of 3).adf",
-      "Moonstone - A Hard Days Knight (1991)(Mindscape)(Disk 3 of 3).adf"
-    ]
+      "Moonstone (disk 1).adf",
+      "Moonstone (disk 2).adf",
+      "Moonstone (disk 3).adf"
+    ],
+    "displayName": "Moonstone"
   },
   {
     "name": "North-&-South",
     "kind": "game",
     "media": [
-      "North & South.adf"
-    ]
+      "North & South (disk 1).adf"
+    ],
+    "displayName": "North & South"
   },
   {
     "name": "Oh-No",
     "kind": "game",
     "media": [
-      "Oh No! More Lemmings.adf"
-    ]
+      "Oh No! More Lemmings (disk 1).adf"
+    ],
+    "displayName": "Oh No! More Lemmings"
   },
   {
     "name": "PDREMS21",
     "kind": "game",
     "media": [
-      "PDREMS21.ADF",
-      "PDREMS22.ADF",
-      "PDREMS23.ADF"
+      "Pinball Fantasies (disk 1).adf",
+      "Pinball Fantasies (disk 2).adf",
+      "Pinball Fantasies (disk 3).adf"
     ],
     "displayName": "Pinball Fantasies"
   },
@@ -110,130 +122,151 @@
     "name": "SELECTOR",
     "kind": "utility",
     "media": [
-      "SELECTOR.ADF"
-    ]
+      "Selector (disk 1).adf"
+    ],
+    "displayName": "Selector"
   },
   {
     "name": "Siedler",
     "kind": "game",
     "media": [
-      "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 1 of 3)(Intro).adf",
-      "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 2 of 3).adf",
-      "Siedler, Die (1993)(Blue Byte)(De)[cr PDX](Disk 3 of 3)(Boot).adf"
+      "Die Siedler (disk 1).adf",
+      "Die Siedler (disk 2).adf",
+      "Die Siedler (disk 3).adf"
+    ],
+    "displayName": "Die Siedler",
+    "archivedMedia": [
+      "Originale/Die Siedler (disk 1).adf"
     ]
   },
   {
     "name": "Speedball-2",
     "kind": "game",
     "media": [
-      "Speedball 2.adf"
-    ]
+      "Speedball 2 (disk 1).adf"
+    ],
+    "displayName": "Speedball 2"
   },
   {
     "name": "TURRI3-1",
     "kind": "game",
     "media": [
-      "TURRI3-1.ADF",
-      "TURRI3-2.ADF"
-    ]
+      "Turrican III (disk 1).adf",
+      "Turrican III (disk 2).adf"
+    ],
+    "displayName": "Turrican III"
   },
   {
     "name": "Zak1",
     "kind": "game",
     "media": [
-      "Zak1.adf",
-      "Zak2.adf"
-    ]
+      "Zak McKracken (disk 1).adf",
+      "Zak McKracken (disk 2).adf"
+    ],
+    "displayName": "Zak McKracken"
   },
   {
     "name": "SolidGold",
     "kind": "game",
     "media": [
-      "SolidGold.adf"
-    ]
+      "Solid Gold (disk 1).adf"
+    ],
+    "displayName": "Solid Gold"
   },
   {
     "name": "CelticHeart",
     "kind": "game",
     "media": [
-      "CelticHeart.adf"
-    ]
+      "Celtic Heart (disk 1).adf"
+    ],
+    "displayName": "Celtic Heart"
   },
   {
     "name": "Sqrxz",
     "kind": "game",
     "media": [
-      "Sqrxz.adf"
-    ]
+      "Sqrxz (disk 1).adf"
+    ],
+    "displayName": "Sqrxz"
   },
   {
     "name": "TrapRunner",
     "kind": "game",
     "media": [
-      "TrapRunner.adf"
-    ]
+      "Trap Runner (disk 1).adf"
+    ],
+    "displayName": "Trap Runner"
   },
   {
     "name": "BlackStrawberryCake",
     "kind": "game",
     "media": [
-      "BlackStrawberryCake.adf"
-    ]
+      "Black Strawberry Cake (disk 1).adf"
+    ],
+    "displayName": "Black Strawberry Cake"
   },
   {
     "name": "Sqrxz2",
     "kind": "game",
     "media": [
-      "Sqrxz2.adf"
-    ]
+      "Sqrxz 2 (disk 1).adf"
+    ],
+    "displayName": "Sqrxz 2"
   },
   {
     "name": "Sqrxz3",
     "kind": "game",
     "media": [
-      "Sqrxz3.adf"
-    ]
+      "Sqrxz 3 (disk 1).adf"
+    ],
+    "displayName": "Sqrxz 3"
   },
   {
     "name": "Sqrxz4",
     "kind": "game",
     "media": [
-      "Sqrxz4.adf"
-    ]
+      "Sqrxz 4 (disk 1).adf"
+    ],
+    "displayName": "Sqrxz 4"
   },
   {
     "name": "FredsJourney",
     "kind": "game",
     "media": [
-      "FredsJourney.adf"
-    ]
+      "Fred's Journey (disk 1).adf"
+    ],
+    "displayName": "Fred's Journey"
   },
   {
     "name": "Boxx4",
     "kind": "game",
     "media": [
-      "Boxx4.adf"
-    ]
+      "Boxx 4 (disk 1).adf"
+    ],
+    "displayName": "Boxx 4"
   },
   {
     "name": "Tinyus",
     "kind": "game",
     "media": [
-      "Tinyus.adf"
-    ]
+      "Tinyus (disk 1).adf"
+    ],
+    "displayName": "Tinyus"
   },
   {
     "name": "WrongWayDriver",
     "kind": "game",
     "media": [
-      "WrongWayDriver.adf"
-    ]
+      "Wrong Way Driver (disk 1).adf"
+    ],
+    "displayName": "Wrong Way Driver"
   },
   {
     "name": "TinyBobble",
     "kind": "game",
     "media": [
-      "TinyBobble.adf"
-    ]
+      "Tiny Bobble (disk 1).adf"
+    ],
+    "displayName": "Tiny Bobble"
   }
 ]
