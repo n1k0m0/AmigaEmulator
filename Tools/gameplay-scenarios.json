@@ -2056,7 +2056,7 @@
       },
       {
         "type": "wait",
-        "cycles": 3000000,
+        "cycles": 30000000,
         "label": "pinball-17-ball-ready"
       },
       {

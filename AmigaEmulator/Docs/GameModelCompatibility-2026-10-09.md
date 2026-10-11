@@ -5,7 +5,7 @@ The requested preceding version was committed and pushed as `464ce54` on
 **Executing a scenario is not a gameplay, graphics or compatibility pass.**
 
 Latest checkpoint (2026-10-11): actual 020/030 caches and corrected LOF are
-implemented; 322 core tests pass. Fresh bounded Tinyus input/restore coverage
+implemented; 332 tests pass. Fresh bounded Tinyus input/restore coverage
 now includes all eight boards. The native desktop Pinball source failure is
 traced to a 24-bit tagged loader pointer; a separate repaired copy now passes
 native A3000/A4000 Partyland gameplay. See the dated follow-up below and
@@ -1216,3 +1216,45 @@ The 262-case source-derived matrix validates, without claiming complete
 execution/review. All fifty original ADFs and installed OS HDF retain their
 preserved hashes. Pinball scores, Mega/Cannon transitions, longer sessions and
 remaining hardware gates keep the roadmap open.
+
+## Separate Pinball score-writer repair — 2026-10-11
+
+The preceding version is pushed as `19c95ce`; the following repair is local.
+The physical head reaches requested track 3 correctly. This disk set's encoder
+instead writes scratch D2, cleared during tab calibration, into its MFM headers.
+The six-byte optional `--repair-scores` addition to
+`Tools/prepare_pinball_32bit_disk.py` takes the descriptor's requested track.
+The original-media cases, loader-only variant and canonical ADF track guard
+are preserved; raw/custom-track support remains incomplete.
+
+The new exact result hash is
+`74307adc5f44748e078ab7782628de0482c1e45dda1781e5a7327a53779e23b2`.
+The explicit matrix option accepts this or the previous loader-only hash.
+No game/ROM/OS media is distributed. All four tables on native A3000/A4000
+now have real cold-loaded, private-media continuations through live mode 1,
+flippers, frozen pause, exact cold restore and quit. Each writes eleven correct
+track-3 sectors; independently decoded checksums and all payload bytes agree
+with the flushed ADF. Eight write continuations have zero new guest faults.
+
+The source's post-F1 wait is increased from three to 30 million clocks: six
+initial attempts were still in the start/chute sequence and are excluded from
+live acceptance. The revised first-launch flow passes on both desktops.
+A3000 Partyland also returns to its actual menu and a fresh native cold boot
+reloads the saved disk/table, with the written score/name records matching
+guest RAM. This covers preserving existing records; a naturally earned new
+named highscore, other boards and longer sessions remain open.
+
+Evidence is under
+`%APPDATA%/AmigaEmulator/diagnostics/PinballScore-20261011-081849-963ca87a/`:
+`eight-native-writes-reviewed.json`, `settled-first-launch/`,
+`persisted-exit-menu/`, `readback-cold/`, `readback-table-ram/`.
+The 332-test suite and ten runner guards pass; exact image/preservation guards
+also pass. Disk-3 menu returns on both desktops, A4000 Partyland's menu return
+and all four exact menu restores pass. `final-pinball-review.json` records these,
+per-table identical desktop pixels and the 96-byte score-table readback at `$200`.
+The new user set is in `Kompatibel/Pinball Fantasies (32bit und Scores)/`;
+both original media and the older loader-only set are preserved.
+The final 262-case manifest validates; this remains preflight. Duplicate
+uncovered inventory rows for explicitly selected compatibility copies are fixed
+and checked for old/new Pinball and Moonstone. See MachineModels.md for causal
+traces, scope and next steps.

@@ -17,6 +17,7 @@ namespace AmigaEmulator.Tests
             yield return Test("odd data transfers work while odd instruction fetch creates an address-error frame", TestAlignment);
             yield return Test("EC020 wraps at 24 bits and 68020 preserves the full physical address", TestAddressWidth);
             yield return Test("tagged block-loader repair preserves relative/absolute descriptors and reaches RAM on every CPU", TestTaggedBlockLoader);
+            yield return Test("score-writer repair encodes every requested track independently of scratch D2", TestScoreWriterHeader);
             yield return Test("MOVEC relocates vectors and format zero restores through RTE", TestControlAndFrames);
             yield return Test("user-mode MOVEC probes distinguish a 68000 illegal opcode from 020/030 privilege faults", TestUserMovecProbe);
             yield return Test("master interrupts restore both stacks through the throwaway frame", TestMasterInterrupt);
@@ -110,6 +111,43 @@ namespace AmigaEmulator.Tests
                 Check.Equal(escaped ? (byte)0 : (byte)0x5A, bus.ReadByte(expected), "The actual transfer reaches RAM on every repaired CPU.");
                 Check.Equal(escaped ? (byte)0x5A : (byte)0, bus.ReadByte(expected | 0x80000000),
                     "The original full-address CPU control reproduces the unmapped tagged write.");
+            }
+        }
+
+        private static void TestScoreWriterHeader()
+        {
+            // Execute the small header-assembly window on each real CPU decoder.
+            // Disk format expectations come from FF/track/sector/remaining, not
+            // from the replacement's MOVEQ/MOVE encoding. No media is required.
+            foreach (var model in new[] { AmigaCpuModel.M68000, AmigaCpuModel.M68EC020,
+                AmigaCpuModel.M68020, AmigaCpuModel.M68EC030, AmigaCpuModel.M68030 })
+            foreach (bool repaired in new[] { false, true })
+            {
+                ushort[] prefix = repaired ? [0x76FF, 0x1628, 0xFFF9] : [0x363C, 0xFF00, 0x8642];
+                var (cpu, bus) = Prepare(model, [.. prefix, 0x4843, 0x1601, 0xE14B, 0x1600]);
+                cpu.SetA(0, 0x3000);
+                for (uint track = 0; track < 160; track++)
+                for (uint sector = 0; sector < 11; sector++)
+                foreach (uint scratch in new[] { 0u, track, 0xA5A5009Fu })
+                {
+                    bus.WriteWord(0x2FF8, (ushort)track);
+                    cpu.SetD(0, 11 - sector); cpu.SetD(1, sector);
+                    cpu.SetD(2, scratch); cpu.SetD(3, 0x12345678);
+                    cpu.SetProgramCounter(0x1000);
+                    for (int instruction = 0; instruction < 6; instruction++) cpu.Step();
+                    uint expectedTrack = repaired ? track : scratch & 0xFF;
+                    Check.Equal(0xFF000000u | expectedTrack << 16 | sector << 8 | (11 - sector),
+                        cpu.GetD(3), "The header must identify the physical target, sector and remaining count.");
+                    Check.Equal(11 - sector, cpu.GetD(0), "Remaining-sector counter is preserved.");
+                    Check.Equal(sector, cpu.GetD(1), "Sector index is preserved.");
+                    Check.Equal(scratch, cpu.GetD(2), "The cached/calibration scratch register is not changed.");
+                    Check.Equal(0x3000u, cpu.GetA(0), "The IO descriptor remains the caller's pointer.");
+                    Check.Equal((ushort)track, bus.ReadWord(0x2FF8), "The requested track is not changed.");
+                    Check.Equal(0x100Eu, cpu.PC, "Both instruction windows retain the same size.");
+                    if (!repaired && track != 0 && scratch == 0)
+                        Check.True(cpu.GetD(3) != (0xFF000000u | track << 16 | sector << 8 | (11 - sector)),
+                            "The original write-protection calibration reproduces the wrong-track header.");
+                }
             }
         }
 

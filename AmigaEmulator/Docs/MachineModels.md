@@ -274,8 +274,8 @@ broader application and all-model storage coverage remain open.
 
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
-| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection no longer ejects media or discards partial writes (2026-10-11) | Current Siedler border report remains open; Pinball persistent-score/physical-track mismatch; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
-| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit requester on all four tables using separate 32-bit-clean Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models (2026-10-11) | Complete the 262-case visual/control review and title-specific disk/menu continuations; Pinball score persistence, Desert land combat/objectives, Mega/Cannon transitions, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
+| 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection retains media/partial writes; separate Pinball writer repair persists all eleven score sectors on the correct track on both native desktops (2026-10-11) | Current Siedler border report remains open; raw/custom-track preservation remains incomplete; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
+| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and actual score-sector writes on all four tables using an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models (2026-10-11) | Complete the 262-case visual/control review and title-specific disk/menu continuations; naturally earned new Pinball highscore entry and broader score reload/model coverage, Desert land combat/objectives, Mega/Cannon transitions, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
 | 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; timing lookup rejected after a regression (2026-10-11) | Continue profiling remaining allocations and repeat paired measurements after further changes |
 | 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; five older boards with owned 46.143 ROM, Shell/Clock/ShowConfig and independently verified file persistence/reset/restore (2026-10-11) | Broader applications and complete controller coverage; optional hardware remains gated |
 | 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested; LOF/VPOSW field selection corrected with a failing-before fixture | Native superhires, interlace field lengths/weaving, programmable timing, scan doubling, additional references |
@@ -2002,3 +2002,98 @@ then Mega lo Mania and Cannon Fodder's remaining map/input transitions. Continue
 the game/model review and native superhires/interlace, ATC/timing/restartable
 faults, FPU/040 and Zorro III gates. The roadmap is active and incomplete;
 unsupported hardware remains unavailable.
+
+### Pinball standard-ADF score writer — 2026-10-11
+
+The preceding approved changes were committed and pushed as **19c95ce** on
+`origin/main`. This subsequent continuation is local work. Fresh evidence:
+`%APPDATA%/AmigaEmulator/diagnostics/PinballScore-20261011-081849-963ca87a/`.
+
+**The physical head was correct; the disk set's writer encoded the wrong track.**
+A private-copy CIAB/DSKLEN trace shows requested track 3, the loader's cache
+advancing from 0 to 3, and physical cylinder 1/side 1 at DMA arming. `$2F8A`
+clears scratch D2 during write-protection calibration; `$2D92` nevertheless
+uses it for every sector header. The original reader ignores the track byte,
+but standard ADF cannot preserve a raw header for track 0 on physical track 3.
+The canonical decoder's physical-track check stays in place. See
+[ADFlib's format description](https://adflib.github.io/FAQ/adf_info.html) and
+[WinUAE's reference disk handling](https://raw.githubusercontent.com/tonioni/WinUAE/master/disk.cpp).
+Evidence: `trace-current-menu.log`, `trace-current-menu/dma-2.bin`; no forced
+guest registers, cached head or RAM flags were used for acceptance.
+
+`Tools/prepare_pinball_32bit_disk.py --repair-scores` now creates an explicit
+second compatibility variant. Besides the existing 38-byte block-setup window,
+it changes six bytes at disk offset `$5C4C` / guest `$2D92`: the encoder takes
+the requested track from the IO descriptor instead of scratch D2. Header/data
+checksums are generated by the guest as before. Source hash/signatures and the
+entire resulting image are checked; existing output and original media are
+preserved. Default invocation still produces the preceding loader-only variant.
+The score-repaired output SHA-256 is
+`74307adc5f44748e078ab7782628de0482c1e45dda1781e5a7327a53779e23b2`.
+The matrix accepts both explicitly selected variants, without replacing original
+cases or advertising general raw-track support. No game/ROM/OS media is included
+in Git or distributions.
+
+An independent CPU fixture executes both original and replacement header
+assembly on 68000, EC020, 020, EC030 and 030, covering all 160 tracks, eleven
+sectors and stale/matching scratch values. It reproduces the original wrong
+header and checks the repaired format, caller registers, descriptor and unchanged
+instruction-window size. The complete **332-test suite passes, zero failures or
+skips**, as do ten runner guards and exact-output/preservation tool checks.
+Evidence: `header-test.log`, `full-suite.log`, `runner-guards.log`, `tool-guards.json`.
+
+**Eight real native write continuations pass.** The new loader is cold-loaded
+from repaired media on A3000 and A4000/030; its six bytes are checked when each
+clean external media set is cloned. Both course disks/all four tables reach
+actual live mode 1, separate flippers, frozen GAME PAUSED, exact cold-reset
+restore and Esc/Y. Normal tab changes then produce eleven accepted sectors.
+An independent decoder verifies the DMA-start track-3 headers and both checksums,
+and compares every payload byte with the flushed private ADF. All eight have
+zero new non-ROM faults; this is actual file persistence, beyond a DMA-completion
+or changed-file-hash observation. Evidence: `verified-all-eight-exits/`,
+`eight-native-writes/`, `eight-native-writes-reviewed.json`.
+
+**A further timing correction:** three million clocks after F1 can still be in
+the player's start animation. Six initial captures remained in chute mode 5
+after the first spring pull; they are rejected as live-ball passes. A subsequent
+normal pull from those ready checkpoints launches correctly; Stones 'n' Bones
+was already live. The source now waits 30 million clocks after selecting one
+player. Fresh selection continuations on both desktops directly reach mode 1,
+frozen pause/restore and the write requester with that wait. Evidence:
+`initial-live-modes.json`, `spring-timing-live-control.log`,
+`settled-first-launch/`; an incorrect external Disk-3 continuation slice was
+stopped, retained and excluded before the reviewed eight-case rerun.
+
+A3000 Partyland persists its current score table, replaces the requested main
+and course disks, returns to the real selection menu at frame 21766, and passes
+exact cold restore. A completely fresh native cold boot from the persisted
+private course disk reaches the menu and reloads Partyland at frame 16104;
+the 96-byte score/name record sequence agrees with the actual written payload
+at guest `$200`. Both desktops also return to the actual Disk-3 selection menu
+after Stones 'n' Bones writes (frame 23898); A4000 Partyland returns at 21766.
+All four menu continuations pass exact cold restore and have zero new faults.
+This establishes round-trip preservation of existing records,
+not a newly earned named highscore. Evidence: `persisted-exit-menu/`,
+`other-persisted-menus/`, `readback-cold/`, `readback-table/`,
+`readback-table-ram/`, `final-pinball-review.json`.
+
+The separate three-disk user set is prepared under
+`%USERPROFILE%/Documents/AmigaEmulator/Kompatibel/Pinball Fantasies (32bit und Scores)/`;
+its course disks start as untouched copies. The preceding loader-only set is
+also unchanged. All **50 original ADFs and the installed OS HDF** retain their
+preserved hashes (`originals-final-verified.json`). Select this new Disk 1 and
+its corresponding course copies explicitly; original cases stay separate.
+
+The final full **262-case manifest validates**, rather than establishing full
+execution/visual acceptance. A matrix inventory defect is also corrected:
+selected compatibility media inside MediaDirectory now replaces its unclassified
+row, avoiding a duplicate uncovered warning. Old/new Pinball and a private
+Moonstone copy exercise this; unsupported hashes still reject before any output
+is created. Evidence: `all-262-score-variant-final/`, `matrix-variant-guards.json`.
+Final Release solution build has zero warnings/errors and `git diff --check` passes.
+
+Next: finish broader menu/score reload and naturally earned entry coverage,
+then trace Mega lo Mania's post-intro copy/privilege failure on native A500/A1200
+with read-only data drives, and Cannon Fodder's remaining mission/map inputs. Native graphics,
+timing/MMU, FPU/040 and Zorro III gates remain open. The roadmap is not complete;
+no performance gain is claimed for a media repair.

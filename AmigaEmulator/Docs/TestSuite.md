@@ -213,3 +213,11 @@ Storage/Expansion tests cover file-backed ATA PIO, RDB creation, read-only and
 range failures, IRQ acknowledgement, CPU deferred FIFO reads, partial-transfer
 savestates and Zorro II memory registration/bounds. The independent ROM boot
 evidence and compatibility limits are in [StorageExpansion.md](StorageExpansion.md).
+
+The score-writer CPU regression executes the original and repaired six-byte
+header setup plus its following assembly instructions on all five supported
+CPU types. It covers 160 requested tracks, eleven sectors and stale/matching
+scratch registers against the independent FF/track/sector/remaining format.
+It reproduces the original wrong header without game/ROM media and checks that
+the repair retains caller state and code size. Real private-ADF write/readback
+evidence and its limits are recorded in [MachineModels.md](MachineModels.md).

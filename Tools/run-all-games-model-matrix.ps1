@@ -157,13 +157,17 @@ if ($MoonstoneCompatibleBoot) {
         }
         $cases += $case
     }
+    # A selected copy inside MediaDirectory already has an unclassified row.
+    # Replace it so the same file is not also reported as uncovered.
+    $inventory = @($inventory | Where-Object { $_.path -ne $compatibleDisk })
     $inventory += [ordered]@{path=$compatibleDisk; bytes=(Get-Item -LiteralPath $compatibleDisk).Length;
         sha256=$patchedHash; title=@('Moonstone'); kind=@('game-compatibility'); coveredByManifest=$true}
 }
 if ($PinballCompatibleBoot) {
     $compatibleDisk = (Resolve-Path -LiteralPath $PinballCompatibleBoot -ErrorAction Stop).Path
     $patchedHash = (Get-FileHash -LiteralPath $compatibleDisk -Algorithm SHA256).Hash
-    if ($patchedHash -ne 'F4E0EACDD4908EFC71DBD26625388C503134529B0ADC5D6BE86319E6CBCCBA28') {
+    if ($patchedHash -notin @('F4E0EACDD4908EFC71DBD26625388C503134529B0ADC5D6BE86319E6CBCCBA28',
+        '74307ADC5F44748E078AB7782628DE0482C1E45DDA1781E5A7327A53779E23B2')) {
         throw 'Pinball compatibility disk does not match the reviewed patch; use prepare_pinball_32bit_disk.py.'
     }
     $nativePinball = @($cases | Where-Object { $_.name -in @('A3000-PDREMS21', 'A4000Ec030-PDREMS21') })
@@ -190,6 +194,9 @@ if ($PinballCompatibleBoot) {
             $cases += $case
         }
     }
+    # Keep one classified row when the explicitly selected copy lives under
+    # MediaDirectory; otherwise its earlier row would still warn as uncovered.
+    $inventory = @($inventory | Where-Object { $_.path -ne $compatibleDisk })
     $inventory += [ordered]@{path=$compatibleDisk; bytes=(Get-Item -LiteralPath $compatibleDisk).Length;
         sha256=$patchedHash; title=@('PDREMS21'); kind=@('game-compatibility'); coveredByManifest=$true}
 }
