@@ -75,5 +75,26 @@
     "model": "A2000Ecs",
     "ram": "Chip2Mb",
     "rom": "KICK13.ROM"
+  },
+  {
+    "game": "Mega-lo-Mania",
+    "model": "A500Plus",
+    "name": "fast2-native-rom",
+    "ram": "Chip2MbFast2Mb",
+    "rom": "KICK20.ROM"
+  },
+  {
+    "game": "Mega-lo-Mania",
+    "model": "A600",
+    "name": "fast2-native-rom",
+    "ram": "Chip2MbFast2Mb",
+    "rom": "KICK31.ROM"
+  },
+  {
+    "game": "Mega-lo-Mania",
+    "model": "A2000Ecs",
+    "name": "fast2-native-rom",
+    "ram": "Chip2MbFast2Mb",
+    "rom": "KICK31.ROM"
   }
 ]

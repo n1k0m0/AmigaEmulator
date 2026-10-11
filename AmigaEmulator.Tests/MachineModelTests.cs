@@ -21,6 +21,7 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models/AGA", "A1200 and A4000/030 profiles preserve CPU, buses, RAM and public save identity", "Motherboard integration", TestAgaModels);
             yield return new ChipTestCase("Models/Ricoh", "calendar banks, byte lanes, divider and battery RAM survive stop/reset/restore", "Ricoh EK-086-9804 pages 5/6", TestRicohClock);
             yield return new ChipTestCase("Models/Memory", "word reads preserve overlay, region boundaries, physical addressing and observers", "Memory decode optimization", TestMemoryWords);
+            yield return new ChipTestCase("Models/Memory", "Chip RAM aliases prevent false extra-memory detection and preserve bus wiring", "CPU Chip RAM aperture", TestChipRamAliases);
             yield return new ChipTestCase("Models/Integration", "explicit startup models override stale frontend ROM and RAM settings", "GUI model selection", TestStartupModel);
             yield return new ChipTestCase("Models/Integration", "wrong RAM layouts are rejected before touching the machine", "Inner state preflight", TestRamStateMismatch);
             yield return new ChipTestCase("Models/DesktopBringup", "Ramsey RAM and Gary control latches remain independent and survive reset/restore", "Commodore A4000 service specification 6-32/33", TestDesktopResources);
@@ -127,6 +128,43 @@ namespace AmigaEmulator.Tests
                     for (int x = 0; x < 227; x++)
                         if (planes.IsPlaneFetchSlot(x, line)) planes.FetchDmaPlaneWord(x, line);
                 }
+            }
+        }
+
+        private static void TestChipRamAliases()
+        {
+            foreach (var model in new[] { AmigaModel.A500Pal512Slow512,
+                AmigaModel.Create(AmigaMachineModel.A2000Ocs, AmigaRamProfile.Chip512KSlow512K),
+                AmigaModel.Create(AmigaMachineModel.A500Plus, AmigaRamProfile.Chip1Mb),
+                AmigaModel.Create(AmigaMachineModel.A600, AmigaRamProfile.Chip2Mb) })
+            {
+                using var system = new AmigaSystem(model); var bus = system.Bus;
+                bus.RomOverlayAtZero = false;
+                uint size = (uint)model.ChipRamBytes;
+                bus.WriteLong(0x100, 0x12345678);
+                for (uint bank = 0; bank < 0x200000; bank += size)
+                {
+                    uint address = bank + 0x100;
+                    Check.Equal(AmigaAddressRegion.ChipRam, bus.GetRegion(address), "CPU decode includes every alias.");
+                    Check.Equal(0x12345678u, bus.ReadLong(address), "Every alias addresses the same physical cells.");
+                    Check.Equal((ushort)0x1234, bus.PeekWord(address), "The optimized debugger read uses the same wiring.");
+                    Check.True(bus.RequiresChipBus(address, 4), "Aliases still contend with custom-chip DMA.");
+                    bus.WriteLong(address, 0xABCDEF01);
+                    Check.Equal(0xABCDEF01u, bus.ReadLong(0x100), "A probe write must expose aliasing, not fictitious extra RAM.");
+                    bus.WriteLong(0x100, 0x12345678);
+                }
+                bus.WriteByte(size - 1, 0xA5); bus.WriteByte(0, 0x5A);
+                ushort boundary = size < 0x200000 ? (ushort)0xA55A : (ushort)0xA5FF;
+                Check.Equal(boundary, bus.ReadWord(size - 1), "Physical banks wrap inside the aperture; its final boundary enters Zorro space.");
+                Check.Equal(boundary, bus.PeekWord(size - 1), "The fast word path preserves both boundaries.");
+                var reads = new List<uint>();
+                bus.ReadObserved += (a, n, v, r) => reads.Add(a);
+                bus.ReadWord(size - 1);
+                Check.Equal(size - 1, reads[0], "Observers retain CPU addresses, not rewritten physical offsets.");
+                Check.Equal(size, reads[1], "The second byte retains the alias address.");
+                Check.True(bus.GetRegion(0x200000) != AmigaAddressRegion.ChipRam, "No Chip RAM alias enters Zorro II space.");
+                bus.WriteByte(0xC00000, 0x39);
+                Check.Equal((byte)0x5A, bus.PeekByte(0), "Slow RAM remains independent of CPU Chip RAM aliases.");
             }
         }
 

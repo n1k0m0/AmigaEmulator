@@ -78,6 +78,22 @@ class PreflightTests(unittest.TestCase):
     def test_unknown_scenario_field_is_rejected(self):
         self.assert_invalid([{"name": "typo", "bootDisk": "missing.adf", "actions": []}])
 
+    def test_exception_vector_guard_rejects_invalid_or_unobserved_vectors(self):
+        for fields in ({"allowedNonRomExceptionVectors": [4, 5, 9]},
+                       {"traceExceptions": True, "allowedNonRomExceptionVectors": [4, 4]},
+                       {"traceExceptions": True, "allowedNonRomExceptionVectors": [1]},
+                       {"traceExceptions": True, "allowedNonRomExceptionVectors": [24]}):
+            with self.subTest(fields=fields):
+                self.assert_invalid([{"name": "invalid-fault-guard", "actions": [], **fields}], validate=False)
+
+    def test_exception_vector_guard_accepts_reviewed_probes_or_no_faults(self):
+        for allowed in ([4, 5, 9], []):
+            with self.subTest(allowed=allowed):
+                result = self.run_scenario([{"name": "fault-guard", "traceExceptions": True,
+                                            "allowedNonRomExceptionVectors": allowed, "actions": []}])
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("VALID 1", result.stdout)
+
     def test_duplicate_names_cannot_replace_evidence(self):
         self.assert_invalid([{"name": "same", "actions": []}, {"name": "same", "actions": []}], validate=False)
 

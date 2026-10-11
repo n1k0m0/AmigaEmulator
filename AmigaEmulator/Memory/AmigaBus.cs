@@ -83,6 +83,7 @@ namespace AmigaEmulator.Core.Memory
         /// Stores chip RAM End.
         /// </summary>
         private readonly uint _chipRamEnd;
+        private readonly uint _chipRamDecodeEnd;
         /// <summary>
         /// Stores custom Registers.
         /// </summary>
@@ -173,6 +174,13 @@ namespace AmigaEmulator.Core.Memory
             _chipRamEnd = model.ChipRamBytes > 0
                 ? (uint)model.ChipRamBytes - 1u
                 : MemoryMap.ChipRamEnd;
+            // The CPU's Chip RAM aperture is 2 MiB. Unconnected address
+            // lines alias the fitted RAM; they do not create an empty bank.
+            // Keep the physical size separate for reset vectors and storage DMA.
+            // A 512 KiB ECS development board can have an unpopulated bank;
+            // native ECS/AGA profiles all have at least 1 MiB installed.
+            _chipRamDecodeEnd = model.Chipset == AmigaChipset.Ocs || model.ChipRamBytes >= 1024 * 1024
+                ? 0x1FFFFFu : _chipRamEnd;
             _customRegisters = customRegisters ?? new CustomRegisterMap();
             _paula = paula;
             _ciaA = ciaA;
@@ -311,7 +319,7 @@ namespace AmigaEmulator.Core.Memory
         {
             address = Normalize(address);
 
-            if (address <= _chipRamEnd)
+            if (address <= _chipRamDecodeEnd)
             {
                 return AmigaAddressRegion.ChipRam;
             }
@@ -605,7 +613,7 @@ namespace AmigaEmulator.Core.Memory
         private bool TryPeekMemoryWord(uint address, out ushort value)
         {
             value = 0;
-            if (address < _chipRamEnd)
+            if (address < _chipRamDecodeEnd)
             {
                 bool overlay = IsKickstartOverlayRead(address);
                 if (overlay != IsKickstartOverlayRead(address + 1)) return false;

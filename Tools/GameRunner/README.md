@@ -1,5 +1,38 @@
 # Scripted gameplay review
 
+Mega lo Mania's source now covers the intro, Scarlet selection, seven allocated
+men, a valid first island sector, live play, P and cold restore. The A4000 variant
+targets another buildable sector in its first island. The original A500/A2000
+OCS route uses 512 KiB Chip + 512 KiB Slow; CPU Chip-RAM aliases are essential to
+its cache probe. The newer-ROM 68000 profiles additionally need 2 MiB Fast to
+keep live Exec structures outside the game's fixed-address program. These are
+explicit compatibility profiles, preserving the failing bare-Chip native cases.
+
+For the reviewed local Disk 1 on 020/030, `prepare_megalomania_020_disk.py` creates
+a **new** disk: its unique IMP literal changes user MOVE SR to MOVE CCR and its
+packed checksum is repaired. The original, instruction privileges and 68000
+decoder are preserved. This copy is **not for 68000**. No media is distributed.
+The exact input/output hashes and exclusive output creation are checked.
+Pass `-IncludeCompatibilityProfiles -MegaLoManiaCompatibleBoot <new-disk.adf>`
+to the matrix generator to add explicit A1200/A3000/A4000/030 copy cases.
+
+Cannon Fodder's source now tests the actual first mission, movement/fire, P,
+cold restore and a further movement order, with all three original disks in
+DF0/DF1/DF2. It uses 512 KiB Chip + 512 KiB Slow on A500 and A2000 OCS.
+Pause precedes the shorter fire/advance orders: the previous long suffix killed
+the squad, and a static retry screen cannot prove a pause. The DF0-only route is
+still unaccepted: it can load behind a black palette and needs Disk 1 again;
+a later mission attempt faults. Use the explicit data-drive setup for this
+reviewed flow, and keep single-drive/later-campaign failures as separate gates.
+The loader deliberately uses CPU detection and trace exceptions; the bounded
+exception guard allows that reviewed prefix. Disk requesters, black frames and
+successful script execution alone remain insufficient acceptance evidence.
+`allowedNonRomExceptionVectors: [4, 5, 9]` also rejects any new guest bus/address
+fault even when its count stays below the protection loader's total budget.
+The optional list requires tracing and distinct observed vectors 2 through 23;
+an empty list rejects every observed non-ROM fault. Interrupts and software
+TRAP vectors 24 and above are not counted by this guard.
+
 Run from the solution directory with the local Kickstart ROM and your own ADFs:
 
 The source manifests now expect `Game Title (disk N).adf`, including single-disk

@@ -1258,3 +1258,65 @@ The final 262-case manifest validates; this remains preflight. Duplicate
 uncovered inventory rows for explicitly selected compatibility copies are fixed
 and checked for old/new Pinball and Moonstone. See MachineModels.md for causal
 traces, scope and next steps.
+
+## Mega lo Mania / Cannon Fodder — 2026-10-11
+
+Pinball's preceding score writer is pushed as `b4c0d2b`; this follow-up is local.
+Both games exposed a CPU Chip-RAM alias defect on 512 KiB OCS. The fitted RAM
+now mirrors through the 2 MiB CPU aperture, with independent physical/DMA bounds
+and a failing-before regression. Mega no longer creates a fictitious `$90000`
+cache and runs its zero-length copy indefinitely; Cannon reaches the real jungle
+mission with the original low-memory configuration.
+
+These are bounded gameplay configurations, not full-campaign compatibility:
+
+| Board | Mega lo Mania | Cannon Fodder |
+| --- | --- | --- |
+| A500 / A2000 OCS | Original Disk 1, native 1.3, 512 KiB Chip + 512 KiB Slow | Original disks, native 1.3, 512 KiB Chip + 512 KiB Slow |
+| A500+ | Original Disk 1, native 2.04, 2 MiB Chip + 2 MiB Fast | Original disks, native 2.04, 2 MiB Chip |
+| A600 / A2000 ECS | Original Disk 1, native 3.1, 2 MiB Chip + 2 MiB Fast | Original disks, native 3.1, 2 MiB Chip |
+| A1200 / A3000 / A4000/030 | Explicit repaired 020/030 Disk 1, matching native 3.1, 2 MiB Chip + 4 MiB Fast | Original disks, matching native 3.1, 2 MiB Chip + 4 MiB Fast |
+
+Keep Mega Disk 2 in DF1; keep Cannon Disk 1/2/3 in DF0/DF1/DF2 for the reviewed
+route. Mega's bare-Chip newer-ROM cases remain failures: its fixed-address
+program overwrites live OS structures. The 020/030 copy replaces one privileged
+user SR read with CCR in the packed guest program and repairs its checksum.
+The source, CPU privileges and 68000 behavior remain unchanged; that copy cannot
+run on a 68000. The guarded preparation tool and explicit matrix option document
+the supported source/result hashes. The local set is in
+`Kompatibel/Mega lo Mania (020 und 030)/`. No media is distributed.
+
+Mega reaches a live island with seven allocated men and a tower; P, continued
+guest ticks and exact cold restore are checked. A4000/030 needs a buildable
+cell rather than the source script's original water selection. Cannon's eight
+fresh native cold runs reach actual Mission 1 with both soldiers. The old long
+fire/advance suffix led to ordinary squad deaths on seven boards; its frozen
+retry screens are rejected as pause proof. The revised shorter final-core
+flow passes eight new native cold runs with living squads, fire/movement, pause
+and continued mouse orders after exact cold restore, with zero new live faults.
+All eight pause hashes match; a separate guest probe confirms the pause flag
+and frozen/resumed game ticks rather than only comparing screenshots.
+
+DF0-only Cannon is still a gate: Disk 2 can be followed by a black palette while
+guest/Copper ticks advance. Making Disk 1 available again continues loading;
+a later single-drive mission attempt raises an address error and is rejected.
+The reviewed data-drive route remains the supported local setup. Later missions,
+campaigns and further disk requests need coverage. The 68000 also now correctly
+preserves IPL during synchronous exceptions. Its initial apparent rejection was
+a test-timing mistake: the game was loading a new squad after a death/briefing
+click. Five fresh 68000 cold control runs and a later live Stoo/RJ retry confirm
+the correction, while the 020/030 exception path remains unchanged. The single-
+drive address error occurs identically with both CPU cores and is still open.
+
+The final accepted core passes 335 tests, twelve runner guards and a clean Release
+build. Three matrix guards reject unsupported Mega hashes/selections before
+creating output. The full matrix is now 268 valid cases, still preflight.
+The new allowed-vector guard rejects the actual single-drive address error
+even below Cannon's broad total exception budget; a paired valid continuation
+keeps identical CPU, frame, pixels, disk and fault observations at all 14 captures.
+Three fresh Siedler ROM/accuracy references pass their required disk transitions,
+gameplay/construction image hashes and exact restores; the media preservation
+check still matches all fifty original root ADFs and the installed OS HDF.
+Evidence: `%APPDATA%/AmigaEmulator/diagnostics/MegaCannon-20261011-085650-892a6697/`;
+see MachineModels.md for exact directories, causal traces, rejected experiments
+and remaining acceptance gates.

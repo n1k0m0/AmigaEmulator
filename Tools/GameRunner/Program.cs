@@ -70,6 +70,10 @@ static void Validate(Scenario scenario)
     if (scenario.MaximumNonRomExceptions.HasValue &&
         (scenario.MaximumNonRomExceptions.Value < 0 || !scenario.TraceExceptions))
         throw new ArgumentException("maximumNonRomExceptions requires traceExceptions and a nonnegative limit.");
+    if (scenario.AllowedNonRomExceptionVectors is { } allowed &&
+        (!scenario.TraceExceptions || allowed.Any(vector => vector < 2 || vector >= 24) ||
+         allowed.Distinct().Count() != allowed.Count))
+        throw new ArgumentException("allowedNonRomExceptionVectors requires traceExceptions and distinct observed vectors 2..23.");
     var metadata = scenario.Save == null ? null : SaveStateFile.ReadMetadata(Environment.ExpandEnvironmentVariables(scenario.Save));
     var machine = metadata?.MachineModel ?? Enum.Parse<AmigaMachineModel>(scenario.Model ?? "A500");
     var ram = metadata?.RamProfile ?? (scenario.Ram == null ? AmigaModel.GetDefaultRamProfile(machine) : Enum.Parse<AmigaRamProfile>(scenario.Ram));
@@ -162,6 +166,8 @@ static string Run(Scenario scenario, string output)
     int nonRomExceptions = 0;
     var nonRomExceptionVectors = new Dictionary<int, int>();
     object firstNonRomException = null;
+    object firstUnexpectedNonRomException = null;
+    var allowedNonRomVectors = scenario.AllowedNonRomExceptionVectors?.ToHashSet();
     if (exceptionTrace != null) system.Cpu.ExceptionEntered += (vector, pc, sr, opcodePc, opcode, target) =>
     {
         // Interrupts are normal gameplay activity. Keep synchronous CPU faults/traps.
@@ -177,6 +183,11 @@ static string Run(Scenario scenario, string output)
             nonRomExceptionVectors[vector] = nonRomExceptionVectors.GetValueOrDefault(vector) + 1;
             firstNonRomException ??= new { frame = system.FrameCounter, vector,
                 opcodePc = opcodePc.ToString("X6"), opcode = opcode.ToString("X4"), target = target.ToString("X6") };
+            // A protection loader's hundreds of intentional trace traps must not
+            // conceal a new address/bus fault below its total exception budget.
+            if (allowedNonRomVectors != null && !allowedNonRomVectors.Contains(vector))
+                firstUnexpectedNonRomException ??= new { frame = system.FrameCounter, vector,
+                    opcodePc = opcodePc.ToString("X6"), opcode = opcode.ToString("X4"), target = target.ToString("X6") };
         }
         exceptionTrace.WriteLine(JsonSerializer.Serialize(new { frame = system.FrameCounter,
             vector, pc = pc.ToString("X6"), sr = sr.ToString("X4"),
@@ -318,6 +329,8 @@ static string Run(Scenario scenario, string output)
             default: throw new ArgumentException($"Unknown action {action.Type}");
         }
         Capture(action.Label ?? action.Type, timer.Elapsed.TotalSeconds);
+        if (firstUnexpectedNonRomException != null)
+            throw new InvalidOperationException($"Unexpected guest CPU fault after {action.Label ?? action.Type}: {JsonSerializer.Serialize(firstUnexpectedNonRomException)}.");
         if (scenario.MaximumNonRomExceptions.HasValue && nonRomExceptions > scenario.MaximumNonRomExceptions.Value)
             throw new InvalidOperationException($"Guest CPU faults exceeded the allowed limit after {action.Label ?? action.Type}: {nonRomExceptions} (first: {JsonSerializer.Serialize(firstNonRomException)}).");
         if (action.ExpectedFrameHash != null && !string.Equals(action.ExpectedFrameHash,
@@ -417,6 +430,7 @@ class Scenario
     public bool TraceIde { get; set; }
     public bool TraceExceptions { get; set; }
     public int? MaximumNonRomExceptions { get; set; }
+    public List<int> AllowedNonRomExceptionVectors { get; set; }
     public bool TraceCopper { get; set; }
     public bool TraceCopperBuild { get; set; }
     public List<ScenarioAction> Actions { get; set; }

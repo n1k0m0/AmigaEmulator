@@ -12,13 +12,14 @@ param(
     [switch]$IncludeCompatibilityProfiles,
     [string]$MoonstoneCompatibleBoot = '',
     [string]$PinballCompatibleBoot = '',
+    [string]$MegaLoManiaCompatibleBoot = '',
     [ValidateSet('Partyland', 'SpeedDevils', 'BillionDollarGameshow', 'StonesNBones')]
     [string[]]$PinballTables = @('Partyland')
 )
 
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Choose a fresh output directory; existing evidence is never overwritten.' }
-if (($MoonstoneCompatibleBoot -or $PinballCompatibleBoot) -and -not $IncludeCompatibilityProfiles) {
+if (($MoonstoneCompatibleBoot -or $PinballCompatibleBoot -or $MegaLoManiaCompatibleBoot) -and -not $IncludeCompatibilityProfiles) {
     throw 'Separate compatibility disks require -IncludeCompatibilityProfiles.'
 }
 if (-not $PinballTables.Count -or @($PinballTables | Sort-Object -Unique).Count -ne $PinballTables.Count) {
@@ -162,6 +163,27 @@ if ($MoonstoneCompatibleBoot) {
     $inventory = @($inventory | Where-Object { $_.path -ne $compatibleDisk })
     $inventory += [ordered]@{path=$compatibleDisk; bytes=(Get-Item -LiteralPath $compatibleDisk).Length;
         sha256=$patchedHash; title=@('Moonstone'); kind=@('game-compatibility'); coveredByManifest=$true}
+}
+if ($MegaLoManiaCompatibleBoot) {
+    $compatibleDisk = (Resolve-Path -LiteralPath $MegaLoManiaCompatibleBoot -ErrorAction Stop).Path
+    $patchedHash = (Get-FileHash -LiteralPath $compatibleDisk -Algorithm SHA256).Hash
+    if ($patchedHash -ne 'C296C827B34A8861489EC096B424956BFA2BE3FAE67EB94E0BC8A0B3CCCA6814') {
+        throw 'Mega lo Mania compatibility disk does not match the reviewed patch; use prepare_megalomania_020_disk.py.'
+    }
+    $nativeMega = @($cases | Where-Object { $_.name -in @('A1200-Mega-lo-Mania', 'A3000-Mega-lo-Mania', 'A4000Ec030-Mega-lo-Mania') })
+    if (-not $nativeMega.Count) { throw 'Select Mega-lo-Mania and at least one 020/030 model for its compatibility disk.' }
+    foreach ($nativeCase in $nativeMega) {
+        $case = $nativeCase | ConvertTo-Json -Depth 30 | ConvertFrom-Json
+        $case.name += '-user-ccr-copy'
+        $case.boot = $compatibleDisk
+        foreach ($action in $case.actions) {
+            if ($action.type -eq 'disk' -and $action.disk -eq $nativeCase.boot) { $action.disk = $compatibleDisk }
+        }
+        $cases += $case
+    }
+    $inventory = @($inventory | Where-Object { $_.path -ne $compatibleDisk })
+    $inventory += [ordered]@{path=$compatibleDisk; bytes=(Get-Item -LiteralPath $compatibleDisk).Length;
+        sha256=$patchedHash; title=@('Mega-lo-Mania'); kind=@('game-compatibility'); coveredByManifest=$true}
 }
 if ($PinballCompatibleBoot) {
     $compatibleDisk = (Resolve-Path -LiteralPath $PinballCompatibleBoot -ErrorAction Stop).Path

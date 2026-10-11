@@ -3553,7 +3553,12 @@ namespace AmigaEmulator.Core.Cpu
             SetSupervisor(true);
             PushLong(stackedPc & AddressMask);
             PushWord(oldSr);
-            ushort newSr = (ushort)((_state.SR & unchecked((ushort)~(FlagT | InterruptMask))) | FlagS | interruptMask);
+            // Synchronous traps/faults retain IPL (MC68000UM 6.2.5). Clearing
+            // it can admit a pending IRQ before its handler initializes the
+            // stack or vectors. An accepted interrupt replaces the mask.
+            ushort newSr = (ushort)((_state.SR & unchecked((ushort)~FlagT)) | FlagS);
+            if (interruptMask != 0)
+                newSr = (ushort)((newSr & ~InterruptMask) | interruptMask);
             SetStatusRegister(newSr);
             uint targetPc = ReadLong((uint)(vectorNumber * 4)) & AddressMask;
             _exceptionEnteredDuringInstruction = true;

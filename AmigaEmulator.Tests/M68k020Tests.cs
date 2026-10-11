@@ -20,6 +20,8 @@ namespace AmigaEmulator.Tests
             yield return Test("score-writer repair encodes every requested track independently of scratch D2", TestScoreWriterHeader);
             yield return Test("MOVEC relocates vectors and format zero restores through RTE", TestControlAndFrames);
             yield return Test("user-mode MOVEC probes distinguish a 68000 illegal opcode from 020/030 privilege faults", TestUserMovecProbe);
+            yield return Test("user status saves preserve flags through CCR on 020/030 without weakening SR privilege", TestUserStatusSave);
+            yield return Test("synchronous exceptions retain IPL and masked interrupts cannot preempt their handlers", TestSynchronousMasks);
             yield return Test("master interrupts restore both stacks through the throwaway frame", TestMasterInterrupt);
             yield return Test("long branches and LINK/RTD preserve complete displacements and return addresses", TestControlFlow);
             yield return Test("bitfields cover every register offset/width and signed memory offsets", TestBitFields);
@@ -68,6 +70,86 @@ namespace AmigaEmulator.Tests
                 Check.Equal((ushort)0, bus.ReadWord(cpu.A7), "The saved status retains user mode.");
                 Check.Equal(0x1004u, bus.ReadLong(cpu.A7 + 2), "The frame identifies the faulting MOVEC instruction.");
                 if (!originalCpu) Check.Equal((ushort)32, bus.ReadWord(cpu.A7 + 6), "Format zero records vector eight.");
+            }
+        }
+
+        private static void TestSynchronousMasks()
+        {
+            // MC68000UM 6.2.5: only reset and interrupt exceptions update IPL.
+            // Exercise actual opcodes through both direct and arbitrated execution.
+            foreach (var model in new[] { AmigaCpuModel.M68000, AmigaCpuModel.M68EC020,
+                AmigaCpuModel.M68020, AmigaCpuModel.M68EC030, AmigaCpuModel.M68030 })
+            foreach (int mask in new[] { 0, 1, 2, 3, 4, 5, 6, 7 })
+            foreach (bool deferred in new[] { false, true })
+            foreach (var (vector, code, user) in new[] {
+                (4, new ushort[] { 0x4AFC }, false), (5, new ushort[] { 0x8EFC, 0 }, false),
+                (10, new ushort[] { 0xA000 }, false), (11, new ushort[] { 0xF000 }, false),
+                (32, new ushort[] { 0x4E40 }, false), (8, new ushort[] { 0x46FC, 0x2700 }, true) })
+            {
+                ushort originalSr = (ushort)((user ? 0 : 0x2000) | mask << 8);
+                var (cpu, bus) = Prepare(model, [0x46FC, originalSr, .. code]);
+                bus.WriteLong((uint)vector * 4, 0x2100); bus.WriteWord(0x2100, 0x60FE);
+                cpu.Step();
+                int observed = 0;
+                cpu.ExceptionEntered += (v, _, _, _, _, _) => observed = v;
+                if (deferred) for (int tick = 0; tick < 1000 && observed == 0; tick++) cpu.Tick(true);
+                else cpu.Step();
+                // Exception notifications occur during planning; allow its queued
+                // frame writes to retire. The handler's BRA loop changes no state.
+                if (deferred) for (int tick = 0; tick < 40; tick++) cpu.Tick(true);
+                Check.Equal(vector, observed, "The independently encoded opcode enters its actual vector.");
+                Check.Equal(mask, (cpu.SR >> 8) & 7, "Synchronous exceptions preserve the interrupt priority mask.");
+                Check.Equal(originalSr, bus.ReadWord(cpu.A7), "The exception frame retains the previous user/supervisor status.");
+                Check.True((cpu.SR & 0x2000) != 0, "Every exception enters supervisor mode.");
+            }
+            foreach (var model in new[] { AmigaCpuModel.M68000, AmigaCpuModel.M68EC020, AmigaCpuModel.M68030 })
+            {
+                var (cpu, bus) = Prepare(model, 0x4E40, 0x4E71);
+                bus.WriteLong(32 * 4, 0x2100); bus.WriteWord(0x2100, 0x4E71); bus.WriteWord(0x2102, 0x4E73);
+                cpu.SetInterruptLevel(3); cpu.Step(); cpu.Step();
+                Check.Equal(0x2102u, cpu.PC, "A pending level-three IRQ stays masked after a trap at IPL seven.");
+                cpu.Step();
+                Check.Equal(0x1002u, cpu.PC, "RTE restores the exact pre-trap continuation.");
+                Check.Equal((ushort)0x2700, cpu.SR, "RTE preserves IPL seven.");
+                // The real interrupt path must still raise IPL when accepted.
+                cpu.SetInterruptLevel(0); bus.WriteWord(0x1002, 0x46FC); bus.WriteWord(0x1004, 0x2000);
+                cpu.Step(); cpu.SetInterruptLevel(3); cpu.Step();
+                Check.Equal((ushort)0x2300, cpu.SR, "Accepted level-three interrupts update IPL.");
+                Check.Equal((ushort)0x2000, bus.ReadWord(cpu.A7), "The IRQ frame saves the previous mask.");
+            }
+        }
+
+        private static void TestUserStatusSave()
+        {
+            foreach (var model in new[] { AmigaCpuModel.M68000, AmigaCpuModel.M68EC020,
+                AmigaCpuModel.M68020, AmigaCpuModel.M68EC030, AmigaCpuModel.M68030 })
+            foreach (ushort flags in new ushort[] { 0, 1, 4, 0x10, 0x1F })
+            foreach (bool useCcr in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(model, 0x46FC, flags,
+                    useCcr ? (ushort)0x42F8 : (ushort)0x40F8, 0x5E2C);
+                bus.WriteLong(4 * 4, 0x2100); bus.WriteLong(8 * 4, 0x2200);
+                bus.WriteWord(0x5E2C, 0xCAFE);
+                for (int i = 0; i < 8; i++) { cpu.SetD(i, 0xDEAD0000u + (uint)i); if (i < 7) cpu.SetA(i, 0xBEEF0000u + (uint)i); }
+                cpu.Step(); // Enter user mode with the independently chosen CCR.
+                uint userStack = cpu.A7;
+                cpu.Step();
+                bool legal = model == AmigaCpuModel.M68000 ? !useCcr : useCcr;
+                Check.Equal(legal ? 0x1008u : useCcr ? 0x2100u : 0x2200u, cpu.PC,
+                    "68000 permits user SR reads; 020/030 require CCR and still fault privileged SR reads.");
+                Check.Equal(legal ? flags : (ushort)0xCAFE, bus.ReadWord(0x5E2C),
+                    "The real CPU instruction saves exactly the user's flags, or leaves the destination untouched on a fault.");
+                for (int i = 0; i < 8; i++) {
+                    Check.Equal(0xDEAD0000u + (uint)i, cpu.GetD(i), "Status save preserves every data register.");
+                    if (i < 7) Check.Equal(0xBEEF0000u + (uint)i, cpu.GetA(i), "Status save preserves address registers.");
+                }
+                if (legal) {
+                    Check.Equal(flags, cpu.SR, "Saving status does not alter flags or supervisor state.");
+                    Check.Equal(userStack, cpu.A7, "Saving status preserves the user stack.");
+                } else {
+                    Check.Equal(flags, bus.ReadWord(cpu.A7), "The fault frame preserves the user status.");
+                    Check.Equal(0x1004u, bus.ReadLong(cpu.A7 + 2), "The frame identifies the rejected status read.");
+                }
             }
         }
 

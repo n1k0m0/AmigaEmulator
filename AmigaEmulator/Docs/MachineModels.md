@@ -275,7 +275,7 @@ broader application and all-model storage coverage remain open.
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
 | 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection retains media/partial writes; separate Pinball writer repair persists all eleven score sectors on the correct track on both native desktops (2026-10-11) | Current Siedler border report remains open; raw/custom-track preservation remains incomplete; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
-| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and actual score-sector writes on all four tables using an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models (2026-10-11) | Complete the 262-case visual/control review and title-specific disk/menu continuations; naturally earned new Pinball highscore entry and broader score reload/model coverage, Desert land combat/objectives, Mega/Cannon transitions, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
+| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and actual score-sector writes on all four tables using an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands with explicit RAM/media requirements; Cannon Fodder's first mission on all eight native boards with data drives (2026-10-11) | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned new Pinball highscore entry and broader score reload/model coverage, Desert land combat/objectives, Cannon single-drive requests and longer campaigns, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
 | 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; timing lookup rejected after a regression (2026-10-11) | Continue profiling remaining allocations and repeat paired measurements after further changes |
 | 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; five older boards with owned 46.143 ROM, Shell/Clock/ShowConfig and independently verified file persistence/reset/restore (2026-10-11) | Broader applications and complete controller coverage; optional hardware remains gated |
 | 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested; LOF/VPOSW field selection corrected with a failing-before fixture | Native superhires, interlace field lengths/weaving, programmable timing, scan doubling, additional references |
@@ -2097,3 +2097,161 @@ then trace Mega lo Mania's post-intro copy/privilege failure on native A500/A120
 with read-only data drives, and Cannon Fodder's remaining mission/map inputs. Native graphics,
 timing/MMU, FPU/040 and Zorro III gates remain open. The roadmap is not complete;
 no performance gain is claimed for a media repair.
+
+### Mega lo Mania and Cannon Fodder memory/loader review — 2026-10-11
+
+The preceding Pinball score-writer work is committed and pushed as `b4c0d2b`.
+The following changes are local. Evidence is in
+`%APPDATA%/AmigaEmulator/diagnostics/MegaCannon-20261011-085650-892a6697/`.
+Original games, ROMs and the installed OS disk are preserved.
+
+**A real Chip-RAM decoding error affected both games on low-memory OCS.** The
+CPU previously treated addresses beyond the fitted RAM as unmapped. The OCS
+CPU Chip-RAM aperture extends to `$1FFFFF`; unconnected address lines mirror
+the fitted cells. The CPU-region and optimized peek paths now agree, while
+physical RAM size, storage DMA bounds, Slow RAM and Zorro II remain separate.
+The 512 KiB ECS development-board case retains its unpopulated-bank behavior.
+This is consistent with the overlay/Chip-RAM mapping in
+[WinUAE's memory implementation](https://raw.githubusercontent.com/tonioni/WinUAE/master/memory.cpp).
+The new independent fixture fails before the change and checks reads, writes,
+aliases, bus contention, observer addresses and both physical/aperture boundaries.
+
+Mega's probe had falsely selected `$90000` for its file cache on a 512 KiB
+Chip/512 KiB Slow A500. A missing `mod.music` lookup subsequently left a zero
+length/pointer; its byte-copy loop at `$7870` wrapped the count and never ended.
+With correct aliases the cache starts in fitted Slow RAM at `$C10000`.
+Cannon's low-Chip loader also stops treating the mirrored banks as extra RAM.
+Evidence: `mega-baseline/`, `mega-copy-entry/`, `mega-menu-ram/`,
+`cannon-baseline/`, `mirrors-test-before.log`, `mirrors-test.log`, `mirrors-cold/`.
+
+**Mega's native-ROM configurations now reach a real first island.** A500 and
+A2000 OCS use original media, Kickstart 1.3 and 512 KiB Chip + 512 KiB Slow.
+A500+ (2.04), A600 and A2000 ECS (3.1) additionally need 2 MiB Fast RAM: the
+game's fixed program load at `$4000` otherwise overlaps live Exec structures.
+Bare-Chip native cases are retained as failures, not silently changed to an
+older ROM. All three Fast configurations were rerun cold on the final core;
+seven allocated men, a placed tower, live year/population display, P and exact
+cold restore are reviewed at frame 14151. Evidence: `mega-native/`,
+`mega-fast2-stable/`, `mega-fast2-stable-review.json`.
+
+**The reviewed Mega disk needs a separate instruction repair on 020/030.**
+Its user-mode `MOVE SR,$5E2C` at `$5E84` correctly faults on these CPUs.
+`Tools/prepare_megalomania_020_disk.py` changes one unique IMP packed literal to
+`MOVE CCR` and recalculates the packed checksum. Independently decoding both
+payloads confirms that only the opcode byte at `$5E84` changes. The tested
+user status has no upper bits, so the saved CCR preserves its needed value.
+The CPU still rejects user SR reads; the regression fixture also proves that
+CCR reads remain illegal on a 68000. Use this copy only on 020/030.
+
+The exact supported source SHA-256 is
+`96b851ffcd62710d53ccb356407f813dbe0458dd58a9f57e19533c39b67ceaa5`;
+the new result is
+`c296c827b34a8861489ec096b424956bfa2be3fae67eb94e0bc8a0b3ccca6814`.
+Six media-tool guards prove exact output, original/existing-output preservation
+and rejection of unsupported, truncated and already repaired disks. The new
+user set is in `Documents/AmigaEmulator/Kompatibel/Mega lo Mania (020 und 030)/`.
+Fresh native A1200 and A3000 cold flows reach the island. A4000/030's initial
+script selected water; selecting a valid cell 44 mouse units lower reaches
+its live island, with continued play after exact cold restore. The source
+variant records this selection. Evidence: `mega-020-cold/`, `mega-030-cold/`,
+`mega-040-icon/`, `mega-tool-guards.json`, `user-status-test.log`.
+
+Mega pause has additional guest-state evidence on A500, A600/Fast and
+A4000/030: mode `$17ED0=4`, pause `$17EE0=1`, and game tick `$4676` unchanged
+across two twenty-million-clock pause intervals. Unpausing clears the flag and
+advances ticks, including after exact cold restore. Evidence:
+`mega-pause-probe/`, `mega-pause-ram/`, `mega-pause-registers.json`.
+The same three continuations pass on the final accepted core with tick sequences
+216/216/274/500, 216/216/275/501 and 218/218/276/502 respectively:
+`mega-pause-stable/`, `mega-pause-stable-registers.json`.
+
+**Cannon's original media reaches Mission 1 on all eight native boards.**
+Fresh cold runs use native ROMs, 512 KiB Chip + 512 KiB Slow on OCS, native
+2 MiB Chip profiles on ECS, and native 2 MiB Chip + 4 MiB Fast on 020/030.
+Disk 1/2/3 are in DF0/DF1/DF2. Actual Jools/Jops jungle scenes at frame 19469
+and subsequent input are reviewed, not merely an intro or a successful script.
+The loader intentionally uses CPU-detection and trace exceptions; these are
+counted separately from new faults in live continuations.
+The old long fire/advance suffix killed the squad on seven boards. Its frozen
+retry screens are explicitly rejected as pause evidence. The source now pauses
+while alive and uses shorter movement/fire orders. A final-core live continuation
+confirms both soldiers moving, fire, frozen pause pixels, exact cold reset/
+restore, and a different movement order afterwards, with zero new faults.
+Evidence: `cannon-native/`, `cannon-native-controls-review.json`,
+`cannon-safe-continue/`. Longer campaigns and later disks remain unaccepted.
+
+The shortened source flow subsequently passes **eight fresh native cold runs**
+through the final movement order at frame 19852: all squads remain alive,
+movement before/after exact cold restore is visible, and all eight pause hashes
+match. Only reviewed loader vectors 4/5/9 occur, with no new live-suffix faults.
+An independent A500 pause probe verifies `$C01DEE=$FFFF`, game tick `$C0061A`
+561/561 while held, then flag zero and tick 588 after unpausing. Evidence:
+`cannon-safe-cold/A500-Cannon-native-safe-controls/`, `cannon-safe-parallel/`,
+`cannon-eight-safe-review.json`, `cannon-pause-guest/`, `cannon-pause-registers.json`.
+
+**68000 synchronous exceptions now preserve IPL.** An independently failing-before
+CPU test confirms that they previously cleared the interrupt priority mask;
+[NXP's MC68000 manual](https://www.nxp.com/docs/en/reference-manual/MC68000UM.pdf),
+section 6.2.5, specifies updating it only for reset/accepted interrupts.
+The fixture covers all five modeled CPU variants, masks 0..7, real synchronous
+opcodes through direct/arbitrated execution, pending masked IRQs, RTE and later
+accepted interrupts. Only accepted interrupts replace IPL in the 68000 path;
+the separate 020/030 path is unchanged.
+
+The initial black-frame rejection of this candidate was incorrect: its earlier
+capture already showed Mission 1. The old unsafe suffix killed the squad, then
+clicked the next briefing and stopped while the next mission was still loading.
+Five fresh native 68000 cold runs with the revised controls pass live movement,
+fire, pause and continued orders after exact cold restore. A further 280-million-
+clock continuation of the disputed black checkpoint reaches a new live squad
+(Stoo/RJ), with zero new faults and exact cold restore. The change and independent
+fixture are therefore retained. The DF0-only address error occurs at the same
+frame/PC with both cores and remains separate. Evidence: `ipl-rechecked-before.log`,
+`ipl-recheck/`, `ipl-recheck-two-more/`, `ipl-five-native-review.json`,
+`cannon-ipl-after-retry/`. A500 Mega's complete original-media cold flow also
+passes on this CPU core through frame 14151. The three Siedler reference flows
+(Kickstart 1.3 Fast/Compatible and 2.04 Fast) pass their actual disk changes,
+gameplay/construction image hashes and exact restores at frame 27507:
+`ipl-siedler-rom-goldens/`. All fifty root ADFs and the installed OS HDF still
+match their preserved hashes (`final-preservation/`).
+
+**Single-drive Cannon loading remains a separate gate.** The final-core
+DF0-only replay gets the correct Disk 2 requester, then keeps loading behind
+a black palette. Its guest/Copper ticks still advance; this is not itself a
+CPU halt. Making Disk 1 available again resumes the army menu. A later
+DF0-only mission attempt raises an address error at `$C24496` followed by
+line-A recovery into ROM and is rejected. Use the reviewed data-drive setup
+until the exact request/file sequence and late failure are resolved.
+Evidence: `cannon-single-final/`, `cannon-single-stable-ram-v2/`,
+`cannon-single-next/`, `cannon-single-add/`, `cannon-single-cycle/`,
+`cannon-single-mission/`. Black frames or normal game-over screens are not passes.
+
+The final accepted core passes **335/335** tests and the solution build has zero
+warnings/errors. Twelve runner preflight guards and three new matrix rejection
+guards pass. `-MegaLoManiaCompatibleBoot` adds explicit native 020/030 cases,
+requires compatibility profiles and the reviewed result hash, and preserves
+original-media cases. With the three Fast profiles and all previously reviewed
+Moonstone/Pinball variants, the full **268-case** manifest validates; this is
+preflight rather than complete gameplay acceptance. No ROM/game/OS data is
+distributed. No speed improvement is claimed without paired measurements.
+
+The runner also supports `allowedNonRomExceptionVectors`, validated before
+creating outputs. Cannon allows only its reviewed 4/5/9 probes: the actual
+DF0-only vector-3 failure now returns exit 1 with its exact PC even though its
+total count remains below 600. A paired successful continuation retains
+identical CPU, frame, pixels, disk state and exception observations at all 14
+captures with/without this guard. Evidence: `vector-guard-before.log`,
+`vector-guard-after.log`, `cannon-single-mission-guarded/`,
+`vector-guard-paired-proof.json`, `all-268-guarded-final/`.
+The final CPU/runner build validates the same full manifest again in
+`all-268-accepted-final/`; `full-suite-ipl-accepted.log`,
+`runner-accepted-guards.log` and `solution-build-ipl-accepted.log` retain the
+final 335-test, twelve-guard and clean-build results.
+A final-build Cannon continuation also matches all 14 previous CPU/frame/pixel/
+disk captures with zero new faults (`cannon-safe-accepted/`,
+`accepted-paired-control-proof.json`).
+
+Next: isolate the DF0-only request/late address error with paired checkpoints,
+then test later missions/islands and actual later-disk transitions. Retain
+the existing graphics/timing/MMU/FPU/040/Zorro III gates. The
+roadmap remains active.

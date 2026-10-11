@@ -202,7 +202,7 @@
   {
     "name": "Canfod-1",
     "boot": "Cannon Fodder (disk 1).adf",
-    "ram": "Chip1Mb",
+    "ram": "Chip512KSlow512K",
     "actions": [
       {
         "type": "disk",
@@ -362,8 +362,85 @@
       {
         "type": "restore",
         "label": "cannon-30-restore-mission"
+      },
+      {
+        "type": "checkpoint",
+        "label": "cannon-live-before-pause"
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "label": "pause-p"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "paused"
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "label": "unpause-p"
+      },
+      {
+        "type": "mouse",
+        "x": 100,
+        "y": 0,
+        "label": "enemy-pointer"
+      },
+      {
+        "type": "click",
+        "button": "Second",
+        "cycles": 600000,
+        "label": "fire-enemy"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "click",
+        "cycles": 600000,
+        "label": "squad-advance"
+      },
+      {
+        "type": "wait",
+        "cycles": 6000000,
+        "label": "after-move"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "continued"
+      },
+      {
+        "type": "mouse",
+        "x": -60,
+        "y": 40,
+        "label": "post-restore-order-pointer"
+      },
+      {
+        "type": "click",
+        "cycles": 600000,
+        "label": "post-restore-order"
+      },
+      {
+        "type": "wait",
+        "cycles": 6000000,
+        "label": "post-restore-movement"
       }
-    ]
+    ],
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 600,
+    "allowedNonRomExceptionVectors": [4, 5, 9]
   },
   {
     "name": "Civ1",
@@ -1434,30 +1511,171 @@
     "ram": "Chip512KSlow512K",
     "actions": [
       {
+        "type": "disk",
+        "label": "data-df1",
+        "disk": "Mega lo Mania (disk 2).adf",
+        "drive": 1
+      },
+      {
         "type": "wait",
-        "cycles": 120000000,
-        "label": "boot"
+        "label": "crack-intro",
+        "cycles": 180000000
       },
       {
         "type": "click",
-        "label": "left-click"
+        "label": "intro-click-0",
+        "cycles": 600000
       },
       {
         "type": "wait",
-        "cycles": 60000000,
-        "label": "after-click"
+        "label": "intro-after-0",
+        "cycles": 120000000
+      },
+      {
+        "type": "click",
+        "label": "intro-click-1",
+        "cycles": 600000
+      },
+      {
+        "type": "wait",
+        "label": "intro-after-1",
+        "cycles": 120000000
+      },
+      {
+        "type": "click",
+        "label": "intro-click-2",
+        "cycles": 600000
+      },
+      {
+        "type": "wait",
+        "label": "intro-after-2",
+        "cycles": 120000000
+      },
+      {
+        "type": "click",
+        "label": "intro-click-3",
+        "cycles": 600000
+      },
+      {
+        "type": "wait",
+        "label": "intro-after-3",
+        "cycles": 120000000
+      },
+      {
+        "type": "click",
+        "label": "intro-click-4",
+        "cycles": 600000
+      },
+      {
+        "type": "wait",
+        "label": "intro-after-4",
+        "cycles": 120000000
+      },
+      {
+        "type": "checkpoint",
+        "label": "player-menu"
+      },
+      {
+        "type": "mouse",
+        "label": "scarlet-face",
+        "x": 35,
+        "y": 132
+      },
+      {
+        "type": "click",
+        "label": "choose-scarlet",
+        "button": "Second",
+        "cycles": 300000
+      },
+      {
+        "type": "wait",
+        "label": "island-menu",
+        "cycles": 30000000
+      },
+      {
+        "type": "mouse",
+        "label": "play-island-pointer",
+        "x": 49,
+        "y": 242
+      },
+      {
+        "type": "click",
+        "label": "play-island",
+        "cycles": 300000
+      },
+      {
+        "type": "wait",
+        "label": "allocate-menu",
+        "cycles": 40000000
+      },
+      {
+        "type": "mouse",
+        "label": "men-counter-pointer",
+        "x": -4,
+        "y": -24
+      },
+      {
+        "type": "click",
+        "label": "allocate-men",
+        "button": "Second",
+        "cycles": 3000000
+      },
+      {
+        "type": "wait",
+        "label": "men-ready",
+        "cycles": 10000000
+      },
+      {
+        "type": "mouse",
+        "label": "sector-pointer",
+        "x": 0,
+        "y": -252
+      },
+      {
+        "type": "click",
+        "label": "place-tower",
+        "button": "Second",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "live-island",
+        "cycles": 80000000
+      },
+      {
+        "type": "checkpoint",
+        "label": "live-state"
       },
       {
         "type": "key",
-        "key": 64,
-        "label": "space"
+        "label": "pause-p",
+        "key": 25
       },
       {
         "type": "wait",
-        "cycles": 60000000,
-        "label": "after-space"
+        "label": "paused-island",
+        "cycles": 20000000
+      },
+      {
+        "type": "restore",
+        "label": "cold-exact-restore",
+        "resetBeforeRestore": true,
+        "cold": true
+      },
+      {
+        "type": "key",
+        "label": "unpause-p",
+        "key": 25
+      },
+      {
+        "type": "wait",
+        "label": "island-continued",
+        "cycles": 20000000
       }
-    ]
+    ],
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 3
   },
   {
     "name": "Moonstone",
@@ -1561,9 +1779,9 @@
       },
       {
         "type": "joystick",
-          "button": "Down",
-          "cycles": 500000,
-          "label": "moon-18-gore-row"
+        "button": "Down",
+        "cycles": 500000,
+        "label": "moon-18-gore-row"
       },
       {
         "type": "wait",
@@ -1572,9 +1790,9 @@
       },
       {
         "type": "joystick",
-          "button": "Down",
-          "cycles": 500000,
-          "label": "moon-20-practice-row"
+        "button": "Down",
+        "cycles": 500000,
+        "label": "moon-20-practice-row"
       },
       {
         "type": "wait",
@@ -1583,9 +1801,9 @@
       },
       {
         "type": "joystick",
-          "button": "Fire",
-          "cycles": 2000000,
-          "label": "moon-22-start-practice"
+        "button": "Fire",
+        "cycles": 2000000,
+        "label": "moon-22-start-practice"
       },
       {
         "type": "wait",
@@ -2061,9 +2279,9 @@
       },
       {
         "type": "key",
-          "key": 77,
-          "cycles": 15000000,
-          "label": "pinball-18-launch-ball"
+        "key": 77,
+        "cycles": 15000000,
+        "label": "pinball-18-launch-ball"
       },
       {
         "type": "wait",
