@@ -503,6 +503,13 @@ namespace AmigaEmulator.Core.Memory
             uint offset = GetOffset(address);
             if (IsDisplayControl(offset)) DisplayControlGeneration++;
             if (offset == 0x07C) return; // Chip identification is read-only.
+            if (offset == 0x004 || offset == 0x006) return; // Beam read ports.
+            if (offset == 0x02A)
+            {
+                // VPOSW controls LOF independently of the read-only Agnus ID.
+                // Vertical counter writes require the separate timing work.
+                _registers[GetIndex(0x004)] = (ushort)((_registers[GetIndex(0x004)] & 0x7FFF) | (value & 0x8000));
+            }
             if (HasEcs && (offset == 0x08E || offset == 0x090))
                 DiwHighWritten = false; // Legacy window writes release the ECS high-bit interlock.
             if (offset == 0x1E4)

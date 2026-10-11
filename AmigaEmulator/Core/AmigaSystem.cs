@@ -441,7 +441,7 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(14); // Includes the separate sprite output shifters.
+                writer.Write(16); // Includes the extended CPU instruction and data caches.
                 writer.Write((int)_model.Machine);
                 writer.Write(_model.ChipRamBytes); writer.Write(_model.SlowRamBytes); writer.Write(_model.FastRamBytes);
                 writer.Write((int)_model.Cpu); writer.Write(_model.CpuClockHz); writer.Write(_cpuClockPhase);
@@ -488,7 +488,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version < 1 || version > 14)
+                if (version < 1 || version > 16)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }

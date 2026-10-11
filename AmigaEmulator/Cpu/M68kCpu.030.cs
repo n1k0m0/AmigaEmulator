@@ -42,7 +42,7 @@ namespace AmigaEmulator.Core.Cpu
         }
         private uint ReadLockedMemory(uint address, int size)
         {
-            if (_mmu == null) return ReadMemory(address, size);
+            if (!Has030Cache) return ReadMemory(address, size);
             bool previous = _locked030Access;
             _locked030Access = true;
             try { return ReadMemory(address, size); }
@@ -50,7 +50,7 @@ namespace AmigaEmulator.Core.Cpu
         }
         private uint ReadLockedLocation(EaLocation location)
         {
-            if (_mmu == null) return ReadLocation(location);
+            if (!Has030Cache) return ReadLocation(location);
             bool previous = _locked030Access;
             _locked030Access = true;
             try { return ReadLocation(location); }

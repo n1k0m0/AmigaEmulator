@@ -4,10 +4,11 @@ The requested preceding version was committed and pushed as `464ce54` on
 `origin/main`. The full-library follow-up is separate work in progress.
 **Executing a scenario is not a gameplay, graphics or compatibility pass.**
 
-Latest checkpoint: the first 254-case sweep and all native captures are reviewed;
-the shared physical-INDEX correction passes 248 standard tests and six fresh
-Pinball gameplay/reset cases. The complete 254-case cold recheck on that final
-disk core is still running. See the final section for exact evidence and limits.
+Latest checkpoint (2026-10-11): actual 020/030 caches and corrected LOF are
+implemented; 320 core tests pass. Fresh bounded Tinyus input/restore coverage
+now includes all eight boards. The native desktop Pinball source failure is
+traced to a 24-bit tagged loader pointer. See the dated follow-up below and
+MachineModels.md for exact evidence; complete-library acceptance remains open.
 
 ## Coverage and profiles
 
@@ -1038,3 +1039,54 @@ both models and retain this animated carrier screen
 (`desert-carrier-input-run/`, `review/desert-carrier-input-latest.png`);
 mission entry remains open. All fifty original ADF hashes remain unchanged
 (`original-media-recheck-index-fixed.json`).
+
+
+## Cache-core follow-up (2026-10-11)
+
+Evidence root: `%APPDATA%/AmigaEmulator/diagnostics/RoadmapSelected-20261011-a7ac3b55b5e3/`.
+This follow-up does not promote unreviewed matrix executions to passes.
+
+Tinyus has fresh native cold/input continuations on A500, A500+, A600,
+A2000 OCS/ECS, A1200, A3000 and A4000/030. The seven larger-script controls
+through frame 4187 and the A2000 OCS source flow through frame 2691 show
+movement/fire/enemies and exact reset/restore, with zero observed non-ROM
+synchronous exceptions. Newer-ROM 68000 dark phases are finite in these cases;
+unchanged HEAD A500+/A600 controls have the same transition images/registers.
+No new fix for a permanent Tinyus hang is claimed; later levels remain untested.
+
+Siedler's repaired K13 Compatible castle checkpoint continues with mouse
+movement, coherent wood/menu and exact power-cycle restore. The real frontend
+paint/fullscreen code passes 24 mode/aspect/fill combinations with unchanged
+viewport dimensions. This is bounded automated rendering evidence, not a
+reproduction of every previously reported host configuration.
+
+Native A3000/A4000 Pinball again reaches the course/table menus but fails when
+Partyland loads. The A3000 trace catches the reader using A3=$80080000 from
+its tagged destination field at frame 11219; 87,634 writes go to unpopulated
+high space. The actual Chip RAM module remains empty. Its relocation loop
+calls $80010 at frame 12606 and runs through zero instructions to $200002.
+Full 32-bit processors preserve the flagged address; 68000/68EC020 discard
+the upper byte. This matches the [WHDLoad author's documented compatibility
+problem](https://www.whdload.de/docs/en/howto.html), without justifying a hardware
+RAM alias. The original source copy is not 32-bit clean here. Chip-only A3000
+also fails. A separate validated loader adaptation remains open; no modified
+media has been accepted or original overwritten. Evidence: `pinball-before-load/`,
+`pinball-target-watch/`, `pinball-first-entry-watch/`, `pinball-unmapped-watch/`,
+`pinball-chip-only-control/`.
+
+A separate diagnostic clears the two tagged A3 values at reader PCs $2C50
+and $2D1E. The ordinary native core then loads Partyland, responds to ball/
+flipper input and preserves exact power-cycle restore through frame 13926
+with zero observed non-ROM faults (`pinball-diagnostic-pointer-review/`).
+This is causal evidence from a modified guest state, not a released repair:
+the original ADF is unchanged and a separate media adaptation is still required.
+
+GameRunner now rejects unknown fields instead of silently ignoring them.
+Earlier Desert controls used `code` rather than `key`, so their alleged Return
+press was key zero. Correct Return/Space/Fire continuations on A500/A1200 still
+show the carrier cinematic; mission entry is not accepted. Zak's source mouse
+action now uses `x`/`y`, replacing ignored `dx`/`dy`. Seven preflight regressions
+pass, and all 80 direct source cases plus the generated 24-case subset validate.
+Desert, Mega lo Mania, Cannon Fodder A2000 OCS and broader matrix acceptance
+remain open. Unsupported SHRES/interlace/040/FPU/Zorro III hardware is not
+made compatible by these game observations.

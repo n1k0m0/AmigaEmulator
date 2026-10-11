@@ -34,6 +34,7 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models/PCMCIA", "IDE and card interrupts acknowledge independently and ATA reset preserves the socket", "Shared Gayle registers", TestPcmciaIde);
             yield return new ChipTestCase("Models", "ECS models retain independent RAM and built-in IDE capabilities", "A500+, A600 model configuration", TestModels);
             yield return new ChipTestCase("Models", "ECS identification is read-only and survives reset", "DENISEID and VPOSR chipset revision", TestIdentification);
+            yield return new ChipTestCase("Models/Video", "LOF toggles only with LACE and VPOSW survives save and restore", "Commodore HRM BPLCON0 and VPOSR/VPOSW", TestLongFieldFlop);
             yield return new ChipTestCase("Models", "ECS blitter size registers execute wider blits and BLTCON0L preserves channels", "BLTSIZV/H and BLTCON0L", TestExtendedBlitter);
             yield return new ChipTestCase("Models", "ECS DIWHIGH zero overrides legacy vertical wrap and survives restore", "DIWHIGH explicit-zero latch and model-aware savestates", TestDisplayWindowAndState);
             yield return new ChipTestCase("Models", "wrong-model savestates are rejected before changing machine state", "Model identity in file and machine state", TestStateMismatch);
@@ -52,6 +53,37 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models/A2000", "A2000 revision RAM rules preserve Zorro expansions and reject invalid layouts", "Revision capabilities, RAM mapping and model state", TestA2000Ram);
             yield return new ChipTestCase("Models/A2000", "A2000 CIA-A follows an independent 50 Hz clock and restores phase", "Mains TOD source and state migration", TestA2000Tod);
             yield return new ChipTestCase("Models/A2000", "A2000 savestate file records model and RAM and rejects a different revision", "Public savestate metadata and revision validation", TestA2000StateFile);
+        }
+
+        private static void TestLongFieldFlop()
+        {
+            foreach (var machine in new[] { AmigaMachineModel.A500, AmigaMachineModel.A600, AmigaMachineModel.A1200 })
+            {
+                var model = AmigaModel.Create(machine, AmigaModel.GetDefaultRamProfile(machine));
+                var agnus = new Agnus(model);
+                var registers = agnus.CustomRegisters;
+                int fieldCycles = model.ChipCyclesPerLine * model.LinesPerFrame;
+                void Field() { for (int i = 0; i < fieldCycles; i++) agnus.Tick(); }
+                ushort Lof() => (ushort)(registers.ReadWord(0x004) & 0x8000);
+                Field(); agnus.Tick();
+                Check.Equal((ushort)0, Lof(), "Non-laced output must not alternate LOF merely because a frame passed.");
+                registers.WriteWord(0x02A, 0xFFFF); agnus.Tick();
+                Check.Equal((ushort)0x8000, Lof(), "VPOSW sets the field flop.");
+                Check.Equal(model.AgnusId, (ushort)(registers.ReadWord(0x004) & 0x7F00), "VPOSW cannot change chip identification.");
+                registers.WriteWord(0x004, 0); registers.WriteWord(0x006, 0xFFFF);
+                Check.Equal((ushort)0x8000, Lof(), "Writing the read port cannot change LOF.");
+                Field(); Check.Equal((ushort)0x8000, Lof(), "Cleared LACE retains a programmed long field.");
+                registers.WriteWord(0x100, 4);
+                Field(); Check.Equal((ushort)0, Lof(), "LACE toggles at the next field boundary.");
+                using var stream = new MemoryStream(); agnus.SaveState(new BinaryWriter(stream));
+                Field(); Check.Equal((ushort)0x8000, Lof(), "Interlaced fields alternate.");
+                stream.Position = 0; agnus.LoadState(new BinaryReader(stream));
+                Check.Equal((ushort)0, Lof(), "Restore preserves the actual flop independently of host frame parity.");
+                registers.WriteWord(0x100, 0);
+                Field(); Check.Equal((ushort)0, Lof(), "Disabling LACE freezes the current field selection.");
+                registers.WriteWord(0x02A, 0x8000);
+                agnus.Reset(); agnus.Tick(); Check.Equal((ushort)0, Lof(), "Reset clears the saved field selection.");
+            }
         }
 
         private static void TestDmaPointersAcrossBlankLines()

@@ -71,10 +71,7 @@ namespace AmigaEmulator.Core.Video
         public void Clear(uint argb)
         {
             Array.Clear(_spritePixels);
-            for (int index = 0; index < _pixels.Length; index++)
-            {
-                _pixels[index] = argb;
-            }
+            Array.Fill(_pixels, argb);
         }
 
         /// <summary>

@@ -15,6 +15,12 @@
 */
 namespace AmigaEmulator.Core.Cpu
 {
+    /// <summary>Board cache-inhibit input for an aligned instruction longword fill.</summary>
+    public interface IM68kCacheBus
+    {
+        bool IsInstructionCacheable(uint physicalAddress);
+        bool IsDataCacheable(uint physicalAddress) => IsInstructionCacheable(physicalAddress);
+    }
     /// <summary>Gives FIFO devices a temporary read cursor during deferred instruction planning.</summary>
     public interface IM68kPlanningBus
     {

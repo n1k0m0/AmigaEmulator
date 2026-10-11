@@ -36,10 +36,15 @@ for (int sample = 0; sample < samples; sample++)
     double seconds = (previous - start) / (double)Stopwatch.Frequency;
     allocated = GC.GetAllocatedBytesForCurrentThread() - allocated;
     Array.Sort(times);
+    // Capture complete serialized CPU state outside the timed/allocation region;
+    // equal registers alone can hide divergent bus retirement or cache entries.
+    using var cpuState = new MemoryStream();
+    system.Cpu.SaveState(new BinaryWriter(cpuState));
     Console.WriteLine(JsonSerializer.Serialize(new { sample, model = metadata.MachineModel.ToString(),
         ram = metadata.RamProfile.ToString(), profile = system.AccuracyOptions.Name, frames, seconds, fps = frames / seconds,
         medianFrameMs = times[frames / 2], p95FrameMs = times[Math.Max(0, (int)Math.Ceiling(frames * 0.95) - 1)],
         allocated, pc = system.Cpu.PC.ToString("X8"), cpu = system.GetCpuDebugInfo(),
+        cpuStateHash = Convert.ToHexString(SHA256.HashData(cpuState.GetBuffer().AsSpan(0, (int)cpuState.Length))),
         hash = Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(system.PresentedFrameBuffer.Pixels.AsSpan()))) }));
 }
 return 0;

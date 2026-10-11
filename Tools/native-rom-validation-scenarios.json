@@ -13,20 +13,20 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "cold-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
         "label": "restored",
         "type": "restore",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
         "cycles": 2000000,
         "type": "wait",
         "label": "continued",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
@@ -38,7 +38,7 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "warm-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
@@ -50,10 +50,11 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "second-cold-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       }
-    ]
+    ],
+    "maximumNonRomExceptions": 0
   },
   {
     "hardDiskReadOnly": true,
@@ -69,20 +70,20 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "cold-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
         "label": "restored",
         "type": "restore",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
         "cycles": 2000000,
         "type": "wait",
         "label": "continued",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
@@ -94,7 +95,7 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "warm-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
@@ -106,10 +107,11 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "second-cold-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       }
-    ]
+    ],
+    "maximumNonRomExceptions": 0
   },
   {
     "hardDiskReadOnly": true,
@@ -125,20 +127,20 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "cold-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
         "label": "restored",
         "type": "restore",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
         "cycles": 2000000,
         "type": "wait",
         "label": "continued",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
@@ -150,7 +152,7 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "warm-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       },
       {
@@ -162,10 +164,11 @@
         "cycles": 60000000,
         "type": "wait",
         "label": "second-cold-boot",
-        "expectedFrameHash": "D23BC28DE051DF36F0BD88FF006CF202B9A13B75BA3B0E847146735EC4BD9913",
+        "expectedFrameHash": "E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84",
         "minimumHardDiskReads": 14
       }
-    ]
+    ],
+    "maximumNonRomExceptions": 0
   },
   {
     "hardDiskReadOnly": true,

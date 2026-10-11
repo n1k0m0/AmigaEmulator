@@ -2587,7 +2587,19 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private ushort FetchWord()
         {
-            if (_mmu != null) return Fetch030Word();
+            if (!_has020) return FetchUncachedWord();
+            bool previous = _cacheAccessInProgress;
+            _cacheAccessInProgress = true;
+            try
+            {
+                if ((_cacheControl & 1) != 0) return FetchCachedInstructionWord();
+                return _mmu != null ? Fetch030Word() : FetchUncachedWord();
+            }
+            finally { _cacheAccessInProgress = previous; }
+        }
+
+        private ushort FetchUncachedWord()
+        {
             uint address = _state.PC & AddressMask;
             if (_has020 && (address & 1) != 0)
             {
@@ -3012,6 +3024,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private byte ReadByte(uint address)
         {
+            if (_dataCacheEnabled && !_cacheAccessInProgress) return (byte)ReadCachedData(address, 1);
             if (_mmu != null) address = Translate030Address(address, false, 1);
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
@@ -3029,6 +3042,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private ushort ReadWord(uint address)
         {
+            if (_dataCacheEnabled && !_cacheAccessInProgress) return (ushort)ReadCachedData(address, 2);
             CheckAlignedAccess(address, 2, false);
             if (_has020 && (address & 1) != 0) return (ushort)((ReadByte(address) << 8) | ReadByte(address + 1));
             if (_mmu != null) address = Translate030Address(address, false);
@@ -3049,6 +3063,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private uint ReadLong(uint address)
         {
+            if (_dataCacheEnabled && !_cacheAccessInProgress) return ReadCachedData(address, 4);
             CheckAlignedAccess(address, 4, false);
             if (_has020 && (address & 1) != 0)
                 return ((uint)ReadByte(address) << 24) | ((uint)ReadWord(address + 1) << 8) | ReadByte(address + 3);
@@ -3091,6 +3106,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private void WriteByte(uint address, byte value)
         {
+            if (_dataCacheEnabled && !_cacheAccessInProgress) { WriteCachedData(address, 1, value); return; }
             if (_mmu != null) address = Translate030Address(address, true, 1);
             RecordBusMicroOps(M68kTraceAccessType.Write, address, 1, value, true, true);
             if (_deferBusSideEffects)
@@ -3106,6 +3122,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private void WriteWord(uint address, ushort value)
         {
+            if (_dataCacheEnabled && !_cacheAccessInProgress) { WriteCachedData(address, 2, value); return; }
             CheckAlignedAccess(address, 2, true);
             if (_has020 && (address & 1) != 0)
             { WriteByte(address, (byte)(value >> 8)); WriteByte(address + 1, (byte)value); return; }
@@ -3124,6 +3141,7 @@ namespace AmigaEmulator.Core.Cpu
         /// </summary>
         private void WriteLong(uint address, uint value)
         {
+            if (_dataCacheEnabled && !_cacheAccessInProgress) { WriteCachedData(address, 4, value); return; }
             CheckAlignedAccess(address, 4, true);
             if (_has020 && (address & 1) != 0)
             { WriteByte(address, (byte)(value >> 24)); WriteWord(address + 1, (ushort)(value >> 8)); WriteByte(address + 3, (byte)value); return; }

@@ -6,6 +6,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AmigaEmulator.Core;
 using AmigaEmulator.Core.Input;
 using AmigaEmulator.Core.Media;
@@ -17,12 +18,22 @@ if (args.Length < 2)
     Console.Error.WriteLine("GameRunner <scenario.json> <output-directory|--validate> [case-name]");
     return 2;
 }
-var scenarios = JsonSerializer.Deserialize<List<Scenario>>(File.ReadAllText(args[0]),
-    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-if (scenarios == null || scenarios.Count == 0) throw new ArgumentException("No scenarios found.");
+List<Scenario> scenarios;
+try
+{
+    // A misspelled key/button must not silently become key zero/default Fire.
+    scenarios = JsonSerializer.Deserialize<List<Scenario>>(File.ReadAllText(args[0]),
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow });
+}
+catch (Exception ex) when (ex is JsonException || ex is IOException || ex is UnauthorizedAccessException)
+{ Console.Error.WriteLine($"INVALID scenario file: {ex.Message}"); return 1; }
+if (scenarios == null || scenarios.Count == 0 || scenarios.Any(s => s == null))
+{ Console.Error.WriteLine("INVALID scenario file: expected a nonempty list without null entries."); return 1; }
 var selected = scenarios.Where(s => args.Length < 3 || s.Name == args[2]).ToList();
 if (selected.Count == 0) { Console.Error.WriteLine("Requested case was not found."); return 2; }
 bool validateOnly = args[1] == "--validate";
+if (selected.Select(s => s.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != selected.Count)
+{ Console.Error.WriteLine("INVALID selection: duplicate scenario names would replace evidence."); return 1; }
 // Validate the complete selection before starting a potentially long sweep.
 // Validation never creates images, mounts disks or mutates a running machine.
 foreach (var scenario in selected)
@@ -81,7 +92,7 @@ static void Validate(Scenario scenario)
         {
             case "wait": case "mouse": case "reset": case "restore": break;
             case "key":
-                if (action.Key < 0 || action.Key > 0x7F || (action.Modifiers ?? []).Any(key => key < 0 || key > 0x7F))
+                if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || (action.Modifiers ?? []).Any(key => key < 0 || key > 0x7F))
                     throw new ArgumentOutOfRangeException(nameof(action.Key));
                 break;
             case "click": case "joystick":
@@ -221,16 +232,16 @@ static string Run(Scenario scenario, string output)
             case "wait": system.RunChipCycles(action.Cycles); break;
             case "key":
                 var modifiers = action.Modifiers ?? [];
-                if (action.Key < 0 || action.Key > 0x7F || modifiers.Any(key => key < 0 || key > 0x7F))
+                if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || modifiers.Any(key => key < 0 || key > 0x7F))
                     throw new ArgumentOutOfRangeException(nameof(action.Key), "Amiga raw keys must be 0..127.");
                 foreach (int modifier in modifiers)
                 {
                     system.Input.KeyboardKeyDown((byte)modifier);
                     system.RunChipCycles(120_000);
                 }
-                system.Input.KeyboardKeyDown((byte)action.Key);
+                system.Input.KeyboardKeyDown((byte)action.Key.Value);
                 system.RunChipCycles(action.Cycles > 0 ? action.Cycles : 400_000);
-                system.Input.KeyboardKeyUp((byte)action.Key);
+                system.Input.KeyboardKeyUp((byte)action.Key.Value);
                 for (int i = modifiers.Count - 1; i >= 0; i--)
                     system.Input.KeyboardKeyUp((byte)modifiers[i]);
                 system.RunChipCycles(400_000);
@@ -334,7 +345,7 @@ static string Run(Scenario scenario, string output)
         var bytes = MemoryMarshal.AsBytes(frame.Pixels.AsSpan());
         log.WriteLine(JsonSerializer.Serialize(new { label, seconds, frame = system.FrameCounter,
             pc = system.Cpu.PC.ToString("X6"), hash = Convert.ToHexString(SHA256.HashData(bytes)),
-            presentation = system.GetPresentationDebugInfo(), cpu = system.GetCpuDebugInfo(), stopped = system.Cpu.IsStopped, exceptions,
+            presentation = system.GetPresentationDebugInfo(), cpu = system.GetCpuDebugInfo(), cacheControl = system.Cpu.CacheControl.ToString("X8"), stopped = system.Cpu.IsStopped, exceptions,
             exceptionObservations = scenario.TraceExceptions ? new { nonRomExceptions, nonRomExceptionVectors, firstNonRomException } : null,
             disk = system.Bus.FloppyController.GetDebugInfo(), hardDisk = new { path = system.Bus.HardDisk.Image?.Path, reads = system.Bus.HardDisk.ReadSectors, writes = system.Bus.HardDisk.WrittenSectors },
             diskDma = system.Paula.GetDiskDebugInfo(), audio = system.Paula.GetAudioDebugInfo(), input = new { port0 = system.Input.Port0Mode.ToString(),
@@ -394,7 +405,7 @@ class ScenarioAction
     public string Type { get; set; }
     public string Label { get; set; }
     public int Cycles { get; set; }
-    public int Key { get; set; }
+    public int? Key { get; set; }
     public List<int> Modifiers { get; set; }
     public int X { get; set; }
     public int Y { get; set; }

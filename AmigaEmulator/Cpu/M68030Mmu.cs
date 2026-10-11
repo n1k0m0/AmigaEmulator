@@ -14,6 +14,8 @@ namespace AmigaEmulator.Core.Cpu
     {
         public const ushort BusError = 0x8000, Limit = 0x4000, SupervisorOnly = 0x2000,
             WriteProtected = 0x0800, Invalid = 0x0400, Modified = 0x0200, Transparent = 0x0040;
+        // Internal translation attribute, absent from the architected MMUSR.
+        public const ushort CacheInhibit = 0x1000;
         private readonly Func<uint, uint> _read;
         private readonly Action<uint, uint> _write;
         private readonly Dictionary<(uint page, int fc), Translation> _atc = new();
@@ -81,8 +83,11 @@ namespace AmigaEmulator.Core.Cpu
         public Translation Translate(uint logical, int functionCode, bool write, bool updateDescriptors = true)
         {
             functionCode &= 7;
-            if (functionCode == 7 || Matches(Transparent0, logical, functionCode, !write) || Matches(Transparent1, logical, functionCode, !write))
-                return new(logical, Transparent, 0);
+            if (functionCode == 7) return new(logical, Transparent, 0);
+            if (Matches(Transparent0, logical, functionCode, !write))
+                return new(logical, (ushort)(Transparent | ((Transparent0 & 0x400) != 0 ? CacheInhibit : 0)), 0);
+            if (Matches(Transparent1, logical, functionCode, !write))
+                return new(logical, (ushort)(Transparent | ((Transparent1 & 0x400) != 0 ? CacheInhibit : 0)), 0);
             if ((TranslationControl & 0x80000000) == 0) return new(logical, 0, 0);
             uint mask = (1u << PageBits) - 1;
             var key = (logical >> PageBits, functionCode);
@@ -100,6 +105,13 @@ namespace AmigaEmulator.Core.Cpu
             }
             return result;
         }
+        public bool TryGetCachedTranslation(uint logical, int functionCode, out Translation translation)
+        {
+            translation = default;
+            return (TranslationControl & 0x80000000) != 0 &&
+                !Matches(Transparent0, logical, functionCode & 7, true) && !Matches(Transparent1, logical, functionCode & 7, true) &&
+                _atc.TryGetValue((logical >> PageBits, functionCode & 7), out translation);
+        }
         public Translation Test(uint logical, int functionCode, bool write, bool cachedOnly)
             => Test(logical, functionCode, write, cachedOnly ? 0 : 7);
         public Translation Test(uint logical, int functionCode, bool write, int level)
@@ -113,6 +125,7 @@ namespace AmigaEmulator.Core.Cpu
                 else result = new(0, Invalid, 0);
             }
             else result = Walk(logical, functionCode & 7, write, false, level);
+            result = result with { Flags = (ushort)(result.Flags & ~CacheInhibit) };
             Status = result.Flags; return result;
         }
         private static ushort AtcStatus(ushort tableFlags)
@@ -176,6 +189,7 @@ namespace AmigaEmulator.Core.Cpu
                 }
                 if (type == 1)
                 {
+                    if (!rootDescriptor && (descriptor & 0x40) != 0) accrued |= CacheInhibit;
                     uint physical = rootDescriptor ? unchecked(target + logical) : width != 0 ? unchecked(target + (logical & ((1u << shift) - 1)))
                         : (target & ~((1u << PageBits) - 1)) | (logical & ((1u << PageBits) - 1));
                     return new(physical, (ushort)(accrued | level), descriptorAddress);

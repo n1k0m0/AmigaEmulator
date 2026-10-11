@@ -19,6 +19,25 @@ Use `GameRunner <scenario.json> --validate [case-name]` for a read-only
 preflight of model/RAM layouts, referenced disks, keys and button names.
 Invalid selections return 1 before any cases start; a missing case returns 2.
 Normal runs perform the same preflight before creating output directories.
+Unknown JSON fields, missing raw `key` values and duplicate case names are
+rejected. Use `key`/`button`, not `code`/`buttons`: older runners silently
+ignored those spellings and could send key zero or default Fire instead.
+Run `python Tools/test_game_runner.py` after building to check these guards
+without ROMs, guest execution or disk creation.
+
+`Tools/run-purchased-os-validation.ps1` prepares fresh copies of an installed
+OS HDF for A500/A500+/A600/A2000 OCS/ECS, using the user's unsplit shared-family
+Kickstart 46.143 ROM (SHA-1 D81CD6F131040895843D9DFA95A45BC95EDD9704).
+Pass `-SourceHardDisk`, `-KickstartRom` and a new `-OutputDirectory`; optional
+`-Models` selects a subset and `-ManifestOnly` stops after preparing private
+copies/JSON. The script exercises Shell, Version, ShowConfig, Clock, file
+writes, warm/cold resets and exact restore. Both first and second Type results
+are retained separately for review. The initial first-read concern was a
+misread small capture; a DOS probe and revised five-board cold tests confirm
+the content already appears on the first command.
+Review screenshots and independently read the test HDF before acceptance.
+No ROM, OS file or installed HDF is included in Git. Desktop/AGA boards need
+their own matching ROMs and separate scenarios.
 
 Each case creates numbered PNGs, `steps.jsonl` and a continuation
 `checkpoint.amigasav`. Log entries include raw CPU/drive diagnostics, frame
@@ -30,6 +49,8 @@ counts toward that interval. Output filenames are replaced on reruns;
 use a fresh output directory to preserve earlier evidence.
 Step logs also include Paula DMA counters/queue state and input-port modes and
 JOY0DAT and Paula audio state, to distinguish media/loader failures from pointer/input failures.
+`cacheControl` records CACR so OS command output can be checked against the
+actually enabled instruction/data caches rather than only their requested state.
 Each completed case also writes `result.json`: `executed-unreviewed` means
 only that the script ran; `failed` includes the exception. The actual model is
 recorded from the running machine, including for savestate continuations.

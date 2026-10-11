@@ -14,37 +14,48 @@ namespace AmigaEmulator.Core.Cpu
         [NonSerialized] private ushort _accessControlStatus;
         public AmigaCpuModel Model => _cpuModel;
         public uint VectorBase => _vectorBase;
+        public uint CacheControl => _cacheControl;
 
         private void Reset020State()
         {
             _vectorBase = _cacheControl = _cacheAddress = _masterStackPointer = 0;
             _sourceFunctionCode = _destinationFunctionCode = 0;
             _accessControl0 = _accessControl1 = 0; _accessControlStatus = 0;
+            ClearInstructionCache();
+            ClearDataCache(); _dataCacheEnabled = false; _cacheAccessInProgress = false;
             _mmu?.Reset(); _functionCodeOverride = -1;
         }
 
         private void Save020State(BinaryWriter writer)
         {
-            writer.Write(_cpuModel == AmigaCpuModel.M68030 ? 3 : _cpuModel == AmigaCpuModel.M68EC030 ? 2 : 1); writer.Write((int)_cpuModel);
+            writer.Write(5); writer.Write((int)_cpuModel);
             writer.Write(_vectorBase); writer.Write(_cacheControl); writer.Write(_cacheAddress);
             writer.Write(_masterStackPointer); writer.Write(_sourceFunctionCode); writer.Write(_destinationFunctionCode);
             if (_cpuModel == AmigaCpuModel.M68EC030)
             { writer.Write(_accessControl0); writer.Write(_accessControl1); writer.Write(_accessControlStatus); }
             if (_cpuModel == AmigaCpuModel.M68030) _mmu.SaveState(writer);
+            SaveInstructionCache(writer);
+            if (Has030Cache) SaveDataCache(writer);
         }
 
         private void Load020State(BinaryReader reader)
         {
             int version = reader.ReadInt32();
-            if (version < 1 || version > 3 || (version == 2 && _cpuModel != AmigaCpuModel.M68EC030) ||
+            if (version < 1 || version > 5 || (version == 2 && _cpuModel != AmigaCpuModel.M68EC030) ||
                 (version == 3 && _cpuModel != AmigaCpuModel.M68030) || reader.ReadInt32() != (int)_cpuModel)
                 throw new InvalidDataException("CPU extension state does not match the selected processor.");
             _vectorBase = reader.ReadUInt32(); _cacheControl = reader.ReadUInt32(); _cacheAddress = reader.ReadUInt32();
             _masterStackPointer = reader.ReadUInt32(); _sourceFunctionCode = reader.ReadUInt32(); _destinationFunctionCode = reader.ReadUInt32();
             _accessControl0 = _accessControl1 = 0; _accessControlStatus = 0;
-            if (version == 2)
+            if (version == 2 || (version >= 4 && _cpuModel == AmigaCpuModel.M68EC030))
             { _accessControl0 = reader.ReadUInt32(); _accessControl1 = reader.ReadUInt32(); _accessControlStatus = reader.ReadUInt16(); }
-            if (version == 3) _mmu.LoadState(reader);
+            if (version == 3 || (version >= 4 && _cpuModel == AmigaCpuModel.M68030)) _mmu.LoadState(reader);
+            ClearInstructionCache();
+            if (version >= 4) LoadInstructionCache(reader);
+            ClearDataCache();
+            if (version >= 5 && Has030Cache) LoadDataCache(reader);
+            _dataCacheEnabled = Has030Cache && (_cacheControl & 0x100) != 0;
+            _cacheAccessInProgress = false;
             _functionCodeOverride = -1;
         }
 
@@ -228,10 +239,18 @@ namespace AmigaEmulator.Core.Cpu
                     // The EC030 adds data-cache and burst/write-allocation controls.
                     // Clear-entry/all are commands and always read back as zero.
                     _cacheControl = value & (_cpuModel == AmigaCpuModel.M68EC030 || _cpuModel == AmigaCpuModel.M68030 ? 0x3313u : 3u);
+                    if ((value & 8) != 0) ClearInstructionCache();
+                    if ((value & 4) != 0) ClearInstructionCacheEntry();
+                    if (Has030Cache)
+                    {
+                        if ((value & 0x800) != 0) ClearDataCache();
+                        if ((value & 0x400) != 0) ClearDataCacheEntry();
+                    }
+                    _dataCacheEnabled = Has030Cache && (_cacheControl & 0x100) != 0;
                     InvalidatePrefetch(); break;
                 case 0x800: _state.USP = value; break;
                 case 0x801: _vectorBase = value; break;
-                case 0x802: _cacheAddress = value & 0xFC; break;
+                case 0x802: _cacheAddress = Has030Cache ? value : value & 0xFC; break;
                 case 0x803: _masterStackPointer = value; if (IsSupervisor() && (_state.SR & 0x1000) != 0) SetA(7, value); break;
                 case 0x804: _state.SSP = value; if (IsSupervisor() && (_state.SR & 0x1000) == 0) SetA(7, value); break;
                 default: throw new InvalidOperationException("Unknown 020 control register.");
@@ -402,7 +421,7 @@ namespace AmigaEmulator.Core.Cpu
             ushort ext = FetchWord(); if ((ext & 0x7FF) != 0) throw new InvalidOperationException();
             int register = (ext >> 12) & 7; bool addressRegister = (ext & 0x8000) != 0;
             int oldFunctionCode = _functionCodeOverride;
-            if (_mmu != null) _functionCodeOverride = (int)(((ext & 0x800) != 0 ? _destinationFunctionCode : _sourceFunctionCode) & 7);
+            _functionCodeOverride = (int)(((ext & 0x800) != 0 ? _destinationFunctionCode : _sourceFunctionCode) & 7);
             try
             {
             if ((ext & 0x800) != 0)

@@ -27,8 +27,23 @@ namespace AmigaEmulator.Core.Memory
     /// <summary>
     /// Routes 68000 memory accesses between Chip RAM, Slow RAM, CIA chips, custom registers, and Kickstart ROM.
     /// </summary>
-    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider, IM68kPlanningBus
+    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider, IM68kPlanningBus, IM68kCacheBus
     {
+        public bool IsInstructionCacheable(uint physicalAddress)
+        {
+            AmigaAddressRegion region = GetRegion(physicalAddress);
+            return (region == AmigaAddressRegion.ChipRam || region == AmigaAddressRegion.SlowRam ||
+                region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.KickstartRom) &&
+                GetRegion(unchecked(physicalAddress + 3)) == region;
+        }
+        public bool IsDataCacheable(uint physicalAddress)
+        {
+            // Chip/Slow RAM is DMA-visible and data-cache inhibited on the
+            // Amiga boards. Instruction fetches remain independently cachable.
+            AmigaAddressRegion region = GetRegion(physicalAddress);
+            return (region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.KickstartRom) &&
+                GetRegion(unchecked(physicalAddress + 3)) == region;
+        }
         public GayleIdeController HardDisk { get; }
         public ZorroRamAutoConfig AutoConfig { get; }
         public Msm6242Clock BatteryClock { get; }

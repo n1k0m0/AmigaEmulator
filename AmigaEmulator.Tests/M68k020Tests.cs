@@ -122,7 +122,7 @@ namespace AmigaEmulator.Tests
 
         private static void TestAddressWidth()
         {
-            foreach (var model in new[] { AmigaCpuModel.M68EC020, AmigaCpuModel.M68020, AmigaCpuModel.M68EC030 })
+            foreach (var model in new[] { AmigaCpuModel.M68EC020, AmigaCpuModel.M68020, AmigaCpuModel.M68EC030, AmigaCpuModel.M68030 })
             {
                 var (cpu, bus) = Prepare(model, 0x2010);
                 bus.WriteLong(0x01003000, 0xFEDCBA98); bus.WriteLong(0x3000, 0x12345678);
@@ -136,8 +136,11 @@ namespace AmigaEmulator.Tests
                 Check.Equal(model != AmigaCpuModel.M68EC020 ? 0x12345678u : 0xFEDCBA98u,
                     system.Bus.PeekLong(0x3000), "ROM high-memory probes cannot corrupt low RAM on a 32-bit board.");
                 foreach (uint physical in new uint[] { 0x3000, 0x200000, 0xBFE001, 0xDFF180, 0xDA8000, 0xE80000, 0xF80000 })
+                foreach (uint upperBits in new uint[] { 0x08000000, 0x80000000 })
                 {
-                    uint high = physical | 0x08000000;
+                    // Old disk loaders also store flags in bit 31. A 030 must
+                    // retain that bit, rather than invent a Chip RAM alias.
+                    uint high = physical | upperBits;
                     Check.Equal(model != AmigaCpuModel.M68EC020 ? AmigaAddressRegion.Unmapped : system.Bus.GetRegion(physical),
                         system.Bus.GetRegion(high), "Device decoding follows the physical CPU address lines.");
                     if (model != AmigaCpuModel.M68EC020)

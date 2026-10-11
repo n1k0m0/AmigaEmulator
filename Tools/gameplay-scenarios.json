@@ -2549,8 +2549,8 @@
       },
       {
         "type": "mouse",
-        "dx": -180,
-        "dy": 110,
+        "x": -180,
+        "y": 110,
         "label": "bedroom-floor-pointer"
       },
       {

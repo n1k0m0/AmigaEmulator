@@ -1,6 +1,6 @@
 # Machine models: implementation and validation
 
-Status: 2026-10-09. Select a machine through **Esc -> MACHINE -> MODEL**.
+Status: 2026-10-11. Select a machine through **F10 -> SETTINGS -> HARDWARE**.
 Changing the model restarts the guest. Every model except A500 is currently
 marked **PREVIEW**. Preview means incomplete hardware/software coverage.
 
@@ -42,9 +42,25 @@ register semantics. Physical addresses remain 32-bit on 68020/EC030 and wrap
 at 24 bits on 68000/EC020. CPU clocks are scheduled independently of the PAL
 chip clock; a Chip RAM transfer still requires its DMA slot.
 
-Timing is approximate: instruction/data caches, pipeline timing, complete
+The 020/EC020 instruction cache has 64 independently tagged longwords; the
+030/EC030 has 16 lines with four independently valid longwords. CACR enable,
+freeze, clear and CAAR entry selection affect real cached instructions, with
+logical address/FC2 tags and no DMA snooping. Aligned fills respect bus slots,
+device inhibition, MMU page/transparent CI and resident ATC faults. The bus
+does not acknowledge burst requests, so only the demanded longword is filled.
+
+The 030/EC030 also has a separate 256-byte writethrough data cache, with 16
+logical tags, all three FC bits and four independently valid longwords per
+line. CACR enable/freeze, clear-all/entry and write allocation are implemented.
+Partial/misaligned operands cross entries independently; disabled entries are
+retained and frozen write hits update. Locked TAS/CAS/CAS2 reads use the
+external bus. Chip/Slow RAM and device apertures are data-inhibited on the
+Amiga motherboard; Fast RAM is cacheable without DMA snooping. MMU page/TT
+CI, EC030 ACU CI, protection faults and pending bus retirement remain active.
+
+Timing remains approximate. Pipeline timing, complete
 restartable fault frames, CALLM/RTM and optional floating-point coprocessors
-are not fully implemented. Do not advertise these paths as CPU conformance.
+remain incomplete. Do not advertise these paths as CPU conformance.
 
 `Cpu/M68030Mmu.cs` is connected to full-68030 instruction and data accesses.
 PMOVE/PLOAD/PTEST/PFLUSH and MOVES function codes are implemented. It supports
@@ -79,6 +95,10 @@ lores pixel-pair optimization. All 256 delay codes are checked against an
 independent register/bitstream fixture, including restore and final composition.
 Native superhires output, interlace,
 programmable monitor timing, scan doubling and genlock remain incomplete.
+The LOF field flop now follows VPOSW and toggles at field boundaries only
+while BPLCON0 LACE is set. It no longer alternates in non-interlaced output.
+This corrects field selection, not field lengths, weaving or programmable
+beam-counter writes; those separate timing/output gates remain open.
 Sprite output retains its bitmap/position separately from subsequent Copper
 register writes. VSTOP uses an exact beam comparison; a zero stop cannot create
 a fictitious line-256 fetch. Early DATA writes now initialize the new scanline
@@ -156,8 +176,10 @@ The existing automatic model selector recognizes all three identities. ROMs
 remain external user data; existing ROMs were preserved.
 
 Settings version 6 stores model and RAM separately. Public savestate file
-version 2 records the exact motherboard. Core version 14 stores the full model
-header and running sprite output shifters for every board. Core versions 1–13,
+version 2 records the exact motherboard. Core version 16 stores the full model
+header, running sprite output shifters and the extended CPU instruction/data
+caches (CPU extension version 5). Old CPU extension versions load with empty
+cache entries where no payload exists. Core versions 1–15,
 including earlier A500 files, remain readable. Older emulator builds reject the
 new core version. Wrong CPU/clock/chipset/IDE/RAM/motherboard loads
 are rejected before RAM mutation or disk reattachment. Development combinations
@@ -166,7 +188,7 @@ core-state API. Development state layouts are not a stable interchange format.
 
 ## Verification
 
-- 219 standard regression tests pass, including CPU/MMU, AGA, model, RTC,
+- 320 standard regression tests pass, including CPU/MMU/caches, AGA, model, RTC,
   PCMCIA, physical address, descriptor, A4000 PIO and A3000 SCSI/DMA cases.
   New fixtures cover running sprite tails/restores, early Copper DATA, exact
   stop comparisons, independent AGA border composition and packed bitplane output.
@@ -253,11 +275,11 @@ broader application and all-model storage coverage remain open.
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
 | 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 intro-to-game handoff (see follow-up below) | Current Siedler border report remains open; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
-| 2. Native gameplay | Initial Tinyus/Sqrxz 2 sweep extended to the full local ADF catalog; ECS vertical-window defect in Boxx 4 reproduced and fixed, with a failing-before regression | Complete the 240-case visual/control review and title-specific disk/menu continuations; intermittent Tinyus/new-Kickstart/68000 blank phases, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
-| 3. Performance | Cache unchanged display controls and opcode-derived descriptions; remove bitfield-name arrays; restore respects host trace settings; unobserved blitter tracing no longer allocates; paired CPU/frame hashes match | Continue profiling remaining allocations and repeat measurements after further changes |
-| 4. Installed OS | Purchased AmigaOS 3.1.4 installed on a new A4000/030 HDF; separate A3000/SCSI copy passes native 46.143 boot, Shell, Clock, ShowConfig, persistence and cold/warm/restore | Broader applications, install/boot on remaining models and complete storage-controller coverage |
-| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested | Native superhires, interlace fields/weaving, programmable timing, scan doubling, additional references |
-| 6. 020/030 correctness | Integer/MMU tests pass; locked-read protection faults and cached PTEST B/I status fixed; guest PMMU instruction and repair fixtures pass | Actual instruction/data caches, timing, ATC replacement and restartable format A/B faults |
+| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus blank/continue/start phases followed through to reviewed movement/fire on seven configurations (2026-10-11) | Complete the 240-case visual/control review and title-specific disk/menu continuations; Sqrxz text/reference checks, native AGA software and longer sessions remain open |
+| 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; timing lookup rejected after a regression (2026-10-11) | Continue profiling remaining allocations and repeat paired measurements after further changes |
+| 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; five older boards with owned 46.143 ROM, Shell/Clock/ShowConfig and independently verified file persistence/reset/restore (2026-10-11) | Broader applications and complete controller coverage; optional hardware remains gated |
+| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested; LOF/VPOSW field selection corrected with a failing-before fixture | Native superhires, interlace field lengths/weaving, programmable timing, scan doubling, additional references |
+| 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested | Complete timing, ATC replacement and restartable format A/B faults |
 | 7. Further hardware | Dependencies and test gates remain explicit; unsupported models stay unavailable | Optional 68881/68882, distinct 68040 CPU/MMU/FPU, then Zorro III enumeration |
 
 ### Gameplay evidence
@@ -281,6 +303,11 @@ ECS rendering. These are diagnostic controls, not recommended motherboard ROMs.
 The exact guest-side transition failure is still unresolved; this is not a
 clean compatibility pass on the affected configurations.
 A600 with only 1 MiB Chip reports the game's own insufficient-Fast-memory error.
+
+Follow-up 2026-10-11: the earlier short transition conclusion is superseded
+by longer cold/continue/start/control observations below. The blank phases
+are finite in those runs and also occur on the unchanged HEAD control. This
+does not establish a new renderer fix or complete long-session compatibility.
 Menu images and black frames do not count as successful gameplay.
 
 `Tools/a2000-ocs-cli-scenarios.json` reproduces the corrected, reviewed OCS CLI
@@ -294,7 +321,8 @@ hash only after reviewing a different test volume.
 Compatible without CPU/DMA tracing, warms the guest and measures consecutive
 frames using Stopwatch timestamps. JSON lines include FPS, median/p95 frame
 time, thread allocations, all CPU registers/last instruction and the presented
-ARGB hash. Run the identical tool against both core builds. Keep guest media,
+ARGB hash and complete serialized CPU-state SHA-256. CPU serialization runs
+outside the timed/allocation region. Run the identical tool against both core builds. Keep guest media,
 profile, warmup and frame counts identical; alternate the build order and avoid
 concurrent emulation jobs for final comparisons. The old CLI `--profile-savestate`
 now also obtains the model/RAM from the file rather than defaulting to A500.
@@ -1529,3 +1557,159 @@ migrated, with identical restored CPU/bus/beam/framebuffer state verified for
 all 22. `GameMediaNames.md` records scope, validation and the durable path-map
 and original-save backup location. This migration does not close any open
 hardware/gameplay roadmap gate.
+
+### Selected work 1, 3, 4, 5, 6: caches, fields and validation (2026-10-11)
+
+These numbers refer to the user's chat list (games, graphics, CPU/hardware,
+OS/storage, performance), separately from the stage table above. The whole
+selected scope remains active. SHRES, full interlace/programmed timing,
+restartable MMU faults, FPU, 040 and Zorro III are not complete or advertised
+as fully supported hardware.
+
+Actual 020/030 instruction caches and the separate 030/EC030 data cache now
+implement the geometry and semantics described above. Fixtures cover FC tags,
+aligned fills, self-modifying code, CACR/CAAR, writethrough, freeze/disable,
+write allocation, misaligned operands, MMU/ACU CI, locked RMW, faults and
+pending bus retirement/restore. Chip/Slow RAM and volatile apertures inhibit
+data caching; Fast RAM DMA still requires guest cache management. The bus
+does not acknowledge bursts. Timing remains approximate. Core version 16 /
+CPU extension 5 stores both caches and reads legacy missing payloads as empty.
+
+LOF now follows VPOSW and BPLCON0 LACE rather than host frame parity. Guest
+beam-read-register writes cannot corrupt it. This fixes a specific register
+defect; field length is still 312 lines, and weaving/counter writes are pending.
+Ten instruction-cache, eleven data-cache and one LOF fixtures extend the full
+suite to **320 passing tests, zero failures/skips**. Cache and LOF fixtures have
+failing-before proofs against frozen prior cores. Release application and both
+runner builds have zero warnings/errors.
+
+Native Kickstart 3.1 A1200/A3000/A4000 Initial CLI cold/warm/restore cases pass
+with zero observed non-ROM exceptions and reviewed SHA-256
+`E2DE8F5F9EDBB9843B7CB23C16B0CAD08F8998E92A17ACB596D7F0F7C1F1FB84`.
+Unchanged HEAD produced the same image: their previous golden was already
+stale. Only these three reviewed cases were updated.
+
+Installed OS 3.1.4 runs on disposable A4000/IDE and A3000/SCSI HDFs with both
+caches enabled by the guest CPU command. CACR `$00002101`, Shell status,
+Version, ShowConfig, Clock and readback were inspected. Both HDFs independently
+contain exactly `datacachetest\n`. The first Type after A3000 cold reset was
+initially misread as empty in the small capture. Reinspection shows the content;
+the pre-data-cache control has the same output. A separate A500 DOS Read probe
+records exactly `legacyostest\n` on both first and second commands. There is
+no demonstrated first-read storage/cache defect. An initial read-only guest continuation
+showed a write-protected volume; the replacement fresh writable cold boot made
+eight actual sector writes. The original installed A4000 HDF retains SHA-256
+`09957ec42de994fcfa5e81e48c8a25545df0f7a5805c30dc0331e23883253ada`.
+Additional native legacy OS tests use the user's purchased package's unsplit
+46.143 ROM, checksum `$FFFFFFFF`, SHA-1
+`D81CD6F131040895843D9DFA95A45BC95EDD9704`; the ROM/test disks stay external.
+
+Seven native/model Tinyus cold runs and longer continue/start controls were
+reviewed: A500, A500+, A600, A2000 ECS, A1200, A3000 and A4000/030. The blank
+phases are finite: by frame 3772 the newer-ROM 68000 cases show gameplay or
+Continue; controls through frame 4187 show enemies, movement/fire and exact
+power-cycle restore, with zero observed non-ROM exceptions. Unchanged HEAD
+A500+/A600 controls have the same transition images/CPU registers. The former
+permanent-hang interpretation is unproven; later transitions are not certified.
+The fresh native A2000 OCS case also shows enemies/movement/fire through frame
+2691 with zero observed non-ROM exceptions and exact restore, completing the
+eight-board bounded Tinyus coverage. Siedler's repaired K13 Compatible castle
+state continues with mouse input and exact reset/restore, with reviewed borders.
+
+A hidden STA probe uses the real AmigaWindow/SharpPixels paint and fullscreen
+toggle methods with isolated preferences. All six upscalers retain the viewport
+in window/fullscreen and aspect/fill combinations (24 checks). Fullscreen fill
+covers 2560x1440; aspect uses x=400,width=1760,height=1440. NONE matches independent
+pixel-center sampling exactly. Reviewed NONE-fill/HQ4X-aspect pictures retain
+the complete Siedler frame/menu. This is actual automated frontend rendering,
+not a visible manual input session or reproduction of the unknown failing setup.
+
+GameRunner silently ignored unknown fields. Older private Desert controls used
+`code` instead of `key`, sending zero instead of Return; Zak's source mouse
+action used ignored `dx`/`dy`. It now uses `x`/`y`. Unknown fields, missing keys,
+duplicate names and malformed/null scenario lists fail before output/disk
+creation. Seven preflight regressions fail on the old runner and pass now.
+All 80 direct source scenarios and a generated 24-case subset validate. Variant
+templates are generator inputs, not direct cases. Correct Return/Space/Fire
+Desert controls still show the carrier cinematic on A500/A1200; mission entry
+remains open. Earlier wrongly spelled controls cannot certify those inputs.
+
+Framebuffer clear uses Array.Fill. Five alternating pairs per game, 500 warmup
+frames and two 300-frame samples retain identical complete serialized CPU,
+register, PC and framebuffer hashes at all 20 paired endpoints. Final-core
+paired median changes versus the pre-clear control are Siedler +0.87% and
+Moonstone +0.52%; pair ranges are -2.03..+3.78% and -7.01..+3.75%. These are
+modest noisy measurements, not a large speedup. Earlier clear-only pairs showed
++2.35%/+1.61% with greater variance. A cycle-estimate lookup regressed Moonstone
+by 3.15% and was removed. The benchmark now hashes full CPU state outside timing.
+Long unattended Alien Breed becomes black on both HEAD and the changed core,
+including intentional ILLEGAL/trace vectors; it is not a gameplay FPS endpoint.
+
+Durable evidence is under
+`%APPDATA%/AmigaEmulator/diagnostics/RoadmapSelected-20261011-a7ac3b55b5e3/`:
+`regression-both-caches-final.log`, cache/LOF failing-before logs,
+`native-cli-data-cache-final/`, `os314-both-caches-final/`,
+`a3000-both-caches-cold/`, `a3000-cache-read-control/`,
+`a3000-cache-cold-comparison.json`, `cache-os-independent-verification.json`,
+`tinyus-lof-*-final/`, `tinyus-live-controls/`, `siedler-core-final/`,
+`frontend-probe/results.json`, `scenario-preflight-before-proof.log`,
+`runner-manifest-preflight.json` and `paired-performance-final-summary.json`.
+Frozen runtimes and private manifests remain beside the outputs.
+
+Fresh native A3000/A4000 Pinball source flows still recover to Kickstart after
+executing `$FFFF` at unmapped `$200002` (Line-F vector 11), preceded by the
+known user-mode MOVE-to-SR privilege probe. The A3000 pre-cache control has the
+same fault; the new caches change its frame timing, not the unmapped target.
+This is not a gameplay pass and no RAM alias/CPU bypass was introduced. Evidence:
+`selected-cold/`, with reviewed A3000 final output and the explicit exception logs.
+
+The later `pinball-unmapped-watch/` trace identifies an earlier cause at frame
+11219: the source disk reader obtains A3=`$80080000` from its tagged destination
+field and writes 87,634 bytes to unpopulated high space. Partyland's actual Chip
+RAM payload remains zero. Its relocation loop subsequently modifies the empty
+module, calls `$80010` at frame 12606 and executes zeros until the Line-F fault
+at `$200002`; it is not a direct jump to Zorro RAM. Removing motherboard Fast RAM
+does not repair the source copy (`pinball-chip-only-control/`, reviewed black
+output after the source flow, not a gameplay pass).
+
+This is the documented 24-bit pointer-tag compatibility problem on full 32-bit
+processors, described by the [WHDLoad author](https://www.whdload.de/docs/en/howto.html).
+The 68000/68EC020 discard the upper eight address bits; 68020/68EC030/68030 do
+not. The address-width fixture now includes full 68030 and bit-31 device/RAM
+probes. Original media is retained. A separately guarded, actually tested
+32-bit-clean loader copy would be required for this version; the core must not
+map `$80080000` onto Chip RAM or globally mask native desktop CPU addresses.
+
+For causality only, the external `PinballFlagProof` probe clears A3 bit 31 at
+two reader points (`$2C50`, `$2D1E`) after loading the before-table checkpoint.
+That modified diagnostic state reaches an actual Partyland table at frame
+13704 with zero non-ROM synchronous faults. A subsequent ordinary core/input
+continuation shows the lower table, launch/flipper activity and matching
+power-cycle restore at frame 13926, still zero observed faults. Screenshots
+were reviewed in `pinball-diagnostic-pointer-review/`; source SHA-256 remains
+`b186b41c3ffdc245743995fac86f4aa3e7476658607be6946c7b5c1a3e2a1476`.
+This confirms the pointer diagnosis, but host register edits are not a released
+fix or an accepted source-media compatibility case. Evidence also includes
+`pinball-pointer-cause-verification.json`. No production game-specific branch
+or hardware-address alias was added.
+
+The first five owned-ROM legacy OS scripts reach coherent desktops, but their
+Execute Command dialog drops the first letter of `newshell` and reports
+`ewshell: Unknown command`. Their later text/Clock steps are therefore invalid
+application evidence. These retained outputs are superseded by fresh
+`os-legacy-ready/` scripts waiting 12 million chip clocks for the dialog and
+Shell before typing. The permanent `Tools/run-purchased-os-validation.ps1`
+flow was then executed on five fresh HDF copies under `source-os-preflight/`.
+A500, A500+, A600, A2000 OCS and A2000 ECS show coherent Shell/Version/ShowConfig,
+Clock and file output after cold/warm restarts. All five HDFs independently contain
+exactly `legacyostest\n`; recorded CPU/frame/image restore endpoints match and
+no non-ROM synchronous exceptions were observed. Source test HDF and original
+installed user HDF hashes are unchanged. Evidence: `os-legacy-source-contact.png`,
+`legacy-os-independent-verification.json` and `dos-read-first-type-copy/dos-read.jsonl`.
+The initial claim of an empty first output was an incorrect visual assessment,
+not a fixed emulation defect; it is explicitly superseded here.
+
+Next: develop and verify a separate 32-bit-clean Pinball loader copy, and trace
+Desert/Mega mission transitions using validated inputs. Then implement missing native
+output and CPU/MMU hardware gates with independent fixtures. This checkpoint is
+ready for the user's requested commit/push; the recurring roadmap remains active.

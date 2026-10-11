@@ -371,7 +371,7 @@ namespace AmigaEmulator.Core.CustomChips
             DmaSlotTraceEntry slot = _dmaScheduler.GetSlot(_globalCycle, beamX, beamY);
             slot.CpuCanUseChipBus = !dmaMasterEnabled || slot.Owner == DmaOwner.Cpu;
             LastDmaSlot = slot;
-            UpdateBeamRegisters(beamX, beamY, frame);
+            UpdateBeamRegisters(beamX, beamY);
             if (LastDmaSlot.Owner == DmaOwner.Bitplane)
             {
                 Bitplanes.FetchDmaPlaneWord(beamX, beamY);
@@ -426,18 +426,20 @@ namespace AmigaEmulator.Core.CustomChips
 
             _beamY = 0;
             _frame++;
+            // LOF is a hardware flop, not the host frame counter's parity.
+            // BPLCON0 LACE enables automatic toggling; VPOSW can set it even
+            // in a non-interlaced display. The register array saves the flop.
+            if ((CustomRegisters.ReadStoredWord(0x100) & 4) != 0)
+                CustomRegisters.WriteRawWord(Vposr, (ushort)(CustomRegisters.ReadWord(Vposr) ^ 0x8000));
         }
 
         /// <summary>
         /// Updates Beam Registers from current emulator state.
         /// </summary>
-        private void UpdateBeamRegisters(int beamX, int beamY, long frame)
+        private void UpdateBeamRegisters(int beamX, int beamY)
         {
             ushort vpos = (ushort)(_agnusId | ((beamY >> 8) & 0x0007));
-            if ((frame & 1) != 0)
-            {
-                vpos |= 0x8000;
-            }
+            vpos |= (ushort)(CustomRegisters.ReadWord(Vposr) & 0x8000);
 
             ushort vhpos = (ushort)(((beamY & 0xFF) << 8) | (beamX & 0xFF));
             CustomRegisters.WriteRawWord(Vposr, vpos);
