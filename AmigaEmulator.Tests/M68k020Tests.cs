@@ -16,6 +16,7 @@ namespace AmigaEmulator.Tests
             yield return Test("brief/full addressing includes scaling, suppression and indirect ordering", TestAddressing);
             yield return Test("odd data transfers work while odd instruction fetch creates an address-error frame", TestAlignment);
             yield return Test("EC020 wraps at 24 bits and 68020 preserves the full physical address", TestAddressWidth);
+            yield return Test("tagged block-loader repair preserves relative/absolute descriptors and reaches RAM on every CPU", TestTaggedBlockLoader);
             yield return Test("MOVEC relocates vectors and format zero restores through RTE", TestControlAndFrames);
             yield return Test("user-mode MOVEC probes distinguish a 68000 illegal opcode from 020/030 privilege faults", TestUserMovecProbe);
             yield return Test("master interrupts restore both stacks through the throwaway frame", TestMasterInterrupt);
@@ -66,6 +67,49 @@ namespace AmigaEmulator.Tests
                 Check.Equal((ushort)0, bus.ReadWord(cpu.A7), "The saved status retains user mode.");
                 Check.Equal(0x1004u, bus.ReadLong(cpu.A7 + 2), "The frame identifies the faulting MOVEC instruction.");
                 if (!originalCpu) Check.Equal((ushort)32, bus.ReadWord(cpu.A7 + 6), "Format zero records vector eight.");
+            }
+        }
+
+        private static void TestTaggedBlockLoader()
+        {
+            // The complete reviewed block-setup window, without ROMs or media.
+            // The expected destination is computed from the descriptor format;
+            // the following real CPU write proves where the reader would transfer.
+            byte[] original = Convert.FromHexString("2169001EFFE408A90007001E67082229002AD3A8FFE42369002200164268FFF44EF900002B8A");
+            byte[] repaired = Convert.FromHexString("2229001E08A90007001E67080881001FD2A9002A2141FFE42369002200164268FFF44EF82B8A");
+            foreach (var model in new[] { AmigaCpuModel.M68000, AmigaCpuModel.M68EC020,
+                AmigaCpuModel.M68020, AmigaCpuModel.M68EC030, AmigaCpuModel.M68030 })
+            foreach (uint descriptor in new[] { 0x00080000u, 0x80061800u })
+            foreach (bool fix in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(model, 0x4E71);
+                byte[] code = fix ? repaired : original;
+                for (int i = 0; i < code.Length; i++) bus.WriteByte(0x2A5Au + (uint)i, code[i]);
+                cpu.SetA(0, 0x3000); cpu.SetA(1, 0x4000);
+                for (int i = 0; i < 8; i++) cpu.SetD(i, 0x11223300u + (uint)i);
+                bus.WriteLong(0x401E, descriptor); bus.WriteLong(0x4022, 0x2200);
+                bus.WriteLong(0x402A, 0x1E800); bus.WriteWord(0x2FF4, 5);
+                cpu.SetProgramCounter(0x2A5A);
+                for (int i = 0; i < 12 && cpu.PC != 0x2B8A; i++) cpu.Step();
+                Check.Equal(0x2B8Au, cpu.PC, "Both setups enter the unchanged disk reader.");
+                Check.Equal(descriptor & 0x7FFFFFFF, bus.ReadLong(0x401E), "The descriptor's metadata flag is cleared.");
+                Check.Equal(0x2200u, bus.ReadLong(0x4016), "Transfer length retains the descriptor value.");
+                Check.Equal((ushort)0, bus.ReadWord(0x2FF4), "The block type is reset before the reader.");
+                for (int i = 0; i < 8; i++) if (i != 1)
+                    Check.Equal(0x11223300u + (uint)i, cpu.GetD(i), "Only the documented scratch register may change.");
+                uint expected = (descriptor & 0x80000000) == 0 ? descriptor :
+                    (descriptor & 0x7FFFFFFF) + 0x1E800;
+                bool tagged = (descriptor & 0x80000000) != 0;
+                Check.Equal(!fix && tagged ? expected | 0x80000000 : expected,
+                    bus.ReadLong(0x2FE4), "The repair strips metadata before publishing the transfer address.");
+                bus.WriteWord(0x2B8A, 0x2668); bus.WriteWord(0x2B8C, 0xFFE4); // MOVEA.L -28(A0),A3
+                bus.WriteWord(0x2B8E, 0x16BC); bus.WriteWord(0x2B90, 0x005A); // MOVE.B #$5A,(A3)
+                cpu.Step(); cpu.Step();
+                bool wide = model is AmigaCpuModel.M68020 or AmigaCpuModel.M68EC030 or AmigaCpuModel.M68030;
+                bool escaped = !fix && tagged && wide;
+                Check.Equal(escaped ? (byte)0 : (byte)0x5A, bus.ReadByte(expected), "The actual transfer reaches RAM on every repaired CPU.");
+                Check.Equal(escaped ? (byte)0x5A : (byte)0, bus.ReadByte(expected | 0x80000000),
+                    "The original full-address CPU control reproduces the unmapped tagged write.");
             }
         }
 

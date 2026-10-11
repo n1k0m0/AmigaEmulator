@@ -30,6 +30,9 @@ namespace AmigaEmulator.Core.Input
         // HRM Appendix G specifies approximately 60 us per keyboard clock bit.
         // PAL/NTSC E clocks are about 0.71 MHz; 43 ticks approximate that period.
         private const int KeyboardBitPeriodEClocks = 43;
+        // HRM Appendix G: a missing handshake starts recovery after 143 ms;
+        // recovery clocks one logical 1 per timeout, rather than another byte.
+        private const int KeyboardHandshakeTimeoutEClocks = 102_000;
 
         /// <summary>
         /// Stores keyboard Queue.
@@ -37,6 +40,13 @@ namespace AmigaEmulator.Core.Input
         private readonly Queue<byte> _keyboardQueue = new Queue<byte>();
         private bool _keyboardAwaitingHandshake;
         private uint _keyboardHandshakeSequence;
+        private int _keyboardHandshakeTimeout = KeyboardHandshakeTimeoutEClocks;
+        private byte _keyboardLastByte;
+        private bool _keyboardLastByteValid;
+        private bool _keyboardResynchronizing;
+        private bool _keyboardNotifyLostSync;
+        private bool _keyboardLostSyncPending;
+        private bool _keyboardSendingLostSync;
         /// <summary>
         /// Stores pressed Raw Keys.
         /// </summary>
@@ -110,6 +120,15 @@ namespace AmigaEmulator.Core.Input
             // Older snapshots predate explicit keyboard acknowledgement.
             _keyboardAwaitingHandshake = false;
             _keyboardHandshakeSequence = 0;
+            // Legacy snapshots did not retain the outstanding byte. Recover
+            // synchronization and queued events, without inventing that byte.
+            _keyboardHandshakeTimeout = KeyboardHandshakeTimeoutEClocks;
+            _keyboardLastByte = 0;
+            _keyboardLastByteValid = false;
+            _keyboardResynchronizing = false;
+            _keyboardNotifyLostSync = false;
+            _keyboardLostSyncPending = false;
+            _keyboardSendingLostSync = false;
             StateSerializer.ReadObjectFields(reader, this, "_ciaA");
             foreach (PortState port in _ports)
             {
@@ -126,8 +145,17 @@ namespace AmigaEmulator.Core.Input
             _keyboardQueue.Clear();
             _pressedRawKeys.Clear();
             _keyboardDelay = 0;
-            _keyboardAwaitingHandshake = false;
-            _keyboardHandshakeSequence = 0;
+            // Power-up first synchronizes with the host. Its acknowledgement
+            // is followed by FD/FE, without the timeout-only F9 notification.
+            _keyboardAwaitingHandshake = true;
+            _keyboardHandshakeSequence = _ciaA?.SerialInputHandshakeSequence ?? 0;
+            _keyboardHandshakeTimeout = 0;
+            _keyboardLastByte = 0;
+            _keyboardLastByteValid = false;
+            _keyboardResynchronizing = true;
+            _keyboardNotifyLostSync = false;
+            _keyboardLostSyncPending = false;
+            _keyboardSendingLostSync = false;
             EnqueueKeyboardSpecialCode(0xFD);
             EnqueueKeyboardSpecialCode(0xFE);
             for (int index = 0; index < _ports.Length; index++)
@@ -338,7 +366,8 @@ namespace AmigaEmulator.Core.Input
         /// </summary>
         public void TickEClock()
         {
-            if (_ciaA == null || _keyboardQueue.Count == 0)
+            if (_ciaA == null || (_keyboardQueue.Count == 0 && !_keyboardAwaitingHandshake &&
+                !_keyboardLostSyncPending && !_keyboardLastByteValid))
             {
                 return;
             }
@@ -348,7 +377,29 @@ namespace AmigaEmulator.Core.Input
             // handshake, which aborts the new transfer and can lose key releases.
             if (_keyboardAwaitingHandshake)
             {
-                if (_ciaA.SerialInputHandshakeSequence == _keyboardHandshakeSequence) return;
+                if (_ciaA.SerialInputHandshakeSequence == _keyboardHandshakeSequence)
+                {
+                    if (_keyboardHandshakeTimeout > 0 && --_keyboardHandshakeTimeout > 0) return;
+                    if (!_keyboardResynchronizing)
+                    {
+                        _keyboardResynchronizing = true;
+                        _keyboardNotifyLostSync = true;
+                        _keyboardSendingLostSync = false;
+                    }
+                    // KDAT is active low: the recovery's logical 1 is a low
+                    // physical bit, so the garbage character ends as a release.
+                    _ciaA.ClockSerialInputBit(false);
+                    _keyboardHandshakeTimeout = KeyboardHandshakeTimeoutEClocks;
+                    return;
+                }
+                if (_keyboardResynchronizing)
+                {
+                    _keyboardLostSyncPending = _keyboardNotifyLostSync;
+                    _keyboardResynchronizing = false;
+                    _keyboardNotifyLostSync = false;
+                }
+                else if (_keyboardSendingLostSync) _keyboardSendingLostSync = false;
+                else _keyboardLastByteValid = false;
                 _keyboardAwaitingHandshake = false;
                 _keyboardDelay = KeyboardSendDelayEClocks;
             }
@@ -364,9 +415,24 @@ namespace AmigaEmulator.Core.Input
                 return;
             }
 
-            _ciaA.QueueSerialInputByte(_keyboardQueue.Dequeue(), KeyboardBitPeriodEClocks);
+            byte value;
+            if (_keyboardLostSyncPending)
+            {
+                value = EncodeKeyboardDecodedByte(0xF9);
+                _keyboardLostSyncPending = false;
+                _keyboardSendingLostSync = true;
+            }
+            else if (_keyboardLastByteValid) value = _keyboardLastByte;
+            else
+            {
+                if (_keyboardQueue.Count == 0) return;
+                value = _keyboardLastByte = _keyboardQueue.Dequeue();
+                _keyboardLastByteValid = true;
+            }
+            _ciaA.QueueSerialInputByte(value, KeyboardBitPeriodEClocks);
             _keyboardHandshakeSequence = _ciaA.SerialInputHandshakeSequence;
             _keyboardAwaitingHandshake = true;
+            _keyboardHandshakeTimeout = KeyboardHandshakeTimeoutEClocks + 8 * KeyboardBitPeriodEClocks;
             _keyboardDelay = KeyboardSendDelayEClocks;
         }
 

@@ -5,9 +5,10 @@ The requested preceding version was committed and pushed as `464ce54` on
 **Executing a scenario is not a gameplay, graphics or compatibility pass.**
 
 Latest checkpoint (2026-10-11): actual 020/030 caches and corrected LOF are
-implemented; 320 core tests pass. Fresh bounded Tinyus input/restore coverage
+implemented; 322 core tests pass. Fresh bounded Tinyus input/restore coverage
 now includes all eight boards. The native desktop Pinball source failure is
-traced to a 24-bit tagged loader pointer. See the dated follow-up below and
+traced to a 24-bit tagged loader pointer; a separate repaired copy now passes
+native A3000/A4000 Partyland gameplay. See the dated follow-up below and
 MachineModels.md for exact evidence; complete-library acceptance remains open.
 
 ## Coverage and profiles
@@ -1090,3 +1091,128 @@ pass, and all 80 direct source cases plus the generated 24-case subset validate.
 Desert, Mega lo Mania, Cannon Fodder A2000 OCS and broader matrix acceptance
 remain open. Unsupported SHRES/interlace/040/FPU/Zorro III hardware is not
 made compatible by these game observations.
+
+## Separate Pinball repair and final TT-overlap core — 2026-10-11
+
+Checkpoint `1bbc12e` was committed/pushed at the user's request. Subsequent
+work remains local. See MachineModels.md's **Post-commit Pinball loader and
+overlapping TT fix** section for the exact code, hashes, rejected controls and
+evidence. The original-media table above is intentionally unchanged.
+
+`Tools/prepare_pinball_32bit_disk.py` creates a separate exact-hash Disk 1 that
+clears the loader's relative-address flag before publishing its transfer pointer.
+Native A3000/A4000 cold Partyland launch/flipper/restore now passes with this
+copy, and A500/A1200 cold controls pass too. On the final core, both desktops
+also pass power-cycle restore/continued input. A real patched-disk A3000 cold
+menu checkpoint is used for separately reviewed Speed Devils, Billion Dollar
+Gameshow and Stones 'n' Bones loading, one-player/launch/flipper and power-cycle
+restore. All three show their own artwork and observe zero new non-ROM faults.
+A4000's other three tables and longer sessions remain open.
+
+The retained early additional-table/quit attempts stayed on Partyland and are
+not accepted. Their misleading scenario names and zero exits cannot establish
+table coverage. Pause/quit needs further held-key observation.
+Accepted evidence is in `pinball-native-copy-cold/`,
+`pinball-copy-legacy-controls/`, `pinball-final-core-restore/`,
+`pinball-copy-before-table/`, `pinball-remaining-tables-valid-menu/` and
+`pinball-loader-final-reviewed.json` under the current evidence root.
+
+The matrix accepts explicit `-PinballCompatibleBoot`, preserving original
+cases, and optional `-PinballTables` for all four cold sequences with their
+correct disk and F-key. Both the complete 256-case default combined-copy
+manifest and 262-case four-table manifest validate. This is preflight, not
+complete-library gameplay acceptance. All fifty original ADFs and the original
+installed AmigaOS HDF remain unchanged. The prepared user-selectable copy is
+under `%USERPROFILE%/Documents/AmigaEmulator/Kompatibel/Pinball Fantasies/`.
+
+The 68030 TT-overlap CI correction has a failing-before independent MMU fixture,
+real instruction/data-cache fixtures, 322 passing core tests and native A3000
+HDF boot/golden/reset/restore verification. This preserves the existing state
+format and does not complete ATC replacement, timing or MMU fault restart.
+
+Desert Strike left/right click, map/movement and Shift/Escape controls still
+show the carrier. A CIA/game-variable probe confirms Fire reaches the guest's
+own button state. The stalled script/menu transition remains unresolved;
+Mega lo Mania/Cannon and the remaining hardware/model acceptance work stay open.
+
+## Keyboard recovery and bounded mission follow-up — 2026-10-11
+
+The latest local core passes 328 tests (zero failures/skips), nine strict-runner
+checks and a warning-free Release build. Missing keyboard acknowledgement now
+recovers with the HRM's slow bit synchronization, F9 and replay; startup and
+partial/legacy savestate recovery have independent failing-before fixtures.
+See MachineModels.md's **Keyboard recovery, Desert flight and remaining Pinball
+tables** section for protocol details and retained evidence.
+
+All four Pinball tables now have reviewed launch/flipper/power-cycle-restore
+continuations from real repaired-disk cold menus on both A3000 and A4000.
+A4000 Speed Devils reaches frame 12712, Billion Dollar Gameshow and Stones 'n'
+Bones frame 15095, without new non-ROM faults. Fresh Partyland cold starts on
+both desktops pass again on the keyboard-recovery core at frame 16332. The
+original-media table remains unchanged: the separate loader copy is explicitly
+selected, not substituted. Pause/quit is still open; normal Esc/Y now reaches
+a write-enable prompt, but private writable copies have not established the
+return to the menu. Longer sessions and separate cold starts for every table
+remain open.
+
+Desert Strike now has reviewed A500/A1200 lift-off, flight/fire, F10 map, map
+EXIT and exact power-cycle restore. Earlier carrier captures were already a
+playable starting state awaiting joystick Down; they did not prove a permanent
+cinematic hang. A second defect did block queued keyboard events after a lost
+initialization handshake. Recovery drains the seven-event legacy queue and
+the map visibly opens, without forced guest flags or registers.
+
+Fresh native-ROM cold prefixes reach the campaign menu at frame 24971. Exact
+menu continuations on both boards reach flight/map at 32737 and exit-map/flight
+restore at 32833; only the intentional startup CPU probes remain. The expanded
+`DESERTS1` source actions reproduce these segmented reviewed paths, with data
+disks mounted read-only before boot. The other six profiles, land combat,
+objectives and campaigns remain unaccepted. A regenerated 262-case full matrix
+validates but has not been executed/reviewed in full.
+
+A paired idle-path control preserves identical complete CPU/bus/beam/pixel
+states, with old/new times differing by about 0.4%; no FPS gain is claimed.
+Native A3000 HDF boot/reset/golden/restore passes again. All fifty original
+ADFs and the installed OS HDF are unchanged. Further game/model and hardware
+acceptance remains open; this does not complete the full roadmap.
+
+## Corrected live-ball review, disk tab and full Desert model coverage — 2026-10-11
+
+Latest local evidence:
+`%APPDATA%/AmigaEmulator/diagnostics/RoadmapContinuation-20261011-074437-f843c655/`.
+The final core passes 331 tests without failures/skips, ten runner guards and
+warning-free Release builds. Menu write protection now changes PROT without
+ejecting DF0, discarding partial/dirty writes or resetting pending insertion.
+Three failing-before tests exercise the actual menu and all four drive ports.
+
+Correction: the earlier two-million-clock Pinball Down hold did not prove
+a launched ball. Those cold checkpoints establish table loading/input/restore.
+With a full 15-million-clock pull and release, all four tables now have actual
+live-mode-1, flipper, visible frozen pause, exact power-cycle restore and Esc/Y
+quit-requester continuations on native A3000/A4000. The same corrected suffix
+is in the source. Eight cases have no new non-ROM faults and matching per-table
+pixels across desktops (`pinball-eight-reviewed.json`). Late pause controls
+after a drained ball are retained and rejected. This is segmented cold/suffix
+evidence rather than a new uninterrupted eight-case cold execution.
+
+A3000 Partyland also returns to the actual selection menu after cancelling
+score saving, inserting the requested main disk and then course Disk 2.
+Clearing the write-protect tab on a private checkpoint clears the requester;
+persistent scores are still unaccepted. An actual DMA-start buffer contains
+valid header-track-0 sectors while the physical head is on cylinder 1/side 1,
+so the canonical ADF guard rejects them. See MachineModels.md's latest section
+for the trace and next investigation. Original media is unchanged; the separate
+32-bit loader copy is still explicitly selected.
+
+Fresh uninterrupted native cold Desert flows on A500+, A600, both A2000s,
+A3000 and A4000/030 now pass lift-off, flight/fire, F10 map, mouse EXIT,
+cold-reset/exact restore and continued input at frame 32881. Only the expected
+startup CPU probes occur. Six final-runtime continuations pass again at 32963
+with zero new faults (`desert-six-reviewed.json`, `desert-six-final-tab-core/`).
+Combined with preceding A500/A1200 segmented tests, bounded flight/map coverage
+now spans all eight boards; land combat, objectives and campaigns remain open.
+
+The 262-case source-derived matrix validates, without claiming complete
+execution/review. All fifty original ADFs and installed OS HDF retain their
+preserved hashes. Pinball scores, Mega/Cannon transitions, longer sessions and
+remaining hardware gates keep the roadmap open.

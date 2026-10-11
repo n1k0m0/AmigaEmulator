@@ -43,7 +43,37 @@ class PreflightTests(unittest.TestCase):
                 self.assert_invalid([{"name": "typo", "actions": [action]}], validate=False)
 
     def test_key_action_requires_an_explicit_key(self):
-        self.assert_invalid([{"name": "missing-key", "actions": [{"type": "key"}]}])
+        for kind in ("key", "key-down", "key-up"):
+            with self.subTest(kind=kind):
+                self.assert_invalid([{"name": "missing-key", "actions": [{"type": kind}]}])
+
+    def test_held_keys_reject_invalid_codes_and_implicit_modifiers(self):
+        for kind in ("key-down", "key-up"):
+            for fields in ({"key": -1}, {"key": 128}, {"key": 25, "modifiers": [96]},
+                           {"key": 25, "cycles": -1}):
+                with self.subTest(kind=kind, fields=fields):
+                    self.assert_invalid([{"name": "invalid-edge", "actions": [{"type": kind, **fields}]}])
+
+    def test_explicit_held_key_chord_and_release_are_valid(self):
+        result = self.run_scenario([{"name": "held-chord", "actions": [
+            {"type": "key-down", "key": 25, "cycles": 400000},
+            {"type": "wait", "cycles": 1000000},
+            {"type": "key-down", "key": 69, "cycles": 400000},
+            {"type": "key-up", "key": 69, "cycles": 400000},
+            {"type": "key-up", "key": 25, "cycles": 400000}]}])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("VALID 1", result.stdout)
+
+    def test_write_protection_requires_an_explicit_tab_and_valid_drive(self):
+        for action in ({"type": "write-protect"},
+                       {"type": "write-protect", "drive": -1, "writeProtected": False},
+                       {"type": "write-protect", "drive": 4, "writeProtected": True}):
+            with self.subTest(action=action):
+                self.assert_invalid([{"name": "invalid-tab", "actions": [action]}])
+        result = self.run_scenario([{"name": "tab", "actions": [
+            {"type": "write-protect", "drive": 0, "writeProtected": False},
+            {"type": "write-protect", "drive": 3, "writeProtected": True}]}])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
     def test_unknown_scenario_field_is_rejected(self):
         self.assert_invalid([{"name": "typo", "bootDisk": "missing.adf", "actions": []}])

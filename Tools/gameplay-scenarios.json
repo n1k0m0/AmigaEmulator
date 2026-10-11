@@ -709,7 +709,22 @@
     "name": "DESERTS1",
     "boot": "Desert Strike (disk 1).adf",
     "ram": "Chip512KSlow512K",
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 2,
     "actions": [
+      {
+        "type": "disk",
+        "disk": "Desert Strike (disk 2).adf",
+        "drive": 1,
+        "label": "preboot-DF1"
+      },
+      {
+        "type": "disk",
+        "disk": "Desert Strike (disk 3).adf",
+        "drive": 2,
+        "label": "preboot-DF2"
+      },
       {
         "type": "wait",
         "cycles": 120000000,
@@ -733,6 +748,134 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "after-space"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "native-joystick-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "after-fire"
+      },
+      {
+        "type": "click",
+        "button": "Second",
+        "cycles": 1000000,
+        "label": "native-right-mouse"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "after-right-mouse"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "intro-wait-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "intro-wait-2"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "late-intro-left"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "after-late-intro"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "second-late-left"
+      },
+      {
+        "type": "wait",
+        "cycles": 200000000,
+        "label": "after-second-left"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "story-settle"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "skip-story"
+      },
+      {
+        "type": "wait",
+        "cycles": 700000000,
+        "label": "menu-ready"
+      },
+      {
+        "label": "start-campaign",
+        "cycles": 1000000,
+        "type": "click"
+      },
+      {
+        "label": "mission-carrier",
+        "cycles": 500000000,
+        "type": "wait"
+      },
+      {
+        "button": "Down",
+        "cycles": 20000000,
+        "label": "takeoff",
+        "type": "joystick"
+      },
+      {
+        "button": "Down",
+        "cycles": 20000000,
+        "label": "fly-forward",
+        "type": "joystick"
+      },
+      {
+        "button": "Fire",
+        "cycles": 2000000,
+        "label": "fire",
+        "type": "joystick"
+      },
+      {
+        "label": "map-f10",
+        "key": 89,
+        "cycles": 1000000,
+        "type": "key"
+      },
+      {
+        "label": "map-screen",
+        "cycles": 4000000,
+        "type": "wait"
+      },
+      {
+        "type": "click",
+        "label": "exit-map",
+        "cycles": 1000000
+      },
+      {
+        "type": "wait",
+        "label": "back-to-flight",
+        "cycles": 3000000
+      },
+      {
+        "type": "joystick",
+        "label": "flight-after-map",
+        "cycles": 2000000,
+        "button": "Down"
+      },
+      {
+        "type": "restore",
+        "label": "cold-restore",
+        "cold": true,
+        "resetBeforeRestore": true
       }
     ]
   },
@@ -1918,27 +2061,70 @@
       },
       {
         "type": "key",
-        "key": 77,
-        "cycles": 2000000,
-        "label": "pinball-18-launch-ball"
+          "key": 77,
+          "cycles": 15000000,
+          "label": "pinball-18-launch-ball"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "pinball-19-ball-in-flight"
       },
       {
         "type": "key",
         "key": 96,
-        "modifiers": [
-          97
-        ],
+        "cycles": 300000,
+        "label": "pinball-20-left-flipper"
+      },
+      {
+        "type": "key",
+        "key": 97,
+        "cycles": 300000,
+        "label": "pinball-21-right-flipper"
+      },
+      {
+        "type": "checkpoint",
+        "label": "pinball-22-live-ball"
+      },
+      {
+        "type": "key-down",
+        "key": 25,
         "cycles": 1000000,
-        "label": "pinball-19-flippers"
+        "label": "pinball-23-pause-press"
+      },
+      {
+        "type": "key-up",
+        "key": 25,
+        "cycles": 1000000,
+        "label": "pinball-24-pause-release"
       },
       {
         "type": "wait",
         "cycles": 5000000,
-        "label": "pinball-20-live-ball"
+        "label": "pinball-25-pause-held"
       },
       {
         "type": "restore",
-        "label": "pinball-21-restore"
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "pinball-26-cold-restore"
+      },
+      {
+        "type": "key",
+        "key": 69,
+        "cycles": 1000000,
+        "label": "pinball-27-quit-question"
+      },
+      {
+        "type": "key",
+        "key": 21,
+        "cycles": 1000000,
+        "label": "pinball-28-confirm-quit"
+      },
+      {
+        "type": "wait",
+        "cycles": 4000000,
+        "label": "pinball-29-write-request"
       }
     ]
   },

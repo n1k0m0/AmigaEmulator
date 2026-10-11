@@ -205,6 +205,11 @@ namespace AmigaEmulator.Core.Cia
         // between peripheral ticks. CIA-A's keyboard uses it as KDAT handshake.
         private uint _serialInputHandshakeSequence;
         internal uint SerialInputHandshakeSequence => _serialInputHandshakeSequence;
+        // The receiver counts external CNT edges independently of a queued
+        // byte. Keyboard recovery can supply just one bit every 143 ms.
+        private byte _serialInputReceiver;
+        private int _serialInputReceivedBits;
+        private bool _serialInputReceiverStateSaved = true;
 
         /// <summary>
         /// Initializes a new instance of the Cia8520 class.
@@ -254,9 +259,18 @@ namespace AmigaEmulator.Core.Cia
             _serialInputPeriods.Clear();
             _serialInputBitPeriodEClocks = 1;
             _serialInputClockCountdown = 0;
+            _serialInputReceiver = 0;
+            _serialInputReceivedBits = 0;
+            _serialInputReceiverStateSaved = false;
             StateSerializer.ReadObjectFields(reader, this);
             if (_serialOutputHalfClocks < 0)
                 _serialOutputHalfClocks = SerialOutputMode && TimerStarted(RegisterCra) && (_interruptRequest & InterruptSerial) == 0 ? 16 : 0;
+            if (!_serialInputReceiverStateSaved && !SerialOutputMode && _serialBitsRemaining > 0)
+            {
+                _serialInputReceivedBits = 8 - _serialBitsRemaining;
+                _serialInputReceiver = (byte)(_serialShiftByte >> _serialBitsRemaining);
+            }
+            _serialInputReceiverStateSaved = true;
         }
 
         /// <summary>
@@ -452,6 +466,9 @@ namespace AmigaEmulator.Core.Cia
             _serialOutputHalfClocks = 0;
             _serialOutputBufferPending = false;
             _serialInputHandshakeSequence = 0;
+            _serialInputReceiver = 0;
+            _serialInputReceivedBits = 0;
+            _serialInputReceiverStateSaved = true;
             _lastOverlayAtZero = OverlayAtZero;
             RaiseOverlayChanged(_lastOverlayAtZero);
             RaiseInterruptChanged();
@@ -548,6 +565,19 @@ namespace AmigaEmulator.Core.Cia
             _registers[RegisterSdr] = value;
             _serialBitsRemaining = 0;
             _serialInputClockCountdown = 0;
+            _serialInputReceiver = 0;
+            _serialInputReceivedBits = 0;
+            RequestInterrupt(InterruptSerial);
+        }
+
+        /// <summary>Clocks one physical SP level into the input receiver on a CNT edge.</summary>
+        public void ClockSerialInputBit(bool high)
+        {
+            if (SerialOutputMode) return;
+            _serialInputReceiver = (byte)((_serialInputReceiver << 1) | (high ? 1 : 0));
+            if (++_serialInputReceivedBits < 8) return;
+            _registers[RegisterSdr] = _serialInputReceiver;
+            _serialInputReceivedBits = 0;
             RequestInterrupt(InterruptSerial);
         }
 
@@ -758,6 +788,8 @@ namespace AmigaEmulator.Core.Cia
                     if ((previousValue & 0x40) != 0) _serialInputHandshakeSequence++;
                     _serialBitsRemaining = 0;
                     _serialInputClockCountdown = 0;
+                    _serialInputReceiver = 0;
+                    _serialInputReceivedBits = 0;
                     _serialOutputHalfClocks = 0;
                     _serialOutputBufferPending = false;
                 }
@@ -949,13 +981,10 @@ namespace AmigaEmulator.Core.Cia
             }
 
             if (_serialInputClockCountdown > 0 && --_serialInputClockCountdown > 0) return;
+            bool high = (_serialShiftByte & (1 << (_serialBitsRemaining - 1))) != 0;
             _serialBitsRemaining--;
             _serialInputClockCountdown = _serialInputBitPeriodEClocks;
-            if (_serialBitsRemaining == 0)
-            {
-                _registers[RegisterSdr] = _serialShiftByte;
-                RequestInterrupt(InterruptSerial);
-            }
+            ClockSerialInputBit(high);
         }
 
         /// <summary>

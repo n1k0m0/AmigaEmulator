@@ -10,13 +10,22 @@ param(
     [switch]$ManifestOnly,
     [switch]$IncludeUtilities,
     [switch]$IncludeCompatibilityProfiles,
-    [string]$MoonstoneCompatibleBoot = ''
+    [string]$MoonstoneCompatibleBoot = '',
+    [string]$PinballCompatibleBoot = '',
+    [ValidateSet('Partyland', 'SpeedDevils', 'BillionDollarGameshow', 'StonesNBones')]
+    [string[]]$PinballTables = @('Partyland')
 )
 
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Choose a fresh output directory; existing evidence is never overwritten.' }
-if ($MoonstoneCompatibleBoot -and -not $IncludeCompatibilityProfiles) {
-    throw 'The separate Moonstone disk requires -IncludeCompatibilityProfiles.'
+if (($MoonstoneCompatibleBoot -or $PinballCompatibleBoot) -and -not $IncludeCompatibilityProfiles) {
+    throw 'Separate compatibility disks require -IncludeCompatibilityProfiles.'
+}
+if (-not $PinballTables.Count -or @($PinballTables | Sort-Object -Unique).Count -ne $PinballTables.Count) {
+    throw 'Select distinct Pinball table names.'
+}
+if (-not $PinballCompatibleBoot -and (@($PinballTables).Count -ne 1 -or $PinballTables[0] -ne 'Partyland')) {
+    throw 'Additional Pinball tables require -PinballCompatibleBoot.'
 }
 $profiles = @{
     A500 = @('Chip512KSlow512K', 'KICK13.ROM')
@@ -150,6 +159,39 @@ if ($MoonstoneCompatibleBoot) {
     }
     $inventory += [ordered]@{path=$compatibleDisk; bytes=(Get-Item -LiteralPath $compatibleDisk).Length;
         sha256=$patchedHash; title=@('Moonstone'); kind=@('game-compatibility'); coveredByManifest=$true}
+}
+if ($PinballCompatibleBoot) {
+    $compatibleDisk = (Resolve-Path -LiteralPath $PinballCompatibleBoot -ErrorAction Stop).Path
+    $patchedHash = (Get-FileHash -LiteralPath $compatibleDisk -Algorithm SHA256).Hash
+    if ($patchedHash -ne 'F4E0EACDD4908EFC71DBD26625388C503134529B0ADC5D6BE86319E6CBCCBA28') {
+        throw 'Pinball compatibility disk does not match the reviewed patch; use prepare_pinball_32bit_disk.py.'
+    }
+    $nativePinball = @($cases | Where-Object { $_.name -in @('A3000-PDREMS21', 'A4000Ec030-PDREMS21') })
+    if (-not $nativePinball.Count) { throw 'Select PDREMS21 and at least one native desktop model for its compatibility disk.' }
+    foreach ($nativeCase in $nativePinball) {
+        foreach ($table in $PinballTables) {
+            $case = $nativeCase | ConvertTo-Json -Depth 30 | ConvertFrom-Json
+            $case.name += "-32bit-loader-copy-$table"
+            $case.boot = $compatibleDisk
+            $courseDisk = if ($table -in @('BillionDollarGameshow', 'StonesNBones')) { 3 } else { 2 }
+            $tableKey = if ($table -in @('SpeedDevils', 'StonesNBones')) { 81 } else { 80 }
+            $selection = @($case.actions | Where-Object label -eq 'pinball-14-partyland-f1')
+            $course = @($case.actions | Where-Object label -eq 'pinball-11-course-disk2')
+            if ($selection.Count -ne 1 -or $course.Count -ne 1) { throw 'Pinball table/course actions must be unique.' }
+            $selection[0].key = $tableKey
+            $selection[0].label = "pinball-14-select-$table"
+            $course[0].disk = "Pinball Fantasies (disk $courseDisk).adf"
+            $course[0].label = "pinball-11-course-disk$courseDisk"
+            foreach ($action in $case.actions) {
+                if ($action.type -eq 'disk' -and $action.disk -eq $nativeCase.boot) {
+                    $action.disk = $compatibleDisk
+                }
+            }
+            $cases += $case
+        }
+    }
+    $inventory += [ordered]@{path=$compatibleDisk; bytes=(Get-Item -LiteralPath $compatibleDisk).Length;
+        sha256=$patchedHash; title=@('PDREMS21'); kind=@('game-compatibility'); coveredByManifest=$true}
 }
 New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
 $manifest = Join-Path $OutputDirectory 'scenarios.json'

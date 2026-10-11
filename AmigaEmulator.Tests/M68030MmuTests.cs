@@ -14,6 +14,7 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("CPU/030MMU", "two-level translation updates U/M, protects pages and retains/flushes ATC entries", "Motorola MC68030UM 9.5/9.7; independent tables", TestShortTables);
             yield return new ChipTestCase("CPU/030MMU", "long descriptors, root limits, supervisor tables and indirect pages use physical addresses", "Motorola MC68030UM descriptor formats", TestDescriptors);
             yield return new ChipTestCase("CPU/030MMU", "configuration errors, transparent FC/RW windows and cache restore remain distinct", "Motorola MC68030UM register programming", TestControl);
+            yield return new ChipTestCase("CPU/030MMU", "overlapping transparent windows OR cache inhibit only from matching registers", "Motorola MC68030UM 9.3, CIOUT; independent window combinations", TestOverlappingTransparent);
             yield return new ChipTestCase("CPU/030MMU", "cached invalid, limit and supervisor faults report ATC B/I rather than table-search status", "Motorola MC68030UM 9.4, 9.7.4 table 9-3", TestCachedFaultStatus);
             yield return new ChipTestCase("CPU/030MMU", "cached write protection is readable and PTEST table walks leave cached faults intact", "Motorola MC68030UM 9.4, 9.7.6", TestCachedProtectionAndRepair);
         }
@@ -25,6 +26,53 @@ namespace AmigaEmulator.Tests
             Check.True(mmu.SetRoot(false, 0x7FFF000200001000), "Unlimited short root table.");
             memory[0x1048] = 0x2002; memory[0x20D0] = 0x500001;
             return (mmu, memory);
+        }
+
+        private static void TestOverlappingTransparent()
+        {
+            foreach (bool enabled in new[] { false, true })
+            foreach (int inhibitedIndex in new[] { 0, 1 })
+            {
+                var mmu = new M68030Mmu(_ => throw new InvalidOperationException("Transparent access walked a table."), (_, _) => { });
+                mmu.SetTranslationControl(enabled ? 0x80C48800u : 0);
+                mmu.SetTransparent(0, inhibitedIndex == 0 ? 0x00008707u : 0x00008307u);
+                mmu.SetTransparent(1, inhibitedIndex == 1 ? 0x00008707u : 0x00008307u);
+                for (int fc = 0; fc < 7; fc++)
+                foreach (bool write in new[] { false, true })
+                {
+                    var result = mmu.Translate(0x00123456, fc, write);
+                    Check.Equal(0x00123456u, result.Physical, "TT preserves the logical address.");
+                    Check.Equal((ushort)(M68030Mmu.Transparent | M68030Mmu.CacheInhibit), result.Flags,
+                        "Either matching register can assert CIOUT, with translation enabled or disabled.");
+                    Check.Equal(M68030Mmu.Transparent, mmu.Test(0x00123456, fc, write, 0).Flags,
+                        "The internal CI attribute never appears in MMUSR.");
+                }
+                Check.Equal(M68030Mmu.Transparent, mmu.Translate(0x00123456, 7, false).Flags,
+                    "CPU space bypasses both transparent registers.");
+                using var state = new MemoryStream(); mmu.SaveState(new BinaryWriter(state));
+                mmu.SetTransparent(0, 0); mmu.SetTransparent(1, 0);
+                state.Position = 0; mmu.LoadState(new BinaryReader(state));
+                Check.Equal((ushort)(M68030Mmu.Transparent | M68030Mmu.CacheInhibit),
+                    mmu.Translate(0x00123456, 6, false).Flags, "Restore preserves both overlapping windows.");
+            }
+            var windows = new M68030Mmu(_ => 0, (_, _) => { });
+            windows.SetTransparent(0, 0x00008307); // Both directions, every FC, no CI.
+            foreach (uint other in new[] { 0x01008707u, 0x00008720u, 0x00008607u, 0x00008407u })
+            {
+                windows.SetTransparent(1, other);
+                for (int fc = 0; fc < 7; fc++)
+                foreach (bool write in new[] { false, true })
+                {
+                    bool matches = other switch
+                    {
+                        0x01008707 => false, 0x00008720 => fc == 2,
+                        0x00008607 => !write, _ => write
+                    };
+                    ushort expected = (ushort)(M68030Mmu.Transparent | (matches ? M68030Mmu.CacheInhibit : 0));
+                    Check.Equal(expected, windows.Translate(0x00123456, fc, write).Flags,
+                        "A nonmatching address, FC or direction cannot contribute CI.");
+                }
+            }
         }
 
         private static void TestCachedFaultStatus()

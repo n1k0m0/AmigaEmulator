@@ -254,6 +254,14 @@ namespace AmigaEmulator.Core.Media
             get { return HasDisk && _writeProtected; }
         }
 
+        /// <summary>Changes the inserted or pending medium's write-protect tab without moving it.</summary>
+        public void SetWriteProtection(bool writeProtected)
+        {
+            // Keep CHNG, motor/rotation state, dirty sectors and an in-flight
+            // write. Changing the tab does not remove or reload the disk.
+            _writeProtected = writeProtected;
+        }
+
         public bool IndexPulsePending { get; private set; }
 
         /// <summary>

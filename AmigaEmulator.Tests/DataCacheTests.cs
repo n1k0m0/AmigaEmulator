@@ -155,6 +155,14 @@ namespace AmigaEmulator.Tests
             bus.WriteLong(0xA004, 0x7001); cpu.MemoryManagementUnit.Flush(); Read(cpu, bus, 0x1000);
             bus.WriteLong(0xA004, 0); cpu.MemoryManagementUnit.Load(0x1000, 5, false); Read(cpu, bus, 0x1000);
             Check.Equal(0x2000u, cpu.PC, "A resident failing ATC aborts even an existing data hit.");
+            foreach (int inhibitedIndex in new[] { 0, 1 })
+            {
+                var (transparent, tb) = Prepare(AmigaCpuModel.M68030);
+                transparent.MemoryManagementUnit.SetTransparent(0, inhibitedIndex == 0 ? 0x00008707u : 0x00008307u);
+                transparent.MemoryManagementUnit.SetTransparent(1, inhibitedIndex == 1 ? 0x00008707u : 0x00008307u);
+                tb.WriteLong(0x1000, 1); Check.Equal(1u, Read(transparent, tb, 0x1000), "Overlapping TT data access works.");
+                tb.WriteLong(0x1000, 2); Check.Equal(2u, Read(transparent, tb, 0x1000), "Either overlapping CI window prevents data allocation.");
+            }
         }
         private static void TestInhibit()
         {

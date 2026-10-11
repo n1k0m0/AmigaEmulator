@@ -13,7 +13,8 @@
 | CIA-TOD-001 | TOD | HRM Appendix F | 8520 binary TOD latch/read/alarm semantics are correct. | implemented |
 | CIA-ICR-001 | Interrupts | HRM Appendix F | ICR mask/data semantics and IRQ reassertion match CIA. | implemented |
 | CIA-FLP-001 | Floppy control | A500 schematics; HRM disk section | CIAB port B selects drive, motor latch, side, step, and direction. | cli-existing/basic |
-| CIA-KBD-001 | Keyboard | HRM keyboard serial protocol | Keyboard serial data clocks into CIA/interrupt path. | implemented/basic |
+| CIA-FLP-002 | Write protection | HRM disk sensing | Menu protection changes PROT without replacing media, altering CHNG, resetting rotation/head state or discarding dirty/partial writes; pending insertions retain their deadline and protection across restore on DF0-DF3. | implemented; three failing-before fixtures; title-specific score persistence remains open |
+| CIA-KBD-001 | Keyboard | HRM Appendix G | Serial bits clock into CIA/interrupt path; missing acknowledgement recovers one bit per 143 ms, then F9 and replay; startup synchronizes before FD/FE; partial recovery restores exactly. | implemented; electrical handshake pulse-width coverage remains open |
 
 Disk write support and non-AmigaDOS/custom track encodings are intentionally
 marked incomplete until raw track preservation exists.

@@ -153,10 +153,14 @@ namespace AmigaEmulator.Tests
             cpu.MemoryManagementUnit.SetTransparent(0, 0, false);
             cpu.SetProgramCounter(0x1000); cpu.Step();
             Check.Equal(0x2000u, cpu.PC, "Resident failing ATC aborts even a valid instruction-cache hit.");
-            var (transparent, tb) = Prepare(AmigaCpuModel.M68030);
-            transparent.MemoryManagementUnit.SetTransparent(0, 0x00008707);
-            Check.Equal(1u, Execute(transparent, tb, 0x1000, 0x7001), "TT instruction access works.");
-            Check.Equal(2u, Execute(transparent, tb, 0x1000, 0x7002), "Transparent CI inhibits fill with translation disabled too.");
+            foreach (int inhibitedIndex in new[] { 0, 1 })
+            {
+                var (transparent, tb) = Prepare(AmigaCpuModel.M68030);
+                transparent.MemoryManagementUnit.SetTransparent(0, inhibitedIndex == 0 ? 0x00008707u : 0x00008307u);
+                transparent.MemoryManagementUnit.SetTransparent(1, inhibitedIndex == 1 ? 0x00008707u : 0x00008307u);
+                Check.Equal(1u, Execute(transparent, tb, 0x1000, 0x7001), "TT instruction access works.");
+                Check.Equal(2u, Execute(transparent, tb, 0x1000, 0x7002), "Either overlapping CI window inhibits instruction fill with translation disabled too.");
+            }
         }
         private static void TestAccessControl()
         {

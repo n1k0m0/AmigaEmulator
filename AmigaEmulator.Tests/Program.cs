@@ -99,6 +99,7 @@ namespace AmigaEmulator.Tests
             tests.AddRange(M68030MmuTests.Build());
             tests.AddRange(InstructionCacheTests.Build());
             tests.AddRange(DataCacheTests.Build());
+            tests.AddRange(KeyboardRecoveryTests.Build());
             tests.AddRange(AgaTests.Build());
             tests.AddRange(AgnusTests.Build());
             tests.AddRange(BlitterDiagnosticsTests.Build());
@@ -120,6 +121,7 @@ namespace AmigaEmulator.Tests
             tests.AddRange(FloppyIdentificationTests.Build());
             tests.AddRange(FloppyRotationTests.Build());
             tests.AddRange(FloppyMediaChangeTests.Build());
+            tests.AddRange(FloppyWriteProtectionTests.Build());
             tests.AddRange(MachineModelTests.Build());
             tests.AddRange(A3000Tests.Build());
             if (options.IncludeAdf)

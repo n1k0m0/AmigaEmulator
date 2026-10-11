@@ -4242,16 +4242,23 @@ namespace AmigaEmulator
         }
 
         /// <summary>
-        /// Toggles DF0 write protection and remounts the current image when needed.
+        /// Toggles DF0 write protection without ejecting or reloading its current medium.
         /// </summary>
         private void ToggleDiskWriteProtection()
         {
             _floppyWriteProtected = !_floppyWriteProtected;
+            _system.Bus.FloppyController.SetDriveWriteProtection(0, _floppyWriteProtected);
+            _system.Bus.RefreshFloppyControlLines();
             MountedMediaInfo media = _mountedMedia;
             if (media != null && media.HasMedia && media.Kind == MountedMediaKind.Adf)
             {
-                RemountMedia(MountedMediaInfo.ForFloppy(0, media.DisplayName, media.HostPath, _floppyWriteProtected));
+                media.IsWriteProtected = _floppyWriteProtected;
             }
+
+            // Startup may still be waiting to insert DF0. Keep its deadline and
+            // apply the same choice when that queued image is eventually mounted.
+            if (_deferredMediaMount != null && _deferredMediaMount.Kind == MountedMediaKind.Adf)
+                _deferredMediaMount.IsWriteProtected = _floppyWriteProtected;
 
             _statusText = "DISK WRITE " + (_floppyWriteProtected ? "PROTECTED" : "ENABLED");
         }

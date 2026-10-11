@@ -91,9 +91,11 @@ static void Validate(Scenario scenario)
         switch (action.Type)
         {
             case "wait": case "mouse": case "reset": case "restore": break;
-            case "key":
+            case "key": case "key-down": case "key-up":
                 if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || (action.Modifiers ?? []).Any(key => key < 0 || key > 0x7F))
                     throw new ArgumentOutOfRangeException(nameof(action.Key));
+                if (action.Type != "key" && (action.Modifiers?.Count ?? 0) != 0)
+                    throw new ArgumentException("Held-key actions use separate key-down/key-up events for modifiers.");
                 break;
             case "click": case "joystick":
                 var buttons = Enum.Parse<AmigaJoystickButtons>(action.Button ?? "Fire", true);
@@ -106,6 +108,10 @@ static void Validate(Scenario scenario)
             case "disk": Disk(action.Disk, action.Drive); break;
             case "eject":
                 if (action.Drive < 0 || action.Drive > 3) throw new ArgumentOutOfRangeException(nameof(action.Drive));
+                break;
+            case "write-protect":
+                if (action.Drive < 0 || action.Drive > 3) throw new ArgumentOutOfRangeException(nameof(action.Drive));
+                if (!action.WriteProtected.HasValue) throw new ArgumentException("write-protect requires an explicit writeProtected value.");
                 break;
             case "checkpoint": Name(action.Label ?? "checkpoint"); break;
             default: throw new ArgumentException("Unknown action " + action.Type);
@@ -246,6 +252,13 @@ static string Run(Scenario scenario, string output)
                     system.Input.KeyboardKeyUp((byte)modifiers[i]);
                 system.RunChipCycles(400_000);
                 break;
+            // Separate edges permit inspecting a paused guest before releasing P,
+            // and chords whose keys must remain down across several actions.
+            case "key-down": case "key-up":
+                if (action.Type == "key-down") system.Input.KeyboardKeyDown((byte)action.Key.Value);
+                else system.Input.KeyboardKeyUp((byte)action.Key.Value);
+                system.RunChipCycles(action.Cycles);
+                break;
             case "mouse":
                 int slices = Math.Max(1, (Math.Max(Math.Abs(action.X), Math.Abs(action.Y)) + 7) / 8);
                 int previousX = 0, previousY = 0;
@@ -267,6 +280,13 @@ static string Run(Scenario scenario, string output)
                 system.RunChipCycles(400_000);
                 break;
             case "disk": Mount(action.Disk, action.Drive); break;
+            case "write-protect":
+                system.Bus.FloppyController.SetDriveWriteProtection(action.Drive, action.WriteProtected.Value);
+                system.Bus.RefreshFloppyControlLines();
+                if (mounted.Kind == MountedMediaKind.Adf && mounted.DriveIndex == action.Drive)
+                    mounted.IsWriteProtected = action.WriteProtected.Value;
+                system.RunChipCycles(action.Cycles);
+                break;
             case "eject":
                 system.Bus.FloppyController.EjectDrive(action.Drive);
                 if (mounted.DriveIndex == action.Drive) mounted = MountedMediaInfo.None;
@@ -349,7 +369,8 @@ static string Run(Scenario scenario, string output)
             exceptionObservations = scenario.TraceExceptions ? new { nonRomExceptions, nonRomExceptionVectors, firstNonRomException } : null,
             disk = system.Bus.FloppyController.GetDebugInfo(), hardDisk = new { path = system.Bus.HardDisk.Image?.Path, reads = system.Bus.HardDisk.ReadSectors, writes = system.Bus.HardDisk.WrittenSectors },
             diskDma = system.Paula.GetDiskDebugInfo(), audio = system.Paula.GetAudioDebugInfo(), input = new { port0 = system.Input.Port0Mode.ToString(),
-                port1 = system.Input.Port1Mode.ToString(), joy0 = system.Input.ReadJoyDat(AmigaControlPort.Port0).ToString("X4") },
+                port1 = system.Input.Port1Mode.ToString(), joy0 = system.Input.ReadJoyDat(AmigaControlPort.Port0).ToString("X4"),
+                queuedKeyboardEvents = system.Input.QueuedKeyboardEvents },
             fastRam = new { configured = model.HasDesktopResources ? model.FastRamBytes != 0 : system.Bus.AutoConfig.Configured,
                 address = model.HasDesktopResources ? model.MotherboardFastRamStart : system.Bus.AutoConfig.BaseAddress },
             pcmcia = new { size = system.Bus.Pcmcia.Size, status = system.Bus.PeekByte(0xDA8000), changes = system.Bus.PeekByte(0xDA9000),
@@ -414,6 +435,7 @@ class ScenarioAction
     public int Drive { get; set; }
     public bool Cold { get; set; }
     public bool ResetBeforeRestore { get; set; }
+    public bool? WriteProtected { get; set; }
     public string ExpectedFrameHash { get; set; }
     public long MinimumHardDiskReads { get; set; }
 }

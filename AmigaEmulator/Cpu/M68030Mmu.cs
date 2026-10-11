@@ -84,10 +84,16 @@ namespace AmigaEmulator.Core.Cpu
         {
             functionCode &= 7;
             if (functionCode == 7) return new(logical, Transparent, 0);
-            if (Matches(Transparent0, logical, functionCode, !write))
-                return new(logical, (ushort)(Transparent | ((Transparent0 & 0x400) != 0 ? CacheInhibit : 0)), 0);
-            if (Matches(Transparent1, logical, functionCode, !write))
-                return new(logical, (ushort)(Transparent | ((Transparent1 & 0x400) != 0 ? CacheInhibit : 0)), 0);
+            bool match0 = Matches(Transparent0, logical, functionCode, !write);
+            bool match1 = Matches(Transparent1, logical, functionCode, !write);
+            if (match0 || match1)
+            {
+                // Both windows participate in CIOUT. A broad cacheable TT0
+                // must not suppress a narrower inhibited TT1 (or vice versa).
+                bool inhibit = (match0 && (Transparent0 & 0x400) != 0) ||
+                    (match1 && (Transparent1 & 0x400) != 0);
+                return new(logical, (ushort)(Transparent | (inhibit ? CacheInhibit : 0)), 0);
+            }
             if ((TranslationControl & 0x80000000) == 0) return new(logical, 0, 0);
             uint mask = (1u << PageBits) - 1;
             var key = (logical >> PageBits, functionCode);

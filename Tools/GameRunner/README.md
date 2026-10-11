@@ -42,7 +42,8 @@ their own matching ROMs and separate scenarios.
 Each case creates numbered PNGs, `steps.jsonl` and a continuation
 `checkpoint.amigasav`. Log entries include raw CPU/drive diagnostics, frame
 number, presentation bounds, pixel hash and `gameplay: requires-visual-review`.
-Disk images are mounted read-only. A replacement exposes a two-second emulated
+Disk images are mounted read-only by default. Use a fresh private copy for any
+scenario that disables write protection. A replacement exposes a two-second emulated
 empty-drive interval before the new medium becomes readable, including when
 confirmation is clicked immediately. An explicit eject's elapsed empty time
 counts toward that interval. Output filenames are replaced on reruns;
@@ -77,11 +78,20 @@ Actions:
   Amiga + E to open Workbench's Execute Command dialog.
 - `mouse`: relative `x`/`y` movement, split into small steps to avoid byte-counter
   wrap ambiguity. Coordinates refer to mouse counters, not screenshot pixels.
+- `key-down` / `key-up`: send one raw `key` edge and advance exactly `cycles`
+  chip clocks (zero by default). No automatic release or post-release delay is
+  added. Use separate edges for each modifier; `modifiers` is rejected here.
+  These actions allow paused-state captures and explicitly held chords. The
+  step log's `queuedKeyboardEvents` helps detect events waiting for guest acknowledgement.
 - `click`: mouse-port button, default `button: Fire` (left mouse), `Second`
   for right mouse. Button flags can be combined, e.g. `Fire, Second`.
 - `joystick`: joystick-port button, default Fire; Up/Down/Left/Right are also
   available. `cycles` optionally changes the hold duration.
 - `disk`: `disk` ADF filename and optional `drive` index (default DF0).
+- `write-protect`: explicit `writeProtected: true`/`false`, optional `drive`
+  (default DF0), and `cycles` (zero by default). Changes the existing medium's
+  tab without ejecting, reloading, or clearing a partial write. Use private
+  copies for writable tests; loading a savestate retains its recorded media.
 - `eject`: remove media from `drive` (0..3, default DF0). Use a following
   `wait` before `disk` to test a real empty-drive interval during a swap.
 - `reset`: warm reset by default, `cold: true` for a power cycle.
@@ -93,6 +103,17 @@ Actions:
   CPU/memory/beam/pixel equality checks apply.
 - `checkpoint`: write a continuation savestate named `<label>.amigasav` at an
   intermediate step, without advancing the guest; the label must be a filename.
+
+The `DESERTS1` source flow now mounts the user's data disks in DF1/DF2 before
+boot, advances the crack/title/story/menu sequence, starts the campaign with
+the left mouse button, lifts off with joystick Down, flies/fires, opens the map
+with F10 (raw 89), closes it and checks a power-cycle restore. Its cold boot
+prefix and mission continuation are reviewed on A500/A1200; other generated
+models still require actual execution and review. The original five-step flow
+stopped at the crack screen. Two initial non-ROM CPU-detection exceptions are
+allowed; a zero exit or valid manifest alone is still not a gameplay pass.
+See MachineModels.md's keyboard recovery follow-up for bounded acceptance and
+the separately reviewed map-to-flight continuation.
 
 The optional scenario `maximumNonRomExceptions` requires `traceExceptions: true`;
 its limit applies to observed synchronous exceptions outside Kickstart. When
@@ -240,6 +261,23 @@ native cases and add these three separate cases (254 total for the full sweep).
 The generated case keeps the compatible copy when Disk 1 is reinserted and
 records its hash in the inventory. Without that argument, coverage remains 251.
 
+The exact reviewed Pinball Fantasies PDII loader retains bit 31 in a relative
+transfer pointer, causing an unmapped write on native A3000/A4000 CPUs.
+`python Tools/prepare_pinball_32bit_disk.py <source-disk1> <new-disk1>` creates
+a separate copy that strips the tag before adding the relative base. It checks
+the full source SHA-256, the 38-byte loader window and the reviewed output hash,
+and refuses existing destinations. Disk 2/3 and the emulated address bus are
+unchanged. Cold Partyland/input/restore passes on native A3000/A4000 with this
+copy, with A500/A1200 cold controls and final-core desktop power-cycle restore.
+Original media still has its documented processor restriction.
+Use `-IncludeCompatibilityProfiles -PinballCompatibleBoot <new-disk1>` to add
+separate Partyland cases for those two desktop boards, retaining their originals.
+`-PinballTables Partyland,SpeedDevils,BillionDollarGameshow,StonesNBones` selects
+all four tables, with the correct course disk and F1/F2 selection in each cold
+case. The eight optional sequences pass preflight; execution and capture review
+are still required for every selected board/table. With both compatibility disks,
+the full default sweep has 256 cases, or 262 with all four Pinball tables.
+
 Attach external floppy disks with `disk` actions before the first boot `wait`
 when testing DOS volumes on DF1–DF3. Kickstart enumerates physical drives during
 startup; inserting the first disk later also attaches a drive and can require
@@ -263,6 +301,24 @@ generated ADF sector origin now stays aligned with its physical INDEX rather
 than wrapping on an independent clock; this fixes a ten-sector loader skip.
 The modeled DD data cadence and 200 ms PAL INDEX period are retained by padding
 the unused tail with gap flux. This is not raw/IPF or bitcell-PLL support.
-Native A3000/A4000 Pinball loader failures, newer-ROM Tinyus transitions and
-other open cases remain in Docs/GameModelCompatibility-2026-10-09.md. The full
-254-case cold recheck on this shared disk correction is still in progress.
+The unchanged native A3000/A4000 Pinball source limitation, broader Tinyus
+sessions and other open cases remain in Docs/GameModelCompatibility-2026-10-09.md.
+The full-library cold/input/capture review remains in progress.
+
+2026-10-11 review correction: the earlier two-million-clock Pinball plunger
+hold did not establish a launched ball. Table artwork and an injected key alone
+are insufficient. The source now holds Down for 15 million chip clocks, then
+waits one million, sends separate left/right flipper inputs, captures live
+play, presses/releases P, checks a held pause, power-cycles/restores and sends
+Esc/Y to the write-enable requester. The revised suffix has reviewed native
+A3000/A4000 continuations for all four tables, with live mode, frozen pause
+pixels and no new non-ROM faults. Their cold loading prefixes are retained
+separately; this is not a newly executed uninterrupted eight-case cold run.
+The controls follow the [original game manual](https://www.lemonamiga.com/doc/pinball-fantasies/1217).
+
+For Pinball's return path, cancel saving with the mouse, supply the requested
+main disk, then a course disk; the first requester after cancellation is not
+the selection menu. An A3000 Partyland continuation has reviewed evidence all
+the way back to that menu. Persistent highscore writes remain unaccepted.
+See MachineModels.md for the private-DMA trace and current physical-track/header
+mismatch. Original media and raw/custom-format compatibility remain separate.

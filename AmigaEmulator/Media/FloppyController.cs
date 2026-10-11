@@ -175,6 +175,12 @@ namespace AmigaEmulator.Core.Media
             RaiseMediaChanged();
         }
 
+        /// <summary>Changes write protection without reporting a media replacement.</summary>
+        public void SetDriveWriteProtection(int driveIndex, bool writeProtected)
+        {
+            GetDrive(driveIndex).SetWriteProtection(writeProtected);
+        }
+
         /// <summary>
         /// Restores DF0 media after loading a savestate without asserting a new disk-change event.
         /// </summary>
