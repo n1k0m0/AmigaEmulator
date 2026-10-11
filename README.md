@@ -1,500 +1,357 @@
 # AmigaEmulator
 
-AmigaEmulator is a C#/.NET Amiga emulator with a WinForms and SharpPixels
-frontend. Its structure follows the same general idea as the C64Emulator:
-a small desktop application, a local SharpPixels rendering layer, in-emulator
-overlay menus, persistent user settings, save states, and a dedicated test
-runner for emulator regressions.
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4.svg)](#installation-and-rom-setup) [![.NET 10](https://img.shields.io/badge/.NET-10-512BD4.svg)](#building-and-testing)
 
-The project goal is not to draw a fake boot screen or use a shortcut renderer.
-The target is a real Amiga 500 hardware path: Kickstart ROM, Motorola 68000,
-Chip RAM, Agnus, Denise, Paula, CIA, disk DMA, Copper, Blitter, bitplanes,
-sprites, audio, keyboard, mouse, and joystick input should all cooperate to
-produce the final machine state and output.
+A Commodore Amiga emulator written in C#/.NET, with a WinForms/SharpPixels
+frontend, Paula stereo audio, floppy and hard disk emulation, savestates,
+and encrypted network play.
 
-## Current Status
+This is the sister project of [C64Emulator](https://github.com/n1k0m0/C64Emulator).
+Both use the author's SharpPixels rendering library and the same settings
+navigation and remote-play design. The Amiga frontend adds its own dark panels,
+gold borders, mouse capture and model-specific hardware settings.
+Development combines hands-on emulator work with AI-assisted tooling.
 
-This emulator is an active work-in-progress project.
+[Screenshots](#screenshots) · [Getting started](#installation-and-rom-setup) · [Models](#machine-models-and-compatibility) · [Controls](#controls) · [Network play](#network-play) · [Build](#building-and-testing)
 
-Implemented or partially implemented:
+**Highlights:**
 
-- Amiga 500 PAL model with a 7.093790 MHz CPU timing base.
-- A500+/A600, revision-specific A2000 OCS/ECS, A1200, A3000/030 and
-  A4000/030 preview models. ECS paths
-  include extended display windows, border blank, EHB control and blitter sizes;
-  A600/A1200 include built-in IDE and PCMCIA SRAM. A3000 has SCSI/Super DMAC;
-  A4000/030 has its own IDE wiring. Desktop models include motherboard Fast RAM
-  and a Ricoh clock; A500+/A2000 include an MSM6242 battery clock. See
-  [machine models and remaining milestones](AmigaEmulator/Docs/MachineModels.md).
-- Motorola 68000 and extended 020/030 integer cores, including a 68030 MMU.
-- AGA subset: 256-color palette, eight planes, HAM8, wide DMA and sprites.
-- Kickstart ROM resolver and ROM selection through the overlay UI.
-- Real Kickstart 1.3 insert-disk path through ROM code, Copper, Blitter,
-  bitplane DMA, Chip RAM, and Denise output.
-- Standard 880 KiB AmigaDOS ADF loading and writable-sector DMA with explicit flush.
-- File-backed HDF hard disks through an optional A600 Gayle ATA PIO controller,
-  including real Kickstart 3.1 boot to AmigaDOS without floppy media.
-- Chip/Slow RAM profiles and 2/4/8 MiB Fast RAM with Zorro II Autoconfig.
-- Paula disk and audio path with MFM track streams, disk activity status, and
-  audio output.
-- CIA 8520 basics, keyboard input, mouse input, and joystick input.
-- F12 save state overlay.
-- SharpPixels video output with scaling and post-processing filters.
-- Automated tests for CPU, Blitter, Copper, CIA, input, disk, selected golden
-  ADF cases, and optional vAmigaTS cases.
+- **Eight machine profiles** — A500, A500+, A600, A2000 OCS/ECS, A1200,
+  A3000/030 and A4000/030, with model-specific ROM and memory selection.
+- **Real hardware execution** — Motorola 68000/020/030 integer cores,
+  OCS/ECS and an AGA subset, Copper, Blitter, DMA, CIA and Paula.
+- **Games and Workbench** — load your own ADFs, create a bootable HDF,
+  and install your own AmigaOS/Workbench disks.
+- **Flexible display** — sharp pixels, CRT/TV filters, six upscaler choices,
+  fullscreen, aspect-preserving display or full-screen stretching.
+- **Savestates and input** — screenshot previews, reset/restore,
+  keyboard, relative mouse input and host gamepads.
+- **Network play** — host-streamed video/audio, local client upscaling,
+  observers, a second joystick, or complete control handover.
+- **Windows setup and updates** — an Inno Setup installer and a
+  GitHub Releases update system.
 
-Still incomplete:
+**Active development:** A500 is the primary target; additional models are
+compatibility previews. See [model support](#machine-models-and-compatibility)
+for implemented hardware and current limits. **Kickstart ROMs, AmigaOS,
+Workbench and games are supplied by the user and are never bundled or downloaded.**
 
-- Not every game is glitch-free yet.
-- ECS/AGA previews do not yet cover all fine scrolling, superhires, interlace
-  or programmable monitor timings. Caches, fault restart and RTC timing are
-  approximate. Floating-point coprocessors and A4000/040 are not implemented.
-- Matching Kickstart 3.1/40.68 boots the test HDF to Initial CLI on A1200,
-  A3000 and A4000/030, including cold/warm restart and restore. A3000's WD
-  register mirrors and selection/completion interrupts are corrected.
-  A4000/030 AmigaOS 3.1.4 on a new HDF also passes basic desktop, Shell/Clock,
-  cold/warm/restore and file-persistence checks. Other models and broader OS
-  coverage remain open. Generic-ROM runs remain separate compatibility checks.
-- A2000 motherboard profiles boot, but real Zorro storage/SCSI boards and
-  Workbench installation still require implementation/verification.
-- OCS DMA timing, sprite priority, Blitter/CPU arbitration, and loader edge
-  cases need broader hardware/reference validation despite implemented slot
-  scheduling, per-plane fetches and region-aware bus contention.
-- Precompensation, ADKCON edge cases, and exact disk-loader behavior are not
-  finished. Basic disk write DMA, sector decoding and explicit flush are tested.
-- vAmigaTS support exists, but full byte-exact reference-frame comparison is
-  not the final state yet.
+## Screenshots
 
-The emulator runs real Amiga hardware paths and remains under active
-compatibility and timing development. Current implementation details and
-remaining work are tracked in `AmigaEmulator/Docs/A500ChipAuditPlan.md`.
+Click any image to view it at full size.
 
-## Target Machine
+| Kickstart 1.3 · A500 | AmigaOS 3.1.4 · A4000/030 | Shell and Clock · A4000/030 |
+| --- | --- | --- |
+| <a href="docs/screenshots/kickstart-13.png"><img src="docs/screenshots/kickstart-13.png" alt="A500 Kickstart 1.3 insert-disk screen" width="290"></a> | <a href="docs/screenshots/workbench-desktop.png"><img src="docs/screenshots/workbench-desktop.png" alt="AmigaOS 3.1.4 desktop booted from an emulated A4000/030 hard disk" width="290"></a> | <a href="docs/screenshots/workbench-shell-clock.png"><img src="docs/screenshots/workbench-shell-clock.png" alt="AmigaShell and Clock running on AmigaOS 3.1.4" width="290"></a> |
 
-The primary target is:
+| Main menu | Settings hub | Graphics and upscaling |
+| --- | --- | --- |
+| <a href="docs/screenshots/main-menu.png"><img src="docs/screenshots/main-menu.png" alt="Main menu with settings, network, media, reset and release mouse" width="290"></a> | <a href="docs/screenshots/settings-menu.png"><img src="docs/screenshots/settings-menu.png" alt="Shared settings hierarchy: hardware, ROMs, RAM, graphics, sound and hard disk" width="290"></a> | <a href="docs/screenshots/graphics-menu.png"><img src="docs/screenshots/graphics-menu.png" alt="Graphics options including upscaler, fullscreen and image size" width="290"></a> |
 
-- Commodore Amiga 500
-- PAL OCS
-- Kickstart 1.3
-- 512 KiB Chip RAM base model plus selectable expansion profiles
-  (the frontend currently defaults to 1 MiB Chip RAM for game loaders)
-- DF0 as the first internal floppy drive
+| Hardware | Network play | Hard disk configuration |
+| --- | --- | --- |
+| <a href="docs/screenshots/hardware-menu.png"><img src="docs/screenshots/hardware-menu.png" alt="Hardware settings with model, accuracy, input and disk timing" width="290"></a> | <a href="docs/screenshots/network-menu.png"><img src="docs/screenshots/network-menu.png" alt="LAN network menu with joystick, keyboard, mouse and control-owner permissions" width="290"></a> | <a href="docs/screenshots/hard-disk-menu.png"><img src="docs/screenshots/hard-disk-menu.png" alt="Hard disk menu for creating and mounting HDF images" width="290"></a> |
 
-Additional RAM profiles and ROMs can be selected from the emulator menu when
-the corresponding local files are available. **MACHINE → MODEL** switches
-between A500, A500+, A600, A2000 OCS/ECS, A1200, A3000 and A4000/030 previews
-and restarts the guest. RAM remains
-separately selectable; older ECS models require 1/2 MiB Chip RAM without Slow RAM.
-A1200/A3000/A4000 require 2 MiB Chip RAM, with optional 2/4/8 MiB Fast RAM.
-A3000/A4000 use high motherboard Fast RAM instead of a Zorro II card.
-The early A2000 OCS profile uses 512 KiB Chip RAM, optional 512 KiB motherboard
-RAM at `$C00000`, and optional 2/4/8 MiB Zorro II Fast RAM. The ECS profile
-also permits a 2 MiB Chip RAM Agnus upgrade. Switching revisions preserves
-Fast RAM capacity while normalizing the motherboard RAM layout.
-Model selection is persisted and recorded in new savestates. Old savestates
-continue to load as A500.
+| The Settlers / Die Siedler · A500+ | Mega lo Mania · A500 | Cannon Fodder · A500 |
+| --- | --- | --- |
+| <a href="docs/screenshots/the-settlers.png"><img src="docs/screenshots/the-settlers.png" alt="The Settlers gameplay with complete wooden frame and menu" width="290"></a> | <a href="docs/screenshots/mega-lo-mania.png"><img src="docs/screenshots/mega-lo-mania.png" alt="Mega lo Mania live island gameplay" width="290"></a> | <a href="docs/screenshots/cannon-fodder.png"><img src="docs/screenshots/cannon-fodder.png" alt="Cannon Fodder mission one with Jools and Jops alive" width="290"></a> |
+
+| Pinball Fantasies · A3000 | Desert Strike · A2000 ECS | Speedball · A500 |
+| --- | --- | --- |
+| <a href="docs/screenshots/pinball-fantasies.png"><img src="docs/screenshots/pinball-fantasies.png" alt="Pinball Fantasies Partyland table during gameplay" width="290"></a> | <a href="docs/screenshots/desert-strike.png"><img src="docs/screenshots/desert-strike.png" alt="Desert Strike helicopter gameplay" width="290"></a> | <a href="docs/screenshots/speedball.png"><img src="docs/screenshots/speedball.png" alt="Speedball match during gameplay" width="290"></a> |
+
+Game and Workbench pictures are captures from emulator validation runs.
+The Kickstart and menu views were rendered through the current frontend code
+with an isolated profile. Game captures use nearest-neighbor pixel aspect
+correction; their contents are unchanged. These scenes illustrate tested
+situations, rather than certify entire games or campaigns.
+[Capture details and image rights](docs/screenshots/README.md).
+
+## Installation and ROM setup
+
+Use a Windows x64 setup from [GitHub Releases](https://github.com/n1k0m0/AmigaEmulator/releases)
+when one is published. **No release is published as of 2026-10-11.**
+For the current development version, [build from source](#building-and-testing)
+or [build the installer](#windows-installer-and-updates).
+
+1. Start the emulator with your own Kickstart ROM available.
+2. If the selected model's ROM is missing, a dialog asks for your ROM file
+   or folder. The external path is remembered. Cancelling or selecting no
+   usable ROM closes startup cleanly.
+3. Open `F10` → `SETTINGS` → `HARDWARE` to select a machine, then use
+   `ROMS` and `RAM` to configure matching firmware and memory.
+4. Open `F10` → `MEDIA`, choose a target drive and mount your ADF.
+   Dropping an ADF onto the emulator window also mounts it.
+
+Use Kickstart 1.3 for the main A500 target. Later machines need firmware
+appropriate to their motherboard and storage controller. A generic ROM that
+boots on another board is a separate compatibility case.
+
+| User data | Default location |
+| --- | --- |
+| Kickstart ROMs | `%APPDATA%\AmigaEmulator\roms` or your selected external folder |
+| Settings | `%APPDATA%\AmigaEmulator\settings.json` |
+| Savestates | `%APPDATA%\AmigaEmulator\saves` |
+| Hard disk images | `%APPDATA%\AmigaEmulator\harddisks` |
+| Default floppy media folder | `%USERPROFILE%\Documents\AmigaEmulator` |
+
+Keep ROMs, games, OS disks and hard disk images outside the source checkout.
+They are not covered by the source-code license.
+
+## Current features
+
+- PAL-oriented machine timing, Motorola 68000/020/030 integer execution,
+  implemented 020/030 caches and a 68030 MMU path.
+- OCS custom-chip emulation, ECS extensions, and an AGA subset with
+  256-color palette, eight bitplanes, HAM8, wider DMA and sprites.
+- Copper, Blitter, bitplanes, sprites, bus arbitration, CIA 8520 timers,
+  interrupts, keyboard, relative mouse and joystick input.
+- Paula four-channel stereo audio with selectable output/LED filter profiles.
+- Standard 880 KiB AmigaDOS ADFs, emulated MFM track streams, four floppy
+  slots (`DF0`–`DF3`), disk changes, write protection and sector persistence.
+- File-backed hard disks: Gayle IDE on A600/A1200, WD33C93/Super DMAC SCSI
+  on A3000, and A4000 IDE wiring.
+- Selectable Chip/Slow/Fast RAM, Zorro II Autoconfig on appropriate profiles,
+  motherboard Fast RAM on A3000/A4000 and A600/A1200 PCMCIA SRAM.
+- Savestates with preview images and emulated machine/controller state.
+- `SHARP`, `CRT` and `TV` presentation filters; `NONE`, `SCALE2X`,
+  `SCALE3X`, `HQ2X`, `HQ3X` and `HQ4X` upscalers.
+- Encrypted LAN and relay remote play with host-managed input permissions.
+- Regression tests and scripted gameplay scenarios for real boot, input,
+  disk changes, reset, restore and storage persistence.
+
+## Machine models and compatibility
+
+| Profile | CPU / chipset | Model-specific hardware and status |
+| --- | --- | --- |
+| A500 | 68000 / OCS | Primary target; Kickstart 1.3 and Chip/Slow/Zorro II Fast RAM. |
+| A500+ | 68000 / ECS | Preview; ECS, 1/2 MiB Chip RAM and battery clock. |
+| A600 | 68000 / ECS | Preview; Gayle IDE and PCMCIA SRAM. |
+| A2000 OCS | 68000 / OCS | Preview; revision-specific Chip/Slow RAM and Zorro II Fast RAM. |
+| A2000 ECS | 68000 / ECS | Preview; ECS RAM layout, optional 2 MiB Chip upgrade and Zorro II Fast RAM. |
+| A1200 | 68EC020 / AGA subset | Preview; Gayle IDE, PCMCIA SRAM and expansion Fast RAM. |
+| A3000 | 68030 / ECS | Preview; motherboard Fast RAM, SCSI/Super DMAC and Ricoh clock. |
+| A4000/030 | 68EC030 / AGA subset | Preview; motherboard Fast RAM, A4000 IDE and Ricoh clock. |
+
+Model and RAM changes restart the guest. Menu options and saved configurations
+are checked against each model's supported layouts.
+
+The reviewed 2026-10-11 build passes **335 regression tests**. The expanded
+**268-case / 30-title / eight-profile manifest** passes preflight validation;
+this count does **not** mean 268 complete gameplay runs passed.
+Real gameplay evidence and required configurations are recorded in
+[the compatibility report](AmigaEmulator/Docs/GameModelCompatibility-2026-10-09.md)
+and [the approved roadmap](AmigaEmulator/Docs/MachineModels.md#approved-roadmap-progress-2026-10-09).
+
+Some titles need a specific RAM/ROM layout or an explicitly prepared copy of
+their loader disk. For example, Mega lo Mania's reviewed 020/030 runs use a
+guarded compatibility copy; Cannon Fodder's accepted first-mission runs use
+three mounted data disks. Its single-drive disk-change path remains open.
+Read [the gameplay runner guide](Tools/GameRunner/README.md) before reproducing
+these configurations.
+
+Remaining accuracy work includes ECS/AGA superhires and full interlace,
+programmable display timing, cache/MMU timing and restartable faults,
+custom loaders, later gameplay and disk transitions. **68881/68882 FPU,
+A4000/040 and Zorro III are not implemented.** A2000 storage expansion boards
+are also unfinished. Hardware and full-game compatibility stay under review.
+
+## Controls
+
+| Key / action | Function |
+| --- | --- |
+| `F9` | Toggle turbo mode. |
+| `F10` | Open or close the main menu. |
+| `F11` | Toggle fullscreen/windowed display. |
+| `F12` | Open the savestate menu. |
+| Click inside the Amiga image | Capture the mouse; this first click is consumed locally. |
+| `Ctrl` + `Alt` + `F8` | Release the mouse. |
+| `F10` → `RELEASE MOUSE` | Release the mouse through the main menu. |
+| Arrow keys / mouse | Navigate overlay menus. |
+| `Enter` | Activate the selected menu entry. |
+| `Left` / `Right` | Adjust settings. |
+| `Esc` | Return to the parent menu or close the main menu. |
+| Mouse wheel | Scroll long menus. |
+| Drop an ADF on the window | Mount it into the selected target drive. |
+
+The mouse starts free and uses relative guest input after capture.
+Menus retain capture inside the emulator window and show a pointer for
+selection. Closing a menu resumes guest mouse control. Switching to another
+window or minimizing releases capture; click the image again after returning.
+
+## Main menu and settings
+
+The `F10` overview contains `SETTINGS`, `NETWORK`, `MEDIA`, `RESET`
+and `RELEASE MOUSE`. Local emulation pauses while an overlay menu is open.
+The settings hierarchy matches the C64 frontend:
+
+| Settings page | Configuration |
+| --- | --- |
+| `HARDWARE` | Machine model, accuracy profile, turbo, floppy speed/write protection and reset. Its `INPUT` submenu selects mouse/joystick port modes and gamepad input. |
+| `ROMS` | Discover and select your local Kickstart ROMs. |
+| `RAM` | Chip/Slow/Fast RAM and supported PCMCIA SRAM options. |
+| `GRAPHICS` | Filter, upscaler, monitor aperture, render FPS, fullscreen, image size and overlays. |
+| `SOUND` | Audio enable, volume and Paula output filter. |
+| `HARD DISK` | Create/mount/eject HDFs, controller enable, write protection and hard disk boot. |
+
+### Display and sound
+
+`GRAPHICS` → `VIDEO UPSCALE` offers `NONE`, `SCALE2X`, `SCALE3X`,
+`HQ2X`, `HQ3X` and `HQ4X`. Upscaling changes pixel reconstruction
+without changing the displayed image size. `IMAGE SIZE = KEEP ASPECT`
+preserves the presentation aspect ratio; `FILL SCREEN` stretches the image
+to the entire window or fullscreen area. Monitor aperture and render FPS
+are separate options. A higher render cap does not change native guest timing;
+turbo mode runs the emulation faster.
+
+`SOUND` offers `OFF`, `A500`, `A1200` and `LED` filter profiles.
+`OFF` gives the clearest output; A500/A1200 follow the game's LED-filter
+state, while LED forces the extra filtering on.
+[Paula audio and filter details](AmigaEmulator/Docs/Audio.md).
+
+## Network play
+
+Open `F10` → `NETWORK`. The host runs the Amiga and streams completed
+native frames plus Paula audio. Connected clients suspend their local Amiga,
+show the host stream and send only host-approved input. Leaving resumes the
+client's parked machine. Video presentation, upscaling, fullscreen and sound
+settings remain local to each viewer.
+
+### LAN
+
+1. Host: choose `MODE = LAN`, set `SERVER PORT` and an optional
+   `SERVER PASSWORD`, then start the server.
+2. Client: enter the host's `CLIENT HOST`, matching `CLIENT PORT`
+   and password, choose a player name, then join.
+3. Host: select the connected client and grant joystick, keyboard or mouse
+   permissions, or use `CONTROL OWNER` to hand over all guest controls.
+
+Clients initially join as observers. The host can grant the second joystick
+for multiplayer, individual input devices or exclusive full control.
+Configure two joystick ports under `HARDWARE` → `INPUT` when the game needs
+two joysticks. Revocation or disconnect releases held remote inputs.
+
+### Relay
+
+Choose `MODE = RELAY` on both sides and use the same relay address, port,
+connection ID and relay password. The default relay port is `6465`.
+The included relay supports both C64 and Amiga rooms on the same listener,
+with separate emulator namespaces. **An existing C64-only proxy must be
+upgraded to this shared relay before it can accept Amiga connections.**
+See [relay installation and proxy migration](relay_server/README.md).
+
+| Area | Transport |
+| --- | --- |
+| Security | TLS 1.2/1.3 with SHA-256 certificate pinning; changed pins require explicit acceptance. Relay sessions add end-to-end ECDH P-256 / AES-256-GCM encryption. |
+| Video | Native unfiltered ARGB32, retaining HAM/AGA/raster colors; smallest full, compressed, sparse or XOR/RLE delta payload. Scaling and overlays are local. |
+| Audio | Stereo IMA ADPCM packets with a PCM fallback; local output filters follow the host game's LED state. |
+| Flow control | Latest pending video frame and bounded audio queues so a slow client does not stall others. |
+| Permissions | Observer, joystick ports, keyboard, one mouse owner or complete control handover. |
+| Protocol | Six-byte `AMIGAR` identity, based on the C64 transport design. |
+
+The Windows installer does not install a relay service. Deploy it separately
+if needed. [Full network, security and wire-format documentation](AmigaEmulator/Docs/NetworkPlay.md).
 
 ## Hard disks and memory expansions
 
-Open the overlay with Esc, then **HARD DISK**. Choose **NEW IMAGE SIZE**
-(16–2048 MiB), then **CREATE IMAGE** and a new `.hdf` filename. This creates and
-mounts a writable, whole-disk image with an RDB and bootable DH0 FFS partition.
-The filesystem is initially unformatted: format DH0 and install your own Amiga
-system from Workbench disks. Existing files are never overwritten by creation.
-**MOUNT IMAGE** opens an existing raw whole-disk/RDB HDF; partition-only HDFs,
-VHD/HDZ containers and host directories are not translated into drives.
+Open `F10` → `SETTINGS` → `HARD DISK`. Choose `NEW IMAGE SIZE`
+(16–2048 MiB), then `CREATE IMAGE` and a new `.hdf` filename.
+The emulator creates a whole-disk image with an RDB and bootable DH0 FFS
+partition. Format DH0 and install your own OS from your Workbench/AmigaOS disks.
+Creation preserves existing files.
 
-Use **WRITE PROTECTION** to select read-only or read/write access. Completed
-sector writes persist in the image; ejecting, reconfiguring, saving or closing
-flushes it. Changing the controller/image/write mode restarts the guest machine.
-The emulator operates on image files, not Windows physical disks.
+`MOUNT IMAGE` opens a raw whole-disk/RDB HDF. Partition-only HDFs,
+VHD/HDZ containers and host directories are not translated.
+`WRITE PROTECTION` selects read-only or writable access.
+Completed sector writes persist; ejecting, reconfiguring, saving or closing
+flushes the image. Controller/image/access-mode changes restart the guest.
+`BOOT FROM HD` enables hard disk boot and ejects floppy media for that session.
 
-Select a Kickstart for the actual motherboard and its controller (A600/A1200
-Gayle IDE, A3000 SCSI or A4000 IDE). The optional legacy IDE expansion requires
-an A600-compatible Kickstart (2.05 or 3.1, with the Gayle IDE `scsi.device`)
-in the ROM menu. Ordinary A500 Kickstart 1.3 has no built-in driver for this
-controller. **BOOT FROM HD** enables the persistent hard-disk boot preference,
-ejects floppies for the current session and restarts. When enabled, startup does
-not automatically restore DF0. Disable it to return to normal floppy startup;
-floppies can still be inserted explicitly through MEDIA.
+Select firmware matching the board and controller. A500 Kickstart 1.3 does
+not provide the Gayle IDE driver used by the optional legacy expansion.
+User-provided AmigaOS 3.1.4 on A4000/030 has passed basic desktop, Shell/Clock,
+restart/restore and file-persistence checks; this is not full OS certification.
+[Storage validation](AmigaEmulator/Docs/StorageExpansion.md).
 
-Select memory through **MACHINE → RAM** (also available in SETTINGS): 512 KiB
-Chip, 512 KiB Chip + 512 KiB Slow, 1/2 MiB Chip, 1/2 MiB Chip + 2/4 MiB Fast,
-or 2 MiB Chip + 8 MiB Fast. Changing a profile restarts the machine. Fast RAM
-is exposed as a Zorro II expansion on older boards and A1200; A3000/A4000 use
-motherboard RAM ending at `$08000000`.
+## Savestates
 
-Savestates preserve controller registers, partially transferred sectors and
-the mounted image path/access mode. The HDF remains an external, mutable file;
-loading a savestate does **not** rewind disk contents. Keep the image alongside
-its saves and make a separate copy when a disk snapshot is needed. Old savestates
-still load with the IDE controller disabled. See
-[storage validation](AmigaEmulator/Docs/StorageExpansion.md) for tested scope.
+`F12` opens save/load with screenshot previews. Savestates preserve the
+machine model, CPU/chip/RAM state, input and mounted controller state.
 
-## Repository Layout
+**An HDF remains an external mutable file. Loading a savestate does not
+rewind hard disk contents.** Keep images alongside their saves and make a
+separate image copy when a disk snapshot is needed.
 
-```text
-AmigaEmulator/
-|-- AmigaEmulator.sln
-|-- AmigaEmulator/          Main application and emulator core
-|   |-- Audio/              Paula audio output and resampling
-|   |-- Cia/                CIA 8520 emulation
-|   |-- Core/               System model, settings, clock, ROM resolver
-|   |-- Cpu/                Motorola 68000/020/030 integer cores and MMU
-|   |-- CustomChips/        Agnus, Denise, Paula, Copper, Blitter, DMA
-|   |-- DevTools/           Tracing and diagnostics helpers
-|   |-- Docs/               Technical plans and test specifications
-|   |-- Input/              Keyboard, mouse, and joystick input
-|   |-- Media/              ADF, MFM, and floppy controller code
-|   |-- Memory/             Chip/Slow/Fast RAM, bus, custom register map
-|   |-- SaveStates/         Save state file format and slot handling
-|   |-- Video/              Framebuffer, presenter, and filters
-|   |-- AmigaWindow.cs      WinForms/SharpPixels host and overlay menus
-|   `-- Program.cs          Application entry point and CLI diagnostics
-|-- AmigaEmulator.Tests/    Custom test runner without external test framework
-|-- SharpPixels/            Local SharpPixels renderer
-`-- Tools/                  Helper scripts for matrix and vAmigaTS runs
-```
+## Windows installer and updates
 
-## Requirements
-
-- Windows x64
-- A .NET SDK that supports `net10.0-windows7.0`
-- Optional: Visual Studio with the .NET desktop workload
-- A legally obtained Kickstart ROM
-- Optional: legally obtained ADF disk images
-
-ROMs, Workbench disks, and games are not included in this repository.
-
-## ROMs and User Data
-
-The emulator keeps user-provided and generated data outside the repository.
-
-Kickstart ROM directory:
-
-```text
-%APPDATA%\AmigaEmulator\roms
-```
-
-Save state directory:
-
-```text
-%APPDATA%\AmigaEmulator\saves
-```
-
-Settings file:
-
-```text
-%APPDATA%\AmigaEmulator\settings.json
-```
-
-Default ADF media directory:
-
-```text
-%USERPROFILE%\Documents\AmigaEmulator
-```
-
-The media directory is created automatically on startup if it does not already
-exist. The media browser remembers the last selected directory afterwards.
-
-Common Kickstart file names that can be detected:
-
-- `kick13.rom`
-- `kickstart13.rom`
-- `amiga-os-130.rom`
-- `kick12.rom`
-- `kick20.rom`
-
-The ROM resolver checks file size, reset-vector structure, and known hashes.
-Kickstart 1.3 is recommended for the main Amiga 500 target.
-
-On GUI startup, missing ROMs open a dialog for your own ROM file or ROM folder.
-The selected external path is remembered; ROMs are never downloaded or supplied.
-Cancel or an invalid/missing ROM closes startup cleanly. Headless diagnostics
-continue without this dialog.
-
-## Windows Installer and Updates
-
-Build the same Inno Setup / GitHub update system used by the C64 frontend:
+The installer follows the C64 project's Inno Setup / GitHub Releases design.
+It contains the Windows x64 runtime and excludes ROMs, OS disks, games and saves.
 
 ```powershell
 ./scripts/build-installer.ps1
 ```
 
-Setup is written to `artifacts/installer/AmigaEmulator-<version>-win-x64-setup.exe`
-with a SHA-256 checksum. It contains the Windows x64 runtime and no ROMs/media.
-GUI startup checks the [GitHub Releases](https://github.com/n1k0m0/AmigaEmulator/releases)
-in the background, offers a newer Setup, and shows download progress and
-cancel/retry. Install closes the emulator cleanly before starting Setup. Own ROMs,
-saves and hard disks are retained during update and uninstall.
+Output: `artifacts/installer/AmigaEmulator-<version>-win-x64-setup.exe`
+and a SHA-256 checksum. Building setup requires Inno Setup 6.
 
-The root `VERSION` controls application/setup versions. A matching `v*` tag builds,
-tests and publishes the Windows assets through GitHub Actions. See
-[Installation and updates](AmigaEmulator/Docs/InstallationAndUpdates.md) for
-first-run behavior, release instructions and regression tests.
+GUI startup checks GitHub Releases in the background. When a newer release is
+available, it offers the setup download with progress, cancellation and retry.
+Installation closes the emulator cleanly before launching setup.
+Updates and uninstall preserve user ROMs, saves and hard disks.
 
-## Building
+The root [VERSION](VERSION) controls application and setup versions.
+A matching `v*` tag builds, tests and publishes Windows assets through
+[the release workflow](.github/workflows/release.yml).
+[Installation, update and release details](AmigaEmulator/Docs/InstallationAndUpdates.md).
 
-Release build:
+## Building and testing
+
+Requirements: Windows x64 and the .NET 10 SDK. Visual Studio with the .NET
+desktop workload is optional. Running the emulator also requires your own ROM.
 
 ```powershell
 dotnet build .\AmigaEmulator.sln -c Release -p:Platform=x64
-```
-
-Run from the build output:
-
-```powershell
 .\AmigaEmulator\bin\x64\Release\AmigaEmulator.exe
 ```
 
-Run directly through `dotnet run`:
+Or start directly:
 
 ```powershell
 dotnet run --project .\AmigaEmulator\AmigaEmulator.csproj -c Release -p:Platform=x64
 ```
 
-Normal emulator testing should use Release mode. Debug builds can become too
-slow for meaningful cycle and frame-rate behavior.
+Run the source regression suite:
 
-## Controls
+```powershell
+dotnet run --project .\AmigaEmulator.Tests -c Release -p:Platform=x64
+```
 
-Global hotkeys:
+Use Release builds for normal gameplay and performance measurements.
+For real-media scenarios, gameplay acceptance and paired measurements, see
+[GameRunner](Tools/GameRunner/README.md), [test specifications](AmigaEmulator/Docs/TestSpecs/README.md)
+and [the machine roadmap](AmigaEmulator/Docs/MachineModels.md).
 
-| Key | Function |
-| --- | --- |
-| `F9` | Toggle turbo mode |
-| `F10` | Open or close the main menu |
-| `F11` | Toggle fullscreen/windowed mode |
-| `F12` | Open the save state menu |
-| `Ctrl` + `Alt` + `F8` | Release the mouse |
-
-The mouse starts free. Click inside the Amiga image to capture it for relative
-mouse input; that first click is not sent to the guest. Release it using
-`Ctrl` + `Alt` + `F8` or click `F10` > `RELEASE MOUSE`. Menus retain capture
-inside the emulator window and show a pointer for menu selection. Closing a
-menu resumes guest mouse control without another click. Switching to another
-window or minimizing releases capture; returning focus requires an image click.
-
-Overlay navigation:
-
-- Arrow keys to move through menu entries
-- `Enter` to open or select
-- `Esc` to close or go back
-- Mouse wheel to scroll long menus
-
-The main menu contains `SETTINGS`, `NETWORK`, `MEDIA`, `RESET`, and `RELEASE MOUSE`.
-The settings navigation matches the C64 frontend. `SETTINGS` contains `HARDWARE` (including `INPUT`), `ROMS`, `RAM`,
-`GRAPHICS`, `SOUND`, and `HARD DISK`. F12 opens save states separately.
-
-LAN and relay multiplayer use the C64 transport design: TLS with pinning, relay
-ECDH P-256/AES-GCM, native full/delta video and packed stereo sound. Clients choose
-local scaling; the host grants keyboard, mouse, joystick or complete control.
-The new relay supports both `AMIGAR` and existing C64 clients on one proxy.
-See [setup and network play](AmigaEmulator/Docs/NetworkPlay.md).
-
-## Video
-
-`F10` > `SETTINGS` > `GRAPHICS` > `IMAGE SIZE` selects `KEEP ASPECT` or
-`FILL SCREEN`. Fill stretches the cropped picture across the entire client area;
-with `F11` fullscreen it fills the monitor, including the area normally occupied
-by the taskbar. The setting is saved. All upscale modes keep the same displayed
-bounds and mouse coordinates as the unscaled image. Leaving fullscreen restores
-the previous window bounds and state.
-
-The visible image is produced by the emulated Amiga framebuffer. Scaling and
-filters are applied afterwards as monitor/TV-style post-processing, not as a
-shortcut in the Amiga graphics path.
-
-Host presentation uses DIW/DDF and per-line display metadata for its source
-geometry. Black backgrounds and sparse top-edge artwork are preserved; frame
-brightness does not automatically shift or crop the picture.
-
-The presentation filters are `SHARP`, `CRT` and `TV`. `F10` > `SETTINGS` > `GRAPHICS` > `VIDEO UPSCALE` cycles through these source upscalers:
-
-- `NONE`: native source pixels.
-- `SCALE2X`: Scale2x neighbor rules at twice the source resolution.
-- `SCALE3X`: Scale3x neighbor rules at three times the source resolution.
-- `HQ2X`: HQx color-aware edge interpolation at twice the source resolution.
-- `HQ3X`: HQx color-aware edge interpolation at three times the source resolution.
-- `HQ4X`: HQx color-aware edge interpolation at four times the source resolution.
-
-Upscaling is applied by the CPU presentation renderer before the final display
-stretch. All modes preserve the native displayed bounds, aspect/stretch setting
-and mouse coordinates. Source crop boundaries clamp the neighbors, buffers are
-reused, and unchanged frames reuse the previous result. HQx uses the actual
-pattern rules and YUV color thresholds; see [third-party notices](THIRD-PARTY-NOTICES.md).
-Saved `Xbrz` and `Clean4` settings migrate to `HQ4X`; existing `Hq2x`, `Hq3x`
-and `Hq4x` settings select the corresponding HQx algorithm.
-
-Managed failures during GUI frame updates or painting create a fresh
-`%APPDATA%/AmigaEmulator/logs/host-error-*.txt` containing the original exception
-and CPU, beam, floppy/DMA, input and display configuration. Reporting preserves
-the existing exception handling and never writes guest media or savestates.
-For a game-specific failure, create a new `F12` save immediately before the
-trigger so the exact guest state can be replayed.
-
-## Accuracy profiles
-
-The frontend defaults to `Fast`, which disables tracing and relaxes chip-bus
-contention. `Compatible` and `Strict` enable region-aware bus arbitration and
-tracing. These profiles do not promise complete cycle accuracy. Saved user
-profile choices are preserved.
-
-## Audio
-
-Paula produces 48 kHz stereo audio with separate DMA holding/output words and
-integration of held DAC levels across each host sample. In **Settings / Sound**,
-the four independent filter profiles are:
-
-- **OFF**: clear output without analog filtering, regardless of the software LED.
-- **A500 (AUTO LED)**: fixed A500 output stages; the game controls the LED filter.
-- **A1200 (AUTO LED)**: clear output without fixed stages; the game controls the LED filter.
-- **LED (ALWAYS ON)**: fixed A500 stages with the LED filter forced on.
-
-Existing filter preferences are preserved. Use OFF for maximum clarity. Hardware
-profiles retain their intentional analog attenuation. Network clients choose
-their own filter and receive the host game's LED state with each audio chunk;
-host filtering is not applied twice. Measurements, remaining audio limitations
-and repeatable recording instructions are in [Audio.md](AmigaEmulator/Docs/Audio.md).
-
-The disk debug/status overlay includes a drive activity LED similar to the
-original Amiga 500 drive LED.
-
-## Input
-
-Implemented input paths:
-
-- Amiga keyboard through PC keyboard mapping
-- Joystick emulation
-- Connected Windows USB/HID gamepads, polled automatically with hot-plug detection
-- Mouse emulation
-- CIA/input regression self-tests
-
-Input behavior is still an area of active improvement because many games depend
-on very specific CIA, joystick, and mouse behavior.
-
-Gamepads use the joystick port selected under `F10` > Input (normally Amiga
-port 2). The Input menu shows the detected Windows controller name and port;
-selecting Gamepad refreshes discovery. Directional axes and an eight-way POV
-hat are supported with a centered deadzone. The first four physical buttons
-are Fire; buttons 5 and 6 are the additional Amiga buttons. Keyboard joystick
-input remains available alongside the controller. With dual joysticks, the
-first controller drives port 2 and the second drives port 1. Gamepad inputs
-are released on disconnect, focus loss and while an overlay menu is open;
-loading a savestate clears saved physical-controller buttons.
-
-The native reader uses Windows `joyGetPosEx` and `joyGetDevCapsW`, which also
-cover generic USB controllers that do not expose XInput. The data layouts and
-flags follow Microsoft's [JOYINFOEX](https://learn.microsoft.com/en-us/windows/win32/api/joystickapi/ns-joystickapi-joyinfoex)
-and [JOYCAPSW](https://learn.microsoft.com/en-us/windows/win32/api/joystickapi/ns-joystickapi-joycapsw)
-documentation. Only controllers exposed through Windows joystick drivers are
-currently covered; custom button remapping is not yet available.
-
-## Save States
-
-Save states are managed through `F12` and stored under:
+## Repository layout
 
 ```text
-%APPDATA%\AmigaEmulator\saves
+AmigaEmulator/          Application, CPU, custom chips, storage, input and frontend
+AmigaEmulator.Tests/    Source regression runner
+SharpPixels/           Pixel presentation, filters and upscaling
+Tools/                 Gameplay/CPU/audio runners and compatibility scripts
+docs/screenshots/      GitHub gallery and capture notes
+installer/             Inno Setup project
+scripts/               Installer build and validation
+relay_server/          Shared C64/Amiga TLS relay and service helpers
+external-tests/        Third-party hardware test sources and licenses
 ```
-
-Slots store machine state including CPU state, RAM, custom chips, disk/media
-metadata, and preview data. Save states are especially useful for debugging and
-compatibility testing, but they do not replace real timing fixes.
-
-## Tests
-
-The tests live in a dedicated console project and do not require an external
-test framework.
-
-Build first:
-
-```powershell
-dotnet build .\AmigaEmulator.sln -c Release -p:Platform=x64
-```
-
-Run the default test suite:
-
-```powershell
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll
-```
-
-List test cases:
-
-```powershell
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --list
-```
-
-Run filtered tests:
-
-```powershell
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter CPU
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter Denise
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --filter GoldenADF --include-adf
-```
-
-Run optional vAmigaTS smoke tests:
-
-```powershell
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --include-vamigats --filter vAmigaTS
-```
-
-Run broader vAmigaTS discovery:
-
-```powershell
-dotnet .\AmigaEmulator.Tests\bin\x64\Release\AmigaEmulator.Tests.dll --vamigats-all --vamigats-limit 50 --filter vAmigaTS
-```
-
-More details:
-
-```text
-AmigaEmulator/Docs/TestSuite.md
-AmigaEmulator/Docs/TestSpecs/README.md
-```
-
-## Diagnostics and Developer Modes
-
-The application contains several CLI diagnostics for emulator development.
-Examples:
-
-```powershell
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --check-roms
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-cpu
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-blitter
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-copper
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-cia
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-disk
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --self-test-input
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --assert-kickstart-screen-path 120000000 --model a500
-dotnet .\AmigaEmulator\bin\x64\Release\AmigaEmulator.dll --adf-test-matrix "%USERPROFILE%\Documents\AmigaEmulator" 30000000 .\tmp\adf-matrix --limit 20 --model a500
-```
-
-Helper scripts:
-
-```text
-Tools/run-game-matrix.ps1
-Tools/run-vamigats-full.ps1
-Tools/run-amiga-gui-stability.ps1
-```
-
-## Gameplay/performance review (2026-10-07)
-
-New settings use Compatible chip-bus arbitration without continuous CPU/DMA
-tracing; Fast remains selectable and existing saved profile choices are respected.
-The local boot entries are not yet all certified playable. See [the reviewed
-results and open cases](AmigaEmulator/Docs/GameplayReview-2026-10-07.md) and
-[the scripted gameplay runner](Tools/GameRunner/README.md).
-
-The current model roadmap, native-ROM checks and paired throughput measurements
-are tracked in [MachineModels](AmigaEmulator/Docs/MachineModels.md#approved-roadmap-progress-2026-10-09).
-The full roadmap is still in progress. The user-provided AmigaOS 3.1.4 files and
-matching A4000 ROM now pass basic installed-OS checks; wider coverage remains open.
 
 ## License
 
-This project is licensed under the Apache License 2.0. See `LICENSE`.
-Bundled third-party HQx and devtest sources retain their own licenses; see
-`THIRD-PARTY-NOTICES.md` and `external-tests/amiga_devtest/LICENSE`.
+The emulator source is licensed under the [Apache License 2.0](LICENSE).
+Bundled HQx and devtest sources retain their own licenses; see
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and
+[the devtest license](external-tests/amiga_devtest/LICENSE).
 
-Kickstart ROMs, Workbench disks, and game/ADF files are not covered by this
-repository license and must be provided separately by the user.
+Kickstart, AmigaOS/Workbench, games and their screenshot artwork retain
+their respective owners' rights. They are not covered by the emulator's
+source-code license.
