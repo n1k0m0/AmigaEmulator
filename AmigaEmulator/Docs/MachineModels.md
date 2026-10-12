@@ -2371,10 +2371,30 @@ distribution audit and real isolated install/update/uninstall with retained
 synthetic ROM/HDF data. The workflow was manually dispatched, so it did not
 publish a release. Evidence: `github-installer-baseline.log` and
 [workflow 38203773101](https://github.com/n1k0m0/AmigaEmulator/actions/runs/38203773101).
-Publishing the tested Windows release is still pending; relay deployment awaits
-the user's SSH target and preserves the existing certificate/key/port.
+The first Windows release is now published as
+[v0.1.1](https://github.com/n1k0m0/AmigaEmulator/releases/tag/v0.1.1), built from
+`ad1233ad3f375ba437bac9a5dad37724637c4e2b` by
+[workflow 38210764572](https://github.com/n1k0m0/AmigaEmulator/actions/runs/38210764572).
+That tag run passes 339/339 source tests with zero skips, five relay tests,
+the source-header/distribution audits and actual isolated installation,
+update and uninstall, retaining synthetic user ROM/HDF files. The installer
+download is independently SHA-256 verified:
+`65d727cf61370c9e361ef6c07ef7a0a1640a2509a883f22a4e94503f5ed0ab02`
+(36,887,478 bytes). Evidence: `github-release-0.1.1.log` and
+`released-0.1.1/checksum-proof.json`. All 63 original user ADF/HDF/ROM files
+remain byte-identical (`user-media-final-proof.json`). The twelve runner
+preflight tests pass, and the solution build has zero warnings/errors.
+Relay deployment still awaits the user's SSH target and must preserve the
+existing certificate/key/port; no existing public proxy has been changed.
 
-Next: finish the Cannon transition diagnosis and fresh cold single-drive test,
-finish release verification, then continue
+The cold Cannon black checkpoint also remains black after independently
+remounting Disk 1, 2 or 3 and confirming; all three retain hash
+`C9926CBFA109FB0E876776ECF213DE72260B7EA4E7EB1AA4B0C90BFE164E2345`
+with no new CPU faults (`cannon-cold-black-recovery/`). These are failed recovery
+controls. Trace the initial palette/fade loading before the first Disk-2
+handoff instead of treating repeated disk insertion as progress.
+
+Next: trace the cold Cannon palette/fade handoff and complete a visually verified
+DF0 boot/mission sequence, then continue
 full graphics/fault restart/FPU/040/Zorro III and the broad gameplay
 acceptance work. No remaining hardware gate is removed by these results.
