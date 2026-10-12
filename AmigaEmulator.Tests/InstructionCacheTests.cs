@@ -120,10 +120,14 @@ namespace AmigaEmulator.Tests
                 byte[] current = save.ToArray(); int extensionLength = 8 + 6 * 4;
                 if (model == AmigaCpuModel.M68EC030) extensionLength += 10;
                 if (model == AmigaCpuModel.M68030) extensionLength += 38; // Empty ATC.
-                int legacyLength = current.Length - 64 * 9 - (model == AmigaCpuModel.M68EC030 || model == AmigaCpuModel.M68030 ? 336 : 0);
+                // An empty version-1 MMU ends at the count; version 2 also
+                // writes four history bytes. Preserve a real historical layout.
+                int legacyLength = current.Length - 64 * 9 - (model == AmigaCpuModel.M68EC030 || model == AmigaCpuModel.M68030 ? 336 : 0)
+                    - (model == AmigaCpuModel.M68030 ? 4 : 0);
                 byte[] legacy = current.AsSpan(0, legacyLength).ToArray();
                 int extensionStart = legacyLength - extensionLength;
                 BitConverter.GetBytes(model == AmigaCpuModel.M68030 ? 3 : model == AmigaCpuModel.M68EC030 ? 2 : 1).CopyTo(legacy, extensionStart);
+                if (model == AmigaCpuModel.M68030) BitConverter.GetBytes(1).CopyTo(legacy, extensionStart + 32);
                 using var oldSave = new MemoryStream(legacy); cpu.LoadState(new BinaryReader(oldSave));
                 Check.Equal(2u, Execute(cpu, bus, 0x1000, 0x7002), "Legacy save starts with an empty cache, never a previous machine's entries.");
             }

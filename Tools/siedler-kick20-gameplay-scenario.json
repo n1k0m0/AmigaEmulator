@@ -190,7 +190,7 @@
         "type": "wait",
         "cycles": 140000000,
         "label": "mission-started",
-        "expectedFrameHash": "8521183B71F5C0BE1128122E05FC0145B7784E70C7F2A4B984D9768A6CBACC67"
+        "expectedFrameHash": "9016FB3B542C0714E193D4CC77E6D3916E75EA17BE8A81AB1876216479B95F60"
       },
       {
         "type": "restore",
@@ -231,7 +231,7 @@
         "type": "wait",
         "cycles": 60000000,
         "label": "construction-result",
-        "expectedFrameHash": "5F1CDBD346DE51CF2AD9400546F42A04FBF259BD3B66675A867F4AC11E0C8B47"
+        "expectedFrameHash": "FB906400C0EB701E4FCDE66F96EF41A96A06F370D458F47205515AF8EB6C3525"
       },
       {
         "type": "restore",

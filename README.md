@@ -69,9 +69,10 @@ situations, rather than certify entire games or campaigns.
 
 ## Installation and ROM setup
 
-Use a Windows x64 setup from [GitHub Releases](https://github.com/n1k0m0/AmigaEmulator/releases)
-when one is published. **No release is published as of 2026-10-11.**
-For the current development version, [build from source](#building-and-testing)
+Use the Windows x64 setup from [GitHub Releases](https://github.com/n1k0m0/AmigaEmulator/releases/latest).
+The setup includes the .NET runtime; a SHA-256 checksum accompanies each installer.
+Read the release notes for tested configurations and current limits.
+You can also [build from source](#building-and-testing)
 or [build the installer](#windows-installer-and-updates).
 
 1. Start the emulator with your own Kickstart ROM available.
@@ -136,7 +137,7 @@ They are not covered by the source-code license.
 Model and RAM changes restart the guest. Menu options and saved configurations
 are checked against each model's supported layouts.
 
-The reviewed 2026-10-11 build passes **335 regression tests**. The expanded
+The reviewed 2026-10-12 build passes **339 regression tests**. The expanded
 **268-case / 30-title / eight-profile manifest** passes preflight validation;
 this count does **not** mean 268 complete gameplay runs passed.
 Real gameplay evidence and required configurations are recorded in

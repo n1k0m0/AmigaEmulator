@@ -139,7 +139,7 @@ The complete Release suite passes 265 tests with zero failures/skips.
 The window test can additionally boot a supplied ROM using
 `AMIGAEMULATOR_NETWORK_TEST_ROM` (read only).
 
-Four Python regressions independently check the relay framing, size limits,
+Five Python regressions independently check the relay framing, size limits,
 protocol switching, shared-port namespace separation, room collisions and relay
 passwords. An external C64 smoke harness also verifies all six menu categories
 and the unchanged C64 TLS/ECDH/AES-GCM client/server, video and joystick against

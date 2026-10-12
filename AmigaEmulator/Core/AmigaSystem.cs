@@ -441,7 +441,7 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(16); // Includes the extended CPU instruction and data caches.
+                writer.Write(17); // Nested MMU state includes fixed ATC slots and history bits.
                 writer.Write((int)_model.Machine);
                 writer.Write(_model.ChipRamBytes); writer.Write(_model.SlowRamBytes); writer.Write(_model.FastRamBytes);
                 writer.Write((int)_model.Cpu); writer.Write(_model.CpuClockHz); writer.Write(_cpuClockPhase);
@@ -488,7 +488,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version < 1 || version > 16)
+                if (version < 1 || version > 17)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
@@ -805,7 +805,7 @@ namespace AmigaEmulator.Core
                 _denise.FinishLineTail(_agnus.Beam);
             }
 
-            if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && slot.BeamY == _model.LinesPerFrame - 1)
+            if (slot.SlotIndex == _model.ChipCyclesPerLine - 1 && _agnus.FieldEndedInLastTick)
             {
                 if (_suppressNextPresentationAfterLoad)
                 {

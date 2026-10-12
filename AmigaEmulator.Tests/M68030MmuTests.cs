@@ -17,6 +17,98 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("CPU/030MMU", "overlapping transparent windows OR cache inhibit only from matching registers", "Motorola MC68030UM 9.3, CIOUT; independent window combinations", TestOverlappingTransparent);
             yield return new ChipTestCase("CPU/030MMU", "cached invalid, limit and supervisor faults report ATC B/I rather than table-search status", "Motorola MC68030UM 9.4, 9.7.4 table 9-3", TestCachedFaultStatus);
             yield return new ChipTestCase("CPU/030MMU", "cached write protection is readable and PTEST table walks leave cached faults intact", "Motorola MC68030UM 9.4, 9.7.6", TestCachedProtectionAndRepair);
+            yield return new ChipTestCase("CPU/030MMU", "ATC history protects recent translations without promoting PTEST or debugger peeks", "Motorola MC68030UM 9.4; independent 23-page access sequences", TestHistoryReplacement);
+            yield return new ChipTestCase("CPU/030MMU", "ATC slot priority and history survive selective flush, restore and legacy migration", "Motorola MC68030UM 9.4; independent holes and serialized-state fixtures", TestHistoryRestore);
+        }
+        private static M68030Mmu IdentityMmu()
+        {
+            var mmu = new M68030Mmu(_ => throw new InvalidOperationException("Root page must not read a table."), (_, _) => { });
+            Check.True(mmu.SetTranslationControl(0x80C48800), "4 KiB pages.");
+            Check.True(mmu.SetRoot(false, 0x7FFF000100000000), "Root page maps the logical address directly.");
+            return mmu;
+        }
+        private static void FillAtc(M68030Mmu mmu)
+        {
+            for (uint page = 0; page < 22; page++)
+                Check.Equal(page << 12, mmu.Translate(page << 12, 1, false).Physical, "Independent identity pages.");
+        }
+        private static bool Resident(M68030Mmu mmu, uint page)
+            => mmu.TryGetCachedTranslation(page << 12, 1, out _);
+        private static void TestHistoryReplacement()
+        {
+            var mmu = IdentityMmu(); FillAtc(mmu);
+            mmu.Translate(0, 1, false); // The oldest entry is now used again.
+            mmu.Translate(22 << 12, 1, false);
+            Check.True(Resident(mmu, 0), "A recent hit protects slot zero; FIFO incorrectly evicts it.");
+            Check.True(!Resident(mmu, 1), "First unreferenced slot is replaced.");
+            Check.True(Resident(mmu, 21) && Resident(mmu, 22), "The last fill and new page retain their history bits.");
+
+            mmu = IdentityMmu(); FillAtc(mmu);
+            Check.True(mmu.Test(0, 1, false, 0).Accessible(false), "PTEST sees the entry.");
+            Check.True(Resident(mmu, 0), "Debugger cache query sees the entry.");
+            mmu.Translate(0, 1, false, false); // Observational translation.
+            mmu.Translate(22 << 12, 1, false);
+            Check.True(!Resident(mmu, 0), "PTEST and observational peeks must not perturb replacement history.");
+
+            mmu = IdentityMmu(); FillAtc(mmu);
+            // Touching every history bit starts a new epoch, retaining only
+            // the most recent access. These choices differ from a true LRU.
+            for (uint page = 0; page < 21; page++) mmu.Translate(page << 12, 1, false);
+            mmu.Translate(0, 1, false);
+            mmu.Translate(22 << 12, 1, false);
+            Check.True(Resident(mmu, 0) && Resident(mmu, 20), "Epoch reset retains the triggering entry and subsequent hit.");
+            Check.True(!Resident(mmu, 1), "After reset, lowest zero-history slot wins.");
+        }
+        private static void TestHistoryRestore()
+        {
+            var mmu = IdentityMmu(); FillAtc(mmu);
+            mmu.Flush(1, 7, 5 << 12);
+            mmu.Translate(50 << 12, 1, false); // Reuse physical hole five.
+            mmu.Translate(0, 1, false);
+            using var state = new MemoryStream(); mmu.SaveState(new BinaryWriter(state));
+            var restored = IdentityMmu(); state.Position = 0; restored.LoadState(new BinaryReader(state));
+            foreach (var target in new[] { mmu, restored })
+            {
+                target.Translate(22 << 12, 1, false);
+                Check.True(Resident(target, 0) && Resident(target, 50), "Slot zero and the reused hole retain history across restore.");
+                Check.True(!Resident(target, 1), "Restore preserves exact slot priority, including holes.");
+                target.Flush(1, 7, 21 << 12); target.Translate(51 << 12, 1, false);
+                target.Translate(23 << 12, 1, false);
+                Check.True(!Resident(target, 2), "Selective flush creates a hole without reordering survivors.");
+                target.Load(50 << 12, 1, false);
+                Check.True(Resident(target, 50), "PLOAD flushes and reloads only its matching entry.");
+            }
+            using var expected = new MemoryStream(); using var actual = new MemoryStream();
+            mmu.SaveState(new BinaryWriter(expected)); restored.SaveState(new BinaryWriter(actual));
+            Check.True(expected.ToArray().AsSpan().SequenceEqual(actual.ToArray()), "Replacement state has exact round-trip equality.");
+
+            // Historical format 1 stored FIFO order without slot/history data.
+            using var legacy = new MemoryStream(); var writer = new BinaryWriter(legacy);
+            writer.Write(1); writer.Write(0x80C48800u); writer.Write(0x7FFF000100000000ul); writer.Write(0ul);
+            writer.Write(0u); writer.Write(0u); writer.Write((ushort)0); writer.Write(22);
+            for (uint page = 0; page < 22; page++)
+            { writer.Write(page); writer.Write(1); writer.Write(page << 12); writer.Write((ushort)0); writer.Write(0u); }
+            legacy.Position = 0; restored.LoadState(new BinaryReader(legacy));
+            restored.Translate(0, 1, false); restored.Translate(22 << 12, 1, false);
+            Check.True(Resident(restored, 0) && !Resident(restored, 1), "Legacy entries migrate into stable slots with neutral history.");
+
+            using var intact = new MemoryStream(); restored.SaveState(new BinaryWriter(intact));
+            byte[] good = intact.ToArray();
+            foreach (string corruption in new[] { "history", "all-history", "slot-range", "duplicate-slot", "truncated" })
+            {
+                byte[] bad = (byte[])good.Clone();
+                if (corruption == "history") BitConverter.GetBytes(1u << 22).CopyTo(bad, 38);
+                if (corruption == "all-history") BitConverter.GetBytes((1u << 22) - 1).CopyTo(bad, 38);
+                if (corruption == "slot-range") bad[42] = 22;
+                if (corruption == "duplicate-slot") bad[61] = bad[42];
+                if (corruption == "truncated") Array.Resize(ref bad, bad.Length - 1);
+                bool rejected = false;
+                try { using var input = new MemoryStream(bad); restored.LoadState(new BinaryReader(input)); }
+                catch (Exception error) when (error is InvalidDataException || error is EndOfStreamException) { rejected = true; }
+                Check.True(rejected, "Corrupt ATC state is rejected: " + corruption);
+                using var retained = new MemoryStream(); restored.SaveState(new BinaryWriter(retained));
+                Check.True(good.AsSpan().SequenceEqual(retained.ToArray()), "Rejected ATC state preserves the running machine.");
+            }
         }
         private static (M68030Mmu mmu, Dictionary<uint, uint> memory) Setup()
         {

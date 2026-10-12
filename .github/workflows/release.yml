@@ -65,6 +65,11 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:GITHUB_REF_NAME @files --clobber
           } else {
-            gh release create $env:GITHUB_REF_NAME @files --verify-tag --title "Amiga Emulator $version" --generate-notes
+            $notes = "docs/release-notes/v$version.md"
+            if (Test-Path -LiteralPath $notes) {
+              gh release create $env:GITHUB_REF_NAME @files --verify-tag --title "Amiga Emulator $version" --notes-file $notes
+            } else {
+              gh release create $env:GITHUB_REF_NAME @files --verify-tag --title "Amiga Emulator $version" --generate-notes
+            }
           }
           exit $LASTEXITCODE

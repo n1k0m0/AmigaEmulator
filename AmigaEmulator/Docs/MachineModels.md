@@ -1,6 +1,6 @@
 # Machine models: implementation and validation
 
-Status: 2026-10-11. Select a machine through **F10 -> SETTINGS -> HARDWARE**.
+Status: 2026-10-12. Select a machine through **F10 -> SETTINGS -> HARDWARE**.
 Changing the model restarts the guest. Every model except A500 is currently
 marked **PREVIEW**. Preview means incomplete hardware/software coverage.
 
@@ -68,7 +68,16 @@ short/long and indirect translation descriptors, early/root mappings,
 root limits, function-code tables, transparent windows, U/M updates, access
 protection and 22 cached translations. Level-zero PTEST converts cached table
 faults to the hardware ATC B/I status and distinguishes them from a cache miss;
-table-search PTEST remains separate. Its ATC replacement is currently FIFO.
+table-search PTEST remains separate. The ATC has 22 fixed slots with a history
+bit per slot. Real translation hits and fills set history; exhausting zero
+bits clears the other entries' history. The lowest invalid slot is preferred,
+otherwise the lowest zero-history slot is replaced. PTEST and observational
+queries do not promote entries. Selective flush retains slot order/history.
+Nested MMU state version 2 stores slots/history and reads version 1 with neutral
+history; core state version 17 lets older applications reject this new layout
+before restoring RAM. Independent fixtures cover eviction, epoch reset, holes,
+PLOAD, exact restore, old CPU/MMU payloads and transactional rejection of corrupt
+slots/history. Timing and complete fault restart remain separate gates.
 Faults enter a short format-A frame containing logical address, function code
 and transfer status. TAS/CAS/CAS2 locked reads check write permission before
 changing condition codes or compare registers; their faults identify the RMW
@@ -97,8 +106,10 @@ Native superhires output, interlace,
 programmable monitor timing, scan doubling and genlock remain incomplete.
 The LOF field flop now follows VPOSW and toggles at field boundaries only
 while BPLCON0 LACE is set. It no longer alternates in non-interlaced output.
-This corrects field selection, not field lengths, weaving or programmable
-beam-counter writes; those separate timing/output gates remain open.
+PAL fields now last 312 or 313 scanlines according to LOF, including a programmed
+long field with LACE cleared. The machine presents only after the full field;
+normal/profiling paths and an extra-line restore are checked independently.
+Full field weaving and programmable beam-counter writes remain open.
 Sprite output retains its bitmap/position separately from subsequent Copper
 register writes. VSTOP uses an exact beam comparison; a zero stop cannot create
 a fictitious line-256 fetch. Early DATA writes now initialize the new scanline
@@ -276,10 +287,10 @@ broader application and all-model storage coverage remain open.
 | --- | --- | --- |
 | 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection retains media/partial writes; separate Pinball writer repair persists all eleven score sectors on the correct track on both native desktops (2026-10-11) | Current Siedler border report remains open; raw/custom-track preservation remains incomplete; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
 | 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and actual score-sector writes on all four tables using an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands with explicit RAM/media requirements; Cannon Fodder's first mission on all eight native boards with data drives (2026-10-11) | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned new Pinball highscore entry and broader score reload/model coverage, Desert land combat/objectives, Cannon single-drive requests and longer campaigns, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
-| 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; timing lookup rejected after a regression (2026-10-11) | Continue profiling remaining allocations and repeat paired measurements after further changes |
-| 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; five older boards with owned 46.143 ROM, Shell/Clock/ShowConfig and independently verified file persistence/reset/restore (2026-10-11) | Broader applications and complete controller coverage; optional hardware remains gated |
-| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested; LOF/VPOSW field selection corrected with a failing-before fixture | Native superhires, interlace field lengths/weaving, programmable timing, scan doubling, additional references |
-| 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested; overlapping TT windows combine cache inhibit correctly | Complete timing, ATC replacement and restartable format A/B faults |
+| 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; profile-driven floppy selection/index/tick optimization with paired identical CPU/frame states (2026-10-12); timing lookup and duplicate bus-classification candidates rejected | Continue profiling remaining allocations and repeat paired measurements after further changes |
+| 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; all eight boards have matching 46.143 desktop/application evidence; A1200 IDE/A3000 SCSI Shell/Clock/ShowConfig and independently verified file persistence/reset/restore repeated on the current core (2026-10-12) | Broader applications and complete controller coverage; A1200 native 3.1 comparison remains unresolved; optional hardware remains gated |
+| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested; LOF/VPOSW field selection and 312/313-line PAL field timing/presentation corrected with failing-before fixtures (2026-10-12) | Native superhires, full interlace weaving, programmable timing, scan doubling, additional references |
+| 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested; overlapping TT windows combine cache inhibit correctly; fixed-slot ATC history replacement and legacy restore checked (2026-10-12) | Complete timing and restartable format A/B faults |
 | 7. Further hardware | Dependencies and test gates remain explicit; unsupported models stay unavailable | Optional 68881/68882, distinct 68040 CPU/MMU/FPU, then Zorro III enumeration |
 
 ### Gameplay evidence
@@ -1132,8 +1143,8 @@ The broader game/model and hardware roadmap remains open.
 
 ## Remaining implementation order
 
-1. Complete restartable 68030 format A/B bus faults, cache semantics and ATC
-   replacement using independent hardware fixtures.
+1. Complete restartable 68030 format A/B bus faults and cache/timing semantics
+   using independent hardware fixtures; retain the verified ATC history replacement.
 2. Expand A3000 installed-OS/SCSI coverage, then add negotiated SCSI timing,
    disconnect/reselection and complete target command coverage.
 3. Expand native A1200/AGA software and installed-OS coverage. Optional
@@ -2101,7 +2112,7 @@ no performance gain is claimed for a media repair.
 ### Mega lo Mania and Cannon Fodder memory/loader review — 2026-10-11
 
 The preceding Pinball score-writer work is committed and pushed as `b4c0d2b`.
-The following changes are local. Evidence is in
+These changes were subsequently committed/pushed as `58faa31`. Evidence is in
 `%APPDATA%/AmigaEmulator/diagnostics/MegaCannon-20261011-085650-892a6697/`.
 Original games, ROMs and the installed OS disk are preserved.
 
@@ -2255,3 +2266,115 @@ Next: isolate the DF0-only request/late address error with paired checkpoints,
 then test later missions/islands and actual later-disk transitions. Retain
 the existing graphics/timing/MMU/FPU/040/Zorro III gates. The
 roadmap remains active.
+
+### Execution of the seven requested points — 2026-10-12
+
+This execution follows the seven-point chat list: game defects, broader gameplay,
+graphics, CPU/MMU, performance, OS/additional hardware, then release/relay.
+The overall scope remains active. Evidence is in
+`%APPDATA%/AmigaEmulator/diagnostics/RoadmapSeven-20261012-4fcc1fe9/`.
+The baseline hashes cover 63 existing user files: fifty root ADFs, both permanent
+HDFs and eleven ROMs. New diagnostics and OS writes use external test outputs
+and fresh HDF copies. None of this media is distributed.
+
+**Cannon DF0-only timing:** paired replay of the same army checkpoint reproduces
+the previous address error at frame 45280, `$C24496` (`CLR.W (A4)`). The player
+reads sample base `$64C4` plus offset `$149`, producing odd address `$660D`.
+Adding data drives reaches the actual mission. Waiting four million clocks
+before confirming the same briefing also reaches Mission 1 with only DF0;
+twenty/160-million-clock controls and exact cold restores pass. Changing the
+inserted disk before confirmation is not necessary for these continuations.
+The PAL field correction below now removes this exact immediate-click failure.
+An isolated negative control changing only the field length back to constant
+312 reproduces vector 3 at the original frame/PC; the corrected core reaches
+the actual jungle mission with Jools/Jops. A fresh cold DF0 attempt still ends
+at black output after the first Disk-2 handoff; it is explicitly rejected despite
+runner exit zero. Full cold single-drive and later disk transitions remain open.
+Evidence: `df0-baseline/`, `data-control/`, `df0-fields-integrated/`,
+`df0-fields-negative-control/`, `cannon-df0-cold-integrated/`,
+`cannon-cold-black-registers.log`, `cannon-fields-live-registers.log`,
+`df0-fault-registers.log`, `mission-waits/`, `mission-disk1/`, `mission-disk3/`.
+The cold black checkpoint has active DMA `$03FF`, four planes (`BPLCON0=$4000`)
+and a running Copper at `$003254`, but all 32 stored COLORxx values are zero.
+That differs from the working mission's loaded palette; do not mask this guest
+transition with a host renderer/palette workaround.
+
+**68030 ATC:** the FIFO implementation fails both new independent fixtures.
+Fixed slots/history now pass the eight MMU tests, including malformed histories,
+out-of-range/duplicate slots, truncated payloads and unchanged live state after
+rejection. Historical instruction/data-cache fixtures retain real version-1
+MMU payloads. The complete intermediate suite passes **337/337**;
+`atc-before.log`, `atc-guards.log`, `cache-legacy-after.log`,
+`full-atc-final.log` retain the evidence. The nested format change is tagged as
+core version 17. The final integrated suite passes **339/339**, including the
+additional PAL field and normal/profiled presentation fixtures (`full-final.log`).
+Behavior is derived independently from MC68030UM 9.4 and cross-checked with
+[WinUAE's ATC behavior](https://raw.githubusercontent.com/tonioni/WinUAE/master/cpummu30.cpp).
+
+**OS checks:** a fresh copy of the previously installed A3000 SCSI image passes
+matching 46.143 ROM cold/warm/cold boot and exact restore, including the real
+Execute Command dialog (`a3000-atc-os/`). A separate A1200 copy with native
+Kickstart 3.1 reaches an empty Workbench screen; script exit zero does not
+establish desktop/application acceptance. The matching A1200 3.1.4 comparison
+passes with the matching native 46.143 image obtained from the user's archive;
+the initial timeout was followed by a successful size/checksum-verified download
+into the external diagnostics directory. SHA-1 is
+`6355A9ED5DC840422F9B73308A91BE0D0BB506BD`. The reusable purchased-OS script now
+validates all eight boards' individual ROM families before creating outputs.
+Current-core A1200 IDE and A3000 SCSI runs show real Shell, Version, ShowConfig
+and Clock, exact restore, warm/cold boot and the content on the first Type
+command after each reboot. Independent read-only amitools extraction confirms
+`legacyostest\n` from both private HDFs (`os-independent-readback.json`).
+Evidence: `A1200-applications-final/`, `A3000-applications-final/`.
+No source OS disk or existing installation was altered.
+
+**Performance:** a duplicate bus-classification candidate retained identical
+complete CPU and framebuffer hashes at all thirty endpoints, but the paired
+medians were -1.46% on A4000/Mega and -1.91% on A1200/Moonstone. The 68000
+control had excessive variance (-9.11..+54.00%). The candidate was removed;
+no speed improvement is claimed. Evidence: `bus-benchmark-pairs/`,
+`bench-control/`, `bench-candidate/`. A sampled .NET stack profile of real
+A4000/Mega highlights the chip-cycle loop, AGA composition and repeated floppy
+selection/index queries (`profile-mega.nettrace`, `profile-mega-top.txt`).
+Direct live DF0-DF3 selection/index checks and ticks remove the per-call array
+construction/iteration while retaining bus priority and legacy drive repair.
+The first five alternating pairs per scene give +11.04% Mega map, +8.56%
+Moonstone battle and +15.02% Siedler construction medians, with all thirty
+complete CPU/frame endpoints identical (`floppy-benchmark-pairs/`). Those
+measurements isolate the floppy change before the PAL timing correction;
+a second pair of builds retains correct field timing on both sides. Its five
+alternating pairs per scene retain all thirty CPU/frame hashes and allocation
+counts, with medians +7.15% Mega map (-12.93..+14.12%), +7.79% Moonstone battle
+(+1.18..+21.92%) and +4.63% Siedler construction (+0.60..+16.52%). These are
+local measurements of the named scenes, not universal FPS promises.
+Evidence: `bench-field-floppy-control/`, `bench-field-floppy-candidate/`,
+`field-floppy-benchmark-pairs/` and `field-floppy-benchmark.log`.
+
+**Graphics/game controls:** PAL alternates 312/313 lines and respects forced
+LOF without LACE; the extra scanline survives exact restore. The compositor
+waits until that line completes in both ordinary and profiled execution.
+Both Siedler cold flows retain complete wood/menu, pointer interaction and
+actual castle construction with zero guest faults. Their four time-dependent
+goldens are re-reviewed after the corrected timing, preserving old/new hashes
+in `siedler-field-reference-review.json`; initial old-reference failures remain
+in the evidence. Eight Cannon mission continuations pass exact pause/restore
+and the fault guard. Combat causes normal squad deaths on several profiles;
+the changed-pixel test is not alone evidence of living post-restore movement.
+Keep the later-gameplay gate, and record these observations without treating
+game-over as complete compatibility. Evidence: `cannon-eight-current-controls/`,
+`cannon-eight-retreat/`, `cannon-eight-*-review.png`,
+`siedler-native13-timing-review/`, `siedler-native20-timing-review/`.
+
+**Release preparation:** the first actual GitHub Actions installer workflow
+passes all checks on committed `871b76f`: 335 source tests, five relay tests,
+distribution audit and real isolated install/update/uninstall with retained
+synthetic ROM/HDF data. The workflow was manually dispatched, so it did not
+publish a release. Evidence: `github-installer-baseline.log` and
+[workflow 38203773101](https://github.com/n1k0m0/AmigaEmulator/actions/runs/38203773101).
+Publishing the tested Windows release is still pending; relay deployment awaits
+the user's SSH target and preserves the existing certificate/key/port.
+
+Next: finish the Cannon transition diagnosis and fresh cold single-drive test,
+finish release verification, then continue
+full graphics/fault restart/FPU/040/Zorro III and the broad gameplay
+acceptance work. No remaining hardware gate is removed by these results.

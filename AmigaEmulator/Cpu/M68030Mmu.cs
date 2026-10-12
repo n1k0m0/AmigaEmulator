@@ -7,8 +7,8 @@ using System.IO;
 namespace AmigaEmulator.Core.Cpu
 {
     /// <summary>Independent 68030 translation-table engine for A3000 bring-up.
-        /// CPU integration uses approximate short fault frames; full pipeline restart is pending.
-        /// ATC replacement currently uses FIFO; hardware pseudo-LRU is not yet implemented.
+    /// CPU integration uses approximate short fault frames; full pipeline restart is pending.
+    /// ATC replacement uses fixed slots and one history bit per entry (MC68030UM 9.4).
     /// Descriptor formats: Motorola MC68030UM, sections 9.5 and 9.7.</summary>
     public sealed class M68030Mmu
     {
@@ -19,7 +19,11 @@ namespace AmigaEmulator.Core.Cpu
         private readonly Func<uint, uint> _read;
         private readonly Action<uint, uint> _write;
         private readonly Dictionary<(uint page, int fc), Translation> _atc = new();
-        private readonly Queue<(uint page, int fc)> _replacement = new();
+        private const int AtcCapacity = 22;
+        private const uint AllHistoryBits = (1u << AtcCapacity) - 1;
+        private readonly (uint page, int fc)?[] _slots = new (uint, int)?[AtcCapacity];
+        private readonly Dictionary<(uint page, int fc), int> _slotByKey = new();
+        private uint _history;
         public uint TranslationControl { get; private set; }
         public ulong CpuRoot { get; private set; }
         public ulong SupervisorRoot { get; private set; }
@@ -74,10 +78,12 @@ namespace AmigaEmulator.Core.Cpu
             var remove = new List<(uint page, int fc)>();
             foreach (var key in _atc.Keys)
                 if (((key.fc ^ functionCode) & functionMask & 7) == 0 && (!address.HasValue || key.page == page)) remove.Add(key);
-            foreach (var key in remove) _atc.Remove(key);
-            // Rebuild the replacement order so stale flushed keys cannot evict a newly loaded entry.
-            int count = _replacement.Count;
-            for (int i = 0; i < count; i++) { var key = _replacement.Dequeue(); if (_atc.ContainsKey(key)) _replacement.Enqueue(key); }
+            foreach (var key in remove)
+            {
+                _slots[_slotByKey[key]] = null;
+                _slotByKey.Remove(key); _atc.Remove(key);
+            }
+            // Flush invalidates tags, not the internal slot order/history.
         }
 
         public Translation Translate(uint logical, int functionCode, bool write, bool updateDescriptors = true)
@@ -98,18 +104,42 @@ namespace AmigaEmulator.Core.Cpu
             uint mask = (1u << PageBits) - 1;
             var key = (logical >> PageBits, functionCode);
             if (_atc.TryGetValue(key, out var cached) && (!write || (cached.Flags & Modified) != 0 || !cached.Accessible(true)))
+            {
+                if (updateDescriptors) Touch(_slotByKey[key]);
                 return cached with { Physical = cached.Physical | (logical & mask) };
+            }
             var result = Walk(logical, functionCode, write, updateDescriptors);
             if (updateDescriptors)
             {
-                if (!_atc.ContainsKey(key))
-                {
-                    if (_atc.Count == 22) _atc.Remove(_replacement.Dequeue());
-                    _replacement.Enqueue(key);
-                }
-                _atc[key] = result with { Physical = result.Physical & ~mask };
+                StoreTranslation(key, result with { Physical = result.Physical & ~mask });
             }
             return result;
+        }
+        private void Touch(int slot)
+        {
+            uint bit = 1u << slot;
+            _history |= bit;
+            // Starting a new epoch preserves the access that exhausted the
+            // zero bits. This is history-based pseudo-LRU, not a FIFO/LRU queue.
+            if (_history == AllHistoryBits) _history = bit;
+        }
+        private void StoreTranslation((uint page, int fc) key, Translation translation)
+        {
+            if (!_slotByKey.TryGetValue(key, out int slot))
+            {
+                slot = 0;
+                while (slot < AtcCapacity && _slots[slot].HasValue) slot++;
+                if (slot == AtcCapacity)
+                {
+                    slot = 0;
+                    while ((_history & (1u << slot)) != 0) slot++;
+                    var evicted = _slots[slot].Value;
+                    _atc.Remove(evicted); _slotByKey.Remove(evicted);
+                }
+                _slots[slot] = key; _slotByKey.Add(key, slot);
+            }
+            _atc[key] = translation;
+            Touch(slot);
         }
         public bool TryGetCachedTranslation(uint logical, int functionCode, out Translation translation)
         {
@@ -151,9 +181,7 @@ namespace AmigaEmulator.Core.Cpu
             Flush(functionCode, 7, logical);
             var result = Walk(logical, functionCode, write, true);
             var key = (logical >> PageBits, functionCode);
-            if (_atc.Count == 22) _atc.Remove(_replacement.Dequeue());
-            _replacement.Enqueue(key);
-            _atc[key] = result with { Physical = result.Physical & ~((1u << PageBits) - 1) };
+            StoreTranslation(key, result with { Physical = result.Physical & ~((1u << PageBits) - 1) });
             return result;
         }
         private Translation Walk(uint logical, int fc, bool write, bool update, int maxLevel = 7)
@@ -224,29 +252,42 @@ namespace AmigaEmulator.Core.Cpu
 
         public void SaveState(BinaryWriter writer)
         {
-            writer.Write(1); writer.Write(TranslationControl); writer.Write(CpuRoot); writer.Write(SupervisorRoot);
-            writer.Write(Transparent0); writer.Write(Transparent1); writer.Write(Status); writer.Write(_replacement.Count);
-            foreach (var key in _replacement)
-            { var entry = _atc[key]; writer.Write(key.page); writer.Write(key.fc); writer.Write(entry.Physical); writer.Write(entry.Flags); writer.Write(entry.Descriptor); }
+            writer.Write(2); writer.Write(TranslationControl); writer.Write(CpuRoot); writer.Write(SupervisorRoot);
+            writer.Write(Transparent0); writer.Write(Transparent1); writer.Write(Status); writer.Write(_atc.Count); writer.Write(_history);
+            for (int slot = 0; slot < AtcCapacity; slot++)
+            {
+                if (!_slots[slot].HasValue) continue;
+                var key = _slots[slot].Value; var entry = _atc[key];
+                writer.Write((byte)slot); writer.Write(key.page); writer.Write(key.fc);
+                writer.Write(entry.Physical); writer.Write(entry.Flags); writer.Write(entry.Descriptor);
+            }
         }
         public void LoadState(BinaryReader reader)
         {
-            if (reader.ReadInt32() != 1) throw new InvalidDataException("Unsupported MMU state.");
+            int version = reader.ReadInt32();
+            if (version != 1 && version != 2) throw new InvalidDataException("Unsupported MMU state.");
             uint tc = reader.ReadUInt32(); ulong crp = reader.ReadUInt64(), srp = reader.ReadUInt64();
             uint tt0 = reader.ReadUInt32(), tt1 = reader.ReadUInt32(); ushort status = reader.ReadUInt16(); int count = reader.ReadInt32();
             if (count < 0 || count > 22 || !IsValidControl(tc) || (tc & ~0x83FFFFFFu) != 0 ||
                 (tt0 & ~0xFFFF8777u) != 0 || (tt1 & ~0xFFFF8777u) != 0 ||
                 (crp & ~0xFFFF0003FFFFFFF0UL) != 0 || (srp & ~0xFFFF0003FFFFFFF0UL) != 0)
                 throw new InvalidDataException("Invalid MMU configuration/ATC size.");
-            var entries = new Dictionary<(uint, int), Translation>(); var order = new Queue<(uint, int)>();
+            uint history = version == 2 ? reader.ReadUInt32() : 0;
+            if ((history & ~AllHistoryBits) != 0 || history == AllHistoryBits)
+                throw new InvalidDataException("Invalid ATC history bits.");
+            var entries = new Dictionary<(uint, int), Translation>();
+            var slots = new (uint, int)?[AtcCapacity]; var slotByKey = new Dictionary<(uint, int), int>();
             for (int i = 0; i < count; i++)
             {
+                int slot = version == 2 ? reader.ReadByte() : i;
                 var key = (reader.ReadUInt32(), reader.ReadInt32()); var entry = new Translation(reader.ReadUInt32(), reader.ReadUInt16(), reader.ReadUInt32());
+                if (slot >= AtcCapacity || slots[slot].HasValue) throw new InvalidDataException("Invalid ATC slot.");
                 if (key.Item2 < 0 || key.Item2 > 7 || !entries.TryAdd(key, entry)) throw new InvalidDataException("Invalid ATC entry.");
-                order.Enqueue(key);
+                slots[slot] = key; slotByKey.Add(key, slot);
             }
             TranslationControl = tc; CpuRoot = crp; SupervisorRoot = srp; Transparent0 = tt0; Transparent1 = tt1; Status = status;
-            _atc.Clear(); _replacement.Clear(); foreach (var key in order) { _atc[key] = entries[key]; _replacement.Enqueue(key); }
+            _atc.Clear(); _slotByKey.Clear(); Array.Copy(slots, _slots, AtcCapacity); _history = history;
+            foreach (var entry in entries) { _atc.Add(entry.Key, entry.Value); _slotByKey.Add(entry.Key, slotByKey[entry.Key]); }
         }
     }
 }

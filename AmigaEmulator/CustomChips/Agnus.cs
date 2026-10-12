@@ -116,6 +116,13 @@ namespace AmigaEmulator.Core.CustomChips
 
         public DmaSlotTraceEntry LastDmaSlot { get; private set; }
 
+        /// <summary>PAL's current field has one extra scanline when LOF is set.</summary>
+        public int FieldLineCount => _model.LinesPerFrame +
+            ((CustomRegisters.ReadStoredWord(Vposr) & 0x8000) != 0 ? 1 : 0);
+
+        /// <summary>Reports the completed field before its next beam sample is emitted.</summary>
+        public bool FieldEndedInLastTick => _globalCycle != 0 && _beamX == 0 && _beamY == 0;
+
         /// <summary>
         /// Resets the value state.
         /// </summary>
@@ -419,7 +426,7 @@ namespace AmigaEmulator.Core.CustomChips
             _beamX = 0;
             CustomRegisters.TickPotCounters();
             _beamY++;
-            if (_beamY < _model.LinesPerFrame)
+            if (_beamY < FieldLineCount)
             {
                 return;
             }

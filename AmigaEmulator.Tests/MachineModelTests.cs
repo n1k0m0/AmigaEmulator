@@ -36,6 +36,8 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models", "ECS models retain independent RAM and built-in IDE capabilities", "A500+, A600 model configuration", TestModels);
             yield return new ChipTestCase("Models", "ECS identification is read-only and survives reset", "DENISEID and VPOSR chipset revision", TestIdentification);
             yield return new ChipTestCase("Models/Video", "LOF toggles only with LACE and VPOSW survives save and restore", "Commodore HRM BPLCON0 and VPOSR/VPOSW", TestLongFieldFlop);
+            yield return new ChipTestCase("Models/Video", "PAL fields follow 312/313 scanlines and restore the extra line before presentation", "Commodore HRM Copper vertical beam position and VPOSR/VPOSW", TestPalFieldLengths);
+            yield return new ChipTestCase("Models/Video", "normal and profiled execution present only after the entire long PAL field", "Field completion through the machine compositor", TestLongFieldPresentation);
             yield return new ChipTestCase("Models", "ECS blitter size registers execute wider blits and BLTCON0L preserves channels", "BLTSIZV/H and BLTCON0L", TestExtendedBlitter);
             yield return new ChipTestCase("Models", "ECS DIWHIGH zero overrides legacy vertical wrap and survives restore", "DIWHIGH explicit-zero latch and model-aware savestates", TestDisplayWindowAndState);
             yield return new ChipTestCase("Models", "wrong-model savestates are rejected before changing machine state", "Model identity in file and machine state", TestStateMismatch);
@@ -63,8 +65,11 @@ namespace AmigaEmulator.Tests
                 var model = AmigaModel.Create(machine, AmigaModel.GetDefaultRamProfile(machine));
                 var agnus = new Agnus(model);
                 var registers = agnus.CustomRegisters;
-                int fieldCycles = model.ChipCyclesPerLine * model.LinesPerFrame;
-                void Field() { for (int i = 0; i < fieldCycles; i++) agnus.Tick(); }
+                void Field()
+                {
+                    long frame = agnus.Beam.Frame;
+                    do { agnus.Tick(); } while (agnus.Beam.Frame == frame);
+                }
                 ushort Lof() => (ushort)(registers.ReadWord(0x004) & 0x8000);
                 Field(); agnus.Tick();
                 Check.Equal((ushort)0, Lof(), "Non-laced output must not alternate LOF merely because a frame passed.");
@@ -84,6 +89,74 @@ namespace AmigaEmulator.Tests
                 Field(); Check.Equal((ushort)0, Lof(), "Disabling LACE freezes the current field selection.");
                 registers.WriteWord(0x02A, 0x8000);
                 agnus.Reset(); agnus.Tick(); Check.Equal((ushort)0, Lof(), "Reset clears the saved field selection.");
+            }
+        }
+
+        private static void TestPalFieldLengths()
+        {
+            foreach (var machine in new[] { AmigaMachineModel.A500, AmigaMachineModel.A600, AmigaMachineModel.A1200 })
+            {
+                var model = AmigaModel.Create(machine, AmigaModel.GetDefaultRamProfile(machine));
+                var agnus = new Agnus(model); var registers = agnus.CustomRegisters;
+                int NextField(Agnus target)
+                {
+                    long frame = target.Beam.Frame; int cycles = 0;
+                    do
+                    {
+                        target.Tick();
+                        if (++cycles > 314 * model.ChipCyclesPerLine) throw new InvalidOperationException("Field did not finish.");
+                    } while (target.Beam.Frame == frame);
+                    return cycles;
+                }
+                registers.WriteWord(0x100, 4); agnus.Tick();
+                Check.Equal(312 * model.ChipCyclesPerLine, NextField(agnus), "The short PAL field has 312 scanlines.");
+                Check.Equal(313 * model.ChipCyclesPerLine, NextField(agnus), "The following long field includes line 312.");
+                Check.Equal(312 * model.ChipCyclesPerLine, NextField(agnus), "The third field is short again.");
+                // We are now at the first clock of a long field. Its extra
+                // scanline must remain in this field, including after restore.
+                for (int i = 0; i < 312 * model.ChipCyclesPerLine; i++) agnus.Tick();
+                Check.Equal(312, agnus.Beam.BeamY, "The extra line is observable on the beam counter.");
+                Check.Equal((ushort)1, (ushort)(registers.ReadWord(0x004) & 1), "VPOSR retains the high vertical bit.");
+                using var state = new MemoryStream(); agnus.SaveState(new BinaryWriter(state));
+                var restored = new Agnus(model); state.Position = 0; restored.LoadState(new BinaryReader(state));
+                Check.Equal(model.ChipCyclesPerLine, NextField(agnus), "The final long-field line completes before the next frame.");
+                Check.Equal(model.ChipCyclesPerLine, NextField(restored), "Restore preserves the remaining clocks in that line.");
+                using var expected = new MemoryStream(); using var actual = new MemoryStream();
+                agnus.SaveState(new BinaryWriter(expected)); restored.SaveState(new BinaryWriter(actual));
+                Check.True(expected.ToArray().AsSpan().SequenceEqual(actual.ToArray()), "Restored beam, DMA and field state match exactly.");
+                registers.WriteWord(0x100, 0);
+                registers.WriteWord(0x02A, 0x8000);
+                Check.Equal(313 * model.ChipCyclesPerLine, NextField(agnus), "A programmed long field remains long with LACE cleared.");
+                Check.Equal(313 * model.ChipCyclesPerLine, NextField(agnus), "Only automatic alternation depends on LACE.");
+                registers.WriteWord(0x02A, 0);
+                Check.Equal(312 * model.ChipCyclesPerLine, NextField(agnus), "A programmed short field is 312 lines.");
+            }
+        }
+
+        private static void TestLongFieldPresentation()
+        {
+            foreach (bool profiled in new[] { false, true })
+            {
+                using var system = new AmigaSystem(AmigaModel.A500Pal512Slow512);
+                system.Agnus.CustomRegisters.WriteWord(0x02A, 0x8000);
+                // The old machine-level boundary presented after line 311,
+                // even when Agnus had not yet completed its long field.
+                const uint sentinel = 0xFF123456;
+                system.PresentedFrameBuffer.Clear(sentinel);
+                Advance(312 * system.Model.ChipCyclesPerLine);
+                Check.True(Array.TrueForAll(system.PresentedFrameBuffer.Pixels, p => p == sentinel),
+                    "The presentation must remain untouched while the extra scanline is pending.");
+                Advance(system.Model.ChipCyclesPerLine - 1);
+                Check.True(Array.TrueForAll(system.PresentedFrameBuffer.Pixels, p => p == sentinel),
+                    "No partial field may be presented on the penultimate clock.");
+                Advance(1);
+                Check.True(Array.Exists(system.PresentedFrameBuffer.Pixels, p => p != sentinel),
+                    "The completed field must be presented on its final clock.");
+                void Advance(int clocks)
+                {
+                    if (profiled) system.ProfileChipCycles(clocks);
+                    else system.RunChipCycles(clocks);
+                }
             }
         }
 

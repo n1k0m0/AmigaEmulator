@@ -4,23 +4,35 @@ param(
     [Parameter(Mandatory = $true)][string]$SourceHardDisk,
     [Parameter(Mandatory = $true)][string]$KickstartRom,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
-    [ValidateSet('A500','A500Plus','A600','A2000Ocs','A2000Ecs')]
+    [ValidateSet('A500','A500Plus','A600','A2000Ocs','A2000Ecs','A1200','A3000','A4000')]
     [string[]]$Models = @('A500','A500Plus','A600','A2000Ocs','A2000Ecs'),
     [string]$RunnerAssembly = '',
     [switch]$ManifestOnly
 )
 
-# Uses the purchased 3.1.4 shared-family ROM and an already installed OS disk.
+# Uses a matching unsplit 3.1.4 board ROM and an already installed OS disk.
 # All guest writes go to exclusive new copies; execution is not visual acceptance.
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Choose a fresh output directory.' }
 $sourceDisk = (Get-Item -LiteralPath $SourceHardDisk).FullName
 $sourceRom = (Get-Item -LiteralPath $KickstartRom).FullName
 $romHash = (Get-FileHash -LiteralPath $sourceRom -Algorithm SHA1).Hash
-if ($romHash -ne 'D81CD6F131040895843D9DFA95A45BC95EDD9704') {
-    throw 'This flow requires the unsplit A500/A600/A2000 Kickstart 46.143 ROM; use matching board ROMs in separate desktop cases.'
-}
 if (-not $Models.Count -or @($Models | Select-Object -Unique).Count -ne $Models.Count) { throw 'Choose distinct models.' }
+$matchingRom = @{
+    A500='D81CD6F131040895843D9DFA95A45BC95EDD9704'
+    A500Plus='D81CD6F131040895843D9DFA95A45BC95EDD9704'
+    A600='D81CD6F131040895843D9DFA95A45BC95EDD9704'
+    A2000Ocs='D81CD6F131040895843D9DFA95A45BC95EDD9704'
+    A2000Ecs='D81CD6F131040895843D9DFA95A45BC95EDD9704'
+    A1200='6355A9ED5DC840422F9B73308A91BE0D0BB506BD'
+    A3000='1A34B25A25E260E38E879172850143C80B461A64'
+    A4000='BAD0AE388442DB02EAEB6A5363EF43EB4E308AE6'
+}
+foreach ($model in $Models) {
+    if ($romHash -ne $matchingRom[$model]) {
+        throw "$model requires its matching unsplit Kickstart 46.143 ROM. Select one ROM family per invocation."
+    }
+}
 
 $keys = @{}
 for ($i=0; $i -lt 10; $i++) { $keys['1234567890'.Substring($i,1)] = $i+1 }
@@ -79,7 +91,11 @@ foreach ($model in $Models) {
     if ((Get-FileHash -LiteralPath $testDisk -Algorithm SHA256).Hash -ne $sourceDiskHash) {
         throw 'Source disk changed while copying; no guest has been started.'
     }
-    $ram = if ($model -eq 'A2000Ocs') { 'Chip512KSlow512KFast8Mb' } else { 'Chip2MbFast8Mb' }
+    $ram = switch ($model) {
+        'A2000Ocs' { 'Chip512KSlow512KFast8Mb' }
+        'A1200' { 'Chip2MbFast4Mb' }
+        default { 'Chip2MbFast8Mb' }
+    }
     $cases += [ordered]@{ name="$model-native314-OS"; model=$model; ram=$ram; kickstartRom=$sourceRom;
         hardDisk=$testDisk; hardDiskReadOnly=$false; strict=$true; traceExceptions=$true; maximumNonRomExceptions=0; actions=@($actions.ToArray()) }
 }

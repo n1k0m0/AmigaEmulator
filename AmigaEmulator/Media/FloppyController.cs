@@ -96,16 +96,14 @@ namespace AmigaEmulator.Core.Media
         {
             get
             {
-                FloppyDrive[] drives = GetDrives();
-                for (int index = 0; index < drives.Length; index++)
-                {
-                    if (drives[index].Selected)
-                    {
-                        return drives[index];
-                    }
-                }
-
-                return null;
+                EnsureDrives();
+                // The shared bus observes the first selected drive. Inspect
+                // the live lines directly, including callers that manipulate
+                // a drive without going through the controller's CIA helper.
+                if (Drive0.Selected) return Drive0;
+                if (Drive1.Selected) return Drive1;
+                if (Drive2.Selected) return Drive2;
+                return Drive3.Selected ? Drive3 : null;
             }
         }
 
@@ -116,16 +114,13 @@ namespace AmigaEmulator.Core.Media
         {
             get
             {
-                FloppyDrive[] drives = GetDrives();
-                for (int index = 0; index < drives.Length; index++)
-                {
-                    if (drives[index].Selected && drives[index].IndexPulsePending)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
+                EnsureDrives();
+                // Keep selection gating at the instant the CIA samples INDEX;
+                // a control-line write may occur after a drive generated it.
+                return (Drive0.Selected && Drive0.IndexPulsePending) ||
+                    (Drive1.Selected && Drive1.IndexPulsePending) ||
+                    (Drive2.Selected && Drive2.IndexPulsePending) ||
+                    (Drive3.Selected && Drive3.IndexPulsePending);
             }
         }
 
@@ -262,11 +257,8 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         public void Tick()
         {
-            FloppyDrive[] drives = GetDrives();
-            for (int index = 0; index < drives.Length; index++)
-            {
-                drives[index].Tick();
-            }
+            EnsureDrives();
+            Drive0.Tick(); Drive1.Tick(); Drive2.Tick(); Drive3.Tick();
         }
 
         public byte BuildCiaAStatusBits()
@@ -364,22 +356,24 @@ namespace AmigaEmulator.Core.Media
         /// </summary>
         private int GetSelectedDriveIndex()
         {
-            FloppyDrive[] drives = GetDrives();
-            for (int index = 0; index < drives.Length; index++)
-            {
-                if (drives[index].Selected)
-                {
-                    return index;
-                }
-            }
-
-            return -1;
+            EnsureDrives();
+            if (Drive0.Selected) return 0;
+            if (Drive1.Selected) return 1;
+            if (Drive2.Selected) return 2;
+            return Drive3.Selected ? 3 : -1;
         }
 
         /// <summary>
         /// Returns the drive array in DF0-DF3 bus order.
         /// </summary>
         private FloppyDrive[] GetDrives()
+        {
+            EnsureDrives();
+            return new[] { Drive0, Drive1, Drive2, Drive3 };
+        }
+
+        /// <summary>Normalizes older controller states which contain only DF0.</summary>
+        private void EnsureDrives()
         {
             if (Drive1 == null)
             {
@@ -396,7 +390,6 @@ namespace AmigaEmulator.Core.Media
                 Drive3 = new FloppyDrive();
             }
 
-            return new[] { Drive0, Drive1, Drive2, Drive3 };
         }
 
         /// <summary>

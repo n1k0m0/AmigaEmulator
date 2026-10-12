@@ -114,7 +114,7 @@ existing C64 service. No public proxy is deployed by building the emulator.
 python3 -m unittest discover -s relay_server -v
 ```
 
-Run this from the repository root. The tests check independently constructed
+Run this from the repository root. The five tests check independently constructed
 header bytes, payload limits, framing changes, room separation, duplicate hosts,
 relay passwords, opaque forwarding and disconnect cleanup. The .NET network
 tests additionally start this actual program with a fresh certificate and verify

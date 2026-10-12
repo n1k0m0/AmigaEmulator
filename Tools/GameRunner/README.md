@@ -59,8 +59,11 @@ Run `python Tools/test_game_runner.py` after building to check these guards
 without ROMs, guest execution or disk creation.
 
 `Tools/run-purchased-os-validation.ps1` prepares fresh copies of an installed
-OS HDF for A500/A500+/A600/A2000 OCS/ECS, using the user's unsplit shared-family
-Kickstart 46.143 ROM (SHA-1 D81CD6F131040895843D9DFA95A45BC95EDD9704).
+OS HDF for all eight current boards, using the user's matching unsplit Kickstart
+46.143 ROM. A500/A500+/A600/A2000 OCS/ECS share one ROM family; A1200,
+A3000 and A4000 require their individual board ROMs. Mismatches are rejected
+before any HDF copy or output directory is created. Invoke separate runs for
+different ROM families.
 Pass `-SourceHardDisk`, `-KickstartRom` and a new `-OutputDirectory`; optional
 `-Models` selects a subset and `-ManifestOnly` stops after preparing private
 copies/JSON. The script exercises Shell, Version, ShowConfig, Clock, file
@@ -69,8 +72,8 @@ are retained separately for review. The initial first-read concern was a
 misread small capture; a DOS probe and revised five-board cold tests confirm
 the content already appears on the first command.
 Review screenshots and independently read the test HDF before acceptance.
-No ROM, OS file or installed HDF is included in Git. Desktop/AGA boards need
-their own matching ROMs and separate scenarios.
+No ROM, OS file or installed HDF is included in Git. A4000 uses the implemented
+030 profile; this validation does not enable the unfinished 040 hardware.
 
 Each case creates numbered PNGs, `steps.jsonl` and a continuation
 `checkpoint.amigasav`. Log entries include raw CPU/drive diagnostics, frame

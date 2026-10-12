@@ -188,8 +188,20 @@ namespace AmigaEmulator.Tests
                 Control(cpu, bus, 2, 0x900); Read(cpu, bus, 0x1000); save.Position = 0; cpu.LoadState(new BinaryReader(save));
                 Check.Equal(1u, Read(cpu, bus, 0x1000), "Restore retains the cached value independently of current RAM.");
                 byte[] legacy = save.ToArray().AsSpan(0, (int)save.Length - 336).ToArray();
-                int prefix = 8 + 24 + (model == AmigaCpuModel.M68EC030 ? 10 : 38);
-                BitConverter.GetBytes(4).CopyTo(legacy, legacy.Length - 576 - prefix);
+                int prefix = 8 + 24 + (model == AmigaCpuModel.M68EC030 ? 10 : 42);
+                int extensionStart = legacy.Length - 576 - prefix;
+                BitConverter.GetBytes(4).CopyTo(legacy, extensionStart);
+                if (model == AmigaCpuModel.M68030)
+                {
+                    // Historical version 4 contains the empty version-1 MMU,
+                    // followed directly by the instruction cache.
+                    BitConverter.GetBytes(1).CopyTo(legacy, extensionStart + 32);
+                    int historyOffset = extensionStart + 32 + 38;
+                    var historical = new byte[legacy.Length - 4];
+                    Buffer.BlockCopy(legacy, 0, historical, 0, historyOffset);
+                    Buffer.BlockCopy(legacy, historyOffset + 4, historical, historyOffset, legacy.Length - historyOffset - 4);
+                    legacy = historical;
+                }
                 using var old = new MemoryStream(legacy); cpu.LoadState(new BinaryReader(old));
                 Check.Equal(2u, Read(cpu, bus, 0x1000), "Version-4 CPU states load an empty data cache.");
                 cpu.Reset(); Control(cpu, bus, 2, 0x100); bus.WriteLong(0x1000, 3);
