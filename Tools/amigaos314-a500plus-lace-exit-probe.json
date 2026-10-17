@@ -1,0 +1,705 @@
+[
+  {
+    "name": "A500PLUS-OS314-LACE-TO-NONLACE",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast4Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK314-A500.ROM",
+    "hardDisk": "tmp/os-a1200-test.hdf",
+    "hardDiskReadOnly": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "desktop",
+        "expectedFrameHash": "5BE26489ED5034B20E5E5257755FE7750BB75CCC74F708182021369DE0A63214"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "modifiers": [
+          103
+        ],
+        "label": "execute-command"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "dialog-ready"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-00"
+      },
+      {
+        "type": "key",
+        "key": 21,
+        "cycles": 120000,
+        "label": "cmd-01"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-02"
+      },
+      {
+        "type": "key",
+        "key": 41,
+        "cycles": 120000,
+        "label": "cmd-03",
+        "modifiers": [
+          96
+        ]
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "cycles": 120000,
+        "label": "cmd-04"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "cmd-05"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-06"
+      },
+      {
+        "type": "key",
+        "key": 35,
+        "cycles": 120000,
+        "label": "cmd-07"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-08"
+      },
+      {
+        "type": "key",
+        "key": 58,
+        "cycles": 120000,
+        "label": "cmd-09"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-10"
+      },
+      {
+        "type": "key",
+        "key": 51,
+        "cycles": 120000,
+        "label": "cmd-11"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "cmd-12"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-13"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-14"
+      },
+      {
+        "type": "key",
+        "key": 54,
+        "cycles": 120000,
+        "label": "cmd-15"
+      },
+      {
+        "type": "key",
+        "key": 55,
+        "cycles": 120000,
+        "label": "cmd-16"
+      },
+      {
+        "type": "key",
+        "key": 24,
+        "cycles": 120000,
+        "label": "cmd-17"
+      },
+      {
+        "type": "key",
+        "key": 34,
+        "cycles": 120000,
+        "label": "cmd-18"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-19"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 120000,
+        "label": "cmd-enter"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "screenmode-prefs"
+      },
+      {
+        "type": "mouse",
+        "x": 100,
+        "y": 50,
+        "mouseStepCycles": 20000,
+        "label": "pointer-probe"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "pointer-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": 130,
+        "mouseStepCycles": 20000,
+        "label": "list-pointer"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "choose-laced"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "selected-mode"
+      },
+      {
+        "type": "mouse",
+        "x": 180,
+        "y": 198,
+        "label": "use-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "use-target-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "use-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "after-use"
+      },
+      {
+        "type": "mouse",
+        "x": -315,
+        "y": -125,
+        "label": "confirm-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "confirm-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": -55,
+        "label": "correct-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "correct-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -20,
+        "label": "dialog-use-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "dialog-use-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -20,
+        "label": "dialog-use-target2",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "dialog-use-settled2"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "confirm-use"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "laced-result",
+        "expectNativeInterlacedFrame": true,
+        "expectedFrameHash": "6401C86EB21616ED7CE66CA82E06E1DD1EA492F7FC592FC22F0D0B35E32CD662",
+        "expectedNativeFrameHash": "4C20B5781E8C14CCE439BDB3FD003FDF5A400FE6FDC61A24F05E5829967D64CC",
+        "expectedNativeInterlacedFrameHash": "7EEF774A59AEB40537AF5863EBB18179B1DA0A7DE816E901431B22BDE729FCCD"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "shres-laced-stable",
+        "expectNativeInterlacedFrame": true,
+        "expectedFrameHash": "C360B899B26B0C664B1BE93D858EC971B81336F9F2A54D36E1CD757CC772562B",
+        "expectedNativeFrameHash": "EE2ECA845499697E14DE2F6D52D82D09975E24511E4D176FB357CE49439233B7",
+        "expectedNativeInterlacedFrameHash": "7EEF774A59AEB40537AF5863EBB18179B1DA0A7DE816E901431B22BDE729FCCD"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "modifiers": [
+          103
+        ],
+        "label": "again-execute-command"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "again-dialog-ready"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-00"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-01"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-02"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-03"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-04"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-05"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-06"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-07"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-08"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-09"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-10"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-11"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-12"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-13"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-14"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-15"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-16"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-17"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-18"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-19"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-20"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-21"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-22"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-23"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-24"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-25"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-26"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-27"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-28"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clear-old-29"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "again-cmd-00"
+      },
+      {
+        "type": "key",
+        "key": 21,
+        "cycles": 120000,
+        "label": "again-cmd-01"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "again-cmd-02"
+      },
+      {
+        "type": "key",
+        "key": 41,
+        "cycles": 120000,
+        "label": "again-cmd-03",
+        "modifiers": [
+          96
+        ]
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "cycles": 120000,
+        "label": "again-cmd-04"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "again-cmd-05"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "again-cmd-06"
+      },
+      {
+        "type": "key",
+        "key": 35,
+        "cycles": 120000,
+        "label": "again-cmd-07"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "again-cmd-08"
+      },
+      {
+        "type": "key",
+        "key": 58,
+        "cycles": 120000,
+        "label": "again-cmd-09"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "again-cmd-10"
+      },
+      {
+        "type": "key",
+        "key": 51,
+        "cycles": 120000,
+        "label": "again-cmd-11"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "again-cmd-12"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "again-cmd-13"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "again-cmd-14"
+      },
+      {
+        "type": "key",
+        "key": 54,
+        "cycles": 120000,
+        "label": "again-cmd-15"
+      },
+      {
+        "type": "key",
+        "key": 55,
+        "cycles": 120000,
+        "label": "again-cmd-16"
+      },
+      {
+        "type": "key",
+        "key": 24,
+        "cycles": 120000,
+        "label": "again-cmd-17"
+      },
+      {
+        "type": "key",
+        "key": 34,
+        "cycles": 120000,
+        "label": "again-cmd-18"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "again-cmd-19"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 120000,
+        "label": "again-cmd-enter"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "again-screenmode-prefs"
+      },
+      {
+        "type": "mouse",
+        "x": 30,
+        "y": -80,
+        "label": "nonlace-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "nonlace-pointer-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "nonlace-select"
+      },
+      {
+        "type": "wait",
+        "cycles": 3000000,
+        "label": "nonlace-selected"
+      },
+      {
+        "type": "mouse",
+        "x": 95,
+        "y": 110,
+        "label": "nonlace-use-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "nonlace-use-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "nonlace-use-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "nonlace-after-use"
+      },
+      {
+        "type": "mouse",
+        "x": -145,
+        "y": -105,
+        "label": "nonlace-confirm-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "nonlace-confirm-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "nonlace-confirm-use"
+      },
+      {
+        "type": "wait",
+        "cycles": 18000000,
+        "label": "nonlace-result",
+        "expectNativeInterlacedFrame": false,
+        "expectedFrameHash": "8CC0D1454B3935473B6C5D1FC36016DE61D069B173CFB0D05C30E453053EF801",
+        "expectedNativeFrameHash": "3D75993FE11DA5A7EDA6D7E1977497A1A93DB6589F807AD20509C39DD8ED2C30"
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "nonlace-late",
+        "expectNativeInterlacedFrame": false,
+        "expectedFrameHash": "8CC0D1454B3935473B6C5D1FC36016DE61D069B173CFB0D05C30E453053EF801",
+        "expectedNativeFrameHash": "3D75993FE11DA5A7EDA6D7E1977497A1A93DB6589F807AD20509C39DD8ED2C30"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "nonlace-cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "nonlace-restored",
+        "expectNativeInterlacedFrame": false,
+        "expectedFrameHash": "8CC0D1454B3935473B6C5D1FC36016DE61D069B173CFB0D05C30E453053EF801",
+        "expectedNativeFrameHash": "3D75993FE11DA5A7EDA6D7E1977497A1A93DB6589F807AD20509C39DD8ED2C30"
+      }
+    ]
+  }
+]

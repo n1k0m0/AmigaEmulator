@@ -46,6 +46,11 @@ namespace SharpPixels
         /// Stores paint Upload Buffer.
         /// </summary>
         private int[] _paintUploadBuffer;
+        // Optional higher-resolution source. Host input and target geometry
+        // stay in logical pixels while the paint source can scale in X or Y.
+        private uint[] _nativePresentationPixels;
+        private int _nativePresentationHorizontalScale = 1;
+        private int _nativePresentationVerticalScale = 1;
         /// <summary>
         /// Stores filter Scratch Buffer.
         /// </summary>
@@ -202,6 +207,33 @@ namespace SharpPixels
         public uint[] PixelBuffer
         {
             get { return Pixels; }
+        }
+
+        /// <summary>
+        /// Selects a native-resolution source with two horizontal samples for
+        /// every logical pixel, or restores the normal source when null.
+        /// </summary>
+        public void SetNativePresentationPixels(uint[] nativePixels)
+            => SetNativePresentationPixels(nativePixels, 2, 1);
+
+        /// <summary>
+        /// Selects a higher-resolution paint source while preserving logical
+        /// viewport, crop margins and host input coordinates.
+        /// </summary>
+        public void SetNativePresentationPixels(uint[] nativePixels, int horizontalScale, int verticalScale)
+        {
+            if (horizontalScale <= 0) throw new ArgumentOutOfRangeException(nameof(horizontalScale));
+            if (verticalScale <= 0) throw new ArgumentOutOfRangeException(nameof(verticalScale));
+            if (nativePixels != null && nativePixels.Length != checked(Pixels.Length * horizontalScale * verticalScale))
+                throw new ArgumentException("Native source dimensions do not match the logical viewport.", nameof(nativePixels));
+            if (nativePixels == null) horizontalScale = verticalScale = 1;
+            if (ReferenceEquals(_nativePresentationPixels, nativePixels) &&
+                _nativePresentationHorizontalScale == horizontalScale &&
+                _nativePresentationVerticalScale == verticalScale) return;
+            _nativePresentationPixels = nativePixels;
+            _nativePresentationHorizontalScale = horizontalScale;
+            _nativePresentationVerticalScale = verticalScale;
+            Invalidate();
         }
 
         /// <summary>
@@ -554,6 +586,9 @@ namespace SharpPixels
             base.OnPaint(e);
             var target = GetPresentationRectangle();
             var source = GetPresentationSourceRectangle();
+            uint[] sourcePixels = _nativePresentationPixels ?? Pixels;
+            int sourceWidth = PixelsWidth * _nativePresentationHorizontalScale;
+            int sourceHeight = PixelsHeight * _nativePresentationVerticalScale;
             int width = Math.Max(1, ClientSize.Width);
             int height = Math.Max(1, ClientSize.Height);
             EnsureBackBuffer(e.Graphics, width, height);
@@ -571,19 +606,25 @@ namespace SharpPixels
 
                 if (_presentationFilterMode == SharpPixelsGpuFilterMode.Sharp && _presentationUpscaleMode == SharpPixelsGpuUpscaleMode.None)
                 {
-                    DrawPresentationPixelsDib(_backBufferDc, source, target);
+                    GCHandle handle = GCHandle.Alloc(sourcePixels, GCHandleType.Pinned);
+                    try { DrawPresentationDib(_backBufferDc, source, target, handle.AddrOfPinnedObject(), sourceWidth, sourceHeight); }
+                    finally { handle.Free(); }
                 }
                 else
                 {
-                    EnsurePaintUploadBuffer();
-                    Buffer.BlockCopy(Pixels, 0, _paintUploadBuffer, 0, Pixels.Length * sizeof(uint));
-                    ApplyPresentationFilter(_paintUploadBuffer, PixelsWidth, PixelsHeight);
+                    EnsurePaintUploadBuffer(sourcePixels.Length);
+                    Buffer.BlockCopy(sourcePixels, 0, _paintUploadBuffer, 0, sourcePixels.Length * sizeof(uint));
+                    ApplyPresentationFilter(_paintUploadBuffer, sourceWidth, sourceHeight);
                     if (_presentationUpscaleMode == SharpPixelsGpuUpscaleMode.None)
-                        DrawPresentationDib(_backBufferDc, source, target);
+                    {
+                        GCHandle handle = GCHandle.Alloc(_paintUploadBuffer, GCHandleType.Pinned);
+                        try { DrawPresentationDib(_backBufferDc, source, target, handle.AddrOfPinnedObject(), sourceWidth, sourceHeight); }
+                        finally { handle.Free(); }
+                    }
                     else
                     {
                         _upscaler.Render(MemoryMarshal.Cast<int, uint>(_paintUploadBuffer.AsSpan()),
-                            PixelsWidth, PixelsHeight, source, _presentationUpscaleMode);
+                            sourceWidth, sourceHeight, source, _presentationUpscaleMode);
                         GCHandle handle = GCHandle.Alloc(_upscaler.Pixels, GCHandleType.Pinned);
                         try
                         {
@@ -703,10 +744,10 @@ namespace SharpPixels
         protected Rectangle GetPresentationSourceRectangle()
         {
             return new Rectangle(
-                _presentationCropLeft,
-                _presentationCropTop,
-                PresentationSourceWidth,
-                PresentationSourceHeight);
+                _presentationCropLeft * _nativePresentationHorizontalScale,
+                _presentationCropTop * _nativePresentationVerticalScale,
+                PresentationSourceWidth * _nativePresentationHorizontalScale,
+                PresentationSourceHeight * _nativePresentationVerticalScale);
         }
 
         /// <summary>
@@ -735,7 +776,7 @@ namespace SharpPixels
         /// </summary>
         private void ApplyCrtFilter(int[] pixels, int width, int height)
         {
-            EnsureFilterScratch();
+            EnsureFilterScratch(pixels.Length);
             Buffer.BlockCopy(pixels, 0, _filterScratchBuffer, 0, pixels.Length * sizeof(int));
 
             for (int y = 0; y < height; y++)
@@ -758,7 +799,7 @@ namespace SharpPixels
         /// </summary>
         private void ApplyTvFilter(int[] pixels, int width, int height)
         {
-            EnsureFilterScratch();
+            EnsureFilterScratch(pixels.Length);
             Buffer.BlockCopy(pixels, 0, _filterScratchBuffer, 0, pixels.Length * sizeof(int));
 
             for (int y = 0; y < height; y++)
@@ -798,11 +839,11 @@ namespace SharpPixels
         /// <summary>
         /// Runs Ensure Filter Scratch.
         /// </summary>
-        private void EnsureFilterScratch()
+        private void EnsureFilterScratch(int length)
         {
-            if (_filterScratchBuffer == null || _filterScratchBuffer.Length != Pixels.Length)
+            if (_filterScratchBuffer == null || _filterScratchBuffer.Length != length)
             {
-                _filterScratchBuffer = new int[Pixels.Length];
+                _filterScratchBuffer = new int[length];
             }
         }
 
@@ -899,11 +940,11 @@ namespace SharpPixels
         /// <summary>
         /// Ensures the paint upload buffer exists without creating a GDI+ bitmap.
         /// </summary>
-        private void EnsurePaintUploadBuffer()
+        private void EnsurePaintUploadBuffer(int length)
         {
-            if (_paintUploadBuffer == null || _paintUploadBuffer.Length != Pixels.Length)
+            if (_paintUploadBuffer == null || _paintUploadBuffer.Length != length)
             {
-                _paintUploadBuffer = new int[Pixels.Length];
+                _paintUploadBuffer = new int[length];
             }
         }
 

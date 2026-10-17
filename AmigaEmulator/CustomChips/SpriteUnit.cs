@@ -318,6 +318,20 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         public bool TryRenderPixel(int screenX, int beamY, out uint argb, out int spriteGroup, out int spriteMask)
         {
+            return TryRenderPixelAtNativeX(screenX * 2, beamY, out argb, out spriteGroup, out spriteMask);
+        }
+
+        /// <summary>
+        /// Samples sprite output at one 35 ns SHRES position. Ordinary hires
+        /// callers continue to use every second native position.
+        /// </summary>
+        public bool TryRenderSuperHiresPixel(int nativeX, int beamY, out uint argb, out int spriteGroup, out int spriteMask)
+        {
+            return TryRenderPixelAtNativeX(nativeX, beamY, out argb, out spriteGroup, out spriteMask);
+        }
+
+        private bool TryRenderPixelAtNativeX(int nativeX, int beamY, out uint argb, out int spriteGroup, out int spriteMask)
+        {
             argb = 0;
             spriteGroup = 0;
             spriteMask = 0;
@@ -335,8 +349,8 @@ namespace AmigaEmulator.Core.CustomChips
                 {
                     // ATT selects the pair's palette even if the odd sprite
                     // is transparent, parked elsewhere, or not active here.
-                    TryReadSpritePixel(sprite + 1, screenX, out int oddColor, out _);
-                    TryReadSpritePixel(sprite, screenX, out int evenColor, out _);
+                    TryReadSpritePixelAtNativeX(sprite + 1, nativeX, out int oddColor, out _);
+                    TryReadSpritePixelAtNativeX(sprite, nativeX, out int evenColor, out _);
                     int color = evenColor | (oddColor << 2);
                     if (color != 0)
                     {
@@ -354,7 +368,7 @@ namespace AmigaEmulator.Core.CustomChips
                     continue;
                 }
 
-                if (TryReadSpritePixel(sprite, screenX, out int colorIndex, out _))
+                if (TryReadSpritePixelAtNativeX(sprite, nativeX, out int colorIndex, out _))
                 {
                     if (colorIndex != 0)
                     {
@@ -745,6 +759,11 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private bool TryReadSpritePixel(int sprite, int screenX, out int color, out bool attached)
         {
+            return TryReadSpritePixelAtNativeX(sprite, screenX * 2, out color, out attached);
+        }
+
+        private bool TryReadSpritePixelAtNativeX(int sprite, int nativeX, out int color, out bool attached)
+        {
             color = 0;
             attached = false;
             if (sprite < 0 || sprite >= 8)
@@ -754,8 +773,8 @@ namespace AmigaEmulator.Core.CustomChips
 
             SpriteState state = _states[sprite];
             attached = state.Attached;
-            if (_hasAga) return TryReadAgaPixel(state, screenX, out color);
-            int lowresX = screenX >> 1;
+            if (_hasAga) return TryReadAgaPixel(state, nativeX, out color);
+            int lowresX = nativeX >> 2;
             if (state.LineActive && lowresX >= state.HStart && lowresX < state.HStart + 16 &&
                 (!state.OutputValid || state.OutputHStart != state.HStart))
             {

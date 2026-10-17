@@ -1301,6 +1301,21 @@ namespace AmigaEmulator.Core.Cpu
                 return "ILLEGAL MOVE";
             }
 
+            // The current 030 RTE path retries a faulted instruction. A
+            // MOVE may already have advanced an address register before a
+            // translation fails. Rewind the EA side effects for byte/word
+            // moves and long source reads into a register. A long register
+            // source may also retry a split destination write because WriteLong
+            // checks both MMU pages before retiring either physical word.
+            // Other split writes still need real bus-cycle continuation.
+            if ((sourceMode is 3 or 4 || destinationMode is 3 or 4) &&
+                (size <= 2 || (size == 4 &&
+                    (destinationMode is 0 or 1 ||
+                     (sourceMode is 0 or 1 && destinationMode is 3 or 4)))) &&
+                _mmu != null && (_mmu.TranslationControl & 0x80000000) != 0)
+                return Execute030RestartableMove(opcode, size, sourceMode, sourceRegister,
+                    destinationMode, destinationRegister);
+
             uint value = ReadEa(sourceMode, sourceRegister, size);
             if (destinationMode == 1)
             {
@@ -1311,6 +1326,31 @@ namespace AmigaEmulator.Core.Cpu
             WriteEa(destinationMode, destinationRegister, size, value);
             SetLogicFlags(value, size);
             return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVE." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + "," + FormatEa(destinationMode, destinationRegister, size));
+        }
+
+        private string Execute030RestartableMove(ushort opcode, int size, int sourceMode,
+            int sourceRegister, int destinationMode, int destinationRegister)
+        {
+            uint sourceAddress = _state.A[sourceRegister];
+            uint destinationAddress = _state.A[destinationRegister];
+            try
+            {
+                uint value = ReadEa(sourceMode, sourceRegister, size);
+                if (destinationMode == 1)
+                {
+                    SetA(destinationRegister, size == 2 ? (uint)(int)(short)(value & 0xFFFF) : value);
+                    return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEA." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + ",A" + destinationRegister);
+                }
+                WriteEa(destinationMode, destinationRegister, size, value);
+                SetLogicFlags(value, size);
+                return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVE." + SizeSuffix(size) + " " + FormatEa(sourceMode, sourceRegister, size) + "," + FormatEa(destinationMode, destinationRegister, size));
+            }
+            catch (MmuAccessException)
+            {
+                if (sourceMode is 3 or 4) SetA(sourceRegister, sourceAddress);
+                if (destinationMode is 3 or 4) SetA(destinationRegister, destinationAddress);
+                throw;
+            }
         }
 
         /// <summary>
@@ -2446,7 +2486,17 @@ namespace AmigaEmulator.Core.Cpu
 
             if (memoryToRegisters)
             {
-                uint address = GetEffectiveAddress(mode, register, size, false);
+                // With active 030 translation, a later MOVEM source can fault
+                // after earlier destination registers have already changed.
+                // Check every source transfer before reading any data. The
+                // postincrement form also needs to defer its base-register
+                // update until the complete instruction can retire.
+                bool precheckSources = _mmu != null &&
+                    (_mmu.TranslationControl & 0x80000000) != 0;
+                uint address = precheckSources && mode == 3 ? _state.A[register] & AddressMask :
+                    GetEffectiveAddress(mode, register, size, false);
+                if (precheckSources)
+                    Precheck030MovemTransfers(address, mask, size, false);
                 for (int index = 0; index < 16; index++)
                 {
                     if ((mask & (1 << index)) == 0)
@@ -2478,6 +2528,11 @@ namespace AmigaEmulator.Core.Cpu
             if (mode == 4)
             {
                 uint address = _state.A[register];
+                // A later destination can fault after a previous device
+                // write. Validate the complete descending transfer before
+                // committing any data or changing the base register.
+                if (_mmu != null && (_mmu.TranslationControl & 0x80000000) != 0)
+                    Precheck030MovemPredecrement(address, mask, size);
                 for (int index = 0; index < 16; index++)
                 {
                     if ((mask & (1 << index)) == 0)
@@ -2500,6 +2555,13 @@ namespace AmigaEmulator.Core.Cpu
             else
             {
                 uint address = GetEffectiveAddress(mode, register, size, true);
+                // All valid non-predecrement destinations have a resolved
+                // starting address here. Probe each transfer before any
+                // store so a later page fault cannot replay an earlier
+                // physical device write on whole-instruction RTE retry.
+                if (_mmu != null &&
+                    (_mmu.TranslationControl & 0x80000000) != 0)
+                    Precheck030MovemTransfers(address, mask, size, true);
                 for (int index = 0; index < 16; index++)
                 {
                     if ((mask & (1 << index)) == 0)
@@ -2515,6 +2577,56 @@ namespace AmigaEmulator.Core.Cpu
             return OpcodeMnemonics[opcode] ?? (OpcodeMnemonics[opcode] = "MOVEM." + SizeSuffix(size) + " regs,<ea>");
         }
 
+        private void Precheck030MovemTransfers(uint address, ushort mask, int size, bool write)
+        {
+            for (int index = 0; index < 16; index++)
+            {
+                if ((mask & (1 << index)) == 0) continue;
+                Probe030MovemOperand(address, size, write);
+                address = unchecked(address + (uint)size) & AddressMask;
+            }
+        }
+
+        private void Probe030MovemOperand(uint address, int size, bool write)
+        {
+            // The 020/030 decomposes an odd word into two bytes, and an odd
+            // long into byte/word/byte. Probe the same logical addresses as
+            // ReadWord/ReadLong and WriteWord/WriteLong before the first bus
+            // side effect, including a final byte on the next MMU page.
+            if ((address & 1) != 0)
+            {
+                Probe030Address(address, write, 1);
+                Probe030Address(unchecked(address + 1) & AddressMask, write, size == 4 ? 2 : 1);
+                if (size == 4) Probe030Address(unchecked(address + 3) & AddressMask, write, 1);
+            }
+            else
+            {
+                Probe030Address(address, write);
+                if (size == 4) Probe030Address(unchecked(address + 2) & AddressMask, write);
+            }
+        }
+
+        private void Precheck030OddDataTransfer(uint address, int size, bool write)
+        {
+            if (_mmu == null) return;
+            uint tc = _mmu.TranslationControl;
+            if ((tc & 0x80000000) == 0) return;
+            int pageBits = (int)((tc >> 20) & 15);
+            uint lastAddress = unchecked(address + (uint)(size - 1)) & AddressMask;
+            if ((address >> pageBits) != (lastAddress >> pageBits))
+                Probe030MovemOperand(address, size, write);
+        }
+
+        private void Precheck030MovemPredecrement(uint address, ushort mask, int size)
+        {
+            for (int index = 0; index < 16; index++)
+            {
+                if ((mask & (1 << index)) == 0) continue;
+                address = unchecked(address - (uint)size) & AddressMask;
+                Probe030MovemOperand(address, size, true);
+            }
+        }
+
         /// <summary>
         /// Runs Execute Movep.
         /// </summary>
@@ -2525,6 +2637,16 @@ namespace AmigaEmulator.Core.Cpu
             bool dataToMemory = (opcode & 0x0080) != 0;
             int size = (opcode & 0x0040) != 0 ? 4 : 2;
             uint address = (uint)((int)_state.A[addressRegister] + (short)FetchWord()) & AddressMask;
+
+            // MOVEP is a sequence of spaced byte bus cycles. With 030
+            // translation a later byte may fault after an earlier device
+            // access has retired; whole-instruction RTE would then repeat
+            // that side effect. Probe every translated byte first, without
+            // changing descriptor or ATC history.
+            if (_mmu != null && (_mmu.TranslationControl & 0x80000000) != 0)
+                for (int i = 0; i < size; i++)
+                    Probe030Address(unchecked(address + (uint)(i * 2)) & AddressMask,
+                        dataToMemory, 1);
 
             if (dataToMemory)
             {
@@ -3044,7 +3166,11 @@ namespace AmigaEmulator.Core.Cpu
         {
             if (_dataCacheEnabled && !_cacheAccessInProgress) return (ushort)ReadCachedData(address, 2);
             CheckAlignedAccess(address, 2, false);
-            if (_has020 && (address & 1) != 0) return (ushort)((ReadByte(address) << 8) | ReadByte(address + 1));
+            if (_has020 && (address & 1) != 0)
+            {
+                Precheck030OddDataTransfer(address, 2, false);
+                return (ushort)((ReadByte(address) << 8) | ReadByte(address + 1));
+            }
             if (_mmu != null) address = Translate030Address(address, false);
             M68kTraceAccessType accessType = _opcodeFetchInProgress ? M68kTraceAccessType.OpcodeFetch : M68kTraceAccessType.Read;
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
@@ -3066,9 +3192,26 @@ namespace AmigaEmulator.Core.Cpu
             if (_dataCacheEnabled && !_cacheAccessInProgress) return ReadCachedData(address, 4);
             CheckAlignedAccess(address, 4, false);
             if (_has020 && (address & 1) != 0)
+            {
+                Precheck030OddDataTransfer(address, 4, false);
                 return ((uint)ReadByte(address) << 24) | ((uint)ReadWord(address + 1) << 8) | ReadByte(address + 3);
+            }
             if (_mmu != null)
+            {
+                // An aligned long is two physical word reads under the 030 MMU.
+                // A later translation fault must not repeat a device read on RTE.
+                uint tc = _mmu.TranslationControl;
+                if ((tc & 0x80000000) != 0)
+                {
+                    int pageBits = (int)((tc >> 20) & 15);
+                    if ((address >> pageBits) != (unchecked(address + 2) >> pageBits))
+                    {
+                        Probe030Address(address, false);
+                        Probe030Address(unchecked(address + 2), false);
+                    }
+                }
                 return ((uint)ReadWord(address) << 16) | ReadWord(address + 2);
+            }
             if (_deferBusSideEffects && _bus is IM68kPeekableBus peekableBus)
             {
                 uint value = ReadWithPendingWriteForwarding(peekableBus, address & AddressMask, 4);
@@ -3125,7 +3268,10 @@ namespace AmigaEmulator.Core.Cpu
             if (_dataCacheEnabled && !_cacheAccessInProgress) { WriteCachedData(address, 2, value); return; }
             CheckAlignedAccess(address, 2, true);
             if (_has020 && (address & 1) != 0)
-            { WriteByte(address, (byte)(value >> 8)); WriteByte(address + 1, (byte)value); return; }
+            {
+                Precheck030OddDataTransfer(address, 2, true);
+                WriteByte(address, (byte)(value >> 8)); WriteByte(address + 1, (byte)value); return;
+            }
             if (_mmu != null) address = Translate030Address(address, true);
             RecordBusMicroOps(M68kTraceAccessType.Write, address, 2, value, true, true);
             if (_deferBusSideEffects)
@@ -3144,8 +3290,30 @@ namespace AmigaEmulator.Core.Cpu
             if (_dataCacheEnabled && !_cacheAccessInProgress) { WriteCachedData(address, 4, value); return; }
             CheckAlignedAccess(address, 4, true);
             if (_has020 && (address & 1) != 0)
-            { WriteByte(address, (byte)(value >> 24)); WriteWord(address + 1, (ushort)(value >> 8)); WriteByte(address + 3, (byte)value); return; }
-            if (_mmu != null) { WriteWord(address, (ushort)(value >> 16)); WriteWord(address + 2, (ushort)value); return; }
+            {
+                Precheck030OddDataTransfer(address, 4, true);
+                WriteByte(address, (byte)(value >> 24)); WriteWord(address + 1, (ushort)(value >> 8)); WriteByte(address + 3, (byte)value); return;
+            }
+            if (_mmu != null)
+            {
+                // A fault on the second MMU page would otherwise leave the
+                // first physical word written, then repeat it on RTE retry.
+                // Precheck only page-spanning longs; normal same-page stores
+                // keep their existing translation and bus scheduling.
+                uint tc = _mmu.TranslationControl;
+                if ((tc & 0x80000000) != 0)
+                {
+                    int pageBits = (int)((tc >> 20) & 15);
+                    if ((address >> pageBits) != (unchecked(address + 2) >> pageBits))
+                    {
+                        Probe030Address(address, true);
+                        Probe030Address(unchecked(address + 2), true);
+                    }
+                }
+                WriteWord(address, (ushort)(value >> 16));
+                WriteWord(address + 2, (ushort)value);
+                return;
+            }
             RecordBusMicroOps(M68kTraceAccessType.Write, address, 4, value, true, true);
             if (_deferBusSideEffects)
             {

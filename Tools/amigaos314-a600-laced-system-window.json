@@ -1,0 +1,429 @@
+[
+  {
+    "name": "A600-OS314-LACED-SYSTEM-WINDOW-PROBE",
+    "model": "A600",
+    "ram": "Chip2MbFast4Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK314-A500.ROM",
+    "hardDisk": "tmp/os-a1200-test.hdf",
+    "hardDiskReadOnly": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "desktop"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "modifiers": [
+          103
+        ],
+        "label": "execute-command"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "dialog-ready"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-00"
+      },
+      {
+        "type": "key",
+        "key": 21,
+        "cycles": 120000,
+        "label": "cmd-01"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-02"
+      },
+      {
+        "type": "key",
+        "key": 41,
+        "cycles": 120000,
+        "label": "cmd-03",
+        "modifiers": [
+          96
+        ]
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "cycles": 120000,
+        "label": "cmd-04"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "cmd-05"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-06"
+      },
+      {
+        "type": "key",
+        "key": 35,
+        "cycles": 120000,
+        "label": "cmd-07"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-08"
+      },
+      {
+        "type": "key",
+        "key": 58,
+        "cycles": 120000,
+        "label": "cmd-09"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-10"
+      },
+      {
+        "type": "key",
+        "key": 51,
+        "cycles": 120000,
+        "label": "cmd-11"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "cmd-12"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-13"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-14"
+      },
+      {
+        "type": "key",
+        "key": 54,
+        "cycles": 120000,
+        "label": "cmd-15"
+      },
+      {
+        "type": "key",
+        "key": 55,
+        "cycles": 120000,
+        "label": "cmd-16"
+      },
+      {
+        "type": "key",
+        "key": 24,
+        "cycles": 120000,
+        "label": "cmd-17"
+      },
+      {
+        "type": "key",
+        "key": 34,
+        "cycles": 120000,
+        "label": "cmd-18"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-19"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 120000,
+        "label": "cmd-enter"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "screenmode-prefs"
+      },
+      {
+        "type": "mouse",
+        "x": 100,
+        "y": 50,
+        "mouseStepCycles": 20000,
+        "label": "pointer-probe"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "pointer-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": 130,
+        "mouseStepCycles": 20000,
+        "label": "list-pointer"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "choose-laced"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "selected-mode"
+      },
+      {
+        "type": "mouse",
+        "x": 180,
+        "y": 198,
+        "label": "use-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "use-target-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "use-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "after-use"
+      },
+      {
+        "type": "mouse",
+        "x": -315,
+        "y": -125,
+        "label": "confirm-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "confirm-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": -55,
+        "label": "correct-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "correct-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -20,
+        "label": "dialog-use-target",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "dialog-use-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -20,
+        "label": "dialog-use-target2",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "dialog-use-settled2"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "confirm-use"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "laced-result",
+        "expectedFrameHash": "AF3DD9EE085E251CC72155D872A6957E4CBE5769DFF8E8F5BDAE262A12114914",
+        "expectedNativeInterlacedFrameHash": "CF36B8EA6350A1B4087CBDD6A9987ED371640770B4CB5AC2161B80E4B2C09D40",
+        "expectNativeInterlacedFrame": true,
+        "expectedBplcon0": "2346"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "shres-laced-stable",
+        "expectNativeInterlacedFrame": true,
+        "expectedBplcon0": "2346"
+      },
+      {
+        "type": "mouse",
+        "x": 80,
+        "y": 40,
+        "label": "pointer-move",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "pointer-settled"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "modifiers": [
+          103
+        ],
+        "label": "execute-command"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "shres-laced-dialog"
+      },
+      {
+        "type": "key",
+        "key": 69,
+        "label": "escape-dialog"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "after-escape"
+      },
+      {
+        "type": "mouse",
+        "x": 80,
+        "y": -135,
+        "label": "cancel-pointer",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "cancel-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "cancel-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 3000000,
+        "label": "after-cancel"
+      },
+      {
+        "type": "mouse",
+        "x": -165,
+        "y": 0,
+        "label": "system-icon-pointer",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "system-icon-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "system-open-click1"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "system-open-click2"
+      },
+      {
+        "type": "wait",
+        "cycles": 8000000,
+        "label": "system-window",
+        "expectedFrameHash": "461A9590A907663E45287940A0D764877EA8A4B45CB3B42B97946C9CBFA0F7E4",
+        "expectedNativeInterlacedFrameHash": "F44A8EA25D5A32670BB042A91AC8613FA224057068DCB9225424ADE84D219D58",
+        "expectNativeInterlacedFrame": true,
+        "expectedBplcon0": "2346"
+      },
+      {
+        "type": "mouse",
+        "x": 165,
+        "y": 0,
+        "label": "title-pointer",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "title-settled"
+      },
+      {
+        "type": "mouse-button-down",
+        "button": "Fire",
+        "cycles": 300000,
+        "label": "drag-down"
+      },
+      {
+        "type": "mouse",
+        "x": 100,
+        "y": 100,
+        "label": "drag-move",
+        "mouseStepCycles": 20000
+      },
+      {
+        "type": "mouse-button-up",
+        "button": "Fire",
+        "cycles": 300000,
+        "label": "drag-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "moved-system-window",
+        "expectedFrameHash": "66911D4BD5EC4CE70FE076F45DDEA858EC7BCE3F5D575BBFC7D5EF331A435FE3",
+        "expectedNativeInterlacedFrameHash": "21B4B262FF1DFAF532FEF30A07C473608FB59F2452D45830EA51F66C2D2A5CD3",
+        "expectNativeInterlacedFrame": true,
+        "expectedBplcon0": "2346"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore-window"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "restored-window",
+        "expectedFrameHash": "66911D4BD5EC4CE70FE076F45DDEA858EC7BCE3F5D575BBFC7D5EF331A435FE3",
+        "expectedNativeInterlacedFrameHash": "21B4B262FF1DFAF532FEF30A07C473608FB59F2452D45830EA51F66C2D2A5CD3",
+        "expectNativeInterlacedFrame": true,
+        "expectedBplcon0": "2346"
+      }
+    ]
+  }
+]

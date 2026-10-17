@@ -1,0 +1,242 @@
+[
+  {
+    "name": "A3000-native31-CelticHeart-SegmentedJump",
+    "boot": "Celtic Heart (disk 1).adf",
+    "ram": "Chip2MbFast4Mb",
+    "strict": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 1200000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "menu"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "story"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "stage-prompt"
+      },
+      {
+        "type": "joystick",
+        "cycles": 800000
+      },
+      {
+        "type": "wait",
+        "cycles": 6000000,
+        "label": "get-ready"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 4000000,
+        "label": "level",
+        "expectedFrameHash": "33173D58D21C5D1529C98AE446E73B507316780547DA5784228A729A7CFEC7DE",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "move-right",
+        "expectedFrameHash": "89C958308531EAC9D47D8D1818AA44366D2F56DD9569E7DC47AFE25F0C4FB52E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "jump-right",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "restore",
+        "label": "gameplay-restore",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 8000000,
+        "label": "jump-through-hazards"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "jump-through-result",
+        "expectedFrameHash": "9A170E7EF24B82B64F5E54EA3499D7C10B09244E051B9130856B9A6350217303",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-1",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-2",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-3",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-4",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-5",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-6",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "FE92C3E0C2483F768B900DAE797CCA1B48E4DF6E54AEB7A0292EE4C33861A252",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-7",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-8",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "360991C66E8074286B8F5F5025F839C16A0CBA120E2677DEDF97889E2E8DDE72",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "label": "second-slices-result",
+        "cycles": 500000,
+        "expectedFrameHash": "0C3883A5258946A7E2A21566DFDE74F39EC07DCAB56959DE0EB47ACCC81AFDAA",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-slice-9",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick"
+      },
+      {
+        "label": "second-slice-10",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick",
+        "expectedFrameHash": "D9C90560DC370E99FEE5B9617DC53F2C640A268D3E29FB1BBBEC9555A901C8B5",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-slice-11",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick"
+      },
+      {
+        "label": "second-slice-12",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick",
+        "expectedFrameHash": "21F3ECB0EAE3EBBBF1D26FDACD01BC368D37AE78A7C773D9B5C55E927DE64B06",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-extended-result",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "1714AA0F43BE42FB2B55946F02B2FF70AA3065044D7AC1E16399CFD1B8625169",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "platform-slice-1",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "platform-slice-2",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "platform-slice-3",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "C5414A7E8EED91E715929D7BDCD9211EC6DDFB93C0D71BCDDC5EEB74D534205E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "platform-slice-4",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "platform-slice-5",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "platform-slice-6",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "35AB49914B2CE81856FA870CDAC531F1CCF4ADDA9C89CBD093C027A809E119EF",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "label": "platform-result",
+        "cycles": 500000,
+        "expectedFrameHash": "848C9E34FEC37D0B84AF3CA854664F19A72C02CB94D187974E6780CFBC307899",
+        "minimumNonBlackPixels": 190000
+      }
+    ],
+    "model": "A3000",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0
+  }
+]

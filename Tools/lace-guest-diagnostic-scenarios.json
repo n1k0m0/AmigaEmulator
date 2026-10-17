@@ -1,0 +1,212 @@
+[
+  {
+    "name": "LACE-ECS",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "lace-stable",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      }
+    ]
+  },
+  {
+    "name": "LACE-A600",
+    "model": "A600",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "lace-stable",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      }
+    ]
+  },
+  {
+    "name": "LACE-A2000ECS",
+    "model": "A2000Ecs",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "lace-stable",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      }
+    ]
+  },
+  {
+    "name": "LACE-A3000",
+    "model": "A3000",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "lace-stable",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "A89F4CC2DBDE10C7F3B092C17CF42799D0FD65C2C7C7C89B7626AEF0EE783FFC",
+        "expectedNativeInterlacedFrameHash": "85E0B0D6053CF666D37E0CFD4A203FC8AD2C676508F6640AF763597FF67DA670"
+      }
+    ]
+  },
+  {
+    "name": "LACE-AGA",
+    "model": "A1200",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A1200.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "lace-stable",
+        "expectedInterlacedFrameHash": "15E32CE57DD31B20CEFD145438A9DEFC32F18F358B4A9E71BCE4794A067FD777",
+        "expectedNativeInterlacedFrameHash": "5403528C2588837BC189F3686F2BD0733E1C05A7275A261514E59F612C2ADFD3"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "15E32CE57DD31B20CEFD145438A9DEFC32F18F358B4A9E71BCE4794A067FD777",
+        "expectedNativeInterlacedFrameHash": "5403528C2588837BC189F3686F2BD0733E1C05A7275A261514E59F612C2ADFD3"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "15E32CE57DD31B20CEFD145438A9DEFC32F18F358B4A9E71BCE4794A067FD777",
+        "expectedNativeInterlacedFrameHash": "5403528C2588837BC189F3686F2BD0733E1C05A7275A261514E59F612C2ADFD3"
+      }
+    ]
+  }
+]

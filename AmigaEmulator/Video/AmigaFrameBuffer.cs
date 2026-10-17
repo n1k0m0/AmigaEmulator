@@ -32,6 +32,11 @@ namespace AmigaEmulator.Core.Video
         // Transient compositor data; the savestate format continues to store the raw composite only.
         private readonly uint[] _spritePixels;
         private readonly uint[] _pixelsBehindSprites;
+        // Allocated only for SHRES output. This transient playfield plane has
+        // two native 35 ns samples for each existing 70 ns framebuffer pixel.
+        private uint[] _superHiresPlayfieldPixels;
+        // Sparse native sprite overlay; zero means the playfield sample remains visible.
+        private uint[] _superHiresSpritePixels;
 
         /// <summary>
         /// Initializes a new instance of the AmigaFrameBuffer class.
@@ -68,10 +73,123 @@ namespace AmigaEmulator.Core.Video
             get { return _pixels; }
         }
 
+        public uint[] SuperHiresPlayfieldPixels => _superHiresPlayfieldPixels;
+
+        /// <summary>Copies the transient sprite overlay for a diagnostic raster capture.</summary>
+        public void CopySpritePixelsTo(uint[] target)
+        {
+            if (target == null || target.Length < _spritePixels.Length)
+                throw new ArgumentException("The sprite target is too small.", nameof(target));
+            Array.Copy(_spritePixels, target, _spritePixels.Length);
+        }
+
+        public void EnsureSuperHiresPlayfield()
+        {
+            if (_superHiresPlayfieldPixels != null) return;
+            _superHiresPlayfieldPixels = new uint[_pixels.Length * 2];
+            // Copper can enable SHRES partway through a field. Preserve the
+            // already-rendered lores/hires portion in both native samples;
+            // BeginFrame has filled untouched pixels with the border color.
+            for (int pixel = 0; pixel < _pixels.Length; pixel++)
+            {
+                uint color = _pixels[pixel];
+                _superHiresPlayfieldPixels[pixel * 2] = color;
+                _superHiresPlayfieldPixels[pixel * 2 + 1] = color;
+            }
+        }
+
+        public void FillSuperHiresPlayfieldSpan(int pixelIndex, int length, uint argb)
+        {
+            if (_superHiresPlayfieldPixels == null) return;
+            Array.Fill(_superHiresPlayfieldPixels, argb, pixelIndex * 2, length * 2);
+            if (_superHiresSpritePixels != null)
+                Array.Clear(_superHiresSpritePixels, pixelIndex * 2, length * 2);
+        }
+
+        public void RecordSuperHiresSpritePair(int pixelIndex, uint firstSprite, uint secondSprite)
+        {
+            if (_superHiresPlayfieldPixels == null) return;
+            if (_superHiresSpritePixels == null)
+            {
+                if ((firstSprite | secondSprite) == 0) return;
+                _superHiresSpritePixels = new uint[_superHiresPlayfieldPixels.Length];
+            }
+            int nativeIndex = pixelIndex * 2;
+            _superHiresSpritePixels[nativeIndex] = firstSprite;
+            _superHiresSpritePixels[nativeIndex + 1] = secondSprite;
+        }
+
+        /// <summary>
+        /// Copies priority-tested native playfield and sprite samples without
+        /// changing the existing host-resolution composite or savestate image.
+        /// </summary>
+        public bool CopyCompositedSuperHiresTo(uint[] target)
+        {
+            if (_superHiresPlayfieldPixels == null) return false;
+            if (target == null || target.Length < _superHiresPlayfieldPixels.Length)
+                throw new ArgumentException("The native SHRES target is too small.", nameof(target));
+            Array.Copy(_superHiresPlayfieldPixels, target, _superHiresPlayfieldPixels.Length);
+            if (_superHiresSpritePixels != null)
+            {
+                for (int index = 0; index < _superHiresSpritePixels.Length; index++)
+                {
+                    uint sprite = _superHiresSpritePixels[index];
+                    if (sprite != 0) target[index] = sprite;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Samples one native playfield position and, if requested, the sprite
+        /// from an independently anchored native position.
+        /// </summary>
+        public uint SampleSuperHiresPresentationPixel(int playfieldIndex, int spriteIndex)
+        {
+            if (_superHiresPlayfieldPixels == null)
+                throw new InvalidOperationException("No native SHRES frame is available.");
+            if ((uint)playfieldIndex >= (uint)_superHiresPlayfieldPixels.Length ||
+                (uint)spriteIndex >= (uint)_superHiresPlayfieldPixels.Length)
+                throw new ArgumentOutOfRangeException(nameof(playfieldIndex));
+            uint sprite = _superHiresSpritePixels == null ? 0 : _superHiresSpritePixels[spriteIndex];
+            return sprite != 0 ? sprite : _superHiresPlayfieldPixels[playfieldIndex];
+        }
+
         public void Clear(uint argb)
         {
             Array.Clear(_spritePixels);
             Array.Fill(_pixels, argb);
+            if (_superHiresPlayfieldPixels != null)
+                Array.Fill(_superHiresPlayfieldPixels, argb);
+            if (_superHiresSpritePixels != null)
+                Array.Clear(_superHiresSpritePixels);
+        }
+
+        public void RecordSuperHiresPlayfieldPair(int pixelIndex, uint firstArgb, uint secondArgb)
+        {
+            _superHiresPlayfieldPixels ??= new uint[_pixels.Length * 2];
+            int nativeIndex = pixelIndex * 2;
+            _superHiresPlayfieldPixels[nativeIndex] = firstArgb;
+            _superHiresPlayfieldPixels[nativeIndex + 1] = secondArgb;
+        }
+
+        public void RecordExpandedPixelIfNative(int pixelIndex, uint argb)
+        {
+            if (_superHiresPlayfieldPixels == null) return;
+            int nativeIndex = pixelIndex * 2;
+            _superHiresPlayfieldPixels[nativeIndex] = argb;
+            _superHiresPlayfieldPixels[nativeIndex + 1] = argb;
+            if (_superHiresSpritePixels != null)
+            {
+                _superHiresSpritePixels[nativeIndex] = 0;
+                _superHiresSpritePixels[nativeIndex + 1] = 0;
+            }
+        }
+
+        public void DiscardSuperHiresPlayfield()
+        {
+            _superHiresPlayfieldPixels = null;
+            _superHiresSpritePixels = null;
         }
 
         /// <summary>
@@ -137,6 +255,7 @@ namespace AmigaEmulator.Core.Video
 
             Array.Copy(source._pixels, _pixels, Math.Min(_pixels.Length, source._pixels.Length));
             Array.Clear(_spritePixels);
+            DiscardSuperHiresPlayfield();
         }
 
         /// <summary>
@@ -288,6 +407,9 @@ namespace AmigaEmulator.Core.Video
             int width = reader.ReadInt32();
             int height = reader.ReadInt32();
             Array.Clear(_spritePixels);
+            // Native SHRES samples are transient output, not part of the
+            // legacy savestate framebuffer payload.
+            DiscardSuperHiresPlayfield();
             uint[] pixels = StateSerializer.ReadUIntArray(reader) ?? Array.Empty<uint>();
             if (width == Width && height == Height && pixels.Length == _pixels.Length)
             {

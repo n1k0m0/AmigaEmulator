@@ -49,11 +49,12 @@ namespace AmigaEmulator.Core.Cpu
         {
             int fc = DataFunctionCode;
             uint result = 0;
+            Precheck030CachedSplitOperand(address, size, false);
             _cacheAccessInProgress = true;
             try
             {
                 // A misaligned operand can hit one longword and miss the next.
-                // Keep each transfer independent, including MMU page faults.
+                // Cross-page translations were checked before either transfer.
                 for (int remaining = size; remaining > 0;)
                 {
                     int offset = (int)(address & 3), count = Math.Min(remaining, 4 - offset);
@@ -90,6 +91,7 @@ namespace AmigaEmulator.Core.Cpu
         {
             int fc = DataFunctionCode;
             bool alignedLong = size == 4 && (address & 3) == 0;
+            Precheck030CachedSplitOperand(address, size, true);
             _cacheAccessInProgress = true;
             try
             {
@@ -141,6 +143,22 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         private static uint DataMask(int count) => count == 4 ? uint.MaxValue : (1u << (count * 8)) - 1;
+
+        private void Precheck030CachedSplitOperand(uint address, int size, bool write)
+        {
+            if (size == 1 || _mmu == null) return;
+            uint tc = _mmu.TranslationControl;
+            if ((tc & 0x80000000) == 0) return;
+            int pageBits = (int)((tc >> 20) & 15);
+            uint lastAddress = unchecked(address + (uint)(size - 1)) & AddressMask;
+            if ((address >> pageBits) != (lastAddress >> pageBits))
+            {
+                // The cache may fill a line or update a writethrough hit before
+                // the next part faults. Probe all logical bus pieces first.
+                Probe030MovemOperand(address, size, write);
+            }
+        }
+
         private uint ReadDataChunk(uint address, int count) => count switch
         {
             1 => ReadByte(address), 2 => ReadWord(address), 4 => ReadLong(address),

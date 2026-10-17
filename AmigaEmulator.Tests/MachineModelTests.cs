@@ -38,6 +38,7 @@ namespace AmigaEmulator.Tests
             yield return new ChipTestCase("Models/Video", "LOF toggles only with LACE and VPOSW survives save and restore", "Commodore HRM BPLCON0 and VPOSR/VPOSW", TestLongFieldFlop);
             yield return new ChipTestCase("Models/Video", "PAL fields follow 312/313 scanlines and restore the extra line before presentation", "Commodore HRM Copper vertical beam position and VPOSR/VPOSW", TestPalFieldLengths);
             yield return new ChipTestCase("Models/Video", "normal and profiled execution present only after the entire long PAL field", "Field completion through the machine compositor", TestLongFieldPresentation);
+            yield return new ChipTestCase("Models/Video", "completed LACE fields weave independently and reset invalidates the pair", "PAL field completion and transient presentation", TestInterlacePresentation);
             yield return new ChipTestCase("Models", "ECS blitter size registers execute wider blits and BLTCON0L preserves channels", "BLTSIZV/H and BLTCON0L", TestExtendedBlitter);
             yield return new ChipTestCase("Models", "ECS DIWHIGH zero overrides legacy vertical wrap and survives restore", "DIWHIGH explicit-zero latch and model-aware savestates", TestDisplayWindowAndState);
             yield return new ChipTestCase("Models", "wrong-model savestates are rejected before changing machine state", "Model identity in file and machine state", TestStateMismatch);
@@ -158,6 +159,51 @@ namespace AmigaEmulator.Tests
                     else system.RunChipCycles(clocks);
                 }
             }
+        }
+
+        private static void TestInterlacePresentation()
+        {
+            using var system = new AmigaSystem(AmigaModel.A500Pal512Slow512);
+            var registers = system.Agnus.CustomRegisters;
+            registers.WriteWord(0x100, 4);
+            registers.WriteWord(0x180, 0x00F);
+            system.RunChipCycles(312 * system.Model.ChipCyclesPerLine);
+            Check.True(!system.InterlacedFrameBuffer.HasBothFields,
+                "A short field alone must not be reported as a woven image.");
+            uint shortPixel = system.PresentedFrameBuffer.Pixels[0];
+            registers.WriteWord(0x180, 0xF00);
+            system.RunChipCycles(313 * system.Model.ChipCyclesPerLine);
+            Check.True(system.InterlacedFrameBuffer.HasBothFields,
+                "The following long field completes the PAL pair.");
+            uint longPixel = system.PresentedFrameBuffer.Pixels[0];
+            Check.Equal(longPixel, system.InterlacedFrameBuffer.Pixels[0],
+                "The completed long field occupies even output scanlines.");
+            Check.Equal(shortPixel, system.InterlacedFrameBuffer.Pixels[system.InterlacedFrameBuffer.Width],
+                "The completed short field occupies odd output scanlines.");
+            registers.WriteWord(0x100, 0);
+            system.RunChipCycles(312 * system.Model.ChipCyclesPerLine);
+            Check.True(system.CompletedInterlacedFrameBuffer == null,
+                "Leaving LACE invalidates the complete pair at the next field boundary.");
+            registers.WriteWord(0x100, 4);
+            system.RunChipCycles(312 * system.Model.ChipCyclesPerLine);
+            Check.True(system.CompletedInterlacedFrameBuffer == null,
+                "Re-entering LACE cannot pair a new short field with an old long field.");
+            system.RunChipCycles(313 * system.Model.ChipCyclesPerLine);
+            Check.True(system.CompletedInterlacedFrameBuffer != null,
+                "Only a fresh long field completes the re-entered LACE pair.");
+            system.RunChipCycles(312 * system.Model.ChipCyclesPerLine);
+            Check.True(system.CompletedInterlacedFrameBuffer != null,
+                "An alternating short field may use the preceding long field.");
+            registers.WriteWord(0x02A, 0);
+            system.RunChipCycles(312 * system.Model.ChipCyclesPerLine);
+            Check.True(system.CompletedInterlacedFrameBuffer == null,
+                "A forced second short field cannot reuse a stale long field.");
+            system.RunChipCycles(313 * system.Model.ChipCyclesPerLine);
+            Check.True(system.CompletedInterlacedFrameBuffer != null,
+                "A fresh long field completes the pair after the VPOSW override.");
+            system.Reset(false);
+            Check.True(!system.InterlacedFrameBuffer.HasBothFields,
+                "A reset must not expose the previous field pair.");
         }
 
         private static void TestDmaPointersAcrossBlankLines()

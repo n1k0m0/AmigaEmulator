@@ -1,0 +1,114 @@
+[
+  {
+    "name": "A3000-native31-CelticHeart-JumpRoute",
+    "boot": "Celtic Heart (disk 1).adf",
+    "ram": "Chip2MbFast4Mb",
+    "strict": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 1200000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "menu"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "story"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "stage-prompt"
+      },
+      {
+        "type": "joystick",
+        "cycles": 800000
+      },
+      {
+        "type": "wait",
+        "cycles": 6000000,
+        "label": "get-ready"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 4000000,
+        "label": "level",
+        "expectedFrameHash": "33173D58D21C5D1529C98AE446E73B507316780547DA5784228A729A7CFEC7DE",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "move-right",
+        "expectedFrameHash": "89C958308531EAC9D47D8D1818AA44366D2F56DD9569E7DC47AFE25F0C4FB52E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "jump-right",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "restore",
+        "label": "gameplay-restore",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 8000000,
+        "label": "jump-through-hazards"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "jump-through-result",
+        "expectedFrameHash": "9A170E7EF24B82B64F5E54EA3499D7C10B09244E051B9130856B9A6350217303",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 8000000,
+        "label": "second-jump-route"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "second-jump-result",
+        "expectedFrameHash": "21EEF4120980A1A1E17B9DCAFFBB777A4B773E5CA8C5CDF6BC02852422ABB603",
+        "minimumNonBlackPixels": 190000
+      }
+    ],
+    "model": "A3000",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0
+  }
+]

@@ -38,6 +38,32 @@ namespace AmigaEmulator.Tests
             yield return Test("68030 PMOVE, PTEST, PLOAD and PFLUSH preserve guest MMU state", Test030Instructions);
             yield return Test("68030 guest PLOAD/PTEST/PMOVE distinguish a cached fault from a repaired table", Test030CachedFaultInstructions);
             yield return Test("68030 protection faults create a format A frame and double faults halt", Test030Fault);
+            yield return new ChipTestCase("CPU/030MMU", "MOVE postincrements survive a protected write and RTE retry",
+                "Motorola MC68030UM 8.2.3, 8.4", Test030MovePostincrementRetry);
+            yield return new ChipTestCase("CPU/030MMU", "split long source read retries after a second-page fault",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030SplitLongSourceRetry);
+            yield return new ChipTestCase("CPU/030MMU", "split long register write never repeats its first physical word",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030SplitLongRegisterWriteRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVEM postincrement does not retire registers before a later page fault",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030MovemPostincrementRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVEM indirect and extended reads preserve registers on a later page fault",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030MovemExtendedEaReadRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVEM register stores do not repeat an earlier physical write",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030MovemRegisterWriteRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVEM predecrement faults before an earlier physical write",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030MovemPredecrementWriteRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVEM displacement and absolute stores precheck later pages",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030MovemExtendedEaWriteRetry);
+            yield return new ChipTestCase("CPU/030MMU", "odd MOVEM transfers precheck every byte across an MMU page",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030OddMovemPageRetry);
+            yield return new ChipTestCase("CPU/030MMU", "odd single MOVE transfers precheck their final MMU page",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030OddSingleMovePageRetry);
+            yield return new ChipTestCase("CPU/030MMU", "cached split MOVE prechecks both pages before a physical fill",
+                "Motorola MC68030UM 6.1.2, 8.2.1-8.2.3", Test030CachedSplitMovePageRetry);
+            yield return new ChipTestCase("CPU/030MMU", "odd predecrement MOVEM prechecks its final byte without changing An",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030OddMovemPredecrementPageRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVEP byte transfers do not repeat a physical access after a later page fault",
+                "Motorola MC68030UM 8.2.1-8.2.3", Test030MovepPageRetry);
             yield return Test("68030 locked reads check write protection before TAS/CAS change registers", Test030LockedProtection);
         }
         private static ChipTestCase Test(string name, Action run) => new("CPU/020", name, "Motorola M68000 PRM and MC68020UM; independently encoded integer fixtures", run);
@@ -656,6 +682,628 @@ namespace AmigaEmulator.Tests
             Check.Equal(M68kExecutionState.Stopped, doubleFault.Snapshot.ExecutionState, "A fault while stacking halts the guest.");
         }
 
+        private static void Test030MovePostincrementRetry()
+        {
+            // MOVE.W (A0)+,(A1)+. The source read succeeds, then the destination
+            // MMU translation faults. Re-executing after RTE must not skip source
+            // data or write to the following destination word.
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x32D8);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0xA00D);
+                bus.WriteWord(0x9000, 0xABCD);
+                bus.WriteWord(0x9002, 0x1234);
+                cpu.SetA(0, 0x3000);
+                cpu.SetA(1, 0x4000);
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Protected destination enters bus error handler.");
+                Check.Equal(0x3000u, cpu.GetA(0), "Source postincrement is restartable.");
+                Check.Equal(0x4000u, cpu.GetA(1), "Destination postincrement is restartable.");
+                Check.Equal((ushort)0, bus.ReadWord(0xA000), "Protected write has no effect.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                Check.True(cpu.MemoryManagementUnit.Test(0x4000, 5, true, 7).Accessible(true),
+                    "Repaired destination translation permits writes.");
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE returns to the faulting MOVE.");
+                cpu.Step();
+                Check.Equal(0x1002u, cpu.PC, "MOVE completes after remapping.");
+                Check.Equal(0x3002u, cpu.GetA(0), "Source advances once.");
+                Check.Equal(0x4002u, cpu.GetA(1), "Destination advances once.");
+                Check.Equal((ushort)0xABCD, bus.ReadWord(0xA000), "Original source reaches the destination.");
+                Check.Equal((ushort)0, bus.ReadWord(0xA002), "Retry does not write the next word.");
+            }
+        }
+
+        private static void Test030SplitLongSourceRetry()
+        {
+            // MOVE.L (A0)+,D0 straddles a 4-KiB MMU page boundary. The first
+            // word is readable, but the second word faults until the handler
+            // maps its page. A retry must reconstruct the original longword
+            // and advance the guest source register only once.
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x2018);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0);
+                bus.WriteWord(0x9FFE, 0xABCD);
+                bus.WriteWord(0xA000, 0x1234);
+                cpu.SetA(0, 0x3FFE);
+                cpu.SetD(0, 0xDEADBEEF);
+                bus.TrackedWordReadAddress = 0x9FFE;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Second-page read enters bus error handler.");
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x4000; i++) cpu.Tick(true);
+                Check.Equal(0x4000u, bus.ReadLong(cpu.A7 + 16), "Frame reports the second logical page.");
+                Check.Equal(0x3FFEu, cpu.GetA(0), "Source address remains restartable.");
+                Check.Equal(0xDEADBEEFu, cpu.D0, "Incomplete long read leaves D0 unchanged.");
+                Check.Equal(0, bus.TrackedWordReadCount,
+                    "A first-page device read cannot retire before the second-page fault.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE returns to the split read.");
+                cpu.Step();
+                Check.Equal(0x1002u, cpu.PC, "Repaired MOVE completes.");
+                Check.Equal(0xABCD1234u, cpu.D0, "Retry reads the original two source words.");
+                Check.Equal(0x4002u, cpu.GetA(0), "Source increments once after the longword.");
+                Check.Equal(1, bus.TrackedWordReadCount,
+                    "The first physical source word is read exactly once after repair.");
+            }
+        }
+
+        private static void Test030SplitLongRegisterWriteRetry()
+        {
+            // MOVE.L D0,(A0)+ crosses an MMU page. The second page is absent;
+            // the first physical word must not be sent to a device twice when
+            // the handler maps that page and RTE retries the instruction.
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x20C0);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0);
+                cpu.SetA(0, 0x3FFE);
+                cpu.SetD(0, 0xCAFEBABE);
+                bus.TrackedWordWriteAddress = 0x9FFE;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Second-page write enters bus error handler.");
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x4000; i++) cpu.Tick(true);
+                Check.Equal(0x4000u, bus.ReadLong(cpu.A7 + 16), "Frame reports second logical page.");
+                Check.Equal(0x3FFEu, cpu.GetA(0), "Faulted destination postincrement is restartable.");
+                Check.Equal(0, bus.TrackedWordWriteCount, "First physical word is held until both pages are writable.");
+                Check.Equal(0u, bus.ReadLong(0x500C) & 0x10u,
+                    "Prechecking the first page does not mark an unretired write modified.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE returns to the faulting MOVE.");
+                cpu.Step();
+                Check.Equal(0x1002u, cpu.PC, "Repaired long write completes.");
+                Check.Equal(0x4002u, cpu.GetA(0), "Destination advances once.");
+                Check.Equal(0xCAFEBABEu, bus.ReadLong(0x9FFE),
+                    "Original longword reaches both physical pages.");
+                Check.Equal(1, bus.TrackedWordWriteCount, "First physical word is issued exactly once.");
+            }
+        }
+
+        private static void Test030MovemPostincrementRetry()
+        {
+            // MOVEM.L (A0)+,D0-D1 reads a mapped long then faults on the
+            // next page. A retry after RTE must preserve both original guest
+            // registers and the original source address until all translations
+            // needed by the instruction can succeed.
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x4CD8, 0x0003);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9001);
+                bus.WriteLong(0x5010, 0);
+                bus.WriteLong(0x9FFC, 0x11223344);
+                bus.WriteLong(0xA000, 0x55667788);
+                cpu.SetA(0, 0x3FFC);
+                cpu.SetD(0, 0xA0A0A0A0);
+                cpu.SetD(1, 0xB1B1B1B1);
+                bus.TrackedWordReadAddress = 0x9FFC;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Second MOVEM operand enters bus error handler.");
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x4000; i++) cpu.Tick(true);
+                Check.Equal(0x4000u, bus.ReadLong(cpu.A7 + 16), "Frame reports the later logical page.");
+                Check.Equal(0x3FFCu, cpu.GetA(0), "MOVEM postincrement has not committed.");
+                Check.Equal(0xA0A0A0A0u, cpu.D0, "First D register remains unchanged at the fault.");
+                Check.Equal(0xB1B1B1B1u, cpu.GetD(1), "Second D register remains unchanged at the fault.");
+                Check.Equal(0, bus.TrackedWordReadCount, "No first-page data read retires before the later translation succeeds.");
+                Check.Equal(0u, bus.ReadLong(0x500C) & 8u,
+                    "A speculative first-page check does not set its used bit.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries MOVEM from its original PC.");
+                cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "Repaired MOVEM completes.");
+                Check.Equal(0x11223344u, cpu.D0, "First register receives the original longword.");
+                Check.Equal(0x55667788u, cpu.GetD(1), "Second register receives the later longword.");
+                Check.Equal(0x4004u, cpu.GetA(0), "Source advances by both longwords once.");
+                Check.Equal(1, bus.TrackedWordReadCount, "First-page data read retires exactly once.");
+            }
+        }
+
+        private static void Test030MovemExtendedEaReadRetry()
+        {
+            // Each form reads one mapped longword and then encounters an
+            // unmapped page. The first destination register must not change
+            // before a whole-instruction retry from the format-B fault frame.
+            foreach (ushort[] code in new[] {
+                new ushort[] { 0x4CD0, 0x0003 },
+                new ushort[] { 0x4CE8, 0x0003, 0x0000 },
+                new ushort[] { 0x4CF9, 0x0003, 0x0000, 0x3FFC } })
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, code);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9001);
+                bus.WriteLong(0x5010, 0);
+                bus.WriteLong(0x9FFC, 0x11223344);
+                bus.WriteLong(0xA000, 0x55667788);
+                cpu.SetA(0, 0x3FFC);
+                cpu.SetD(0, 0xA0A0A0A0);
+                cpu.SetD(1, 0xB1B1B1B1);
+                bus.TrackedWordReadAddress = 0x9FFC;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Later MOVEM source enters bus error handler.");
+                Check.Equal(0x3FFCu, cpu.GetA(0), "MOVEM source address has not advanced.");
+                Check.Equal(0xA0A0A0A0u, cpu.D0, "Earlier destination register remains unchanged.");
+                Check.Equal(0xB1B1B1B1u, cpu.GetD(1), "Later destination register remains unchanged.");
+                Check.Equal(0, bus.TrackedWordReadCount, "First mapped data word was not read before the fault.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries the complete MOVEM.");
+                cpu.Step();
+                Check.Equal(0x1000u + (uint)(code.Length * 2), cpu.PC, "Repaired MOVEM completes.");
+                Check.Equal(0x11223344u, cpu.D0, "First destination receives its source longword.");
+                Check.Equal(0x55667788u, cpu.GetD(1), "Second destination receives its source longword.");
+                Check.Equal(1, bus.TrackedWordReadCount, "First mapped data word is read once.");
+            }
+        }
+
+        private static void Test030MovemRegisterWriteRetry()
+        {
+            // MOVEM.L D0-D1,(A0) writes a mapped long before the second
+            // destination page faults. A whole-instruction RTE retry must
+            // not issue the first physical word to a device twice.
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x48D0, 0x0003);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0);
+                cpu.SetA(0, 0x3FFC);
+                cpu.SetD(0, 0x11223344);
+                cpu.SetD(1, 0x55667788);
+                bus.TrackedWordWriteAddress = 0x9FFC;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Later MOVEM destination enters bus error handler.");
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x4000; i++) cpu.Tick(true);
+                Check.Equal(0x4000u, bus.ReadLong(cpu.A7 + 16), "Frame reports the later logical page.");
+                Check.Equal(0, bus.TrackedWordWriteCount, "No first-page word is written before all translations succeed.");
+                Check.Equal(0u, bus.ReadLong(0x9FFC), "First longword has not changed physical memory.");
+                Check.Equal(0u, bus.ReadLong(0x500C) & 0x10u,
+                    "An unretired first-page write does not mark its descriptor modified.");
+                if (!deferred)
+                {
+                    using var state = new MemoryStream();
+                    cpu.SaveState(new BinaryWriter(state));
+                    cpu.Reset();
+                    state.Position = 0;
+                    cpu.LoadState(new BinaryReader(state));
+                    Check.Equal(0x2000u, cpu.PC, "A fault frame survives CPU save/restore.");
+                    Check.Equal(0, bus.TrackedWordWriteCount, "Restore does not replay a data write.");
+                }
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE returns to the original MOVEM.");
+                cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "Repaired MOVEM completes.");
+                Check.Equal(0x11223344u, bus.ReadLong(0x9FFC), "First longword reaches the first page.");
+                Check.Equal(0x55667788u, bus.ReadLong(0xA000), "Second longword reaches the second page.");
+                Check.Equal(1, bus.TrackedWordWriteCount, "First physical word is issued only once.");
+            }
+        }
+
+        private static void Test030MovemPredecrementWriteRetry()
+        {
+            // MOVEM.L D0-D1,-(A0): D1 goes to mapped $4000, then D0
+            // faults on unmapped $3FFC. Retrying must not write D1 twice.
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x48E0, 0xC000);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0);
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.SetA(0, 0x4004);
+                cpu.SetD(0, 0x11223344);
+                cpu.SetD(1, 0x55667788);
+                bus.TrackedWordWriteAddress = 0xA000;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Later predecrement destination enters bus error handler.");
+                Check.Equal(0x4004u, cpu.GetA(0), "Faulted predecrement leaves its base unchanged.");
+                Check.Equal(0, bus.TrackedWordWriteCount, "No first-page write precedes a later fault.");
+                Check.Equal(0u, bus.ReadLong(0xA000), "First destination remains unmodified.");
+                Check.Equal(0u, bus.ReadLong(0x5010) & 0x10u,
+                    "Unretired predecrement does not mark the first descriptor modified.");
+                if (!deferred)
+                {
+                    using var state = new MemoryStream();
+                    cpu.SaveState(new BinaryWriter(state));
+                    cpu.Reset();
+                    state.Position = 0;
+                    cpu.LoadState(new BinaryReader(state));
+                    Check.Equal(0x2000u, cpu.PC, "Predecrement fault frame survives CPU save/restore.");
+                }
+                bus.WriteLong(0x500C, 0x9009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE returns to predecrement MOVEM.");
+                cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "Repaired predecrement MOVEM completes.");
+                Check.Equal(0x3FFCu, cpu.GetA(0), "Predecrement commits its final base.");
+                Check.Equal(0x55667788u, bus.ReadLong(0xA000), "D1 reaches the first page.");
+                Check.Equal(0x11223344u, bus.ReadLong(0x9FFC), "D0 reaches the second page.");
+                Check.Equal(1, bus.TrackedWordWriteCount, "First physical word is issued only once.");
+            }
+        }
+
+        private static void Test030MovemExtendedEaWriteRetry()
+        {
+            // The first long is writable at logical $3FFC; the second
+            // destination at $4000 faults. Both extension-word EAs must
+            // retry without reissuing the first physical device word.
+            foreach (bool absolute in new[] { false, true })
+            foreach (bool deferred in new[] { false, true })
+            {
+                ushort[] code = absolute
+                    ? new ushort[] { 0x48F9, 0x0003, 0x0000, 0x3FFC }
+                    : new ushort[] { 0x48E8, 0x0003, 0x0000 };
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, code);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0);
+                cpu.SetA(0, 0x3FFC);
+                cpu.SetD(0, 0x11223344);
+                cpu.SetD(1, 0x55667788);
+                bus.TrackedWordWriteAddress = 0x9FFC;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Extended-EA MOVEM enters bus error handler.");
+                Check.Equal(0, bus.TrackedWordWriteCount, "First long is not written before later fault.");
+                Check.Equal(0u, bus.ReadLong(0x9FFC), "First physical destination is untouched.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries extended-EA MOVEM.");
+                cpu.Step();
+                Check.Equal(absolute ? 0x1008u : 0x1006u, cpu.PC, "Repaired MOVEM completes.");
+                Check.Equal(0x11223344u, bus.ReadLong(0x9FFC), "First long reaches memory.");
+                Check.Equal(0x55667788u, bus.ReadLong(0xA000), "Second long reaches memory.");
+                Check.Equal(1, bus.TrackedWordWriteCount, "First physical word is issued once.");
+            }
+        }
+
+        private static void Test030CachedSplitMovePageRetry()
+        {
+            foreach (bool write in new[] { false, true })
+            foreach (bool deferred in new[] { false, true })
+            {
+                // MOVEC D7,CACR enables the 030 data cache before the mapped
+                // MOVE.L D0,(A0) / MOVE.L (A0),D0 crosses into page $4000.
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x4E7B, 0x7002,
+                    write ? (ushort)0x2080 : (ushort)0x2010);
+                cpu.SetD(7, 0x900); cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "CACR setup completes before the faulting MOVE.");
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, write ? 0x9009u : 0x9001u);
+                bus.WriteLong(0x5010, 0);
+                bus.WriteWord(0x9FFE, 0xABCD);
+                bus.WriteWord(0xA000, 0x1234);
+                cpu.SetA(0, 0x3FFE);
+                cpu.SetD(0, write ? 0x11223344u : 0xDEADBEEFu);
+                bus.TrackedWordReadAddress = 0x9FFC;
+                bus.TrackedWordWriteAddress = 0x9FFE;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Cached split MOVE faults on its second page.");
+                Check.Equal(0x3FFEu, cpu.GetA(0), "Fault leaves the source/destination address unchanged.");
+                Check.Equal(write ? 0x11223344u : 0xDEADBEEFu, cpu.D0, "Fault leaves D0 unchanged.");
+                Check.Equal(0, bus.TrackedWordReadCount, "No first-page cache fill precedes a later fault.");
+                Check.Equal(0, bus.TrackedWordWriteCount, "No first-page write precedes a later fault.");
+                bus.WriteLong(0x5010, write ? 0xA009u : 0xA001u);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1004; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "RTE retries the cached split MOVE.");
+                cpu.Step();
+                Check.Equal(0x1006u, cpu.PC, "Repaired cached MOVE completes.");
+                if (write)
+                {
+                    Check.Equal(0x11223344u, bus.ReadLong(0x9FFE), "Original D0 reaches both pages.");
+                    Check.Equal(1, bus.TrackedWordWriteCount, "First physical write retires once.");
+                }
+                else
+                {
+                    Check.Equal(0xABCD1234u, cpu.D0, "Cached MOVE reconstructs the source longword.");
+                    Check.Equal(1, bus.TrackedWordReadCount, "First physical cache fill retires once.");
+                }
+            }
+        }
+
+        private static void Test030OddSingleMovePageRetry()
+        {
+            foreach (bool longTransfer in new[] { false, true })
+            foreach (bool write in new[] { false, true })
+            foreach (bool deferred in new[] { false, true })
+            {
+                ushort opcode = write ? (longTransfer ? (ushort)0x2080 : (ushort)0x3080) :
+                    (longTransfer ? (ushort)0x2010 : (ushort)0x3010);
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, opcode);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, write ? 0x9009u : 0x9001u);
+                bus.WriteLong(0x5010, 0);
+                uint address = longTransfer ? 0x3FFDu : 0x3FFFu;
+                uint firstPhysicalByte = longTransfer ? 0x9FFDu : 0x9FFFu;
+                bus.WriteByte(firstPhysicalByte, longTransfer ? (byte)0x11 : (byte)0x12);
+                if (longTransfer)
+                {
+                    bus.WriteByte(0x9FFE, 0x22);
+                    bus.WriteByte(0x9FFF, 0x33);
+                }
+                bus.WriteByte(0xA000, 0x44);
+                cpu.SetA(0, address);
+                cpu.SetD(0, write ? 0x11223344u : 0xDEADBEEFu);
+                bus.TrackedByteReadAddress = firstPhysicalByte;
+                bus.TrackedByteWriteAddress = firstPhysicalByte;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Odd MOVE faults on its final unmapped byte.");
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x4000; i++) cpu.Tick(true);
+                Check.Equal(0x4000u, bus.ReadLong(cpu.A7 + 16), "Frame identifies the last byte's page.");
+                Check.Equal(address, cpu.GetA(0), "MOVE leaves its address register unchanged on fault.");
+                Check.Equal(write ? 0x11223344u : 0xDEADBEEFu, cpu.D0, "Fault leaves D0 unchanged.");
+                Check.Equal(0, bus.TrackedByteReadCount, "No first physical data read precedes a later fault.");
+                Check.Equal(0, bus.TrackedByteWriteCount, "No first physical data write precedes a later fault.");
+                bus.WriteLong(0x5010, write ? 0xA009u : 0xA001u);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries the original MOVE.");
+                cpu.Step();
+                Check.Equal(0x1002u, cpu.PC, "Repaired MOVE completes.");
+                if (write)
+                {
+                    Check.Equal(longTransfer ? (byte)0x11 : (byte)0x33, bus.PeekByte(firstPhysicalByte),
+                        "First source byte reaches the mapped page.");
+                    Check.Equal((byte)0x44, bus.PeekByte(0xA000), "Last source byte reaches repaired page.");
+                    Check.Equal(1, bus.TrackedByteWriteCount, "First physical write retires exactly once.");
+                }
+                else
+                {
+                    Check.Equal(longTransfer ? 0x11223344u : 0xDEAD1244u, cpu.D0,
+                        "Odd MOVE reconstructs its operand after retry.");
+                    Check.Equal(1, bus.TrackedByteReadCount, "First physical read retires exactly once.");
+                }
+            }
+        }
+
+        private static void Test030OddMovemPageRetry()
+        {
+            // On a 68030 an odd word is two bytes; an odd long is byte,
+            // aligned word, byte. The last byte here is on the next MMU page.
+            foreach (bool longTransfer in new[] { false, true })
+            foreach (bool write in new[] { false, true })
+            foreach (bool deferred in new[] { false, true })
+            {
+                ushort opcode = write ? (longTransfer ? (ushort)0x48D0 : (ushort)0x4890) :
+                    (longTransfer ? (ushort)0x4CD0 : (ushort)0x4C90);
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, opcode, 0x0001);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, write ? 0x9009u : 0x9001u);
+                bus.WriteLong(0x5010, 0);
+                uint address = longTransfer ? 0x3FFDu : 0x3FFFu;
+                uint firstPhysicalByte = longTransfer ? 0x9FFDu : 0x9FFFu;
+                bus.WriteByte(firstPhysicalByte, longTransfer ? (byte)0x11 : (byte)0x12);
+                if (longTransfer)
+                {
+                    bus.WriteByte(0x9FFE, 0x22);
+                    bus.WriteByte(0x9FFF, 0x33);
+                }
+                bus.WriteByte(0xA000, longTransfer ? (byte)0x44 : (byte)0x34);
+                cpu.SetA(0, address);
+                cpu.SetD(0, 0x11223344);
+                bus.TrackedByteReadAddress = firstPhysicalByte;
+                bus.TrackedByteWriteAddress = firstPhysicalByte;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Odd MOVEM enters the bus-error handler at the final byte.");
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x4000; i++) cpu.Tick(true);
+                Check.Equal(0x4000u, bus.ReadLong(cpu.A7 + 16), "Fault frame names the untranslatable last byte.");
+                Check.Equal(address, cpu.GetA(0), "Odd MOVEM has not changed its base register.");
+                Check.Equal(0, bus.TrackedByteReadCount, "No first-page device read retires before the last-byte fault.");
+                Check.Equal(0, bus.TrackedByteWriteCount, "No first-page device write retires before the last-byte fault.");
+                Check.Equal(longTransfer ? (byte)0x11 : (byte)0x12, bus.PeekByte(firstPhysicalByte),
+                    "The first physical byte remains intact at the fault.");
+                bus.WriteLong(0x5010, write ? 0xA009u : 0xA001u);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries the odd MOVEM from its opcode.");
+                cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "Repaired odd MOVEM completes.");
+                if (write)
+                {
+                    Check.Equal(longTransfer ? (byte)0x11 : (byte)0x33, bus.PeekByte(firstPhysicalByte),
+                        "The first source byte reaches the first physical page.");
+                    Check.Equal((byte)0x44, bus.PeekByte(0xA000),
+                        "The final source byte reaches the repaired second page.");
+                    Check.Equal(1, bus.TrackedByteWriteCount, "First physical device write retires once.");
+                }
+                else
+                {
+                    Check.Equal(longTransfer ? 0x11223344u : 0x1234u, cpu.D0,
+                        "Odd MOVEM assembles the complete source value.");
+                    Check.Equal(1, bus.TrackedByteReadCount, "First physical device read retires once.");
+                }
+            }
+        }
+
+        private static void Test030OddMovemPredecrementPageRetry()
+        {
+            foreach (bool longTransfer in new[] { false, true })
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030,
+                    longTransfer ? (ushort)0x48E0 : (ushort)0x48A0, 0x8000);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0);
+                uint firstPhysicalByte = longTransfer ? 0x9FFDu : 0x9FFFu;
+                bus.WriteByte(firstPhysicalByte, 0xAA);
+                cpu.SetA(0, 0x4001);
+                cpu.SetD(0, 0x11223344);
+                bus.TrackedByteWriteAddress = firstPhysicalByte;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Odd predecrement enters the bus-error handler.");
+                Check.Equal(0x4001u, cpu.GetA(0), "Fault leaves the predecrement base unchanged.");
+                Check.Equal(0, bus.TrackedByteWriteCount, "No first-page byte is written before the last-byte fault.");
+                Check.Equal((byte)0xAA, bus.PeekByte(firstPhysicalByte), "First device byte is intact at the fault.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries odd predecrement MOVEM.");
+                cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "Repaired odd predecrement completes.");
+                Check.Equal(longTransfer ? 0x3FFDu : 0x3FFFu, cpu.GetA(0),
+                    "Predecrement base commits only after the complete transfer.");
+                Check.Equal(longTransfer ? (byte)0x11 : (byte)0x33, bus.PeekByte(firstPhysicalByte),
+                    "First source byte reaches the mapped page.");
+                Check.Equal((byte)0x44, bus.PeekByte(0xA000), "Last source byte reaches the repaired page.");
+                Check.Equal(1, bus.TrackedByteWriteCount, "First physical device byte is written once.");
+            }
+        }
+
+        private static void Test030MovepPageRetry()
+        {
+            // MOVEP.L accesses $3FFC,$3FFE,$4000,$4002 rather than a
+            // contiguous longword. A later fault must be detected before a
+            // side-effecting device sees either first-page byte.
+            foreach (bool longTransfer in new[] { false, true })
+            foreach (bool write in new[] { false, true })
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030,
+                    write ? (longTransfer ? (ushort)0x01C8 : (ushort)0x0188) :
+                        (longTransfer ? (ushort)0x0148 : (ushort)0x0108), 0x0000);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9001);
+                bus.WriteLong(0x5010, 0);
+                bus.WriteByte(0x9FFC, 0x11);
+                bus.WriteByte(0x9FFE, 0x22);
+                bus.WriteByte(0xA000, 0x33);
+                bus.WriteByte(0xA002, 0x44);
+                cpu.SetA(0, longTransfer ? 0x3FFCu : 0x3FFEu);
+                cpu.SetD(0, 0xAABBCCDD);
+                uint firstPhysicalByte = longTransfer ? 0x9FFCu : 0x9FFEu;
+                bus.TrackedByteReadAddress = firstPhysicalByte;
+                bus.TrackedByteWriteAddress = firstPhysicalByte;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Third MOVEP byte enters the bus-error handler.");
+                Check.Equal(0xAABBCCDDu, cpu.D0, "MOVEP destination is unchanged before retry.");
+                Check.Equal(0, bus.TrackedByteReadCount, "First physical device byte is not read before a later fault.");
+                Check.Equal(0, bus.TrackedByteWriteCount, "First physical device byte is not written before a later fault.");
+                Check.Equal(0u, bus.ReadLong(0x500C) & 24u,
+                    "Speculative MOVEP probes do not mark the earlier page used or modified.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries the complete MOVEP instruction.");
+                cpu.Step();
+                Check.Equal(0x1004u, cpu.PC, "Repaired MOVEP completes.");
+                if (write)
+                {
+                    Check.Equal(longTransfer ? (byte)0xAA : (byte)0xCC,
+                        bus.PeekByte(firstPhysicalByte), "First spaced destination byte.");
+                    Check.Equal(longTransfer ? (byte)0xBB : (byte)0xDD,
+                        bus.PeekByte(longTransfer ? 0x9FFEu : 0xA000u), "Second spaced destination byte.");
+                    if (longTransfer)
+                    {
+                        Check.Equal((byte)0xCC, bus.PeekByte(0xA000), "Third spaced destination byte.");
+                        Check.Equal((byte)0xDD, bus.PeekByte(0xA002), "Fourth spaced destination byte.");
+                    }
+                    Check.Equal(1, bus.TrackedByteWriteCount, "First physical device byte is written once.");
+                }
+                else
+                {
+                    Check.Equal(longTransfer ? 0x11223344u : 0xAABB2233u, cpu.D0,
+                        "MOVEP assembles the spaced source bytes.");
+                    Check.Equal(1, bus.TrackedByteReadCount, "First physical device byte is read once.");
+                }
+            }
+        }
+
         private static void Test030LockedProtection()
         {
             foreach (bool deferred in new[] { false, true })
@@ -693,15 +1341,23 @@ namespace AmigaEmulator.Tests
         private sealed class TestBus : IM68kPeekableBus, IM68kBusArbitration
         {
             private readonly Dictionary<uint, byte> _memory = new();
-            public byte ReadByte(uint address) => _memory.TryGetValue(address, out byte b) ? b : (byte)0;
-            public ushort ReadWord(uint address) => (ushort)((ReadByte(address) << 8) | ReadByte(unchecked(address + 1)));
+            public uint TrackedWordWriteAddress { get; set; } = uint.MaxValue;
+            public int TrackedWordWriteCount { get; private set; }
+            public uint TrackedWordReadAddress { get; set; } = uint.MaxValue;
+            public int TrackedWordReadCount { get; private set; }
+            public uint TrackedByteReadAddress { get; set; } = uint.MaxValue;
+            public int TrackedByteReadCount { get; private set; }
+            public uint TrackedByteWriteAddress { get; set; } = uint.MaxValue;
+            public int TrackedByteWriteCount { get; private set; }
+            public byte ReadByte(uint address) { if (address == TrackedByteReadAddress) TrackedByteReadCount++; return PeekByte(address); }
+            public ushort ReadWord(uint address) { if (address == TrackedWordReadAddress) TrackedWordReadCount++; return PeekWord(address); }
             public uint ReadLong(uint address) => ((uint)ReadWord(address) << 16) | ReadWord(unchecked(address + 2));
-            public void WriteByte(uint address, byte value) => _memory[address] = value;
-            public void WriteWord(uint address, ushort value) { WriteByte(address, (byte)(value >> 8)); WriteByte(unchecked(address + 1), (byte)value); }
+            public void WriteByte(uint address, byte value) { if (address == TrackedByteWriteAddress) TrackedByteWriteCount++; _memory[address] = value; }
+            public void WriteWord(uint address, ushort value) { if (address == TrackedWordWriteAddress) TrackedWordWriteCount++; WriteByte(address, (byte)(value >> 8)); WriteByte(unchecked(address + 1), (byte)value); }
             public void WriteLong(uint address, uint value) { WriteWord(address, (ushort)(value >> 16)); WriteWord(unchecked(address + 2), (ushort)value); }
-            public byte PeekByte(uint address) => ReadByte(address);
-            public ushort PeekWord(uint address) => ReadWord(address);
-            public uint PeekLong(uint address) => ReadLong(address);
+            public byte PeekByte(uint address) => _memory.TryGetValue(address, out byte b) ? b : (byte)0;
+            public ushort PeekWord(uint address) => (ushort)((PeekByte(address) << 8) | PeekByte(unchecked(address + 1)));
+            public uint PeekLong(uint address) => ((uint)PeekWord(address) << 16) | PeekWord(unchecked(address + 2));
             public bool RequiresChipBus(uint address, int size) => true;
         }
     }

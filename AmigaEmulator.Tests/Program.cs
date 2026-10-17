@@ -103,6 +103,7 @@ namespace AmigaEmulator.Tests
             tests.AddRange(AgaTests.Build());
             tests.AddRange(AgnusTests.Build());
             tests.AddRange(BlitterDiagnosticsTests.Build());
+            tests.AddRange(BlitterModuloTests.Build());
             tests.AddRange(PresentationTests.Build());
             tests.AddRange(MouseCaptureTests.Build());
             tests.AddRange(HqxTests.Build());
@@ -4374,6 +4375,16 @@ namespace AmigaEmulator.Tests
                 TestFullMachineRoundtrip);
             yield return new ChipTestCase(
                 "SaveState",
+                "GUI preview dimensions match the presented frame and legacy screenshots retain their last row",
+                "Metadata reads full-width screenshots from new and existing GUI saves",
+                TestPresentedScreenshotDimensions);
+            yield return new ChipTestCase(
+                "SaveState",
+                "failed slot replacement preserves the previous complete savestate",
+                "SaveStateFile publishes a fully serialized temporary file in the destination directory",
+                TestFailedSlotReplacementPreservesState);
+            yield return new ChipTestCase(
+                "SaveState",
                 "future or unknown savestate profiles are marked incompatible",
                 "Amiga SaveStateFile metadata compatibility validation",
                 TestUnknownProfileMetadataIsIncompatible);
@@ -4480,6 +4491,129 @@ namespace AmigaEmulator.Tests
                 {
                 }
             }
+        }
+
+        private static void TestPresentedScreenshotDimensions()
+        {
+            string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "amiga-preview-" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(directory);
+            try
+            {
+                using var system = new AmigaSystem(AmigaModel.A500Pal);
+                int width = system.PresentedFrameBuffer.Width;
+                int height = system.PresentedFrameBuffer.Height;
+                var pixels = new uint[width * height];
+                pixels[0] = 0xFF112233;
+                pixels[width - 1] = 0xFF445566;
+                pixels[pixels.Length - 1] = 0xFF778899;
+
+                foreach (bool legacyDimensions in new[] { false, true })
+                {
+                    string path = System.IO.Path.Combine(directory, legacyDimensions ? "legacy.amigasav" : "current.amigasav");
+                    SaveStateFile.Write(path, system, MountedMediaInfo.None, AmigaKickstart.Auto,
+                        AmigaRamProfile.Chip512K, AmigaAccuracyProfile.Compatible, pixels,
+                        width, height);
+                    if (legacyDimensions)
+                    {
+                        // Recreate an existing pre-fix file without allowing new writes
+                        // to produce another mismatched screenshot.
+                        byte[] bytes = System.IO.File.ReadAllBytes(path);
+                        byte[] dimensions = { 0xC0, 0x02, 0, 0, 0x20, 0x01, 0, 0 };
+                        int offset = -1;
+                        for (int i = 0; i <= System.Math.Min(bytes.Length - dimensions.Length, 512); i++)
+                        {
+                            if (!bytes.AsSpan(i, dimensions.Length).SequenceEqual(dimensions)) continue;
+                            Check.Equal(-1, offset, "Presented dimensions appear once in the metadata header.");
+                            offset = i;
+                        }
+                        Check.True(offset >= 0, "Presented dimensions found in metadata header.");
+                        System.BitConverter.GetBytes(system.Model.VisibleWidth).CopyTo(bytes, offset);
+                        System.BitConverter.GetBytes(system.Model.VisibleHeight).CopyTo(bytes, offset + 4);
+                        System.IO.File.WriteAllBytes(path, bytes);
+                    }
+                    SaveStateSlotMetadata metadata = SaveStateFile.ReadMetadata(path);
+                    Check.Equal(width, metadata.ScreenshotWidth, "Preview uses the presented frame width.");
+                    Check.Equal(height, metadata.ScreenshotHeight, "Preview uses the presented frame height.");
+                    Check.Equal(pixels[0], metadata.ScreenshotPixels[0], "First preview pixel remains aligned.");
+                    Check.Equal(pixels[width - 1], metadata.ScreenshotPixels[width - 1], "Right edge stays on its row.");
+                    Check.Equal(pixels[pixels.Length - 1], metadata.ScreenshotPixels[pixels.Length - 1], "Final preview row is visible.");
+                    SaveStateFile.Load(path, system);
+                }
+
+                string invalid = System.IO.Path.Combine(directory, "invalid.amigasav");
+                bool rejected = false;
+                try
+                {
+                    SaveStateFile.Write(invalid, system, MountedMediaInfo.None, AmigaKickstart.Auto,
+                        AmigaRamProfile.Chip512K, AmigaAccuracyProfile.Compatible, pixels,
+                        system.Model.VisibleWidth, system.Model.VisibleHeight);
+                }
+                catch (ArgumentException) { rejected = true; }
+                Check.True(rejected, "A new save cannot declare machine dimensions for a presented-frame screenshot.");
+                Check.True(!System.IO.File.Exists(invalid), "Rejected screenshot must not leave a partial savestate.");
+
+                // Keep a valid machine payload but corrupt only the optional
+                // preview header, as can happen in an older external save.
+                string corruptPreview = System.IO.Path.Combine(directory, "bad-preview.amigasav");
+                System.IO.File.Copy(System.IO.Path.Combine(directory, "current.amigasav"), corruptPreview);
+                byte[] corruptBytes = System.IO.File.ReadAllBytes(corruptPreview);
+                byte[] currentDimensions = { 0xC0, 0x02, 0, 0, 0x20, 0x01, 0, 0 };
+                int dimensionsOffset = -1;
+                for (int i = 0; i <= System.Math.Min(corruptBytes.Length - currentDimensions.Length, 512); i++)
+                {
+                    if (!corruptBytes.AsSpan(i, currentDimensions.Length).SequenceEqual(currentDimensions)) continue;
+                    Check.Equal(-1, dimensionsOffset, "Screenshot dimensions occur once in the header.");
+                    dimensionsOffset = i;
+                }
+                Check.True(dimensionsOffset >= 0, "Screenshot dimensions found for corrupt-preview fixture.");
+                System.BitConverter.GetBytes(int.MaxValue).CopyTo(corruptBytes, dimensionsOffset);
+                System.IO.File.WriteAllBytes(corruptPreview, corruptBytes);
+                SaveStateSlotMetadata badMetadata = SaveStateFile.ReadMetadata(corruptPreview);
+                Check.Equal(SaveStateSlotStatus.Occupied, badMetadata.Status,
+                    "A broken optional preview does not hide a loadable machine state.");
+                Check.True(!badMetadata.HasScreenshot, "An impossible preview size is not rendered.");
+                SaveStateFile.Load(corruptPreview, system);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(directory, true);
+            }
+        }
+
+        private static void TestFailedSlotReplacementPreservesState()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "amiga-save-atomic-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            try
+            {
+                string path = Path.Combine(directory, "slot-01.amigasav");
+                using var system = new AmigaSystem(AmigaModel.A500Pal);
+                uint[] pixels = { 0xFF112233u };
+                SaveStateFile.Write(path, system, MountedMediaInfo.None, AmigaKickstart.Auto,
+                    AmigaRamProfile.Chip512K, AmigaAccuracyProfile.Compatible, pixels, 1, 1);
+                byte[] original = File.ReadAllBytes(path);
+                bool replacementFailed = false;
+                using (var locked = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    try
+                    {
+                        pixels[0] = 0xFF445566u;
+                        SaveStateFile.Write(path, system, MountedMediaInfo.None, AmigaKickstart.Auto,
+                            AmigaRamProfile.Chip512K, AmigaAccuracyProfile.Compatible, pixels, 1, 1);
+                    }
+                    catch (IOException) { replacementFailed = true; }
+                    catch (UnauthorizedAccessException) { replacementFailed = true; }
+                }
+                Check.True(replacementFailed, "A locked destination rejects replacement.");
+                Check.True(File.ReadAllBytes(path).AsSpan().SequenceEqual(original),
+                    "Failed replacement preserves every byte of the previous slot.");
+                Check.Equal(1, Directory.GetFiles(directory).Length, "Failed replacement leaves no temporary file.");
+                SaveStateFile.Write(path, system, MountedMediaInfo.None, AmigaKickstart.Auto,
+                    AmigaRamProfile.Chip512K, AmigaAccuracyProfile.Compatible, pixels, 1, 1);
+                Check.Equal(pixels[0], SaveStateFile.ReadMetadata(path).ScreenshotPixels[0],
+                    "A later retry publishes the new preview.");
+            }
+            finally { Directory.Delete(directory, true); }
         }
 
         /// <summary>
@@ -4999,6 +5133,7 @@ namespace AmigaEmulator.Tests
                 Check.True(metrics.BottomEdgeContentColumns >= 660, "Siedler bottom menu does not span the full monitor aperture. " + metrics);
                 while (system.Agnus.Beam.BeamX != 0 || system.Agnus.Beam.BeamY != 0) system.TickChipCycle();
                 Check.True(system.Agnus.Bitplanes.TryGetSpriteFrameHorizontalWindow(out int frameLeft, out int frameWidth), "Wood frame must select a stable sprite aperture.");
+                string sourceWindow = system.GetPresentationDebugInfo().Split(" source:")[1].Split(" lines:")[0];
                 foreach (var delta in new[] { (-400, 0), (800, 0), (-400, 300), (0, -600) })
                 {
                     int steps = Math.Max(Math.Abs(delta.Item1), Math.Abs(delta.Item2)) / 8;
@@ -5013,6 +5148,8 @@ namespace AmigaEmulator.Tests
                     }
                     RunFrames(system, 4);
                     while (system.Agnus.Beam.BeamX != 0 || system.Agnus.Beam.BeamY != 0) system.TickChipCycle();
+                    Check.Equal(sourceWindow, system.GetPresentationDebugInfo().Split(" source:")[1].Split(" lines:")[0],
+                        "Pointer motion must not shift or resize the wooden frame aperture after " + delta);
                     Check.True(system.Agnus.Bitplanes.TryGetSpriteFrameHorizontalWindow(out int movedLeft, out int movedWidth), "The wood aperture must survive pointer motion.");
                     Check.Equal(frameLeft, movedLeft, "Pointer motion must not shift the game frame.");
                     Check.Equal(frameWidth, movedWidth, "Pointer motion must not resize the game frame.");

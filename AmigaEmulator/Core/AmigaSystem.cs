@@ -82,6 +82,9 @@ namespace AmigaEmulator.Core
         /// Stores presented Frame Buffer.
         /// </summary>
         private readonly AmigaFrameBuffer _presentedFrameBuffer;
+        private InterlaceFieldBuffer _interlacedFrameBuffer;
+        private InterlaceFieldBuffer _nativeInterlacedFrameBuffer;
+        private uint[] _nativeInterlaceFieldPixels;
         /// <summary>
         /// Stores bus.
         /// </summary>
@@ -342,6 +345,20 @@ namespace AmigaEmulator.Core
             get { return _presentedFrameBuffer; }
         }
 
+        /// <summary>Latest complete pair of presented PAL fields, when LACE is active.</summary>
+        public InterlaceFieldBuffer InterlacedFrameBuffer => _interlacedFrameBuffer ??=
+            new InterlaceFieldBuffer(PresentationViewportWidth, PresentationViewportHeight);
+
+        /// <summary>Returns a woven image only after both field polarities have completed.</summary>
+        public InterlaceFieldBuffer CompletedInterlacedFrameBuffer =>
+            _interlacedFrameBuffer != null && _interlacedFrameBuffer.HasBothFields
+                ? _interlacedFrameBuffer : null;
+
+        /// <summary>Returns paired 35-ns SHRES samples across both PAL field polarities.</summary>
+        public InterlaceFieldBuffer CompletedNativeInterlacedFrameBuffer =>
+            _nativeInterlacedFrameBuffer != null && _nativeInterlacedFrameBuffer.HasBothFields
+                ? _nativeInterlacedFrameBuffer : null;
+
         /// <summary>
         /// Returns the current horizontal source window used for PAL presentation.
         /// </summary>
@@ -364,6 +381,22 @@ namespace AmigaEmulator.Core
                     _agnus.Bitplanes.GetLinePresentationDebugInfo(44),
                     _agnus.Bitplanes.GetLinePresentationDebugInfo(240),
                     _agnus.Bitplanes.GetLinePresentationDebugInfo(280));
+            }
+        }
+
+        /// <summary>Returns stored display register values without reading write-only chip addresses.</summary>
+        public string GetDisplayRegisterDebugInfo()
+        {
+            lock (_syncRoot)
+            {
+                var registers = _agnus.CustomRegisters;
+                uint bpl1ptr = ((uint)registers.ReadStoredWord(0x0E0) << 16) | registers.ReadStoredWord(0x0E2);
+                uint bpl2ptr = ((uint)registers.ReadStoredWord(0x0E4) << 16) | registers.ReadStoredWord(0x0E6);
+                return $"BPLCON0:{registers.ReadStoredWord(0x100):X4} " +
+                    $"DIW:{registers.ReadStoredWord(0x08E):X4}/{registers.ReadStoredWord(0x090):X4}/{registers.ReadStoredWord(0x1E4):X4} " +
+                    $"DDF:{registers.ReadStoredWord(0x092):X4}/{registers.ReadStoredWord(0x094):X4} " +
+                    $"BPL1:{bpl1ptr:X8} BPL2:{bpl2ptr:X8} " +
+                    $"MOD:{registers.ReadStoredWord(0x108):X4}/{registers.ReadStoredWord(0x10A):X4}";
             }
         }
 
@@ -411,6 +444,8 @@ namespace AmigaEmulator.Core
                 _agnus.Reset();
                 _denise.Reset();
                 _presentedFrameBuffer.Clear(0xFF0C1020);
+                _interlacedFrameBuffer?.Invalidate();
+                _nativeInterlacedFrameBuffer?.Invalidate();
                 _paula.Reset();
                 _ciaA.Reset();
                 _ciaB.Reset();
@@ -559,6 +594,8 @@ namespace AmigaEmulator.Core
                 // not silently enable allocations in a Fast/Compatible session.
                 _cpu.TraceEnabled = _accuracyOptions.EnableCpuTrace;
                 _suppressNextPresentationAfterLoad = true;
+                _interlacedFrameBuffer?.Invalidate();
+                _nativeInterlacedFrameBuffer?.Invalidate();
                 _lastTraceSample = CreateTraceSample(null);
             }
         }
@@ -810,12 +847,34 @@ namespace AmigaEmulator.Core
                 if (_suppressNextPresentationAfterLoad)
                 {
                     _suppressNextPresentationAfterLoad = false;
+                    _interlacedFrameBuffer?.Invalidate();
+                    _nativeInterlacedFrameBuffer?.Invalidate();
                 }
                 else
                 {
                     GetPresentationSourceWindow(out int sourceLeft, out int sourceTop, out int sourceWidth, out int sourceHeight);
                     CopyPresentationWindow(sourceLeft, sourceTop, sourceWidth, sourceHeight);
-
+                    if ((_agnus.CustomRegisters.ReadStoredWord(0x100) & 4) != 0)
+                    {
+                        bool longField = slot.BeamY == _model.LinesPerFrame;
+                        InterlacedFrameBuffer.Capture(_presentedFrameBuffer.Pixels,
+                            longField);
+                        if (_presentedFrameBuffer.SuperHiresPlayfieldPixels != null)
+                        {
+                            _nativeInterlaceFieldPixels ??= new uint[PresentationViewportWidth * 2 * PresentationViewportHeight];
+                            _presentedFrameBuffer.CopyCompositedSuperHiresTo(_nativeInterlaceFieldPixels);
+                            _nativeInterlacedFrameBuffer ??= new InterlaceFieldBuffer(
+                                PresentationViewportWidth * 2, PresentationViewportHeight);
+                            _nativeInterlacedFrameBuffer.Capture(_nativeInterlaceFieldPixels, longField);
+                        }
+                        else
+                            _nativeInterlacedFrameBuffer?.Invalidate();
+                    }
+                    else
+                    {
+                        _interlacedFrameBuffer?.Invalidate();
+                        _nativeInterlacedFrameBuffer?.Invalidate();
+                    }
                 }
             }
 
@@ -843,7 +902,13 @@ namespace AmigaEmulator.Core
             ExpandNearFullWidthAperture(ref sourceLeft, ref sourceWidth);
             if (HasLineAdaptivePresentationWindow(sourceTop, sourceHeight))
             {
-                if (_agnus.Bitplanes.TryGetSpriteFramedPresentationBounds(out int framedTop, out int framedBottom))
+                // A sprite-framed border must begin near the selected display
+                // top. Allow the normal PAL overscan lead-in before Siedler's
+                // wooden frame (14 lines in the reviewed scene). A late sprite
+                // inside gameplay (for example during a Cannon Fodder pan)
+                // must not turn the bottom into the monitor aperture's top.
+                if (_agnus.Bitplanes.TryGetSpriteFramedPresentationBounds(out int framedTop, out int framedBottom) &&
+                    framedTop <= sourceTop + 20)
                 {
                     sourceTop = framedTop;
                     sourceHeight = framedBottom - framedTop;
@@ -860,7 +925,11 @@ namespace AmigaEmulator.Core
         /// </summary>
         private void CopyPresentationWindow(int sourceLeft, int sourceTop, int sourceWidth, int sourceHeight)
         {
-            if (HasLineAdaptivePresentationWindow(sourceTop, sourceHeight))
+            // Native samples are transient. A following lowres/hires frame must
+            // never inherit the previous SHRES image.
+            _presentedFrameBuffer.DiscardSuperHiresPlayfield();
+            bool lineAdaptive = HasLineAdaptivePresentationWindow(sourceTop, sourceHeight);
+            if (lineAdaptive)
             {
                 CopyLineAdaptivePresentationWindow(sourceLeft, sourceTop, sourceWidth, sourceHeight);
             }
@@ -871,6 +940,33 @@ namespace AmigaEmulator.Core
             else
             {
                 _presentedFrameBuffer.CopyWindowFrom(_frameBuffer, sourceLeft, sourceTop, 0, 0, sourceWidth, sourceHeight);
+            }
+
+            if (_frameBuffer.SuperHiresPlayfieldPixels != null && !lineAdaptive)
+                CopyNativePresentationWindow(sourceLeft, sourceTop, sourceWidth, sourceHeight);
+        }
+
+        /// <summary>
+        /// Maps each native pair through the same monitor aperture used by the
+        /// 70-ns preview, retaining both independent 35-ns samples.
+        /// </summary>
+        private void CopyNativePresentationWindow(int sourceLeft, int sourceTop, int sourceWidth, int sourceHeight)
+        {
+            int boundedLeft = Math.Max(0, Math.Min(sourceLeft, _frameBuffer.Width - 1));
+            int boundedWidth = Math.Max(1, Math.Min(sourceWidth, _frameBuffer.Width - boundedLeft));
+            BuildPresentationScaleMap(_presentationDefaultSourceColumns, boundedLeft, boundedWidth);
+            for (int targetY = 0; targetY < PresentationViewportHeight; targetY++)
+            {
+                int sourceY = sourceTop + ScalePresentationCoordinate(targetY, PresentationViewportHeight, sourceHeight);
+                int sourceRow = Math.Max(0, Math.Min(sourceY, _frameBuffer.Height - 1)) * _frameBuffer.Width;
+                int targetRow = targetY * PresentationViewportWidth;
+                for (int targetX = 0; targetX < PresentationViewportWidth; targetX++)
+                {
+                    int sourceIndex = (sourceRow + _presentationDefaultSourceColumns[targetX]) * 2;
+                    _presentedFrameBuffer.RecordSuperHiresPlayfieldPair(targetRow + targetX,
+                        _frameBuffer.SampleSuperHiresPresentationPixel(sourceIndex, sourceIndex),
+                        _frameBuffer.SampleSuperHiresPresentationPixel(sourceIndex + 1, sourceIndex + 1));
+                }
             }
         }
 
@@ -910,6 +1006,7 @@ namespace AmigaEmulator.Core
         /// </summary>
         private void CopyLineAdaptivePresentationWindow(int sourceLeft, int sourceTop, int sourceWidth, int sourceHeight)
         {
+            bool nativeSuperHires = _frameBuffer.SuperHiresPlayfieldPixels != null;
             uint[] sourcePixels = _frameBuffer.Pixels;
             uint[] targetPixels = _presentedFrameBuffer.Pixels;
             int[] defaultSourceColumns = _presentationDefaultSourceColumns;
@@ -949,9 +1046,17 @@ namespace AmigaEmulator.Core
                 for (int targetX = 0; targetX < PresentationViewportWidth; targetX++)
                 {
                     int playfieldIndex = sourceRowOffset + rowSourceColumns[targetX];
+                    int spriteIndex = sourceRowOffset +
+                        (hasSpriteFrame ? _presentationSpriteSourceColumns[targetX] : rowSourceColumns[targetX]);
                     targetPixels[targetRowOffset + targetX] = hasSpriteFrame
-                        ? _frameBuffer.SamplePresentationPixel(playfieldIndex, sourceRowOffset + _presentationSpriteSourceColumns[targetX])
+                        ? _frameBuffer.SamplePresentationPixel(playfieldIndex, spriteIndex)
                         : sourcePixels[playfieldIndex];
+                    if (nativeSuperHires)
+                    {
+                        _presentedFrameBuffer.RecordSuperHiresPlayfieldPair(targetRowOffset + targetX,
+                            _frameBuffer.SampleSuperHiresPresentationPixel(playfieldIndex * 2, spriteIndex * 2),
+                            _frameBuffer.SampleSuperHiresPresentationPixel(playfieldIndex * 2 + 1, spriteIndex * 2 + 1));
+                    }
                 }
             }
         }

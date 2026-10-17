@@ -75,13 +75,13 @@ namespace AmigaEmulator.Core.CustomChips
             if (first) state.AgaDataA = data; else state.AgaDataB = data;
         }
 
-        private bool TryReadAgaPixel(SpriteState state, int screenX, out int color)
+        private bool TryReadAgaPixel(SpriteState state, int nativeX, out int color)
         {
             color = 0;
             // Position uses quarter-lores units. The existing framebuffer samples
             // two of those units per hires pixel; superhires is sampled accordingly.
             int start = state.HStart * 4 + ((state.Ctl >> 3) & 1) + ((state.Ctl >> 4) & 1) * 2;
-            int units = screenX * 2 - start;
+            int units = nativeX - start;
             int shift = SpriteResolution == 1 ? 2 : SpriteResolution == 2 ? 1 : 0;
             if (state.LineActive && units >= 0 && (units >> shift) < state.AgaWidth &&
                 (!state.OutputValid || state.OutputHStart != start))
@@ -93,7 +93,7 @@ namespace AmigaEmulator.Core.CustomChips
                 state.OutputWidth = state.AgaWidth;
                 state.OutputShift = shift;
             }
-            units = screenX * 2 - state.OutputHStart;
+            units = nativeX - state.OutputHStart;
             if (!state.OutputValid || units < 0) return false;
             int index = units >> state.OutputShift;
             if (index >= state.OutputWidth) return false;

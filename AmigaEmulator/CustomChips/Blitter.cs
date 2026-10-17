@@ -507,6 +507,9 @@ namespace AmigaEmulator.Core.CustomChips
         public void LoadState(BinaryReader reader)
         {
             StateSerializer.ReadObjectFields(reader, this, "_registers", "_readChipWord", "_writeChipWord", "_requestInterrupt");
+            // Older states retained the unwired modulo bit. Preserve the
+            // pipeline and addresses, but normalize its subsequent row/slope steps.
+            _amod &= ~1; _bmod &= ~1; _cmod &= ~1; _dmod &= ~1;
         }
 
         /// <summary>
@@ -629,10 +632,10 @@ namespace AmigaEmulator.Core.CustomChips
             _rowB = ReadPointer(Bltbpt);
             _rowC = ReadPointer(Bltcpt);
             _rowD = ReadPointer(Bltdpt);
-            _amod = SignedWord(Read(Bltamod));
-            _bmod = SignedWord(Read(Bltbmod));
-            _cmod = SignedWord(Read(Bltcmod));
-            _dmod = SignedWord(Read(Bltdmod));
+            _amod = SignedModulo(Read(Bltamod));
+            _bmod = SignedModulo(Read(Bltbmod));
+            _cmod = SignedModulo(Read(Bltcmod));
+            _dmod = SignedModulo(Read(Bltdmod));
             _afwm = Read(Bltafwm);
             _alwm = Read(Bltalwm);
             _adat = Read(Bltadat);
@@ -1353,11 +1356,14 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Runs Signed Word.
+        /// Decodes the signed, word-aligned BLTxMOD register.
         /// </summary>
-        private static int SignedWord(ushort value)
+        private static int SignedModulo(ushort value)
         {
-            return (short)value;
+            // Bit zero is not connected. Clear it before negating a descending
+            // stride or adding a line-mode slope; pointer masking afterwards
+            // rounds an odd negative step down by an extra word.
+            return (short)(value & 0xFFFE);
         }
 
         private uint Advance(uint address, bool descending)

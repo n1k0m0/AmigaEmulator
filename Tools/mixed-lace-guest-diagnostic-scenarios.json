@@ -1,0 +1,86 @@
+[
+  {
+    "name": "MIXED-LACE-ECS",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-mixed-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "mixed-stable",
+        "expectedInterlacedFrameHash": "5D72FBB3128040A03104F1684C60A14C3B63C9646CD9C2148732838389E8C328",
+        "expectedNativeInterlacedFrameHash": "DF912CC1B9664040960683AA580EB401F740FDE8385C8CE6A35B1D8A6261C255"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "5D72FBB3128040A03104F1684C60A14C3B63C9646CD9C2148732838389E8C328",
+        "expectedNativeInterlacedFrameHash": "DF912CC1B9664040960683AA580EB401F740FDE8385C8CE6A35B1D8A6261C255"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "5D72FBB3128040A03104F1684C60A14C3B63C9646CD9C2148732838389E8C328",
+        "expectedNativeInterlacedFrameHash": "DF912CC1B9664040960683AA580EB401F740FDE8385C8CE6A35B1D8A6261C255"
+      }
+    ]
+  },
+  {
+    "name": "MIXED-LACE-AGA",
+    "model": "A1200",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-mixed-lace-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A1200.ROM",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "mixed-stable",
+        "expectedInterlacedFrameHash": "9718E5F77653AD4B590089268B333CA8295FE87E129A3D9F60C1561AEE6E05BC",
+        "expectedNativeInterlacedFrameHash": "B44D15E378AF14AE5E542FA140081D402ADB4034C7026848B42CC011934D9C5B"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "after-restore",
+        "expectedInterlacedFrameHash": "9718E5F77653AD4B590089268B333CA8295FE87E129A3D9F60C1561AEE6E05BC",
+        "expectedNativeInterlacedFrameHash": "B44D15E378AF14AE5E542FA140081D402ADB4034C7026848B42CC011934D9C5B"
+      },
+      {
+        "type": "reset",
+        "cold": true,
+        "label": "cold-reset"
+      },
+      {
+        "type": "wait",
+        "cycles": 65000000,
+        "label": "after-cold-reset",
+        "expectedInterlacedFrameHash": "9718E5F77653AD4B590089268B333CA8295FE87E129A3D9F60C1561AEE6E05BC",
+        "expectedNativeInterlacedFrameHash": "B44D15E378AF14AE5E542FA140081D402ADB4034C7026848B42CC011934D9C5B"
+      }
+    ]
+  }
+]

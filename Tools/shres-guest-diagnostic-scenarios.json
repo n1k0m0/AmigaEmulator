@@ -1,0 +1,112 @@
+[
+  {
+    "name": "SHRES-ECS",
+    "model": "A500Plus",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-shres-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      { "type": "wait", "cycles": 60000000, "label": "boot-native" },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "native-stable",
+        "expectedNativeFrameHash": "DC9450A44A0099E6BF9AEF56EB6ADCA38A494C5C853584462B3A68E8161B6517"
+      },
+      { "type": "restore", "cold": true, "resetBeforeRestore": true, "label": "cold-restore" },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "native-after-restore",
+        "expectedNativeFrameHash": "DC9450A44A0099E6BF9AEF56EB6ADCA38A494C5C853584462B3A68E8161B6517"
+      },
+      { "type": "reset", "cold": true, "label": "cold-reset" },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "native-after-cold-reset",
+        "expectedNativeFrameHash": "DC9450A44A0099E6BF9AEF56EB6ADCA38A494C5C853584462B3A68E8161B6517"
+      }
+    ]
+  },
+  {
+    "name": "SHRES-AGA",
+    "model": "A1200",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-shres-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A1200.ROM",
+    "actions": [
+      { "type": "wait", "cycles": 60000000, "label": "boot-native" },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "native-stable",
+        "expectedNativeFrameHash": "47CF55780948D25DF2F0A59E7D8AA2AA6B39D7557F3AA77B95221C025044C37D"
+      },
+      { "type": "restore", "cold": true, "resetBeforeRestore": true, "label": "cold-restore" },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "native-after-restore",
+        "expectedNativeFrameHash": "47CF55780948D25DF2F0A59E7D8AA2AA6B39D7557F3AA77B95221C025044C37D"
+      },
+      { "type": "reset", "cold": true, "label": "cold-reset" },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "native-after-cold-reset",
+        "expectedNativeFrameHash": "47CF55780948D25DF2F0A59E7D8AA2AA6B39D7557F3AA77B95221C025044C37D"
+      }
+    ]
+  },
+  {
+    "name": "SHRES-A600",
+    "model": "A600",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-shres-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      { "type": "wait", "cycles": 60000000, "label": "boot-native" },
+      { "type": "wait", "cycles": 5000000, "label": "native-stable", "expectedNativeFrameHash": "DC9450A44A0099E6BF9AEF56EB6ADCA38A494C5C853584462B3A68E8161B6517" }
+    ]
+  },
+  {
+    "name": "SHRES-A2000-ECS",
+    "model": "A2000Ecs",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-shres-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK20.ROM",
+    "actions": [
+      { "type": "wait", "cycles": 60000000, "label": "boot-native" },
+      { "type": "wait", "cycles": 5000000, "label": "native-stable", "expectedNativeFrameHash": "DC9450A44A0099E6BF9AEF56EB6ADCA38A494C5C853584462B3A68E8161B6517" }
+    ]
+  },
+  {
+    "name": "SHRES-A3000",
+    "model": "A3000",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-shres-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "actions": [
+      { "type": "wait", "cycles": 60000000, "label": "boot-native" },
+      { "type": "wait", "cycles": 5000000, "label": "native-stable", "expectedNativeFrameHash": "DC9450A44A0099E6BF9AEF56EB6ADCA38A494C5C853584462B3A68E8161B6517" }
+    ]
+  },
+  {
+    "name": "SHRES-A4000-030",
+    "model": "A4000Ec030",
+    "ram": "Chip2MbFast4Mb",
+    "mediaRoot": "tmp",
+    "boot": "native-shres-check.adf",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A4000.ROM",
+    "actions": [
+      { "type": "wait", "cycles": 60000000, "label": "boot-native" },
+      { "type": "wait", "cycles": 5000000, "label": "native-stable", "expectedNativeFrameHash": "47CF55780948D25DF2F0A59E7D8AA2AA6B39D7557F3AA77B95221C025044C37D" }
+    ]
+  }
+]

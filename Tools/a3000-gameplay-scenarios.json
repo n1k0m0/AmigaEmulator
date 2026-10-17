@@ -191,7 +191,9 @@
       {
         "type": "wait",
         "cycles": 60000000,
-        "label": "get-ready"
+        "label": "get-ready",
+        "expectedFrameHash": "AC98837DBDBB8235EDCEBF7573B948AD48B015893261598CF04050DBE1EA7917",
+        "minimumNonBlackPixels": 180000
       },
       {
         "type": "joystick",
@@ -205,28 +207,37 @@
         "type": "joystick",
         "button": "Right",
         "cycles": 1500000,
-        "label": "move-right"
+        "label": "move-right",
+        "expectedFrameHash": "E9278A547D1E9A5B5DA43DC113970509CB80A2DB6607D678A57D6F424A64556A",
+        "minimumNonBlackPixels": 180000
       },
       {
         "type": "joystick",
         "button": "Up,Right",
         "cycles": 1000000,
-        "label": "jump-right"
+        "label": "jump-right",
+        "expectedFrameHash": "776F156D0DDB3A0965B55207A78F62C06A4AAD32B0BE982BF30D6AB9ABDAA41A",
+        "minimumNonBlackPixels": 180000
       },
       {
         "type": "restore",
-        "label": "gameplay-restore"
+        "label": "gameplay-restore",
+        "expectedFrameHash": "776F156D0DDB3A0965B55207A78F62C06A4AAD32B0BE982BF30D6AB9ABDAA41A",
+        "minimumNonBlackPixels": 180000
       },
       {
         "label": "move-left-after-restore",
         "type": "joystick",
         "button": "Left",
-        "cycles": 1000000
+        "cycles": 1000000,
+        "expectedFrameHash": "D78DAA17119CFED6EC63DE4A01EA05069D21DB3936E95E9BFEF7F8F0C9FA0E4D",
+        "minimumNonBlackPixels": 180000
       }
     ],
     "model": "A3000",
     "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
-    "traceExceptions": true
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0
   },
   {
     "name": "A3000-native31-CelticHeart",
@@ -282,33 +293,59 @@
       {
         "type": "wait",
         "cycles": 4000000,
-        "label": "level"
+        "label": "level",
+        "expectedFrameHash": "33173D58D21C5D1529C98AE446E73B507316780547DA5784228A729A7CFEC7DE",
+        "minimumNonBlackPixels": 190000
       },
       {
         "type": "joystick",
         "button": "Right",
         "cycles": 1000000,
-        "label": "move-right"
+        "label": "move-right",
+        "expectedFrameHash": "89C958308531EAC9D47D8D1818AA44366D2F56DD9569E7DC47AFE25F0C4FB52E",
+        "minimumNonBlackPixels": 190000
       },
       {
         "type": "joystick",
         "button": "Up,Right",
         "cycles": 1000000,
-        "label": "jump-right"
+        "label": "jump-right",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
       },
       {
         "type": "restore",
-        "label": "gameplay-restore"
+        "label": "gameplay-restore",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
       },
       {
         "label": "move-left-after-restore",
         "type": "joystick",
         "button": "Left",
-        "cycles": 1000000
+        "cycles": 1000000,
+        "expectedFrameHash": "BF13D39560ED72CCBD3BD950956B919B241D1EAA886ABB7A005979819FE21A61",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Right,Fire",
+        "cycles": 4000000,
+        "label": "right-fire-sweep",
+        "expectedFrameHash": "60D43FB1A5DF493A9D8AF42EDF57029C8BEE8661441A7180FF08013D63075EE5",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "right-fire-result",
+        "expectedFrameHash": "B90B258E616DB01507FAC3167F3533C28F522635731ADBA43F2E19969964B6B3",
+        "minimumNonBlackPixels": 190000
       }
     ],
     "model": "A3000",
     "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
-    "traceExceptions": true
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0
   }
 ]

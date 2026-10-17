@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using AmigaEmulator.Core;
 using AmigaEmulator.Core.CustomChips;
 using AmigaEmulator.Core.Memory;
@@ -25,9 +26,409 @@ namespace AmigaEmulator.Tests
             yield return Test("playfield XOR and border sprites retain independent border color and blanking", TestBorderComposition);
             yield return Test("all 256 scroll delays retain independent odd/even phases in lores and hires", TestExtendedScroll);
             yield return Test("ECS/AGA hires preload stays outside DIW and DMA spans retain every leading bit", TestHiresDmaPhase);
+            yield return Test("ECS/AGA SHRES request survives BPLCON0 decoding while OCS ignores it", TestSuperHiresDecode);
+            yield return Test("ECS SHRES DMA yields eighty words per plane and 1280 distinct bit samples", TestEcsSuperHiresDmaBits);
+            yield return Test("AGA FMODE0 SHRES fetches both 1280-pixel bitplane rows", TestAgaSuperHiresDmaBits);
+            yield return Test("SHRES native border follows COLOR00 raster writes without transparent gaps", TestSuperHiresNativeBorder);
+            yield return Test("mid-field SHRES enable retains the already rendered lowres aperture", TestSuperHiresMidFieldEnable);
+            yield return Test("SHRES native presentation preserves both aperture samples and drops stale frames", TestSuperHiresNativePresentation);
+            yield return Test("ECS/AGA SHRES reaches a completed system presentation field", TestSuperHiresSystemField);
         }
         private static ChipTestCase Test(string name, Action run) => new("AGA/Bringup", name,
             "Commodore Advanced Amiga Chip Set Functional Specification, 1991; independent fixtures", run);
+
+        private static void TestSuperHiresNativePresentation()
+        {
+            var model = AmigaModel.Create(AmigaMachineModel.A1200, AmigaRamProfile.Chip2MbFast4Mb);
+            using var system = new AmigaSystem(model);
+            var raw = system.FrameBuffer;
+            int width = AmigaSystem.PresentationViewportWidth;
+            int height = AmigaSystem.PresentationViewportHeight;
+            raw.RecordSuperHiresPlayfieldPair(0, 0xFFFF0000u, 0xFF0000FFu);
+            raw.RecordSuperHiresSpritePair(0, 0, 0xFF00FF00u);
+            raw.RecordSuperHiresPlayfieldPair(width - 1, 0xFFFFFF00u, 0xFF00FFFFu);
+            MethodInfo copy = typeof(AmigaSystem).GetMethod("CopyPresentationWindow",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Check.True(copy != null, "Presentation aperture copier is available.");
+            copy.Invoke(system, new object[] { 0, 0, width, height });
+            uint[] native = new uint[width * height * 2];
+            Check.True(system.PresentedFrameBuffer.CopyCompositedSuperHiresTo(native),
+                "Selected aperture retains the native SHRES output.");
+            Check.Equal(0xFFFF0000u, native[0], "First aperture sample is red.");
+            Check.Equal(0xFF00FF00u, native[1], "Second aperture sample retains its sprite.");
+            Check.Equal(0xFFFFFF00u, native[(width - 1) * 2], "Right edge first sample is retained.");
+            Check.Equal(0xFF00FFFFu, native[width * 2 - 1], "Right edge second sample is retained.");
+            raw.DiscardSuperHiresPlayfield();
+            int croppedFirst = raw.Width + 10;
+            int croppedLast = raw.Width + 709;
+            raw.RecordSuperHiresPlayfieldPair(croppedFirst, 0xFF112233u, 0xFF445566u);
+            raw.RecordSuperHiresPlayfieldPair(croppedLast, 0xFF778899u, 0xFFAABBCCu);
+            copy.Invoke(system, new object[] { 10, 1, 700, 280 });
+            Check.True(system.PresentedFrameBuffer.CopyCompositedSuperHiresTo(native),
+                "Scaled source aperture retains native samples.");
+            Check.Equal(0xFF112233u, native[0], "Scaled crop selects its first source column.");
+            Check.Equal(0xFF445566u, native[1], "Scaled crop retains its second sample.");
+            Check.Equal(0xFF778899u, native[width * 2 - 2], "Scaled crop selects its last source column.");
+            Check.Equal(0xFFAABBCCu, native[width * 2 - 1], "Scaled crop retains the last native sample.");
+            raw.DiscardSuperHiresPlayfield();
+            copy.Invoke(system, new object[] { 0, 0, width, height });
+            Check.True(!system.PresentedFrameBuffer.CopyCompositedSuperHiresTo(native),
+                "A following non-SHRES frame has no stale native output.");
+        }
+
+        private static void TestSuperHiresSystemField()
+        {
+            foreach (var machine in new[] { AmigaMachineModel.A500Plus, AmigaMachineModel.A1200 })
+            {
+                var model = AmigaModel.Create(machine, AmigaRamProfile.Chip2MbFast4Mb);
+                using var system = new AmigaSystem(model);
+                var regs = system.Agnus.CustomRegisters;
+                regs.WriteWord(0x08E, 0x2C81);
+                regs.WriteWord(0x090, 0x2DC1);
+                regs.WriteWord(0x092, 0x003C);
+                regs.WriteWord(0x094, 0x00D4);
+                regs.WriteWord(0x0E2, 0x2000);
+                regs.WriteWord(0x0E6, 0x3000);
+                system.Bus.WriteWord(0x2000, 0x8000);
+                system.Bus.WriteWord(0x3000, 0x4000);
+                regs.WriteWord(0x096, 0x8300);
+                regs.WriteWord(0x100, 0x2041);
+                regs.WriteWord(0x180, 0x0F00);
+                if (machine == AmigaMachineModel.A1200)
+                {
+                    regs.WriteWord(0x182, 0x0F00);
+                    regs.WriteWord(0x184, 0x000F);
+                }
+                else regs.WriteWord(0x192, 0x0C36);
+                system.Agnus.Bitplanes.RefreshFromRegisters();
+                system.RunChipCycles(model.ChipCyclesPerLine * (model.LinesPerFrame + 1));
+                var presented = system.PresentedFrameBuffer;
+                Check.True(presented.SuperHiresPlayfieldPixels != null,
+                    machine + " keeps native samples through a completed field.");
+                uint[] native = new uint[presented.Pixels.Length * 2];
+                Check.True(presented.CopyCompositedSuperHiresTo(native),
+                    machine + " provides a native frame for the frontend and capture runner.");
+                Check.Equal(presented.Width * 2 * presented.Height, native.Length,
+                    machine + " has exactly two samples per logical pixel.");
+                Check.Equal(machine == AmigaMachineModel.A1200 ? 0xFFFF0000u : 0xFFFF0055u, native[0],
+                    machine + " carries the programmed red COLOR00 border through the native aperture.");
+                bool foundAdjacentColors = false;
+                uint expectedFirst = machine == AmigaMachineModel.A1200 ? 0xFFFF0000u : 0xFFFF0055u;
+                uint expectedSecond = machine == AmigaMachineModel.A1200 ? 0xFF0000FFu : 0xFF00FFAAu;
+                for (int index = 0; index < native.Length - 1; index += 2)
+                {
+                    if (native[index] == expectedFirst && native[index + 1] == expectedSecond)
+                    {
+                        foundAdjacentColors = true;
+                        break;
+                    }
+                }
+                Check.True(foundAdjacentColors,
+                    machine + " presents adjacent independently fetched 35-ns color samples.");
+                using var state = new MemoryStream();
+                using (var writer = new BinaryWriter(state, System.Text.Encoding.UTF8, true))
+                    system.SaveState(writer);
+                int continuationCycles = model.ChipCyclesPerLine * (model.LinesPerFrame * 2 + 2);
+                system.RunChipCycles(continuationCycles);
+                uint[] continuedNative = new uint[native.Length];
+                Check.True(system.PresentedFrameBuffer.CopyCompositedSuperHiresTo(continuedNative),
+                    machine + " continues native output before restore.");
+                state.Position = 0;
+                using (var reader = new BinaryReader(state, System.Text.Encoding.UTF8, true))
+                    system.LoadState(reader);
+                system.RunChipCycles(continuationCycles);
+                uint[] restoredNative = new uint[native.Length];
+                Check.True(system.PresentedFrameBuffer.CopyCompositedSuperHiresTo(restoredNative),
+                    machine + " regenerates native output after restore.");
+                Check.True(continuedNative.AsSpan().SequenceEqual(restoredNative),
+                    machine + " restores the exact complete native presented frame.");
+            }
+        }
+
+        private static void TestSuperHiresNativeBorder()
+        {
+            foreach (var chipset in new[] { AmigaChipset.Ecs, AmigaChipset.Aga })
+            {
+                var regs = new CustomRegisterMap(chipset);
+                var planes = new BitplaneUnit(regs, null);
+                var frame = new AmigaFrameBuffer(16, 1);
+                var denise = new Denise(frame, planes, new SpriteUnit(regs, null));
+                regs.WriteWord(0x08E, 0x2D81); // DIW starts one line below this border fixture.
+                regs.WriteWord(0x090, 0x2EC1);
+                regs.WriteWord(0x100, 0x2041); // SHRES with ECS enable; DMA remains off.
+                regs.WriteWord(0x180, 0x00F0); // Green COLOR00.
+                denise.BeginFrame();
+                uint green = planes.BorderColorArgb;
+                Check.Equal(green, frame.SuperHiresPlayfieldPixels[0], "The left native border starts with COLOR00.");
+                Check.Equal(green, frame.SuperHiresPlayfieldPixels[31], "The right native border is initialized too.");
+
+                regs.WriteWord(0x180, 0x0F00); // Red COLOR00 mid-line.
+                planes.NotifyCustomRegisterWordWrite(0x180, 0x0F00);
+                uint red = planes.ReadColorArgb(0);
+                denise.Tick(new BeamTraceEntry { BeamX = 63, BeamY = 44 });
+                Check.Equal(red, frame.Pixels[4], "The host border observes the raster COLOR00 change.");
+                Check.Equal(red, frame.SuperHiresPlayfieldPixels[8], "The first native sample observes the raster COLOR00 change.");
+                Check.Equal(red, frame.SuperHiresPlayfieldPixels[15], "The full chip-cycle border span is updated.");
+                Check.Equal(green, frame.SuperHiresPlayfieldPixels[16], "Unvisited native border keeps its previous color.");
+            }
+        }
+
+        private static void TestSuperHiresMidFieldEnable()
+        {
+            foreach (var chipset in new[] { AmigaChipset.Ecs, AmigaChipset.Aga })
+            {
+                var regs = new CustomRegisterMap(chipset);
+                var planes = new BitplaneUnit(regs, null);
+                var frame = new AmigaFrameBuffer(16, 1);
+                var denise = new Denise(frame, planes, new SpriteUnit(regs, null));
+                regs.WriteWord(0x180, 0x000F);
+                denise.BeginFrame();
+                frame.Pixels[0] = 0xFFFF0000u;
+                frame.Pixels[1] = 0xFF00FF00u;
+                regs.WriteWord(0x100, 0x0041); // Copper enables SHRES in the current field.
+                planes.RefreshFromRegisters();
+                denise.Tick(new BeamTraceEntry { BeamX = 63, BeamY = 44 });
+                Check.True(frame.SuperHiresPlayfieldPixels != null,
+                    chipset + " allocates native samples on the raster mode switch.");
+                Check.Equal(0xFFFF0000u, frame.SuperHiresPlayfieldPixels[0],
+                    chipset + " keeps the earlier first lowres pixel.");
+                Check.Equal(0xFFFF0000u, frame.SuperHiresPlayfieldPixels[1],
+                    chipset + " keeps the earlier first lowres pixel's second sample.");
+                Check.Equal(0xFF00FF00u, frame.SuperHiresPlayfieldPixels[2],
+                    chipset + " keeps the earlier adjacent pixel distinct.");
+                Check.Equal(frame.Pixels[15], frame.SuperHiresPlayfieldPixels[31],
+                    chipset + " keeps the unvisited right border opaque.");
+                frame.RecordSuperHiresSpritePair(8, 0xFFFFFFFFu, 0xFFFFFFFFu);
+                regs.WriteWord(0x100, 0); // Copper returns to lores in the same field.
+                planes.RefreshFromRegisters();
+                denise.Tick(new BeamTraceEntry { BeamX = 64, BeamY = 44 });
+                uint[] native = new uint[frame.Pixels.Length * 2];
+                Check.True(frame.CopyCompositedSuperHiresTo(native),
+                    chipset + " retains the mixed-resolution field.");
+                Check.Equal(frame.Pixels[8], native[16],
+                    chipset + " expands the subsequent lores pixel instead of stale SHRES output.");
+                Check.Equal(frame.Pixels[8], native[17],
+                    chipset + " replaces both samples and clears old sprite overlay.");
+            }
+        }
+
+        private static void TestSuperHiresDecode()
+        {
+            foreach (var chipset in new[] { AmigaChipset.Ocs, AmigaChipset.Ecs, AmigaChipset.Aga })
+            {
+                var regs = new CustomRegisterMap(chipset);
+                var planes = new BitplaneUnit(regs, null);
+                regs.WriteWord(0x100, 0x2041); // Two planes, SHRES, ECS enable.
+                planes.RefreshFromRegisters();
+                Check.Equal(chipset != AmigaChipset.Ocs, planes.IsSuperHiresMode,
+                    "Only ECS Denise/Lisa decodes the 35 ns pixel request.");
+                Check.Equal(2, planes.EnabledPlanes, "SHRES bit must not change BPU depth.");
+                using (var state = new MemoryStream())
+                {
+                    planes.SaveState(new BinaryWriter(state));
+                    state.Position = 0;
+                    planes.LoadState(new BinaryReader(state));
+                    planes.RefreshFromRegisters();
+                    Check.Equal(chipset != AmigaChipset.Ocs, planes.IsSuperHiresMode,
+                        "Restored register decoding retains the chipset-specific SHRES request.");
+                }
+                regs.WriteWord(0x100, 0x2001);
+                planes.RefreshFromRegisters();
+                Check.True(!planes.IsSuperHiresMode, "Clearing SHRES returns to the legacy mode.");
+            }
+        }
+
+        private static void TestEcsSuperHiresDmaBits()
+        {
+            var regs = new CustomRegisterMap(AmigaChipset.Ecs);
+            int firstReads = 0, secondReads = 0;
+            ushort Read(uint address)
+            {
+                if (address >= 0x1000)
+                {
+                    secondReads++;
+                    int word = (int)((address - 0x1000) / 2);
+                    return word == 0 ? (ushort)0x4040 : word == 79 ? (ushort)0x0002 : (ushort)0;
+                }
+                firstReads++;
+                int firstWord = (int)(address / 2);
+                return firstWord == 0 ? (ushort)0x8080 : firstWord == 79 ? (ushort)0x0001 : (ushort)0;
+            }
+            var planes = new BitplaneUnit(regs, Read);
+            regs.WriteWord(0x08E, 0x2C81); regs.WriteWord(0x090, 0x2DC1);
+            regs.WriteWord(0x1E4, 0x2000);
+            regs.WriteWord(0x092, 0x3C); regs.WriteWord(0x094, 0xD4);
+            regs.WriteWord(0x100, 0x2041); regs.WriteWord(0x096, 0x8300);
+            regs.WriteWord(0x0E6, 0x1000);
+            planes.BeginFrame();
+            for (int beamX = 0; beamX < 227; beamX++)
+                if (planes.IsPlaneFetchSlot(beamX, 44)) planes.FetchDmaPlaneWord(beamX, 44);
+            Check.Equal(80, firstReads, "A 1280-sample SHRES row fetches eighty first-plane words.");
+            Check.Equal(80, secondReads, "The second plane has the same native fetch width.");
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(0, 44), "First native bit comes from plane one.");
+            Check.Equal(2, planes.RenderSuperHiresColorIndex(1, 44), "Next 35 ns bit is independently sampled from plane two.");
+            Check.Equal(0, planes.RenderSuperHiresColorIndex(2, 44), "Bits do not stretch to a 70 ns sample.");
+            Check.Equal(2, planes.RenderSuperHiresColorIndex(1278, 44), "Penultimate native bit comes from plane two.");
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(1279, 44), "Last native bit of word eighty remains visible.");
+            Check.Equal(1, planes.RenderColorIndex(0, 44), "The 640-pixel preview includes the left SHRES edge.");
+            Check.Equal(2, planes.RenderColorIndex(639, 44), "The 640-pixel preview reaches the right SHRES edge.");
+            using var state = new MemoryStream();
+            planes.SaveState(new BinaryWriter(state));
+            state.Position = 0;
+            planes.LoadState(new BinaryReader(state));
+            planes.RefreshFromRegisters();
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(0, 44), "Restore retains the first native bit.");
+            Check.Equal(2, planes.RenderSuperHiresColorIndex(1278, 44), "Restore retains the final word's second plane.");
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(1279, 44), "Restore retains the final native bit.");
+            regs.WriteWord(0x192, 0x0C36); // COLOR09 packs native colors 1 then 2.
+            planes.NotifyCustomRegisterWordWrite(0x192, 0x0C36);
+            var frame = new AmigaFrameBuffer(16, 1);
+            var denise = new Denise(frame, planes, new SpriteUnit(regs, null));
+            denise.Tick(new BeamTraceEntry { BeamX = 62, BeamY = 44 });
+            Check.Equal(0xFFFF0055u, frame.Pixels[0], "First SHRES sample takes COLOR09's high two RGB bits.");
+            Check.Equal(frame.Width * frame.Height * 2, frame.SuperHiresPlayfieldPixels.Length,
+                "The native SHRES playfield target retains two samples per host pixel.");
+            Check.Equal(0xFFFF0055u, frame.SuperHiresPlayfieldPixels[0], "Native ECS pixel zero is the first packed color.");
+            Check.Equal(0xFF00FFAAu, frame.SuperHiresPlayfieldPixels[1], "Native ECS pixel one is the second packed color.");
+            Check.Equal(0xFF00FFAAu, planes.ResolveEcsSuperHiresColorArgb(1, 2, true),
+                "Second SHRES sample takes the same register's low two RGB bits.");
+            planes.ResolveSuperHiresPixelPair(1, 2, out uint ecsFirst, out uint ecsSecond);
+            Check.Equal(0xFFFF0055u, ecsFirst, "The native ECS pair retains its first 35 ns color.");
+            Check.Equal(0xFF00FFAAu, ecsSecond, "The native ECS pair retains its second 35 ns color.");
+            regs.WriteWord(0x192, 0x003C);
+            planes.NotifyCustomRegisterWordWrite(0x192, 0x003C);
+            denise.Tick(new BeamTraceEntry { BeamX = 63, BeamY = 44 });
+            Check.Equal(0xFF0000FFu, frame.Pixels[4], "Raster COLOR09 rewrite changes the next SHRES pair immediately.");
+            using var colorState = new MemoryStream();
+            planes.SaveState(new BinaryWriter(colorState));
+            colorState.Position = 0;
+            planes.LoadState(new BinaryReader(colorState));
+            planes.RefreshFromRegisters();
+            Check.Equal(0xFF0000FFu, planes.ResolveEcsSuperHiresColorArgb(1, 2),
+                "Restoring a legacy bitplane state rebuilds the SHRES palette from COLOR09.");
+        }
+
+        private static void TestAgaSuperHiresDmaBits()
+        {
+            var regs = new CustomRegisterMap(AmigaChipset.Aga);
+            int firstReads = 0, secondReads = 0;
+            ushort Read(uint address)
+            {
+                if (address >= 0x1000)
+                {
+                    secondReads++;
+                    int word = (int)((address - 0x1000) / 2);
+                    return word == 0 ? (ushort)0x4000 : word == 79 ? (ushort)0x0002 : (ushort)0;
+                }
+                firstReads++;
+                int firstWord = (int)(address / 2);
+                return firstWord == 0 ? (ushort)0x8000 : firstWord == 79 ? (ushort)0x0001 : (ushort)0;
+            }
+            var planes = new BitplaneUnit(regs, Read);
+            regs.WriteWord(0x08E, 0x2C81); regs.WriteWord(0x090, 0x2DC1);
+            regs.WriteWord(0x1E4, 0x2000);
+            regs.WriteWord(0x092, 0x3C); regs.WriteWord(0x094, 0xD4);
+            regs.WriteWord(0x100, 0x2041); regs.WriteWord(0x096, 0x8300);
+            regs.WriteWord(0x0E6, 0x1000); regs.WriteWord(0x1FC, 0);
+            planes.BeginFrame();
+            for (int beamX = 0; beamX < 227; beamX++)
+                if (planes.IsPlaneFetchSlot(beamX, 44)) planes.FetchDmaPlaneWord(beamX, 44);
+            Check.Equal(80, firstReads, "AGA FMODE0 SHRES reads eighty words from plane one.");
+            Check.Equal(80, secondReads, "AGA FMODE0 SHRES reads eighty words from plane two.");
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(0, 44), "AGA first native sample uses plane one.");
+            Check.Equal(2, planes.RenderSuperHiresColorIndex(1, 44), "AGA second native sample uses plane two.");
+            Check.Equal(2, planes.RenderSuperHiresColorIndex(1278, 44), "AGA penultimate sample reaches word eighty.");
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(1279, 44), "AGA last sample reaches word eighty.");
+            Check.Equal(1, planes.RenderColorIndex(0, 44), "AGA preview reaches the left SHRES edge.");
+            Check.Equal(2, planes.RenderColorIndex(639, 44), "AGA preview reaches the right SHRES edge.");
+            regs.WriteWord(0x182, 0x0F00); // AGA COLOR01 is direct red, not ECS pair encoding.
+            regs.WriteWord(0x184, 0x000F); // COLOR02 is independently blue.
+            var frame = new AmigaFrameBuffer(16, 1);
+            var denise = new Denise(frame, planes, new SpriteUnit(regs, null));
+            denise.Tick(new BeamTraceEntry { BeamX = 62, BeamY = 44 });
+            Check.Equal(0xFFFF0000u, frame.Pixels[0], "AGA preview uses Lisa's direct palette for the first native pixel.");
+            Check.Equal(0xFFFF0000u, frame.SuperHiresPlayfieldPixels[0], "Native AGA pixel zero uses COLOR01.");
+            Check.Equal(0xFF0000FFu, frame.SuperHiresPlayfieldPixels[1], "Native AGA pixel one uses COLOR02.");
+            Color(regs, 17, 0x00FF00); // Sprite color one, independent of playfield red/blue.
+            regs.WriteWord(0x106, 0x00C0); // One 35 ns sample per AGA sprite bit.
+            regs.WriteWord(0x104, 0x0020); // Sprite group zero over the playfield.
+            regs.WriteWord(0x10C, 0x0011); // Both sprite banks use COLOR16..31.
+            regs.WriteWord(0x140, 0x2C40); regs.WriteWord(0x142, 0x2D00);
+            regs.WriteWord(0x144, 0x4000); regs.WriteWord(0x146, 0);
+            var compositeSprites = new SpriteUnit(regs, null);
+            compositeSprites.NotifyCustomRegisterWordWrite(0x140, 0x2C40, 44);
+            compositeSprites.NotifyCustomRegisterWordWrite(0x142, 0x2D00, 44);
+            compositeSprites.NotifyCustomRegisterWordWrite(0x144, 0x4000, 44);
+            compositeSprites.NotifyCustomRegisterWordWrite(0x146, 0, 44);
+            Check.True(compositeSprites.TryRenderSuperHiresPixel(1, 44,
+                out uint nativeSpriteProbe, out _, out _), "The second native sprite bit is present before Denise composition.");
+            Check.Equal(0xFF00FF00u, nativeSpriteProbe, "The native sprite uses its independent palette entry.");
+            var compositeFrame = new AmigaFrameBuffer(16, 1);
+            var compositeDenise = new Denise(compositeFrame, planes, compositeSprites);
+            compositeDenise.Tick(new BeamTraceEntry { BeamX = 62, BeamY = 44 });
+            var nativeComposite = new uint[compositeFrame.Width * 2];
+            Check.True(compositeFrame.CopyCompositedSuperHiresTo(nativeComposite),
+                "A native SHRES target can combine the playfield and sprite overlay.");
+            Check.Equal(0xFFFF0000u, nativeComposite[0], "The first native sample stays playfield red.");
+            Check.Equal(0xFF00FF00u, nativeComposite[1], "The second native sample shows its independent sprite bit.");
+            Check.Equal(0xFF0000FFu, compositeFrame.SuperHiresPlayfieldPixels[1],
+                "Native sprite composition leaves raw playfield data available.");
+            Check.Equal(0xFFFF0000u, compositeFrame.Pixels[0],
+                "The 70 ns preview still selects only the first native sample.");
+            compositeDenise.BeginFrame();
+            Check.True(compositeFrame.CopyCompositedSuperHiresTo(nativeComposite),
+                "The following SHRES field retains its native output target.");
+            Check.Equal(planes.BorderColorArgb, nativeComposite[1],
+                "A new field clears the native sprite overlay along with the playfield.");
+            var wideFrame = new AmigaFrameBuffer(640, 1);
+            var wideDenise = new Denise(wideFrame, planes, new SpriteUnit(regs, null));
+            for (int beamX = 62; beamX < 222; beamX++)
+                wideDenise.Tick(new BeamTraceEntry { BeamX = beamX, BeamY = 44 });
+            Check.Equal(0xFF0000FFu, wideFrame.SuperHiresPlayfieldPixels[1278],
+                "The penultimate native pixel reaches the far edge of the 1280-pixel target.");
+            Check.Equal(0xFFFF0000u, wideFrame.SuperHiresPlayfieldPixels[1279],
+                "The final native pixel remains independently colored at the far edge.");
+            denise.BeginFrame();
+            Check.Equal(planes.BorderColorArgb, frame.SuperHiresPlayfieldPixels[1],
+                "A fresh field clears the transient second native sample.");
+            using var frameState = new MemoryStream();
+            frame.SaveState(new BinaryWriter(frameState));
+            frameState.Position = 0;
+            frame.LoadState(new BinaryReader(frameState));
+            Check.True(frame.SuperHiresPlayfieldPixels == null,
+                "Legacy framebuffer restores discard transient native SHRES samples.");
+            planes.ResolveSuperHiresPixelPair(1, 2, out uint agaFirst, out uint agaSecond);
+            Check.Equal(0xFFFF0000u, agaFirst, "AGA's first native sample uses COLOR01.");
+            Check.Equal(0xFF0000FFu, agaSecond, "AGA's second native sample uses COLOR02 independently.");
+            using var state = new MemoryStream();
+            planes.SaveState(new BinaryWriter(state));
+            state.Position = 0;
+            planes.LoadState(new BinaryReader(state));
+            planes.RefreshFromRegisters();
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(0, 44), "AGA restored row retains its first native bit.");
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(1279, 44), "AGA restored row retains its final native bit.");
+            regs.WriteWord(0x102, 0x0100); // One 35 ns odd-plane delay; even plane stays unscrolled.
+            planes.RefreshFromRegisters();
+            Check.Equal(0, planes.RenderSuperHiresColorIndex(0, 44),
+                "AGA SHRES delays the odd plane by one native pixel at the left edge.");
+            Check.Equal(3, planes.RenderSuperHiresColorIndex(1, 44),
+                "AGA SHRES combines delayed odd and undelayed even bits independently.");
+            Check.Equal(0, planes.RenderColorIndex(0, 44),
+                "The host preview follows the native odd-plane delay.");
+            regs.WriteWord(0x102, 0x1000); // One 35 ns even-plane delay; odd plane stays unscrolled.
+            planes.RefreshFromRegisters();
+            Check.Equal(1, planes.RenderSuperHiresColorIndex(0, 44),
+                "The odd plane stays at the left edge when only the even plane is delayed.");
+            Check.Equal(0, planes.RenderSuperHiresColorIndex(1, 44),
+                "The even plane does not leak its first bit one pixel early.");
+            Check.Equal(2, planes.RenderSuperHiresColorIndex(2, 44),
+                "The even plane's first bit appears at its independently delayed position.");
+            frame.RecordSuperHiresPlayfieldPair(0, 0xFFFF0000u, 0xFF0000FFu);
+            regs.WriteWord(0x100, 0x2001); // Back to lores.
+            denise.BeginFrame();
+            Check.True(frame.SuperHiresPlayfieldPixels == null,
+                "Leaving SHRES releases the extra native target before ordinary frames.");
+        }
 
         private static void TestHiresDmaPhase()
         {
@@ -250,6 +651,16 @@ namespace AmigaEmulator.Tests
                 // Superhires sampling sees the penultimate bit in a hires framebuffer.
                 Check.Equal(resolution == 3 ? 0xFF102030u : 0xFFAABBCCu, last, "The complete wide latch is addressable.");
                 Check.True(!sprites.TryRenderPixel(hostWidth, 11, out _), "Wide sprite stops exactly at its selected width.");
+                Check.True(sprites.TryRenderSuperHiresPixel(hostWidth * 2 - 1, 11,
+                    out uint lastNative, out _, out _), "The final 35 ns sprite sample remains inside the wide latch.");
+                Check.Equal(0xFFAABBCCu, lastNative,
+                    "Native SHRES output reaches the final bit independently of the 70 ns preview.");
+                Check.True(sprites.TryRenderSuperHiresPixel(hostWidth * 2 - 2, 11,
+                    out uint penultimateNative, out _, out _), "The penultimate native sample remains visible.");
+                Check.Equal(resolution == 3 ? 0xFF102030u : 0xFFAABBCCu, penultimateNative,
+                    "SHRES sprites distinguish adjacent 35 ns samples only at native resolution.");
+                Check.True(!sprites.TryRenderSuperHiresPixel(hostWidth * 2, 11,
+                    out _, out _, out _), "The native sprite ends after its exact 35 ns width.");
                 sprites.TickDmaSlot(0, 0, 12); sprites.TickDmaSlot(0, 1, 12);
                 Check.True(!sprites.TryRenderPixel(0, 12, out _), "Wide zero terminator disarms output.");
             }

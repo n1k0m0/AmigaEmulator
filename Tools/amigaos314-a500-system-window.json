@@ -1,0 +1,59 @@
+[
+  {
+    "name": "A500-OS314-SYSTEM-WINDOW",
+    "model": "A500",
+    "ram": "Chip2MbFast4Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK314-A500.ROM",
+    "hardDisk": "tmp/os-a1200-test.hdf",
+    "hardDiskReadOnly": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "desktop",
+        "expectedFrameHash": "FBF1A83B51A26B65F7C72BF813690D35BA368A056E3827916CE5DA234CE5BB20"
+      },
+      {
+        "type": "mouse",
+        "x": 30,
+        "y": 125,
+        "label": "system-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "system-pointer-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "open-system-1"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "open-system-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 8000000,
+        "label": "system-window",
+        "expectedFrameHash": "6E22C0A7C20241FC0B9697F5FE30FF4F3B56C449AFFE1105F2C4D5DEC2AE154F"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "cold-restore-window"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "restored-window",
+        "expectedFrameHash": "6E22C0A7C20241FC0B9697F5FE30FF4F3B56C449AFFE1105F2C4D5DEC2AE154F"
+      }
+    ]
+  }
+]

@@ -15,9 +15,30 @@ using AmigaEmulator.Core.SaveStates;
 // Deterministic input/disk scenarios. A screenshot is evidence for review, never an automatic gameplay pass.
 if (args.Length < 2)
 {
-    Console.Error.WriteLine("GameRunner <scenario.json> <output-directory|--validate> [case-name]");
+    Console.Error.WriteLine("GameRunner <scenario.json> <output-directory|--validate> [case-name] [--no-final-checkpoint] [--no-images|--image-label=LABEL [--raw-frame]]");
     return 2;
 }
+string[] extraArgs = args.Skip(2).ToArray();
+if (extraArgs.Any(arg => arg.StartsWith("--", StringComparison.Ordinal) &&
+    arg is not ("--no-final-checkpoint" or "--no-images" or "--raw-frame") && !arg.StartsWith("--image-label=", StringComparison.Ordinal)) ||
+    extraArgs.Count(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal)) > 1 ||
+    (extraArgs.Contains("--no-images", StringComparer.Ordinal) &&
+     extraArgs.Any(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal))) ||
+    (extraArgs.Contains("--raw-frame", StringComparer.Ordinal) &&
+     !extraArgs.Any(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal))) ||
+    extraArgs.Any(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal) &&
+        (arg.Length == "--image-label=".Length ||
+         arg["--image-label=".Length..].IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)) ||
+    extraArgs.Count(arg => !arg.StartsWith("--", StringComparison.Ordinal)) > 1)
+{
+    Console.Error.WriteLine("INVALID command line: expected at most one case name, --no-final-checkpoint, --no-images or --image-label=LABEL, with optional --raw-frame only for a selected image label.");
+    return 2;
+}
+bool writeFinalCheckpoint = !extraArgs.Contains("--no-final-checkpoint", StringComparer.Ordinal);
+bool writeImages = !extraArgs.Contains("--no-images", StringComparer.Ordinal);
+bool writeRawFrame = extraArgs.Contains("--raw-frame", StringComparer.Ordinal);
+string imageLabel = extraArgs.FirstOrDefault(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal))?["--image-label=".Length..];
+string selectedCase = extraArgs.FirstOrDefault(arg => !arg.StartsWith("--", StringComparison.Ordinal));
 List<Scenario> scenarios;
 try
 {
@@ -29,7 +50,7 @@ catch (Exception ex) when (ex is JsonException || ex is IOException || ex is Una
 { Console.Error.WriteLine($"INVALID scenario file: {ex.Message}"); return 1; }
 if (scenarios == null || scenarios.Count == 0 || scenarios.Any(s => s == null))
 { Console.Error.WriteLine("INVALID scenario file: expected a nonempty list without null entries."); return 1; }
-var selected = scenarios.Where(s => args.Length < 3 || s.Name == args[2]).ToList();
+var selected = scenarios.Where(s => selectedCase == null || s.Name == selectedCase).ToList();
 if (selected.Count == 0) { Console.Error.WriteLine("Requested case was not found."); return 2; }
 bool validateOnly = args[1] == "--validate";
 if (selected.Select(s => s.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != selected.Count)
@@ -48,7 +69,7 @@ foreach (var scenario in selected)
 {
     try
     {
-        string actualModel = Run(scenario, args[1]);
+        string actualModel = Run(scenario, args[1], writeFinalCheckpoint, writeImages, imageLabel, writeRawFrame);
         WriteResult(scenario, "executed-unreviewed", null, actualModel);
     }
     catch (Exception ex)
@@ -74,6 +95,10 @@ static void Validate(Scenario scenario)
         (!scenario.TraceExceptions || allowed.Any(vector => vector < 2 || vector >= 24) ||
          allowed.Distinct().Count() != allowed.Count))
         throw new ArgumentException("allowedNonRomExceptionVectors requires traceExceptions and distinct observed vectors 2..23.");
+    if (scenario.MemoryWatchAddresses is { } watched &&
+        (watched.Count > 32 || watched.Any(address => address >= 0xA00000) ||
+         watched.Distinct().Count() != watched.Count))
+        throw new ArgumentException("memoryWatchAddresses requires at most 32 distinct RAM addresses below $A00000.");
     var metadata = scenario.Save == null ? null : SaveStateFile.ReadMetadata(Environment.ExpandEnvironmentVariables(scenario.Save));
     var machine = metadata?.MachineModel ?? Enum.Parse<AmigaMachineModel>(scenario.Model ?? "A500");
     var ram = metadata?.RamProfile ?? (scenario.Ram == null ? AmigaModel.GetDefaultRamProfile(machine) : Enum.Parse<AmigaRamProfile>(scenario.Ram));
@@ -91,23 +116,65 @@ static void Validate(Scenario scenario)
     foreach (var action in scenario.Actions ?? [])
     {
         if (action.Cycles < 0) throw new ArgumentOutOfRangeException(nameof(action.Cycles));
+        if (action.MouseStepCycles < 0) throw new ArgumentOutOfRangeException(nameof(action.MouseStepCycles));
+        if (action.MouseStepCycles != 0 && action.Type != "mouse")
+            throw new ArgumentException("mouseStepCycles is only valid for mouse actions.");
+        if (action.MinimumNonBlackPixels < 0 || action.MinimumNonBlackPixels >
+            AmigaSystem.PresentationViewportWidth * AmigaSystem.PresentationViewportHeight)
+            throw new ArgumentOutOfRangeException(nameof(action.MinimumNonBlackPixels));
+        if (action.ForbiddenFrameHashes?.Any(hash => hash is null || hash.Length != 64 ||
+            !hash.All(Uri.IsHexDigit)) == true)
+            throw new ArgumentException("forbiddenFrameHashes requires 64-character SHA-256 hex values.");
+        if (action.ExpectedNativeFrameHash is { } nativeHash &&
+            (nativeHash.Length != 64 || !nativeHash.All(Uri.IsHexDigit)))
+            throw new ArgumentException("expectedNativeFrameHash requires a 64-character SHA-256 hex value.");
+        if (action.ExpectedInterlacedFrameHash is { } interlacedHash &&
+            (interlacedHash.Length != 64 || !interlacedHash.All(Uri.IsHexDigit)))
+            throw new ArgumentException("expectedInterlacedFrameHash requires a 64-character SHA-256 hex value.");
+        if (action.ExpectInterlacedFrame == false && action.ExpectedInterlacedFrameHash != null)
+            throw new ArgumentException("An interlaced hash cannot be required when expectInterlacedFrame is false.");
+        if (action.ExpectedNativeInterlacedFrameHash is { } nativeInterlacedHash &&
+            (nativeInterlacedHash.Length != 64 || !nativeInterlacedHash.All(Uri.IsHexDigit)))
+            throw new ArgumentException("expectedNativeInterlacedFrameHash requires a 64-character SHA-256 hex value.");
+        if (action.ExpectNativeInterlacedFrame == false && action.ExpectedNativeInterlacedFrameHash != null)
+            throw new ArgumentException("A native interlaced hash cannot be required when expectNativeInterlacedFrame is false.");
+        if (action.ExpectedCiaAPortA is { } cia && (cia.Length != 2 || !cia.All(Uri.IsHexDigit)) ||
+            action.ExpectedPotInp is { } pot && (pot.Length != 4 || !pot.All(Uri.IsHexDigit)))
+            throw new ArgumentException("Expected input registers require two-digit CIA-A and four-digit POTINP hex values.");
+        if (action.ExpectedJoy1 is { } joy1 && (joy1.Length != 4 || !joy1.All(Uri.IsHexDigit)))
+            throw new ArgumentException("expectedJoy1 requires a four-digit JOY1DAT hex value.");
+        if (action.ExpectedBplcon0 is { } bplcon0 &&
+            (bplcon0.Length != 4 || !bplcon0.All(Uri.IsHexDigit)))
+            throw new ArgumentException("expectedBplcon0 requires a four-digit hexadecimal register value.");
         if (action.Label != null) Name(action.Label);
         switch (action.Type)
         {
             case "wait": case "mouse": case "reset": case "restore": break;
+            case "trace-display-start": case "trace-display-stop":
+                if (!scenario.TraceDisplayControl)
+                    throw new ArgumentException("Display trace actions require traceDisplayControl.");
+                break;
             case "key": case "key-down": case "key-up":
                 if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || (action.Modifiers ?? []).Any(key => key < 0 || key > 0x7F))
                     throw new ArgumentOutOfRangeException(nameof(action.Key));
                 if (action.Type != "key" && (action.Modifiers?.Count ?? 0) != 0)
                     throw new ArgumentException("Held-key actions use separate key-down/key-up events for modifiers.");
                 break;
-            case "click": case "joystick":
+            case "click": case "joystick": case "joystick-down": case "joystick-up":
+                if ((action.Type is "joystick-down" or "joystick-up") && string.IsNullOrWhiteSpace(action.Button))
+                    throw new ArgumentException("Held joystick actions require an explicit button.");
                 var buttons = Enum.Parse<AmigaJoystickButtons>(action.Button ?? "Fire", true);
                 const AmigaJoystickButtons supportedButtons = AmigaJoystickButtons.Up | AmigaJoystickButtons.Down |
                     AmigaJoystickButtons.Left | AmigaJoystickButtons.Right | AmigaJoystickButtons.Fire |
                     AmigaJoystickButtons.Second | AmigaJoystickButtons.Third;
-                if ((buttons & ~supportedButtons) != 0)
+                if ((buttons & ~supportedButtons) != 0 ||
+                    ((action.Type is "joystick-down" or "joystick-up") && buttons == 0))
                     throw new ArgumentException("Unsupported controller button bits.");
+                break;
+            case "mouse-button-down": case "mouse-button-up":
+                var mouseButton = Enum.Parse<AmigaJoystickButtons>(action.Button ?? "Fire", true);
+                if (mouseButton is not (AmigaJoystickButtons.Fire or AmigaJoystickButtons.Second or AmigaJoystickButtons.Third))
+                    throw new ArgumentException("Mouse button edges require one of Fire, Second or Third.");
                 break;
             case "disk": Disk(action.Disk, action.Drive); break;
             case "eject":
@@ -145,7 +212,8 @@ static byte[] StateHash(Action<BinaryWriter> save)
     return SHA256.HashData(bytes.GetBuffer().AsSpan(0, checked((int)bytes.Length)));
 }
 
-static string Run(Scenario scenario, string output)
+static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, bool writeImages, string imageLabel,
+    bool writeRawFrame)
 {
     if (string.IsNullOrWhiteSpace(scenario.Name) || scenario.Name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || scenario.Name is "." or "..")
         throw new ArgumentException("Scenario name must be a valid directory name.");
@@ -197,6 +265,38 @@ static string Run(Scenario scenario, string output)
     using var copperTrace = scenario.TraceCopper ? new StreamWriter(Path.Combine(directory, "copper.jsonl")) : null;
     if (copperTrace != null) system.Agnus.Copper.InstructionExecuted += entry =>
         copperTrace.WriteLine(JsonSerializer.Serialize(entry));
+    using var displayTrace = scenario.TraceDisplayControl
+        ? new StreamWriter(Path.Combine(directory, "display-control.jsonl")) : null;
+    bool displayTraceEnabled = scenario.TraceDisplayControl &&
+        !(scenario.Actions?.Any(action => action.Type == "trace-display-start") ?? false);
+    if (displayTrace != null)
+    {
+        var displayOffsets = new HashSet<uint> {
+            0x08E, 0x090, 0x092, 0x094, 0x096, 0x0E0, 0x0E2, 0x0E4, 0x0E6,
+            0x100, 0x108, 0x10A, 0x1E4
+        };
+        system.Bus.WriteObserved += (address, size, value, region) =>
+        {
+            uint offset = address & 0x1FE;
+            if (!displayTraceEnabled || region != AmigaEmulator.Core.Memory.AmigaAddressRegion.CustomRegisters ||
+                !displayOffsets.Contains(offset)) return;
+            displayTrace.WriteLine(JsonSerializer.Serialize(new {
+                source = "cpu", frame = system.FrameCounter, beam = system.GetBeamDebugInfo(),
+                register = offset.ToString("X3"), size, value = value.ToString("X8"),
+                state = system.GetDisplayRegisterDebugInfo()
+            }));
+        };
+        system.Agnus.Copper.CustomRegisterWritten += (address, size) =>
+        {
+            uint offset = address & 0x1FE;
+            if (!displayTraceEnabled || !displayOffsets.Contains(offset)) return;
+            displayTrace.WriteLine(JsonSerializer.Serialize(new {
+                source = "copper", frame = system.FrameCounter, beam = system.GetBeamDebugInfo(),
+                register = offset.ToString("X3"), size,
+                state = system.GetDisplayRegisterDebugInfo()
+            }));
+        };
+    }
     using var copperBuildTrace = scenario.TraceCopperBuild ? new StreamWriter(Path.Combine(directory, "copper-build.jsonl")) : null;
     if (copperBuildTrace != null) system.Bus.WriteObserved += (address, size, value, region) =>
     {
@@ -247,6 +347,8 @@ static string Run(Scenario scenario, string output)
         switch (action.Type)
         {
             case "wait": system.RunChipCycles(action.Cycles); break;
+            case "trace-display-start": displayTraceEnabled = true; break;
+            case "trace-display-stop": displayTraceEnabled = false; break;
             case "key":
                 var modifiers = action.Modifiers ?? [];
                 if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || modifiers.Any(key => key < 0 || key > 0x7F))
@@ -277,7 +379,7 @@ static string Run(Scenario scenario, string output)
                 {
                     int x = action.X * i / slices, y = action.Y * i / slices;
                     system.Input.MoveMouse(AmigaControlPort.Port0, x - previousX, y - previousY);
-                    system.RunChipCycles(120_000);
+                    system.RunChipCycles(action.MouseStepCycles == 0 ? 120_000 : action.MouseStepCycles);
                     previousX = x; previousY = y;
                 }
                 break;
@@ -289,6 +391,19 @@ static string Run(Scenario scenario, string output)
                 system.RunChipCycles(action.Cycles > 0 ? action.Cycles : 400_000);
                 system.Input.SetJoystickButton(port, button, false);
                 system.RunChipCycles(400_000);
+                break;
+            // Exact controller edges allow a continuous hold across frame samples.
+            // The legacy joystick action intentionally adds 400,000 released clocks.
+            case "joystick-down": case "joystick-up":
+                system.Input.SetJoystickButton(AmigaControlPort.Port1,
+                    Enum.Parse<AmigaJoystickButtons>(action.Button, true), action.Type == "joystick-down");
+                system.RunChipCycles(action.Cycles);
+                break;
+            case "mouse-button-down": case "mouse-button-up":
+                system.Input.SetMouseButton(AmigaControlPort.Port0,
+                    Enum.Parse<AmigaJoystickButtons>(action.Button ?? "Fire", true),
+                    action.Type == "mouse-button-down");
+                system.RunChipCycles(action.Cycles);
                 break;
             case "disk": Mount(action.Disk, action.Drive); break;
             case "write-protect":
@@ -328,21 +443,52 @@ static string Run(Scenario scenario, string output)
                 break;
             default: throw new ArgumentException($"Unknown action {action.Type}");
         }
-        Capture(action.Label ?? action.Type, timer.Elapsed.TotalSeconds);
+        var (frameHash, nonBlackPixels, nativeFrameHash, interlacedFrameHash, nativeInterlacedFrameHash) =
+            Capture(action.Label ?? action.Type, timer.Elapsed.TotalSeconds);
         if (firstUnexpectedNonRomException != null)
             throw new InvalidOperationException($"Unexpected guest CPU fault after {action.Label ?? action.Type}: {JsonSerializer.Serialize(firstUnexpectedNonRomException)}.");
         if (scenario.MaximumNonRomExceptions.HasValue && nonRomExceptions > scenario.MaximumNonRomExceptions.Value)
             throw new InvalidOperationException($"Guest CPU faults exceeded the allowed limit after {action.Label ?? action.Type}: {nonRomExceptions} (first: {JsonSerializer.Serialize(firstNonRomException)}).");
         if (action.ExpectedFrameHash != null && !string.Equals(action.ExpectedFrameHash,
-            Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(system.PresentedFrameBuffer.Pixels.AsSpan()))),
-            StringComparison.OrdinalIgnoreCase))
+            frameHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"Framebuffer differs from the reviewed reference after {action.Label ?? action.Type}.");
+        if (action.ExpectedNativeFrameHash != null && !string.Equals(action.ExpectedNativeFrameHash,
+            nativeFrameHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Native SHRES framebuffer differs after {action.Label ?? action.Type}: {nativeFrameHash ?? "no native frame"}.");
+        if (action.ExpectedInterlacedFrameHash != null && !string.Equals(action.ExpectedInterlacedFrameHash,
+            interlacedFrameHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Interlaced framebuffer differs after {action.Label ?? action.Type}: {interlacedFrameHash ?? "no complete field pair"}.");
+        if (action.ExpectInterlacedFrame.HasValue &&
+            action.ExpectInterlacedFrame.Value != (interlacedFrameHash != null))
+            throw new InvalidOperationException($"Interlaced framebuffer presence differs after {action.Label ?? action.Type}.");
+        if (action.ExpectedNativeInterlacedFrameHash != null && !string.Equals(action.ExpectedNativeInterlacedFrameHash,
+            nativeInterlacedFrameHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Native interlaced framebuffer differs after {action.Label ?? action.Type}: {nativeInterlacedFrameHash ?? "no complete native field pair"}.");
+        if (action.ExpectNativeInterlacedFrame.HasValue &&
+            action.ExpectNativeInterlacedFrame.Value != (nativeInterlacedFrameHash != null))
+            throw new InvalidOperationException($"Native interlaced framebuffer presence differs after {action.Label ?? action.Type}.");
+        if (action.ExpectedBplcon0 != null && !system.GetDisplayRegisterDebugInfo().StartsWith(
+            $"BPLCON0:{action.ExpectedBplcon0}", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"BPLCON0 differs after {action.Label ?? action.Type}: {system.GetDisplayRegisterDebugInfo()}.");
+        if (action.ForbiddenFrameHashes?.Contains(frameHash, StringComparer.OrdinalIgnoreCase) == true)
+            throw new InvalidOperationException($"Framebuffer matches a forbidden reviewed screen after {action.Label ?? action.Type}: {frameHash}.");
+        if (action.ExpectedCiaAPortA != null && !string.Equals(action.ExpectedCiaAPortA,
+            system.Input.GetCiaAPortAInputValue().ToString("X2"), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"CIA-A input differs from the expected value after {action.Label ?? action.Type}.");
+        if (action.ExpectedPotInp != null && !string.Equals(action.ExpectedPotInp,
+            system.Input.ReadPotInp(0).ToString("X4"), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"POTINP input differs from the expected value after {action.Label ?? action.Type}.");
+        if (action.ExpectedJoy1 != null && !string.Equals(action.ExpectedJoy1,
+            system.Input.ReadJoyDat(AmigaControlPort.Port1).ToString("X4"), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"JOY1DAT differs from the expected value after {action.Label ?? action.Type}.");
         if (system.Bus.HardDisk.ReadSectors < action.MinimumHardDiskReads)
             throw new InvalidOperationException($"Expected at least {action.MinimumHardDiskReads} HDF sector reads after {action.Label ?? action.Type}.");
+        if (action.MinimumNonBlackPixels > 0 && nonBlackPixels < action.MinimumNonBlackPixels)
+            throw new InvalidOperationException($"Visible pixels fell below {action.MinimumNonBlackPixels} after {action.Label ?? action.Type}; black output is not gameplay evidence.");
     }
     if (scenario.ExpectPcmciaRam && !GuestMemory().Any(m => m.Lower >= 0x600000 && m.Lower < 0x600400 && m.Upper == 0x600000 + system.Bus.Pcmcia.Size))
         throw new InvalidOperationException("Guest Exec did not register the inserted PCMCIA SRAM card.");
-    SaveCheckpoint("checkpoint");
+    if (writeFinalCheckpoint) SaveCheckpoint("checkpoint");
     Console.WriteLine($"DONE {scenario.Name} frame={system.FrameCounter} PC={system.Cpu.PC:X6}");
     return machine.ToString();
 
@@ -361,34 +507,108 @@ static string Run(Scenario scenario, string output)
         system.Bus.FloppyController.InsertDrive(drive, AdfImage.Load(path), scenario.FloppyReadOnly);
         mounted = MountedMediaInfo.ForFloppy(drive, Path.GetFileName(path), path, scenario.FloppyReadOnly);
     }
-    void Capture(string label, double seconds)
+    (string Hash, int NonBlackPixels, string NativeHash, string InterlacedHash, string NativeInterlacedHash)
+        Capture(string label, double seconds)
     {
         var frame = system.PresentedFrameBuffer;
-        string imagePath = Path.Combine(directory, $"{step++:00}-{label}.png");
-        using var bitmap = new Bitmap(frame.Width, frame.Height, PixelFormat.Format32bppArgb);
-        var data = bitmap.LockBits(new Rectangle(0, 0, frame.Width, frame.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-        try
+        int captureIndex = step++;
+        bool captureImage = writeImages && (imageLabel == null || string.Equals(imageLabel, label, StringComparison.Ordinal));
+        string imagePath = captureImage ? Path.Combine(directory, $"{captureIndex:00}-{label}.png") : null;
+        if (captureImage) SaveArgbPng(imagePath, frame.Pixels, frame.Width, frame.Height);
+        if (captureImage && writeRawFrame)
         {
-            int[] pixels = new int[frame.Pixels.Length];
-            Buffer.BlockCopy(frame.Pixels, 0, pixels, 0, pixels.Length * 4);
-            Marshal.Copy(pixels, 0, data.Scan0, pixels.Length);
+            var raw = system.FrameBuffer;
+            SaveArgbPng(Path.Combine(directory, $"{captureIndex:00}-{label}-raw.png"),
+                raw.Pixels, raw.Width, raw.Height);
+            var spritePixels = new uint[raw.Pixels.Length];
+            raw.CopySpritePixelsTo(spritePixels);
+            SaveArgbPng(Path.Combine(directory, $"{captureIndex:00}-{label}-raw-sprites.png"),
+                spritePixels, raw.Width, raw.Height);
+            var playfieldPixels = new uint[raw.Pixels.Length];
+            for (int pixel = 0; pixel < playfieldPixels.Length; pixel++)
+                playfieldPixels[pixel] = raw.ReadPlayfieldPixel(pixel);
+            SaveArgbPng(Path.Combine(directory, $"{captureIndex:00}-{label}-raw-playfield.png"),
+                playfieldPixels, raw.Width, raw.Height);
         }
-        finally { bitmap.UnlockBits(data); }
-        bitmap.Save(imagePath, ImageFormat.Png);
+        string nativeImagePath = null;
+        string nativeHash = null;
+        if (frame.SuperHiresPlayfieldPixels != null)
+        {
+            uint[] native = new uint[frame.Pixels.Length * 2];
+            frame.CopyCompositedSuperHiresTo(native);
+            if (captureImage)
+            {
+                nativeImagePath = Path.Combine(directory, $"{captureIndex:00}-{label}-native-shres.png");
+                SaveArgbPng(nativeImagePath, native, frame.Width * 2, frame.Height);
+            }
+            nativeHash = Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(native.AsSpan())));
+        }
+        string interlacedImagePath = null;
+        string interlacedHash = null;
+        if (system.CompletedInterlacedFrameBuffer is { } interlaced)
+        {
+            if (captureImage)
+            {
+                interlacedImagePath = Path.Combine(directory, $"{captureIndex:00}-{label}-interlaced.png");
+                SaveArgbPng(interlacedImagePath, interlaced.Pixels, interlaced.Width, interlaced.Height);
+            }
+            interlacedHash = Convert.ToHexString(SHA256.HashData(MemoryMarshal.AsBytes(interlaced.Pixels.AsSpan())));
+        }
+        string nativeInterlacedImagePath = null;
+        string nativeInterlacedHash = null;
+        if (system.CompletedNativeInterlacedFrameBuffer is { } nativeInterlaced)
+        {
+            if (captureImage)
+            {
+                nativeInterlacedImagePath = Path.Combine(directory, $"{captureIndex:00}-{label}-native-interlaced.png");
+                SaveArgbPng(nativeInterlacedImagePath, nativeInterlaced.Pixels,
+                    nativeInterlaced.Width, nativeInterlaced.Height);
+            }
+            nativeInterlacedHash = Convert.ToHexString(SHA256.HashData(
+                MemoryMarshal.AsBytes(nativeInterlaced.Pixels.AsSpan())));
+        }
         var bytes = MemoryMarshal.AsBytes(frame.Pixels.AsSpan());
+        string frameHash = Convert.ToHexString(SHA256.HashData(bytes));
+        int nonBlackPixels = frame.Pixels.Count(pixel => (pixel & 0xFFFFFFu) != 0);
         log.WriteLine(JsonSerializer.Serialize(new { label, seconds, frame = system.FrameCounter,
-            pc = system.Cpu.PC.ToString("X6"), hash = Convert.ToHexString(SHA256.HashData(bytes)),
-            presentation = system.GetPresentationDebugInfo(), cpu = system.GetCpuDebugInfo(), cacheControl = system.Cpu.CacheControl.ToString("X8"), stopped = system.Cpu.IsStopped, exceptions,
+            pc = system.Cpu.PC.ToString("X6"), hash = frameHash,
+            nonBlackPixels,
+            presentation = system.GetPresentationDebugInfo(),
+            displayRegisters = system.GetDisplayRegisterDebugInfo(),
+            cpu = system.GetCpuDebugInfo(), cacheControl = system.Cpu.CacheControl.ToString("X8"), stopped = system.Cpu.IsStopped, exceptions,
             exceptionObservations = scenario.TraceExceptions ? new { nonRomExceptions, nonRomExceptionVectors, firstNonRomException } : null,
             disk = system.Bus.FloppyController.GetDebugInfo(), hardDisk = new { path = system.Bus.HardDisk.Image?.Path, reads = system.Bus.HardDisk.ReadSectors, writes = system.Bus.HardDisk.WrittenSectors },
             diskDma = system.Paula.GetDiskDebugInfo(), audio = system.Paula.GetAudioDebugInfo(), input = new { port0 = system.Input.Port0Mode.ToString(),
                 port1 = system.Input.Port1Mode.ToString(), joy0 = system.Input.ReadJoyDat(AmigaControlPort.Port0).ToString("X4"),
+                joy1 = system.Input.ReadJoyDat(AmigaControlPort.Port1).ToString("X4"),
+                ciaAPortA = system.Input.GetCiaAPortAInputValue().ToString("X2"),
+            potInp = system.Input.ReadPotInp(0).ToString("X4"),
                 queuedKeyboardEvents = system.Input.QueuedKeyboardEvents },
+            memoryWatch = scenario.MemoryWatchAddresses?.ToDictionary(
+                address => address.ToString("X6"), address => system.Bus.PeekByte(address).ToString("X2")),
             fastRam = new { configured = model.HasDesktopResources ? model.FastRamBytes != 0 : system.Bus.AutoConfig.Configured,
                 address = model.HasDesktopResources ? model.MotherboardFastRamStart : system.Bus.AutoConfig.BaseAddress },
             pcmcia = new { size = system.Bus.Pcmcia.Size, status = system.Bus.PeekByte(0xDA8000), changes = system.Bus.PeekByte(0xDA9000),
-                guestMemory = scenario.ExpectPcmciaRam ? GuestMemory() : null }, accuracy = accuracy.Name, imagePath, gameplay = "requires-visual-review" }));
+                guestMemory = scenario.ExpectPcmciaRam ? GuestMemory() : null }, accuracy = accuracy.Name,
+            imagePath, nativeImagePath, nativeHash, interlacedImagePath, interlacedHash,
+            nativeInterlacedImagePath, nativeInterlacedHash,
+            gameplay = "requires-visual-review" }));
         log.Flush();
+        return (frameHash, nonBlackPixels, nativeHash, interlacedHash, nativeInterlacedHash);
+    }
+
+    static void SaveArgbPng(string path, uint[] pixels, int width, int height)
+    {
+        using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+        var data = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            int[] upload = new int[pixels.Length];
+            Buffer.BlockCopy(pixels, 0, upload, 0, pixels.Length * 4);
+            Marshal.Copy(upload, 0, data.Scan0, upload.Length);
+        }
+        finally { bitmap.UnlockBits(data); }
+        bitmap.Save(path, ImageFormat.Png);
     }
 
     List<GuestMemoryRegion> GuestMemory()
@@ -431,7 +651,9 @@ class Scenario
     public bool TraceExceptions { get; set; }
     public int? MaximumNonRomExceptions { get; set; }
     public List<int> AllowedNonRomExceptionVectors { get; set; }
+    public List<uint> MemoryWatchAddresses { get; set; }
     public bool TraceCopper { get; set; }
+    public bool TraceDisplayControl { get; set; }
     public bool TraceCopperBuild { get; set; }
     public List<ScenarioAction> Actions { get; set; }
 }
@@ -440,6 +662,8 @@ class ScenarioAction
     public string Type { get; set; }
     public string Label { get; set; }
     public int Cycles { get; set; }
+    // Zero preserves the established 120,000-chip-clock pacing per <=8-count move.
+    public int MouseStepCycles { get; set; }
     public int? Key { get; set; }
     public List<int> Modifiers { get; set; }
     public int X { get; set; }
@@ -451,5 +675,18 @@ class ScenarioAction
     public bool ResetBeforeRestore { get; set; }
     public bool? WriteProtected { get; set; }
     public string ExpectedFrameHash { get; set; }
+    public string ExpectedNativeFrameHash { get; set; }
+    public string ExpectedInterlacedFrameHash { get; set; }
+    public bool? ExpectInterlacedFrame { get; set; }
+    public string ExpectedNativeInterlacedFrameHash { get; set; }
+    public bool? ExpectNativeInterlacedFrame { get; set; }
+    public string ExpectedCiaAPortA { get; set; }
+    public string ExpectedPotInp { get; set; }
+    public string ExpectedJoy1 { get; set; }
+    public string ExpectedBplcon0 { get; set; }
+    // A reviewed loss/menu frame may contain many nonblack pixels; reject it explicitly.
+    public List<string> ForbiddenFrameHashes { get; set; }
     public long MinimumHardDiskReads { get; set; }
+    // An optional scene-specific guard; visible menu/error pixels still require review.
+    public int MinimumNonBlackPixels { get; set; }
 }

@@ -40,6 +40,16 @@ namespace AmigaEmulator.Core.Cpu
             if (!translation.Accessible(needsWrite)) throw new MmuAccessException(address, fc, write, size, _locked030Access);
             return translation.Physical;
         }
+        private void Probe030Address(uint address, bool write, int size = 2)
+        {
+            int fc = _functionCodeOverride >= 0 ? _functionCodeOverride : (IsSupervisor() ? 5 : 1);
+            bool needsWrite = write || _locked030Access;
+            // A prospective multiword transfer must not mark a descriptor
+            // used/modified or change ATC history before any data bus cycle.
+            var translation = _mmu.Translate(address, fc, needsWrite, false);
+            if (!translation.Accessible(needsWrite))
+                throw new MmuAccessException(address, fc, write, size, _locked030Access);
+        }
         private uint ReadLockedMemory(uint address, int size)
         {
             if (!Has030Cache) return ReadMemory(address, size);

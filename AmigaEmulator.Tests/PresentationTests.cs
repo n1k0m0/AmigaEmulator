@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using SharpPixels;
 using AmigaEmulator.Core;
+using AmigaEmulator.Core.Video;
 
 namespace AmigaEmulator.Tests
 {
@@ -21,12 +22,41 @@ namespace AmigaEmulator.Tests
             yield return Test("Changed frames invalidate cache without steady state allocations", TestCache);
             yield return Test("Upscale modes share viewport; stretch fills client despite margins", () => InSta(TestGeometry));
             yield return Test("Real DIB paint applies upscale with correct crop and row stride", () => InSta(TestPaint));
+            yield return Test("Native SHRES paint doubles only source samples, retaining host geometry and crop", () => InSta(TestNativeSource));
+            yield return Test("Woven native fields retain both sample axes, crop and logical target geometry", () => InSta(TestInterlacedNativeSource));
+            yield return Test("PAL interlace retains independent long and short scanlines", TestInterlaceFields);
             yield return Test("Frame failure diagnostic hook preserves original exception", () => InSta(TestFailureHook));
             yield return Test("Host failure reports preserve evidence and tolerate reporting failures", TestFailureReport);
         }
 
         private static ChipTestCase Test(string name, Action action) => new("Presentation", name,
             "Published Scale2x/3x rules; HQx; Win32 DIB and viewport regression", action);
+
+        private static void TestInterlaceFields()
+        {
+            var fields = new InterlaceFieldBuffer(3, 2);
+            uint[] shortField = { 1, 2, 3, 4, 5, 6 };
+            uint[] longField = { 11, 12, 13, 14, 15, 16 };
+            fields.Capture(shortField, false);
+            Check.True(!fields.HasBothFields, "One field must not be exposed as a complete woven image.");
+            fields.Capture(longField, true);
+            Check.True(fields.HasBothFields, "Both field polarities complete the woven image.");
+            uint[] expected = { 11, 12, 13, 1, 2, 3, 14, 15, 16, 4, 5, 6 };
+            Check.True(fields.Pixels.AsSpan().SequenceEqual(expected), "Long and short scanlines retain their own colors and order.");
+            fields.Capture(new uint[] { 21, 22, 23, 24, 25, 26 }, false);
+            Check.Equal(21u, fields.Pixels[3], "A new short field replaces only odd scanlines.");
+            Check.Equal(11u, fields.Pixels[0], "The last long field remains on even scanlines.");
+            fields.Capture(new uint[] { 31, 32, 33, 34, 35, 36 }, false);
+            Check.True(!fields.HasBothFields, "Repeated short fields cannot expose a stale long field.");
+            fields.Capture(new uint[] { 41, 42, 43, 44, 45, 46 }, true);
+            Check.True(fields.HasBothFields, "A fresh opposite field completes the pair after repeated polarity.");
+            Check.Equal(41u, fields.Pixels[0], "The fresh long field replaces the invalidated long row.");
+            Check.Equal(31u, fields.Pixels[3], "The latest short field pairs with the fresh long field.");
+            fields.Invalidate();
+            Check.True(!fields.HasBothFields, "A mode change, reset or restore invalidates the stale pair.");
+            fields.Capture(longField, true);
+            Check.True(!fields.HasBothFields, "A later long field cannot pair with an invalidated short field.");
+        }
 
         private static void TestDiagonal()
         {
@@ -151,6 +181,87 @@ namespace AmigaEmulator.Tests
                     Check.Equal(expected, painted.GetPixel(201, 201).ToArgb(), "HQx reference color reaches real paint " + mode);
                 }
             }
+        }
+
+        private static void TestNativeSource()
+        {
+            using var window = new Fixture(4, 2, 4, 2);
+            window.ClientSize = new Size(400, 200);
+            Array.Fill(window.Pixels, 0xFFFF00FFu);
+            uint[] native = new uint[16];
+            Array.Fill(native, 0xFFFF00FFu);
+            for (int y = 0; y < 2; y++)
+            {
+                int row = y * 8;
+                native[row + 2] = 0xFFFF0000u;
+                native[row + 3] = 0xFF00FF00u;
+                native[row + 4] = 0xFF0000FFu;
+                native[row + 5] = 0xFFFFFFFFu;
+            }
+            window.SetPresentationSourceCrop(1, 0, 1, 0);
+            Rectangle logicalTarget = window.Target;
+            window.SetNativePresentationPixels(native);
+            Check.Equal(logicalTarget, window.Target, "Native samples do not change window or mouse geometry.");
+            Check.Equal(new Rectangle(2, 0, 4, 2), window.Source,
+                "Both horizontal crop edges are doubled for the native source.");
+            window.SetPresentationEffects(SharpPixelsGpuFilterMode.Sharp, SharpPixelsGpuUpscaleMode.None);
+            using (Bitmap painted = window.PaintFrame())
+            {
+                Check.Equal(Color.Red.ToArgb(), painted.GetPixel(50, 50).ToArgb(), "First native sample is visible.");
+                Check.Equal(Color.Lime.ToArgb(), painted.GetPixel(150, 50).ToArgb(), "Second native sample is visible.");
+                Check.Equal(Color.Blue.ToArgb(), painted.GetPixel(250, 50).ToArgb(), "Third native sample is visible.");
+                Check.Equal(Color.White.ToArgb(), painted.GetPixel(350, 50).ToArgb(), "Fourth native sample is visible.");
+            }
+            foreach (var mode in new[] { SharpPixelsGpuUpscaleMode.Scale2x, SharpPixelsGpuUpscaleMode.Hq2x })
+            {
+                window.SetPresentationEffects(SharpPixelsGpuFilterMode.Sharp, mode);
+                using Bitmap painted = window.PaintFrame();
+                Check.Equal(Color.Red.ToArgb(), painted.GetPixel(1, 1).ToArgb(), "Native crop begins at red in " + mode);
+                Check.Equal(Color.White.ToArgb(), painted.GetPixel(398, 1).ToArgb(), "Native crop ends at white in " + mode);
+            }
+            foreach (var filter in new[] { SharpPixelsGpuFilterMode.Crt, SharpPixelsGpuFilterMode.Tv })
+            {
+                window.SetPresentationEffects(filter, SharpPixelsGpuUpscaleMode.Hq4x);
+                using Bitmap painted = window.PaintFrame();
+                Check.Equal(window.ClientSize.Width, painted.Width, "Filtered native frame retains target width.");
+            }
+            window.SetNativePresentationPixels(null);
+            Check.Equal(new Rectangle(1, 0, 2, 2), window.Source, "Logical crop returns after SHRES.");
+            window.SetPresentationEffects(SharpPixelsGpuFilterMode.Sharp, SharpPixelsGpuUpscaleMode.None);
+            using Bitmap restored = window.PaintFrame();
+            Check.Equal(Color.Magenta.ToArgb(), restored.GetPixel(200, 100).ToArgb(),
+                "The normal frame returns after SHRES without native carryover.");
+        }
+
+        private static void TestInterlacedNativeSource()
+        {
+            using var window = new Fixture(4, 2, 4, 2);
+            window.ClientSize = new Size(400, 200);
+            Array.Fill(window.Pixels, 0xFFFF00FFu);
+            window.SetPresentationSourceCrop(1, 0, 1, 0);
+            Rectangle logicalTarget = window.Target;
+            uint[] native = new uint[8 * 4];
+            for (int y = 0; y < 4; y++)
+                for (int x = 0; x < 8; x++)
+                    native[y * 8 + x] = (y & 1) == 0 ? 0xFF0000FFu : 0xFFFF0000u;
+            window.SetNativePresentationPixels(native, 2, 2);
+            Check.Equal(logicalTarget, window.Target, "Interlace changes the source, not mouse or target coordinates.");
+            Check.Equal(new Rectangle(2, 0, 4, 4), window.Source,
+                "Crop coordinates expand independently along both native axes.");
+            window.SetPresentationEffects(SharpPixelsGpuFilterMode.Sharp, SharpPixelsGpuUpscaleMode.None);
+            using (Bitmap painted = window.PaintFrame())
+            {
+                Check.Equal(Color.Blue.ToArgb(), painted.GetPixel(200, 20).ToArgb(), "First field row is blue.");
+                Check.Equal(Color.Red.ToArgb(), painted.GetPixel(200, 70).ToArgb(), "Second field row is red.");
+                Check.Equal(Color.Blue.ToArgb(), painted.GetPixel(200, 120).ToArgb(), "Third field row is blue.");
+                Check.Equal(Color.Red.ToArgb(), painted.GetPixel(200, 170).ToArgb(), "Fourth field row is red.");
+            }
+            window.SetNativePresentationPixels(null);
+            Check.Equal(new Rectangle(1, 0, 2, 2), window.Source,
+                "After LACE the logical 288-line source crop returns.");
+            using Bitmap restored = window.PaintFrame();
+            Check.Equal(Color.Magenta.ToArgb(), restored.GetPixel(200, 100).ToArgb(),
+                "The ordinary framebuffer returns without stale field rows.");
         }
 
         private static void InSta(Action action)

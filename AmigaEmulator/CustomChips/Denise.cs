@@ -158,6 +158,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
 
             _frameBuffer.Clear(0xFF0C1020);
+            _frameBuffer.DiscardSuperHiresPlayfield();
         }
 
         /// <summary>
@@ -166,7 +167,11 @@ namespace AmigaEmulator.Core.CustomChips
         public void BeginFrame()
         {
             _bitplanes.RefreshFromRegisters();
+            if (!_bitplanes.IsSuperHiresMode)
+                _frameBuffer.DiscardSuperHiresPlayfield();
             _frameBuffer.Clear(_bitplanes.BorderColorArgb);
+            if (_bitplanes.IsSuperHiresMode)
+                _frameBuffer.EnsureSuperHiresPlayfield();
         }
 
         /// <summary>
@@ -273,6 +278,12 @@ namespace AmigaEmulator.Core.CustomChips
 
             uint[] pixels = _frameBuffer.Pixels;
             System.Array.Fill(pixels, argb, (y * _frameBuffer.Width) + start, end - start);
+            if (_bitplanes.IsSuperHiresMode)
+                _frameBuffer.EnsureSuperHiresPlayfield();
+            if (_frameBuffer.SuperHiresPlayfieldPixels != null)
+            {
+                _frameBuffer.FillSuperHiresPlayfieldSpan((y * _frameBuffer.Width) + start, end - start, argb);
+            }
             _frameBuffer.ClearSpriteSpan((y * _frameBuffer.Width) + start, end - start);
         }
 
@@ -303,6 +314,8 @@ namespace AmigaEmulator.Core.CustomChips
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         private void RenderPixelSpan(int y, int beamY, long frame, int startFrameX, int endFrameX)
         {
+            if (_bitplanes.IsSuperHiresMode)
+                _frameBuffer.EnsureSuperHiresPlayfield();
             if (_bitplanes.IsAga) RenderPixelSpanCore(y, beamY, frame, startFrameX, endFrameX);
             else RenderLegacyPixelSpan(y, beamY, frame, startFrameX, endFrameX);
             if (_ecs && !_sprites.BorderSpritesEnabled) ApplyEcsDisplayWindow(y, beamY, startFrameX, endFrameX);
@@ -329,6 +342,8 @@ namespace AmigaEmulator.Core.CustomChips
             int row = y * _frameBuffer.Width;
             for (int x = start; x < end; x++)
                 _frameBuffer.Pixels[row + x] = _frameBuffer.ReadPlayfieldPixel(row + x);
+            if (_bitplanes.IsSuperHiresMode)
+                _frameBuffer.FillSuperHiresPlayfieldSpan(row + start, end - start, _bitplanes.ReadColorArgb(0));
             _frameBuffer.ClearSpriteSpan(row + start, end - start);
         }
 
@@ -352,7 +367,8 @@ namespace AmigaEmulator.Core.CustomChips
                 else FillPixelSpan(y, start, end, _bitplanes.ReadColorArgb(0));
                 return;
             }
-            bool hires = _bitplanes.IsHiresMode;
+            bool ecsSuperHires = _bitplanes.IsSuperHiresMode;
+            bool hires = _bitplanes.IsHiresMode || ecsSuperHires;
 
             uint[] pixels = _frameBuffer.Pixels;
             int row = y * _frameBuffer.Width;
@@ -365,6 +381,9 @@ namespace AmigaEmulator.Core.CustomChips
             int spriteGroup = 0;
             bool spriteVisible = false;
             uint playfieldArgb = 0;
+            uint secondSuperHiresArgb = 0;
+            int secondSuperHiresColorIndex = 0;
+            int secondSuperHiresPlaneMask = 0;
             bool spriteCoversPlayfield = false;
             for (int frameBufferX = start; frameBufferX < end; frameBufferX++)
             {
@@ -378,9 +397,24 @@ namespace AmigaEmulator.Core.CustomChips
                 // Reapplying the same HAM component is also idempotent. Keep
                 // this cache local to the span so raster writes stay immediate.
                 if (bitplaneActive && (hires || firstInPair))
-                    playfieldArgb = _bitplanes.ResolveLegacyColorArgb(bitplaneColorIndex, previousArgb);
+                {
+                    if (ecsSuperHires)
+                    {
+                        secondSuperHiresColorIndex = _bitplanes.RenderSuperHiresPixelInfo(
+                            screenX * 2 + 1, beamY, out secondSuperHiresPlaneMask);
+                        _bitplanes.ResolveSuperHiresPixelPair(bitplaneColorIndex,
+                            secondSuperHiresColorIndex,
+                            out playfieldArgb, out secondSuperHiresArgb);
+                    }
+                    else
+                        playfieldArgb = _bitplanes.ResolveLegacyColorArgb(bitplaneColorIndex, previousArgb);
+                }
                 uint argb = bitplaneActive ? playfieldArgb
                     : _bitplanes.RenderFallbackPixel(screenX, y, frame);
+                if (ecsSuperHires)
+                    _frameBuffer.RecordSuperHiresPlayfieldPair(row + frameBufferX,
+                        bitplaneActive ? playfieldArgb : argb,
+                        bitplaneActive ? secondSuperHiresArgb : argb);
                 if (spritesActive && firstInPair)
                     spriteVisible = _sprites.TryRenderPixel(screenX, beamY, out spriteArgb, out spriteGroup, out spriteMask);
                 if (collisionsActive && (hires || firstInPair))
@@ -393,6 +427,16 @@ namespace AmigaEmulator.Core.CustomChips
                     spriteCoversPlayfield = spriteVisible &&
                         ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex, bitplaneMask);
                 _frameBuffer.RecordSpritePixel(row + frameBufferX, argb, spriteCoversPlayfield ? spriteArgb : 0);
+                if (ecsSuperHires)
+                {
+                    uint secondSprite = 0;
+                    if (spritesActive && _sprites.TryRenderSuperHiresPixel(screenX * 2 + 1, beamY,
+                        out uint nativeSprite, out int nativeGroup, out _) &&
+                        ShouldSpriteCoverPlayfield(nativeGroup, secondSuperHiresColorIndex, secondSuperHiresPlaneMask))
+                        secondSprite = nativeSprite;
+                    _frameBuffer.RecordSuperHiresSpritePair(row + frameBufferX,
+                        spriteCoversPlayfield ? spriteArgb : 0, secondSprite);
+                }
                 previousArgb = argb; // HAM holds the playfield color before sprite composition.
                 if (spriteCoversPlayfield)
                 {
@@ -400,6 +444,8 @@ namespace AmigaEmulator.Core.CustomChips
                 }
 
                 pixels[row + frameBufferX] = argb;
+                if (!ecsSuperHires)
+                    _frameBuffer.RecordExpandedPixelIfNative(row + frameBufferX, argb);
             }
         }
 
@@ -434,6 +480,9 @@ namespace AmigaEmulator.Core.CustomChips
             int spriteGroup = 0;
             bool spriteVisible = false;
             uint playfieldArgb = 0;
+            uint secondSuperHiresArgb = 0;
+            int secondSuperHiresColorIndex = 0;
+            int secondSuperHiresPlaneMask = 0;
             bool spriteCoversPlayfield = false;
             for (int frameBufferX = start; frameBufferX < end; frameBufferX++)
             {
@@ -447,12 +496,27 @@ namespace AmigaEmulator.Core.CustomChips
                 // Reapplying the same HAM component is also idempotent. Keep
                 // this cache local to the span so raster writes stay immediate.
                 if (bitplaneActive && (hires || firstInPair))
-                    playfieldArgb = _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb);
+                {
+                    if (_bitplanes.IsSuperHiresMode)
+                    {
+                        secondSuperHiresColorIndex = _bitplanes.RenderSuperHiresPixelInfo(
+                            screenX * 2 + 1, beamY, out secondSuperHiresPlaneMask);
+                        _bitplanes.ResolveSuperHiresPixelPair(bitplaneColorIndex,
+                            secondSuperHiresColorIndex,
+                            out playfieldArgb, out secondSuperHiresArgb);
+                    }
+                    else
+                        playfieldArgb = _bitplanes.ResolveColorArgb(bitplaneColorIndex, previousArgb);
+                }
                 // BPLAM changes playfield palette addresses, never the COLOR00 border.
                 // Border blank remains active even when BRDRSPRT allows sprite output.
                 uint argb = !_bitplanes.IsInsideDisplayWindow(screenX, beamY)
                     ? _bitplanes.BorderColorArgb
                     : bitplaneActive ? playfieldArgb : _bitplanes.ReadColorArgb(0);
+                if (_bitplanes.IsSuperHiresMode)
+                    _frameBuffer.RecordSuperHiresPlayfieldPair(row + frameBufferX,
+                        bitplaneActive && _bitplanes.IsInsideDisplayWindow(screenX, beamY) ? playfieldArgb : argb,
+                        bitplaneActive && _bitplanes.IsInsideDisplayWindow(screenX, beamY) ? secondSuperHiresArgb : argb);
                 if (spritesActive && (fineSprites || firstInPair))
                     spriteVisible = _sprites.TryRenderPixel(screenX, beamY, out spriteArgb, out spriteGroup, out spriteMask);
                 if (collisionsActive && (hires || fineSprites || firstInPair))
@@ -465,6 +529,16 @@ namespace AmigaEmulator.Core.CustomChips
                     spriteCoversPlayfield = spriteVisible &&
                         ShouldSpriteCoverPlayfield(spriteGroup, bitplaneColorIndex, bitplaneMask);
                 _frameBuffer.RecordSpritePixel(row + frameBufferX, argb, spriteCoversPlayfield ? spriteArgb : 0);
+                if (_bitplanes.IsSuperHiresMode)
+                {
+                    uint secondSprite = 0;
+                    if (spritesActive && _sprites.TryRenderSuperHiresPixel(screenX * 2 + 1, beamY,
+                        out uint nativeSprite, out int nativeGroup, out _) &&
+                        ShouldSpriteCoverPlayfield(nativeGroup, secondSuperHiresColorIndex, secondSuperHiresPlaneMask))
+                        secondSprite = nativeSprite;
+                    _frameBuffer.RecordSuperHiresSpritePair(row + frameBufferX,
+                        spriteCoversPlayfield ? spriteArgb : 0, secondSprite);
+                }
                 previousArgb = argb; // HAM holds the playfield color before sprite composition.
                 if (spriteCoversPlayfield)
                 {
@@ -472,6 +546,8 @@ namespace AmigaEmulator.Core.CustomChips
                 }
 
                 pixels[row + frameBufferX] = argb;
+                if (!_bitplanes.IsSuperHiresMode)
+                    _frameBuffer.RecordExpandedPixelIfNative(row + frameBufferX, argb);
             }
         }
 

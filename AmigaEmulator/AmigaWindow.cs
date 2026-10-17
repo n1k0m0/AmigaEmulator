@@ -394,6 +394,7 @@ namespace AmigaEmulator
         /// Stores monitor Aperture Mode.
         /// </summary>
         private MonitorApertureMode _monitorApertureMode = MonitorApertureMode.Crt;
+        private uint[] _nativePresentedPixels;
         /// <summary>
         /// Stores paula Filter Mode.
         /// </summary>
@@ -751,6 +752,7 @@ namespace AmigaEmulator
                 ClearDeferredMediaMount();
                 ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
+                RefreshNativePresentationSource();
                 SynchronizeRestoredFloppySettings();
                 _lastLoadedSaveStatePath = slot.Path;
                 ResetAudioOutput();
@@ -773,7 +775,11 @@ namespace AmigaEmulator
         {
             _paintFrameReady = false;
             PollGamepads();
-            if (UpdateNetwork()) return;
+            if (UpdateNetwork())
+            {
+                SetNativePresentationPixels(null);
+                return;
+            }
             int cycles = CalculateCyclesForUpdate();
             if (cycles > 0)
             {
@@ -786,6 +792,7 @@ namespace AmigaEmulator
             if (_system.FrameCounter != _lastFrame)
             {
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
+                RefreshNativePresentationSource();
                 _lastFrame = _system.FrameCounter;
                 PublishNetworkFrame();
                 _paintFrameReady = true;
@@ -2040,8 +2047,9 @@ namespace AmigaEmulator
             {
                 string saveDirectory = SaveStateFile.GetSaveDirectoryForMedia(GetSaveDirectory(), _mountedMedia);
                 string savePath = SaveStateFile.CreateSavePath(saveDirectory);
-                uint[] screenshotPixels = new uint[Pixels.Length];
-                Array.Copy(Pixels, screenshotPixels, screenshotPixels.Length);
+                var presented = _system.PresentedFrameBuffer;
+                uint[] screenshotPixels = new uint[presented.Pixels.Length];
+                Array.Copy(presented.Pixels, screenshotPixels, screenshotPixels.Length);
                 SaveStateFile.Write(
                     savePath,
                     _system,
@@ -2050,8 +2058,8 @@ namespace AmigaEmulator
                     GetSettingsRamProfile(_ramProfile),
                     _accuracyProfile,
                     screenshotPixels,
-                    _system.Model.VisibleWidth,
-                    _system.Model.VisibleHeight);
+                    presented.Width,
+                    presented.Height);
                 RefreshSaveStateSlots();
                 SelectSaveStatePath(savePath);
                 _statusText = "SAVED " + Path.GetFileName(savePath).ToUpperInvariant();
@@ -2136,6 +2144,7 @@ namespace AmigaEmulator
                 SynchronizeRestoredMachineSettings(true);
                 ApplyFloppyTiming();
                 _system.PresentedFrameBuffer.CopyTo(Pixels);
+                RefreshNativePresentationSource();
                 SynchronizeRestoredFloppySettings();
                 _lastLoadedSaveStatePath = slot.Path;
                 SaveMountedMediaSettings();
@@ -4201,6 +4210,30 @@ namespace AmigaEmulator
         /// <summary>
         /// Applies Video Presentation to the current state.
         /// </summary>
+        private void RefreshNativePresentationSource()
+        {
+            if (_system.CompletedNativeInterlacedFrameBuffer is { } nativeFields)
+            {
+                SetNativePresentationPixels(nativeFields.Pixels, 2, 2);
+                return;
+            }
+            if (_system.CompletedInterlacedFrameBuffer is { } fields)
+            {
+                SetNativePresentationPixels(fields.Pixels, 1, 2);
+                return;
+            }
+            var frame = _system.PresentedFrameBuffer;
+            if (frame.SuperHiresPlayfieldPixels == null)
+            {
+                SetNativePresentationPixels(null);
+                return;
+            }
+
+            _nativePresentedPixels ??= new uint[Pixels.Length * 2];
+            if (frame.CopyCompositedSuperHiresTo(_nativePresentedPixels))
+                SetNativePresentationPixels(_nativePresentedPixels);
+        }
+
         private void ApplyVideoPresentation()
         {
             SetPresentationEffects(ToSharpPixelsFilter(_videoFilterMode), ToSharpPixelsUpscale(_videoUpscaleMode));

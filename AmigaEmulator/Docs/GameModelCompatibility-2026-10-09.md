@@ -1320,3 +1320,23 @@ check still matches all fifty original root ADFs and the installed OS HDF.
 Evidence: `%APPDATA%/AmigaEmulator/diagnostics/MegaCannon-20261011-085650-892a6697/`;
 see MachineModels.md for exact directories, causal traces, rejected experiments
 and remaining acceptance gates.
+
+### Cold single-drive follow-up — 2026-10-12
+
+The exact early-confirm address error above is fixed by correct PAL 312/313-line
+timing; MachineModels.md records its fixed-field negative control. The separate
+cold black scene retries `pstuff.lbm` after its fade. That boot asset is present
+in Disk 1 and absent from Disks 2/3. Keeping Disk 1 in DF0 and data disks in
+DF1/DF2 remains the simpler reviewed setup.
+
+`Tools/cannon-df0-cold-gameplay-scenario.json` also has an uninterrupted native
+A500/1.3 cold DF0-only route with 512 KiB Chip + 512 KiB Slow. Disk
+1 -> 2 -> 1 -> 2 -> 1 -> 2 reaches recruitment and real Mission 1, living
+Jools/Jops, P, held pause, exact power-cycle restore, resume and a playfield
+movement order. A paired no-order continuation retains the same cursor/sidebar
+and shows different squad movement. Assertions retain the reviewed images
+and reject black gameplay checkpoints. No ROM/game data is supplied or changed.
+Later missions, other boards' cold DF0 routes and requester visibility remain
+open. The current suite passes 342/342 after a separate signed Blitter-modulo
+fix; paired Cannon/Siedler/Moonstone/Mega controls retain their states.
+Evidence: MachineModels.md's Cold DF0 Cannon and Blitter modulo follow-up.

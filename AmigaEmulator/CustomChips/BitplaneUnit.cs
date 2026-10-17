@@ -123,6 +123,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// OCS high-resolution bitplane DMA slot order inside one 4-cycle fetch unit.
         /// </summary>
         private static readonly int[] s_hiresFetchSequence = { 4, 2, 3, 1 };
+        /// <summary>ECS superhires fetches two planes in each two-cycle group.</summary>
+        private static readonly int[] s_superHiresFetchSequence = { 2, 1 };
         /// <summary>
         /// Stores registers.
         /// </summary>
@@ -159,6 +161,9 @@ namespace AmigaEmulator.Core.CustomChips
         /// Caches COLORxx registers as expanded ARGB values for pixel rendering.
         /// </summary>
         private readonly uint[] _paletteArgb;
+        // Derived from COLOR00..15; legacy savestates rebuild these caches.
+        [NonSerialized] private readonly uint[] _superHiresFirstArgb;
+        [NonSerialized] private readonly uint[] _superHiresSecondArgb;
         /// <summary>
         /// Stores DMA Pointers.
         /// </summary>
@@ -350,6 +355,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// Stores hires.
         /// </summary>
         private bool _hires;
+        [NonSerialized] private bool _superHires;
         /// <summary>
         /// Tracks whether BPLCON0 selects HAM output.
         /// </summary>
@@ -409,6 +415,8 @@ namespace AmigaEmulator.Core.CustomChips
             _dataLatches = new ushort[MaxPlanes];
             _dataLatchValid = new bool[MaxPlanes];
             _paletteArgb = new uint[64];
+            _superHiresFirstArgb = new uint[16];
+            _superHiresSecondArgb = new uint[16];
             _dmaPointers = new uint[MaxPlanes];
             _lastPointerRegisterValues = new uint[MaxPlanes];
             Reset();
@@ -625,10 +633,15 @@ namespace AmigaEmulator.Core.CustomChips
             _decodedRegistersValid = true;
             _fetchWords = fmode == 3 ? 4 : fmode != 0 ? 2 : 1;
             bool hires = (bplcon0 & 0x8000) != 0;
-            _fetchStep = (hires ? 4 : 8) * _fetchWords;
+            // This bounded AGA path covers the 16-bit, two-plane SHRES DMA
+            // schedule. Wider FMODE/depth combinations need separate slots.
+            bool superHiresFetch = _hasEcs && (bplcon0 & 0x0040) != 0 &&
+                (!_hasAga || (fmode == 0 && enabledPlanes <= 2));
+            _fetchStep = (superHiresFetch ? 2 : hires ? 4 : 8) * _fetchWords;
             _fetchUnit = 8 * _fetchWords;
-            _fetchSequence = (_hasAga && enabledPlanes > 4 && _fetchStep >= 8) || (!hires && enabledPlanes > 4)
-                ? s_lowresFetchSequence : s_hiresFetchSequence;
+            _fetchSequence = superHiresFetch ? s_superHiresFetchSequence :
+                (_hasAga && enabledPlanes > 4 && _fetchStep >= 8) || (!hires && enabledPlanes > 4)
+                    ? s_lowresFetchSequence : s_hiresFetchSequence;
 
             if (enabledPlanes > EnabledPlanes && _activeDmaRow != int.MinValue &&
                 (EnabledPlanes != 0 || !_completedDmaLine))
@@ -641,6 +654,7 @@ namespace AmigaEmulator.Core.CustomChips
             }
             EnabledPlanes = enabledPlanes;
             _hires = (bplcon0 & 0x8000) != 0;
+            _superHires = _hasEcs && (bplcon0 & 0x0040) != 0;
             _ham = (bplcon0 & 0x0800) != 0;
             _dualPlayfield = (bplcon0 & 0x0400) != 0;
             bool previousEhb = _ehb;
@@ -667,7 +681,7 @@ namespace AmigaEmulator.Core.CustomChips
             _fetchStopExclusive = _ddfStart + _wordsPerFetchedLine / _fetchWords * _fetchStep;
             int bitplaneBits = _wordsPerFetchedLine * 16;
             _planeDisplayWidth = bitplaneBits;
-            _displayFetchWidth = _hires ? bitplaneBits : bitplaneBits * 2;
+            _displayFetchWidth = superHiresFetch ? bitplaneBits / 2 : _hires ? bitplaneBits : bitplaneBits * 2;
             // BPLCON1: PF1 (odd planes) is the low nibble; PF2 (even) is the high nibble.
             _scrollOdd = bplcon1 & 0x000F;
             _scrollEven = (bplcon1 >> 4) & 0x000F;
@@ -678,7 +692,10 @@ namespace AmigaEmulator.Core.CustomChips
                 // original nibbles are bits 2..5, not the two fractional bits.
                 int odd = ((bplcon1 & 15) << 2) | ((bplcon1 >> 8) & 3) | ((bplcon1 >> 4) & 0xC0);
                 int even = ((bplcon1 & 0xF0) >> 2) | ((bplcon1 >> 12) & 3) | ((bplcon1 >> 8) & 0xC0);
-                int shift = _hires ? 1 : 2;
+                // BPLCON1's extended delay is measured in 35 ns units. A
+                // SHRES pixel already occupies one such unit, so there is no
+                // fractional remainder to discard at native resolution.
+                int shift = _superHires ? 0 : _hires ? 1 : 2;
                 _scrollOdd = odd >> shift; _scrollEven = even >> shift;
                 _scrollOddSubpixel = odd & ((1 << shift) - 1);
                 _scrollEvenSubpixel = even & ((1 << shift) - 1);
@@ -749,9 +766,15 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         public bool IsHiresMode => _hires;
+        /// <summary>
+        /// Reports the ECS/AGA SHRES request. Native 35 ns raster output is
+        /// still a separate graphics-mode implementation gate.
+        /// </summary>
+        public bool IsSuperHiresMode => _superHires;
         // Fractional Lisa delays can move lores transitions onto odd host
         // pixels. Such spans cannot reuse a single sample for an even pair.
         public bool RequiresHiresPixelSampling => _hires ||
+            (_superHires && (!_hasAga || (_fetchWords == 1 && EnabledPlanes <= 2))) ||
             ((((_scrollOddSubpixel + 1) / 2) | ((_scrollEvenSubpixel + 1) / 2)) & 1) != 0;
         public bool IsAga => _hasAga;
         public bool ClipSpritesToDisplayWindow => _hasEcs;
@@ -874,7 +897,7 @@ namespace AmigaEmulator.Core.CustomChips
             int fetchStep = GetFetchStep();
             int fetchOffset = beamX - _ddfStart;
             int wordIndex = fetchOffset / fetchStep;
-            if (!_hires && EnabledPlanes <= 4)
+            if (!_hires && !(_superHires && !_hasAga) && EnabledPlanes <= 4)
             {
                 int slot = fetchOffset % fetchStep;
                 int[] sequence = GetFetchSequence();
@@ -987,6 +1010,73 @@ namespace AmigaEmulator.Core.CustomChips
         public int RenderColorIndex(int screenX, int beamY)
         {
             return RenderPixelInfo(screenX, beamY, out _);
+        }
+
+        /// <summary>
+        /// Samples one native 35 ns pixel of a requested ECS/AGA SHRES row.
+        /// </summary>
+        public int RenderSuperHiresColorIndex(int nativeX, int beamY)
+        {
+            return RenderSuperHiresPixelInfo(nativeX, beamY, out _);
+        }
+
+        /// <summary>
+        /// Returns the selected SHRES color and unmodified plane mask for
+        /// per-native-pixel dual-playfield sprite priority.
+        /// </summary>
+        public int RenderSuperHiresPixelInfo(int nativeX, int beamY, out int planeMask)
+        {
+            planeMask = 0;
+            if (!_superHires || !_displayActive || !IsInsideDiw(nativeX >> 1, beamY))
+                return 0;
+
+            int displayX = nativeX - GetDisplayLeft() * 2;
+            int row = GetFetchRowKey(beamY);
+            if (displayX < 0 || displayX >= _planeDisplayWidth || row < 0)
+                return 0;
+
+            for (int plane = 0; plane < EnabledPlanes; plane++)
+            {
+                int scroll = (plane & 1) == 0 ? _scrollOdd : _scrollEven;
+                int bitX = displayX - scroll;
+                if ((uint)bitX >= (uint)_planeDisplayWidth) continue;
+                ushort word = ReadFetchedWord(plane, row, bitX >> 4);
+                planeMask |= ((word >> (15 - (bitX & 15))) & 1) << plane;
+            }
+            return _dualPlayfield ? ResolveDualPlayfieldColorIndex(planeMask) : planeMask;
+        }
+
+        /// <summary>
+        /// ECS Denise encodes each adjacent SHRES pixel pair in one of COLOR00..15.
+        /// The low register-index bits select the first pixel; the upper bits
+        /// select the second. Each component contributes two bits per pixel.
+        /// </summary>
+        public uint ResolveEcsSuperHiresColorArgb(int firstColor, int secondColor, bool secondPixel = false)
+        {
+            EnsurePaletteCache();
+            int register = (firstColor & 3) | ((secondColor & 3) << 2);
+            return secondPixel ? _superHiresSecondArgb[register] : _superHiresFirstArgb[register];
+        }
+
+        /// <summary>
+        /// Resolves both 35 ns playfield samples of one host pixel. ECS packs
+        /// the pair into a single color register; AGA uses two palette indices.
+        /// </summary>
+        public void ResolveSuperHiresPixelPair(int firstColor, int secondColor,
+            out uint firstArgb, out uint secondArgb)
+        {
+            if (_hasAga)
+            {
+                firstArgb = ReadAgaColor(firstColor);
+                secondArgb = ReadAgaColor(secondColor);
+            }
+            else
+            {
+                EnsurePaletteCache();
+                int register = (firstColor & 3) | ((secondColor & 3) << 2);
+                firstArgb = _superHiresFirstArgb[register];
+                secondArgb = _superHiresSecondArgb[register];
+            }
         }
 
         /// <summary>
@@ -1162,7 +1252,10 @@ namespace AmigaEmulator.Core.CustomChips
         private int ReadPlaneMask(int displayX, int row)
         {
             int mask = 0;
-            int bitplaneX = _hires ? displayX : displayX >> 1;
+            // Until Denise has a native 1280-pixel target, sample the entire
+            // ECS/AGA SHRES row at every second bit for the 640-pixel preview.
+            int bitplaneX = _superHires && (!_hasAga || (_fetchWords == 1 && EnabledPlanes <= 2))
+                ? displayX * 2 : _hires ? displayX : displayX >> 1;
             if (_dmaActive && _scrollOdd == _scrollEven && _scrollOddSubpixel == _scrollEvenSubpixel)
             {
                 int firstX = ScrolledBitX(displayX, bitplaneX, _scrollOdd, _scrollOddSubpixel);
@@ -1200,7 +1293,8 @@ namespace AmigaEmulator.Core.CustomChips
                 ((displayX * 2 - subpixel) >> (_hires ? 1 : 2)) - scroll;
 
         private int ScrollHostPixels(int scroll, int subpixel)
-            => (_hires ? scroll : scroll * LowresPixelsPerChipCycle) + (subpixel + 1) / 2;
+            => _superHires ? (scroll + 1) / 2 :
+                (_hires ? scroll : scroll * LowresPixelsPerChipCycle) + (subpixel + 1) / 2;
 
         private bool TryCachePixelWord(int row, int word)
         {
@@ -1550,7 +1644,7 @@ namespace AmigaEmulator.Core.CustomChips
             // ECS/AGA hires screens preload a word with an early DDF start.
             // Its entire 16 bits precede DIW; applying the OCS host-span delay
             // here exposes the previous row's final four pixels at the left.
-            if (_registers != null && _registers.HasEcs && _hires)
+            if (_registers != null && _registers.HasEcs && (_hires || _superHires))
                 return 0;
             int earliestScroll = Math.Min(ScrollHostPixels(_scrollOdd, _scrollOddSubpixel),
                 ScrollHostPixels(_scrollEven, _scrollEvenSubpixel));
@@ -1580,7 +1674,7 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetRawDisplayLeft()
         {
-            int standardDdfStart = _hires ? 0x3C : 0x38;
+            int standardDdfStart = _hires || _superHires ? 0x3C : 0x38;
             return (_ddfStart - standardDdfStart) * HiresPixelsPerChipCycle;
         }
 
@@ -1605,7 +1699,8 @@ namespace AmigaEmulator.Core.CustomChips
         /// </summary>
         private int GetFetchStart()
         {
-            return _hires ? 4 : 8;
+            return _superHires && (!_hasAga || (_fetchWords == 1 && EnabledPlanes <= 2))
+                ? 2 : _hires ? 4 : 8;
         }
 
         /// <summary>
@@ -1709,11 +1804,11 @@ namespace AmigaEmulator.Core.CustomChips
         }
 
         /// <summary>
-        /// Returns BPLCON0 after the OCS Agnus mask has removed unsupported bits.
+        /// Returns BPLCON0 with only the mode bits supported by this chipset.
         /// </summary>
         private ushort GetEffectiveBplcon0()
         {
-            return (ushort)(Read(Bplcon0) & (_hasAga ? 0xFFFF : 0xFF0F));
+            return (ushort)(Read(Bplcon0) & (_hasAga ? 0xFFFF : _hasEcs ? 0xFF4F : 0xFF0F));
         }
 
         /// <summary>
@@ -2252,6 +2347,19 @@ namespace AmigaEmulator.Core.CustomChips
             uint argb = ExpandColor(color);
             _paletteArgb[index] = argb;
             _paletteArgb[index | 0x20] = _ehb ? HalfBright(argb) : argb;
+            if (index < 16)
+            {
+                _superHiresFirstArgb[index] = ExpandSuperHiresHalf(color, 2);
+                _superHiresSecondArgb[index] = ExpandSuperHiresHalf(color, 0);
+            }
+        }
+
+        private static uint ExpandSuperHiresHalf(ushort color, int shift)
+        {
+            uint red = (uint)((color >> (8 + shift)) & 3) * 85u;
+            uint green = (uint)((color >> (4 + shift)) & 3) * 85u;
+            uint blue = (uint)((color >> shift) & 3) * 85u;
+            return 0xFF000000u | (red << 16) | (green << 8) | blue;
         }
 
         /// <summary>

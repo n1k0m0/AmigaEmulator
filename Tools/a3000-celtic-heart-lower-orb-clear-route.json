@@ -1,0 +1,766 @@
+[
+  {
+    "name": "A3000-CelticHeart-LowerOrbClear",
+    "boot": "Celtic Heart (disk 1).adf",
+    "ram": "Chip2MbFast4Mb",
+    "strict": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 1200000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "menu"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "story"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "stage-prompt"
+      },
+      {
+        "type": "joystick",
+        "cycles": 800000
+      },
+      {
+        "type": "wait",
+        "cycles": 6000000,
+        "label": "get-ready"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 4000000,
+        "label": "level",
+        "expectedFrameHash": "33173D58D21C5D1529C98AE446E73B507316780547DA5784228A729A7CFEC7DE",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "move-right",
+        "expectedFrameHash": "89C958308531EAC9D47D8D1818AA44366D2F56DD9569E7DC47AFE25F0C4FB52E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "jump-right",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "restore",
+        "label": "gameplay-restore",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 8000000,
+        "label": "jump-through-hazards"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "jump-through-result",
+        "expectedFrameHash": "9A170E7EF24B82B64F5E54EA3499D7C10B09244E051B9130856B9A6350217303",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-1",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-2",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-3",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-4",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-5",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-6",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "FE92C3E0C2483F768B900DAE797CCA1B48E4DF6E54AEB7A0292EE4C33861A252",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-7",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-8",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "360991C66E8074286B8F5F5025F839C16A0CBA120E2677DEDF97889E2E8DDE72",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "label": "second-slices-result",
+        "cycles": 500000,
+        "expectedFrameHash": "0C3883A5258946A7E2A21566DFDE74F39EC07DCAB56959DE0EB47ACCC81AFDAA",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-slice-9",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick"
+      },
+      {
+        "label": "second-slice-10",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick",
+        "expectedFrameHash": "D9C90560DC370E99FEE5B9617DC53F2C640A268D3E29FB1BBBEC9555A901C8B5",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-slice-11",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick"
+      },
+      {
+        "label": "second-slice-12",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick",
+        "expectedFrameHash": "21F3ECB0EAE3EBBBF1D26FDACD01BC368D37AE78A7C773D9B5C55E927DE64B06",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-extended-result",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "1714AA0F43BE42FB2B55946F02B2FF70AA3065044D7AC1E16399CFD1B8625169",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "held-jump-start",
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 500000,
+        "expectedJoy1": "0103"
+      },
+      {
+        "label": "held-jump-sample-1",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-2",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedFrameHash": "3CECF3E696FCE42225C8FF70167583F58DFD03FB91C3A6D634DAD3996895FE84",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "held-jump-sample-3",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-4",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-5",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-6",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedFrameHash": "EB759B7E41D0C8C4B2C6F9574B481FA3751A237FC4DC6AE389CA1DE301B2733E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "cycles": 500000,
+        "label": "jump-release-up",
+        "expectedJoy1": "0003",
+        "button": "Up",
+        "type": "joystick-up"
+      },
+      {
+        "cycles": 0,
+        "label": "jump-repress-up",
+        "expectedJoy1": "0103",
+        "button": "Up",
+        "type": "joystick-down"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-1",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-2",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-3",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-4",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-5",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "86DB57EE39C69587A30892F69EEAB7DDFD1782E7E5BC97FAA5D29B95610EE95C",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-6",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-7",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-8",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "D7E5BB72E4E9176CFA08B1B31D0CEA54DBA41C9D9707D03E22275238089FA59B",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "cycles": 0,
+        "label": "second-held-release",
+        "expectedJoy1": "0000",
+        "button": "Up,Right",
+        "type": "joystick-up"
+      },
+      {
+        "expectedJoy1": "0000",
+        "label": "second-held-result",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "9D566FD4A0F2E6AE23BBA3E18A07D2B6B09B21D2B5B03CC36C5C8430C039F249",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "gap-jump-start",
+        "button": "Up,Right",
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-1",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-2",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-3",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-4",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-5",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedFrameHash": "A761A9A83F57D9BC7A9E28E3450DCEA2F49CD8746EBBAF193D8071EEB6BE1803",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-up",
+        "expectedJoy1": "0000",
+        "button": "Up,Right",
+        "cycles": 0,
+        "label": "ice-release-at-apex"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-1"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-2"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-3"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-4",
+        "expectedFrameHash": "539F99F2AB240D489FD23E8996F67C7187F7970EAD1775AA9518C9DBDAEC308E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "cycles": 500000,
+        "button": "Up,Right",
+        "label": "short-ice-hop-start"
+      },
+      {
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "cycles": 0,
+        "button": "Up,Right",
+        "label": "short-ice-hop-release"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-1"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-2"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-3"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-4"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-5"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-6"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-7"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-8"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-9"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-10"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-11",
+        "expectedFrameHash": "C9B1898C4571A13114611C0361003C63402127F6EC19C5DEB9324805C1D68B8B",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "button": "Up,Right",
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "label": "second-ice-to-plateau-start",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-1",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-2",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-3",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-4",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-5",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-6",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-7",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-8",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-9",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-10",
+        "cycles": 500000,
+        "expectedFrameHash": "B1D8999A013F7D4B330320E42294E9A0C613BAB78484B8DECA03C6CFB8C4149C",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "button": "Up,Right",
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "label": "second-ice-to-plateau-release",
+        "cycles": 0
+      },
+      {
+        "button": "Right",
+        "cycles": 500000,
+        "type": "joystick-down",
+        "label": "post-spider-run-start",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-1",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-2",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-3",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-4",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-5",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-6",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-7",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-8",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "5E75E30C0C9907C566E20EBA08672D5C621826F1C131347607EAA5F1236CA3B6",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "button": "Right",
+        "cycles": 0,
+        "type": "joystick-up",
+        "label": "post-spider-run-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "lower-route-start",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-1",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-2",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-3",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-4",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-5",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-6",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-7",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-8",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-9",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-10",
+        "expectedJoy1": "0003",
+        "cycles": 500000,
+        "expectedFrameHash": "18B72EEF727101B5C4553B69AEAD7EF204BC13A600CFC727A9A4BC8822160369",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "lower-route-release",
+        "expectedJoy1": "0000",
+        "cycles": 0
+      },
+      {
+        "label": "first-orb-jump",
+        "cycles": 1000000,
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "button": "Up,Right"
+      },
+      {
+        "label": "first-orb-brake",
+        "cycles": 2000000,
+        "expectedJoy1": "0100",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "label": "first-orb-release",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "button": "Up"
+      },
+      {
+        "label": "before-orbs",
+        "minimumNonBlackPixels": 190000,
+        "type": "wait",
+        "cycles": 3000000,
+        "expectedFrameHash": "17C962471396A1BE8784FA13038CE63EAA9AA29103AD70F3AD810B07FB0E9ECB"
+      },
+      {
+        "label": "second-orb-jump",
+        "cycles": 1500000,
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "button": "Up,Right"
+      },
+      {
+        "label": "second-orb-brake",
+        "cycles": 2000000,
+        "expectedJoy1": "0100",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "label": "second-orb-release",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "button": "Up"
+      },
+      {
+        "label": "past-orbs",
+        "minimumNonBlackPixels": 190000,
+        "type": "wait",
+        "cycles": 2000000,
+        "expectedFrameHash": "4F969041B6D0FD8E03D079571AC3FDA96D262E3A0E1D390D2F3B9636003F4D9D"
+      },
+      {
+        "minimumNonBlackPixels": 190000,
+        "cycles": 2000000,
+        "label": "move-beyond-hazards",
+        "expectedFrameHash": "B2788B1AC9A7A00DEFA815B2FBA90CFB5AD6D96F8278D23C2DE88FFE2247960B",
+        "expectedJoy1": "0003",
+        "button": "Right",
+        "type": "joystick-down"
+      },
+      {
+        "label": "release-beyond-hazards",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "label": "live-beyond-hazards",
+        "expectedFrameHash": "17681F33394FD3DD201FE7133E4E373E06F587EED57CF8145231B7D11DE0D336",
+        "type": "wait",
+        "minimumNonBlackPixels": 190000,
+        "cycles": 1000000
+      }
+    ],
+    "model": "A3000",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0
+  }
+]

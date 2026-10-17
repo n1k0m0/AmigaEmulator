@@ -85,6 +85,13 @@ namespace AmigaEmulator.Core.SaveStates
                 throw new ArgumentNullException(nameof(system));
             }
 
+            if (screenshotPixels == null)
+                throw new ArgumentNullException(nameof(screenshotPixels));
+            if (screenshotWidth < 0 || screenshotHeight < 0 ||
+                (long)screenshotWidth * screenshotHeight != screenshotPixels.Length ||
+                (screenshotWidth == 0) != (screenshotHeight == 0))
+                throw new ArgumentException("Screenshot dimensions must match the supplied pixel array.");
+
             var declaredModel = AmigaModel.Create(system.Model.Machine, AmigaModel.GetDefaultRamProfile(system.Model.Machine));
             if (system.Model.Cpu != declaredModel.Cpu || system.Model.CpuClockHz != declaredModel.CpuClockHz ||
                 system.Model.Chipset != declaredModel.Chipset || system.Model.IdeModel != declaredModel.IdeModel ||
@@ -97,21 +104,34 @@ namespace AmigaEmulator.Core.SaveStates
                 Directory.CreateDirectory(directory);
             }
 
-            using (var stream = File.Create(path))
-            using (var writer = new BinaryWriter(stream))
+            // Serialize beside the destination, then publish the completed
+            // file. A failed snapshot must not truncate an existing slot.
+            string pendingPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
             {
-                writer.Write(Magic);
-                writer.Write(Version);
-                writer.Write(DateTime.UtcNow.Ticks);
-                WriteMountedMediaInfo(writer, mountedMedia);
-                writer.Write((int)kickstart);
-                writer.Write((int)ramProfile);
-                writer.Write((int)accuracyProfile);
-                writer.Write((int)system.Model.Machine);
-                writer.Write(screenshotWidth);
-                writer.Write(screenshotHeight);
-                StateSerializer.WriteUIntArray(writer, screenshotPixels);
-                system.SaveState(writer);
+                using (var stream = File.Create(pendingPath))
+                using (var writer = new BinaryWriter(stream))
+                {
+                    writer.Write(Magic);
+                    writer.Write(Version);
+                    writer.Write(DateTime.UtcNow.Ticks);
+                    WriteMountedMediaInfo(writer, mountedMedia);
+                    writer.Write((int)kickstart);
+                    writer.Write((int)ramProfile);
+                    writer.Write((int)accuracyProfile);
+                    writer.Write((int)system.Model.Machine);
+                    writer.Write(screenshotWidth);
+                    writer.Write(screenshotHeight);
+                    StateSerializer.WriteUIntArray(writer, screenshotPixels);
+                    system.SaveState(writer);
+                }
+                File.Move(pendingPath, path, true);
+            }
+            finally
+            {
+                // A failed write/replacement is recoverable by retrying;
+                // discard only our unique temporary file, never the slot.
+                if (File.Exists(pendingPath)) File.Delete(pendingPath);
             }
         }
 
@@ -133,6 +153,27 @@ namespace AmigaEmulator.Core.SaveStates
                 int screenshotWidth = reader.ReadInt32();
                 int screenshotHeight = reader.ReadInt32();
                 uint[] pixels = StateSerializer.ReadUIntArray(reader);
+
+                // Older GUI saves copied the 704x288 presented frame but
+                // labeled it with the 640x256 machine-visible dimensions.
+                // Correct only that exact legacy layout when reading menu
+                // metadata; the original savestate remains untouched.
+                if (screenshotWidth == 640 && screenshotHeight == 256 &&
+                    pixels != null && pixels.Length == AmigaSystem.PresentationViewportWidth * AmigaSystem.PresentationViewportHeight)
+                {
+                    screenshotWidth = AmigaSystem.PresentationViewportWidth;
+                    screenshotHeight = AmigaSystem.PresentationViewportHeight;
+                }
+
+                // A broken preview must not make an otherwise loadable
+                // machine state unsafe to display in the save browser.
+                if (pixels == null || screenshotWidth < 0 || screenshotHeight < 0 ||
+                    (long)screenshotWidth * screenshotHeight != pixels.Length ||
+                    (screenshotWidth == 0) != (screenshotHeight == 0))
+                {
+                    screenshotWidth = screenshotHeight = 0;
+                    pixels = Array.Empty<uint>();
+                }
 
                 bool compatible =
                     Enum.IsDefined(typeof(AmigaKickstart), kickstart) &&

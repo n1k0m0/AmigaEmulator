@@ -1,0 +1,319 @@
+[
+  {
+    "name": "A500-Cannon-native-DF0-cold-roundtrip",
+    "model": "A500",
+    "ram": "Chip512KSlow512K",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK13.ROM",
+    "strict": true,
+    "traceExceptions": true,
+    "boot": "Cannon Fodder (disk 1).adf",
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "cannon-02-cf-02-boot"
+      },
+      {
+        "type": "click",
+        "label": "cannon-03-cf-03-left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "cannon-04-cf-04-after-click"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "label": "cannon-05-cf-05-space"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "cannon-06-cf-06-after-space"
+      },
+      {
+        "cycles": 1000000,
+        "type": "joystick",
+        "label": "cannon-07-cf-07-post-script-right",
+        "button": "Right"
+      },
+      {
+        "cycles": 2000000,
+        "type": "wait",
+        "label": "cannon-08-cf-08-post-script-continued"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "label": "cannon-09-cf-09-exit-crystal-intro"
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "cannon-10-cf-10-trainer"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "label": "cannon-11-cf-11-exit-trainer"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "cannon-12-cf-12-game-loaded"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "cannon-13-cf-13-game-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "cannon-14-cf-14-continued"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-15-cf-15-trainer-left-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "cannon-16-cf-16-after-trainer"
+      },
+      {
+        "type": "joystick",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "cannon-17-cf-17-game-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "cannon-18-cf-18-after-game-fire"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-19-cf-19-skip-cast"
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "cannon-20-cf-20-cast-exited"
+      },
+      {
+        "type": "click",
+        "cycles": 1000000,
+        "label": "cannon-21-cf-21-briefing"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "cannon-22-cf-22-briefing-loaded"
+      },
+      {
+        "type": "disk",
+        "drive": 0,
+        "disk": "Cannon Fodder (disk 2).adf",
+        "label": "requested-disk2"
+      },
+      {
+        "type": "wait",
+        "cycles": 45000000,
+        "label": "data-loaded-waiting-boot-assets"
+      },
+      {
+        "type": "disk",
+        "drive": 0,
+        "disk": "Cannon Fodder (disk 1).adf",
+        "label": "boot-graphics-disk1"
+      },
+      {
+        "type": "wait",
+        "cycles": 90000000,
+        "label": "boot-graphics-loaded"
+      },
+      {
+        "type": "disk",
+        "drive": 0,
+        "disk": "Cannon Fodder (disk 2).adf",
+        "label": "army-graphics-disk2"
+      },
+      {
+        "type": "wait",
+        "cycles": 90000000,
+        "label": "army-visible",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "disk",
+        "drive": 0,
+        "disk": "Cannon Fodder (disk 1).adf",
+        "label": "mission-loader-disk1"
+      },
+      {
+        "type": "wait",
+        "cycles": 14000000,
+        "label": "mission-loader-disk-present"
+      },
+      {
+        "type": "click",
+        "cycles": 600000,
+        "label": "army-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "mission-briefing"
+      },
+      {
+        "type": "click",
+        "cycles": 600000,
+        "label": "briefing-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "mission-preload"
+      },
+      {
+        "type": "disk",
+        "drive": 0,
+        "disk": "Cannon Fodder (disk 2).adf",
+        "label": "mission-data"
+      },
+      {
+        "type": "wait",
+        "cycles": 180000000,
+        "label": "mission-loaded"
+      },
+      {
+        "type": "click",
+        "cycles": 600000,
+        "label": "mission-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 8000000,
+        "label": "mission-live",
+        "expectedFrameHash": "67924E6A2AC167743764DCE214E70E00379EB5C863B7795B933EDF07DE686F39",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "checkpoint",
+        "label": "mission-live-state"
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "label": "pause",
+        "expectedFrameHash": "67924E6A2AC167743764DCE214E70E00379EB5C863B7795B933EDF07DE686F39"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "pause-still",
+        "expectedFrameHash": "67924E6A2AC167743764DCE214E70E00379EB5C863B7795B933EDF07DE686F39"
+      },
+      {
+        "type": "restore",
+        "cold": true,
+        "resetBeforeRestore": true,
+        "label": "paused-cold-restore",
+        "expectedFrameHash": "67924E6A2AC167743764DCE214E70E00379EB5C863B7795B933EDF07DE686F39"
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "label": "resume"
+      },
+      {
+        "type": "mouse",
+        "x": 210,
+        "y": 100,
+        "label": "world-target"
+      },
+      {
+        "type": "click",
+        "cycles": 80000,
+        "label": "move-order"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "movement-live",
+        "expectedFrameHash": "85D56A927D9A2708175CCFA5F41B8B47C7EAF8A96F176943D6CD9D4CA5B7417E",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "wait",
+        "cycles": 60000000,
+        "label": "mission-later-live",
+        "expectedFrameHash": "B39A2AD778530EF528A309ED7BB75F85DB11E066ED16A5198AC5472797B06EA0",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "mouse",
+        "x": 90,
+        "y": -25,
+        "label": "far-right-target"
+      },
+      {
+        "type": "click",
+        "cycles": 80000,
+        "label": "far-right-order"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "later-approach-live",
+        "expectedFrameHash": "D4405CB8D542014CB23C753C1F7D46A2DB09A965BA1C8FB62F164BC3493CA8A0",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "wait",
+        "cycles": 480000,
+        "label": "loss-timing-control"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "loss-fade",
+        "expectedFrameHash": "BC4E55DC07E235DC5165A13A63B9EEA4259794CA62CADFA0994D2301F0CC8BAE"
+      },
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "retry-briefing",
+        "expectedFrameHash": "20F3CB0F4A477F92BF2C2FA686DDB69C4F4E11897137186054D9FD80330053C4",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "click",
+        "cycles": 600000,
+        "label": "retry-confirm"
+      },
+      {
+        "type": "wait",
+        "cycles": 90000000,
+        "label": "retry-mission-live",
+        "expectedFrameHash": "6897F2D41481168F029B4E22A65BA786B0C4E91316BC19B28DD6D8ACAFA7F494",
+        "minimumNonBlackPixels": 1000
+      },
+      {
+        "type": "checkpoint",
+        "label": "retry-mission-live-state"
+      }
+    ],
+    "maximumNonRomExceptions": 600,
+    "allowedNonRomExceptionVectors": [
+      4,
+      5,
+      9
+    ]
+  }
+]

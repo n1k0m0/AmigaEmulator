@@ -21,9 +21,25 @@ cold restore and a further movement order, with all three original disks in
 DF0/DF1/DF2. It uses 512 KiB Chip + 512 KiB Slow on A500 and A2000 OCS.
 Pause precedes the shorter fire/advance orders: the previous long suffix killed
 the squad, and a static retry screen cannot prove a pause. The DF0-only route is
-still unaccepted: it can load behind a black palette and needs Disk 1 again;
-a later mission attempt faults. Use the explicit data-drive setup for this
-reviewed flow, and keep single-drive/later-campaign failures as separate gates.
+covered separately by `Tools/cannon-df0-cold-gameplay-scenario.json` on native
+A500/Kickstart 1.3 with 512 KiB Chip + 512 KiB Slow. The reviewed source needs
+boot-only graphics after its Disk-2 request: the tested DF0 sequence is Disk
+1 -> 2 -> 1 -> 2 -> 1 -> 2, including the mission loader. Simply leaving Disk 2
+inserted stalls behind the game's completed fade. The script supplies these
+media round trips, checks the reviewed jungle/pause/restore hashes and sends a
+movement order inside the playfield, with both Jools and Jops alive. No game
+bytes, palettes or CPU exception semantics are modified. Keep Disk 1 in DF0 and
+data disks in DF1/DF2 for the simpler reviewed setup. Single-drive requester
+visibility, other boards' cold DF0 routes and later campaigns remain separate
+gates. The earlier exact DF0 address exception is fixed by PAL field timing;
+do not reclassify the missing-media black scene as that exception.
+The same DF0 script now follows the first mission long enough to observe a
+two-soldier loss, the game's fade back to its Mission 1 briefing and a real
+retry from that briefing. It asserts the reviewed briefing and resumed jungle
+frames; the brief black fade is recorded as a transition, never a gameplay
+pass. A paired no-right-button control reaches the same fade and briefing, so
+that transition is not attributed to the mouse button. Completing Mission 1
+and entering later missions still needs a separate gameplay test.
 The loader deliberately uses CPU detection and trace exceptions; the bounded
 exception guard allows that reviewed prefix. Disk requesters, black frames and
 successful script execution alone remain insufficient acceptance evidence.
@@ -48,6 +64,35 @@ Omit the final case name to run the whole manifest. A missing case returns exit
 code 2; an exception returns 1. Successful execution returns 0 **only for the
 script execution**, never a gameplay or graphics pass. Review the captured
 screenshots. Cracker screens, menus, credits and disk requests are not gameplay.
+Pass `--no-final-checkpoint` after the output directory or case name for a
+space-conscious sweep. It keeps screenshots and `steps.jsonl` but omits the
+automatic final `.amigasav` in every case. Explicit `checkpoint` actions still
+write their named states. Use the default when a continuation save is needed.
+For a replay whose screenshots were already visually reviewed, add
+`--no-images` to suppress PNGs while retaining frame, native and interlaced
+hashes, presence guards, CPU/input diagnostics and `steps.jsonl`. Image path
+fields are null in that mode. It can be combined with `--no-final-checkpoint`;
+do not use it for first-time visual acceptance of a scene.
+For a targeted first visual review, use `--image-label=LABEL` instead: only the
+action with that exact label writes its logical and available native/interlaced
+PNGs. Every action still records hashes and guards. This option cannot be
+combined with `--no-images` and helps avoid large diagnostic image trees.
+For a single scene's full Denise raster before monitor cropping, combine
+`--image-label=LABEL --raw-frame`. It adds `-raw.png`, `-raw-sprites.png`
+and `-raw-playfield.png` beside the selected presented image, including
+pixels outside the 704x288 viewport. Use them to locate whether a missing
+edge is already absent in the source raster or one transient component;
+the raw images may contain an unfinished current beam frame.
+Any action can require an exact four-digit hexadecimal `expectedBplcon0`
+to verify the active bitplane mode at that checkpoint. This catches a
+ScreenMode selection or Use-click that leaves the prior mode running even
+when an image still looks plausible.
+When the completed frame contains native ECS/AGA SuperHires samples, each
+capture also writes a `-native-shres.png` at twice the logical horizontal
+resolution and records `nativeImagePath` and `nativeHash` in `steps.jsonl`.
+An action may require an exact 64-digit `expectedNativeFrameHash`; the guard
+fails if that frame has no native SuperHires output. The ordinary screenshot
+and `expectedFrameHash` remain the established logical-resolution checks.
 Use `GameRunner <scenario.json> --validate [case-name]` for a read-only
 preflight of model/RAM layouts, referenced disks, keys and button names.
 Invalid selections return 1 before any cases start; a missing case returns 2.
@@ -57,6 +102,118 @@ rejected. Use `key`/`button`, not `code`/`buttons`: older runners silently
 ignored those spellings and could send key zero or default Fire instead.
 Run `python Tools/test_game_runner.py` after building to check these guards
 without ROMs, guest execution or disk creation.
+
+The original SHRES guest diagnostic checks native 35-ns capture after a ROM
+boot on all six supported ECS/AGA boards. A500+ and A1200 also check cold
+restore and reset. Run from the solution directory with your own compatible
+Kickstart ROMs in `%APPDATA%/AmigaEmulator/roms`:
+
+```powershell
+python Tools/GuestDiagnostics/build_shres_check_adf.py tmp/native-shres-check.adf
+dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/shres-guest-diagnostic-scenarios.json tmp/shres-review --no-final-checkpoint
+```
+
+The generator requires a fresh output filename. The scenario asserts exact
+native hashes after boot, cold restore and a separate cold reset; inspect the
+companion PNGs as well. This validates a guest boot block, not a full
+Workbench SHRES application or an independent hardware reference image.
+
+For the real A1200/AmigaOS 3.1.4 PAL SHRES+LACE Workbench path, use
+`Tools/amigaos314-a1200-shres-lace-scenario.json`. It expects the user's
+matching A1200 Kickstart 3.1.4 ROM at
+`%APPDATA%/AmigaEmulator/roms/KICK314-A1200.ROM` and a **private copy** of
+the installed OS HDF at `tmp/os-a1200-test.hdf`; the scenario opens that copy
+read-only. It guards native and logical desktop, System and Prefs window,
+cold restore and reset captures. It also guards three successive real Prefs
+scroll positions (scrollbar drag and two arrow clicks), an exact cold restore
+of the final scrolled image, and a separate reset to the original desktop.
+`Tools/amigaos314-a1200-lace-exit-probe.json` uses the same private HDF and
+ROM to enter PAL Super-High Res Laced, reopen ScreenMode Preferences, and
+return to non-LACE PAL Super-High Res. The modal Use button requires the
+pointer to land inside its small hit area. The probe guards the final logical
+and 1408x288 native frames at two successive captures and after cold restore.
+`Tools/amigaos314-a4000-lace-exit-probe.json` exercises the matching A4000/030
+Kickstart 3.1.4 route against the same read-only private HDF copy and guards
+its own logical/native images across LACE entry, non-LACE exit and restore.
+Both probes use `expectNativeInterlacedFrame` to require a complete woven
+native pair while LACE is active and its absence after the switch.
+For mode-exit checks also use `expectInterlacedFrame`: native pairs exist
+only for SuperHires, while logical field pairs also reveal Low Res or High
+Res LACE. A false native-pair guard alone cannot prove LACE is off.
+Inspect the full
+`-native-interlaced.png` image while LACE is active; `-native-shres.png` is
+only one 288-line field and is not a complete interlaced picture.
+Each `steps.jsonl` capture also records `displayRegisters`: stored BPLCON0,
+DIW/DDF, first two bitplane pointers and modulos. These are snapshots at
+the action boundary; a Copper or CPU write later in the field may change
+them, so use a timed trace before attributing a whole frame to one value.
+Set scenario `traceDisplayControl` to true to write `display-control.jsonl`
+with CPU/Copper display-register writes, frame, beam and current state.
+Optional `trace-display-start` and `trace-display-stop` actions limit the
+trace to the transition being investigated.
+
+The same original generator can program PAL LACE and alternate COLOR00 by
+polling the guest VPOSR long-field flop. The runner writes a separate 704x576
+`-interlaced.png` and, for SHRES, a 1408x576 `-native-interlaced.png`.
+The scenario guards both complete field pairs with
+`expectedInterlacedFrameHash` and `expectedNativeInterlacedFrameHash`:
+
+```powershell
+python Tools/GuestDiagnostics/build_shres_check_adf.py tmp/native-lace-check.adf --lace
+dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/lace-guest-diagnostic-scenarios.json tmp/lace-review --no-final-checkpoint
+```
+
+Inspect the alternating red/blue scanlines in the A500+, A600, A2000 ECS,
+A3000 and A1200 captures. Each case guards the complete field pair after
+boot, cold restore and cold reset.
+This validates the guest-to-runner field path. The frontend selects the
+woven source after both fields arrive; a real application and independent
+hardware comparison remain separate checks.
+
+The original `--mixed-lace` diagnostic runs a Copper list that resets both
+bitplane pointers, draws two-plane lores above raster $80, then switches to
+SHRES for the lower part of the same interlaced field:
+
+```powershell
+python Tools/GuestDiagnostics/build_shres_check_adf.py tmp/native-mixed-lace-check.adf --mixed-lace
+dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/mixed-lace-guest-diagnostic-scenarios.json tmp/mixed-lace-review --no-final-checkpoint
+```
+
+The A500+ ECS and A1200 AGA scenarios guard the logical and native woven
+images through cold restore and reset. In each native image, the upper
+playfield's color runs span four 35 ns samples while the lower SHRES
+playfield alternates every sample. The mode boundary remains visible at
+the same raster on both boards.
+
+The installed A4000 AmigaOS 3.1.4 image also has a read-only PAL High Res
+Laced acceptance script. Prepare a fresh private copy of your installed HDF
+as `tmp/os-lace-test.hdf`, retain your matching 46.143 ROM at the path in the
+scenario, then run:
+
+```powershell
+dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/amigaos314-a4000-lace-scenario.json tmp/os-lace-review --no-final-checkpoint
+```
+
+It opens Workbench ScreenMode Preferences, selects PAL High Res Laced,
+confirms the screen, moves the pointer, opens Execute Command, then cold
+resets back to the ordinary desktop. The hash guards cover the real laced
+Workbench and dialog plus the restored non-laced desktop. The source HDF is
+never mounted by the scenario; remove the private copy and captures after
+review. Only the user's own ROM and OS files can run this scenario.
+
+The same private HDF and ROM can exercise Workbench's PAL Super-High Res
+Laced mode through the native 1408x576 capture path:
+
+```powershell
+dotnet Tools/GameRunner/bin/x64/Release/net10.0-windows7.0/GameRunner.dll Tools/amigaos314-a4000-shres-lace-scenario.json tmp/os-shres-lace-review --no-final-checkpoint
+```
+
+This scenario checks both the woven logical and native images, moves the
+pointer, opens and cancels Execute Command, double-clicks System, drags its
+window, cold-restores that window, then opens and scrolls the populated Prefs
+drawer three times. A second cold restore verifies the scrolled image; a cold
+reset verifies the ordinary desktop. Inspect the native interlaced PNGs as
+well as the hash guards.
 
 `Tools/run-purchased-os-validation.ps1` prepares fresh copies of an installed
 OS HDF for all eight current boards, using the user's matching unsplit Kickstart
@@ -77,7 +234,19 @@ No ROM, OS file or installed HDF is included in Git. A4000 uses the implemented
 
 Each case creates numbered PNGs, `steps.jsonl` and a continuation
 `checkpoint.amigasav`. Log entries include raw CPU/drive diagnostics, frame
-number, presentation bounds, pixel hash and `gameplay: requires-visual-review`.
+number, presentation bounds, pixel hash, `nonBlackPixels` and
+`gameplay: requires-visual-review`. An action can set `minimumNonBlackPixels`
+to reject an all-black stall at a scene where output should be visible (e.g.
+`1000` after mission loading). The allowed range is 0..202752; zero disables
+the guard. This condition cannot establish gameplay on its own: menus,
+error screens and game-over output still need visual/input review.
+For a known visible failure scene, an action may specify
+`forbiddenFrameHashes: ["<64-character SHA-256>"]`. The runner rejects a
+matching framebuffer after recording its diagnostic PNG and step log. Hashes
+must be complete hexadecimal SHA-256 values; invalid values fail preflight
+before outputs or disk creation. This catches reviewed exact loss/menu frames
+without claiming that all other frames are playable. Prefer
+`expectedFrameHash` when a scene has a stable exact gameplay reference.
 Disk images are mounted read-only by default. Use a fresh private copy for any
 scenario that disables write protection. A replacement exposes a two-second emulated
 empty-drive interval before the new medium becomes readable, including when
@@ -114,6 +283,20 @@ Actions:
   Amiga + E to open Workbench's Execute Command dialog.
 - `mouse`: relative `x`/`y` movement, split into small steps to avoid byte-counter
   wrap ambiguity. Coordinates refer to mouse counters, not screenshot pixels.
+  `mouseStepCycles` optionally sets the chip clocks between steps; zero or
+  omission preserves the established 120,000 clocks per step. Use the same
+  pacing in input and control branches when targeting a moving sprite. Very
+  short pacing can leave a guest cursor short of the final raw JOY0 counter
+  because the game polls movement over time; inspect the actual cursor capture.
+- `mouse-button-down` / `mouse-button-up`: hold or release exactly one mouse
+  button (`Fire`, `Second` or `Third`) on port 0 and advance exactly `cycles`
+  chip clocks (zero by default). Separate edges permit a held right-button
+  aim followed by a left-button grenade press; release both buttons explicitly.
+  Each capture records `input.ciaAPortA` and `input.potInp` as hexadecimal
+  guest-visible register values, so a held-button chord can be checked without
+  inferring it from a screenshot. An action can assert these readings with
+  `expectedCiaAPortA` (two hex digits) and `expectedPotInp` (four hex digits);
+  the runner retains the capture and fails the scenario if either differs.
 - `key-down` / `key-up`: send one raw `key` edge and advance exactly `cycles`
   chip clocks (zero by default). No automatic release or post-release delay is
   added. Use separate edges for each modifier; `modifiers` is rejected here.
@@ -122,7 +305,22 @@ Actions:
 - `click`: mouse-port button, default `button: Fire` (left mouse), `Second`
   for right mouse. Button flags can be combined, e.g. `Fire, Second`.
 - `joystick`: joystick-port button, default Fire; Up/Down/Left/Right are also
-  available. `cycles` optionally changes the hold duration.
+  available. `cycles` optionally changes the hold duration. This legacy pulse
+  always advances another 400,000 chip clocks after releasing its buttons.
+- `joystick-down` / `joystick-up`: press or release explicit port-1 button
+  flags (including chords such as `Up,Right`) and advance exactly `cycles`
+  chip clocks, zero by default. Other held flags remain pressed. Use these
+  edges with `wait` to sample a continuous jump or time a separate Fire press
+  without the `joystick` pulse's implicit released interval; release every
+  held flag explicitly before the end of the scenario. Each step logs `joy1`
+  (the guest-visible JOY1DAT register); `expectedJoy1` accepts four hex digits
+  to assert the actual direction held at a sampled edge or wait.
+- `memoryWatchAddresses`: optional scenario-level list of up to 32 distinct
+  RAM byte addresses below `$A00000` (decimal JSON integers). Every step logs
+  their six-digit addresses and two-digit values in `memoryWatch`. These
+  read-only peeks help correlate guest life, damage and animation state with
+  reviewed frames without creating large memory dumps; the caller must still
+  establish what each guest address means.
 - `disk`: `disk` ADF filename and optional `drive` index (default DF0).
 - `write-protect`: explicit `writeProtected: true`/`false`, optional `drive`
   (default DF0), and `cycles` (zero by default). Changes the existing medium's
@@ -340,6 +538,35 @@ the unused tail with gap flux. This is not raw/IPF or bitcell-PLL support.
 The unchanged native A3000/A4000 Pinball source limitation, broader Tinyus
 sessions and other open cases remain in Docs/GameModelCompatibility-2026-10-09.md.
 The full-library cold/input/capture review remains in progress.
+
+`Tools/amigaos314-a600-lace-exit-probe.json` boots a private, read-only
+AmigaOS 3.1.4 HDF on A600 with the user's purchased, unsplit/unswapped
+Kickstart 3.1.4 A500-family ROM installed locally as
+`%APPDATA%/AmigaEmulator/roms/KICK314-A500.ROM`. It opens ScreenMode, enters
+PAL Super-High Res Laced, switches back to non-LACE, then checks persistence
+and cold restore. The guarded run requires reviewed logical/native hashes and
+the presence or absence of a complete native interlaced field pair at each
+result. The ROM and HDF are private test prerequisites, not repository assets.
+`Tools/amigaos314-a600-laced-system-window.json` continues the laced A600
+desktop through a real System drawer open, drag and cold restore; reviewed
+native interlaced hashes guard the visible window state.
+`Tools/amigaos314-a2000-ecs-lace-exit-probe.json` runs the same real
+ScreenMode entry/exit workflow on A2000 ECS with the private A500-family
+Kickstart and read-only test HDF. Its independent replay guards the reviewed
+logical/native hashes and the woven-frame presence across cold restore.
+`Tools/amigaos314-a2000-ecs-laced-system-window.json` adds System drawer
+opening, window drag and cold restore while the real A2000 Workbench remains
+in PAL Super-High Res Laced mode.
+`Tools/amigaos314-a500-system-window.json` boots the purchased 3.1.4
+Workbench on the A500 profile with the existing private read-only HDF, opens
+the System drawer and verifies its exact image through cold restore. The A500
+profile uses a synthetic hard-disk expansion; this is not a stock A500
+hard-disk configuration.
+`Tools/amigaos314-a500plus-lace-exit-probe.json` and
+`Tools/amigaos314-a500plus-laced-system-window.json` cover real A500+
+Workbench ScreenMode entry/exit, System drawer drag and cold restore. They
+use the same private 3.1.4 ROM family and read-only HDF; image hashes are
+guarded separately for this model profile.
 
 2026-10-11 review correction: the earlier two-million-clock Pinball plunger
 hold did not establish a launched ball. Table artwork and an injected key alone
