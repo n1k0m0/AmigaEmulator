@@ -1,0 +1,6334 @@
+[
+  {
+    "name": "A3000-CelticHeart-StageThree-DinoPassage",
+    "boot": "Celtic Heart (disk 1).adf",
+    "ram": "Chip2MbFast4Mb",
+    "strict": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "boot"
+      },
+      {
+        "type": "joystick",
+        "cycles": 1200000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "menu"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 80000000,
+        "label": "story"
+      },
+      {
+        "type": "joystick",
+        "cycles": 4000000
+      },
+      {
+        "type": "wait",
+        "cycles": 120000000,
+        "label": "stage-prompt"
+      },
+      {
+        "type": "joystick",
+        "cycles": 800000
+      },
+      {
+        "type": "wait",
+        "cycles": 6000000,
+        "label": "get-ready"
+      },
+      {
+        "type": "joystick",
+        "cycles": 400000
+      },
+      {
+        "type": "wait",
+        "cycles": 4000000,
+        "label": "level",
+        "expectedFrameHash": "33173D58D21C5D1529C98AE446E73B507316780547DA5784228A729A7CFEC7DE",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "move-right",
+        "expectedFrameHash": "89C958308531EAC9D47D8D1818AA44366D2F56DD9569E7DC47AFE25F0C4FB52E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "jump-right",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "restore",
+        "label": "gameplay-restore",
+        "expectedFrameHash": "3E74FE30AF643F3F794CA755C49F657BB1795B387E561182ACA3B71BD2E62E67",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "button": "Up,Right",
+        "cycles": 8000000,
+        "label": "jump-through-hazards"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "jump-through-result",
+        "expectedFrameHash": "9A170E7EF24B82B64F5E54EA3499D7C10B09244E051B9130856B9A6350217303",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-1",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-2",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-3",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-4",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-5",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-6",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "FE92C3E0C2483F768B900DAE797CCA1B48E4DF6E54AEB7A0292EE4C33861A252",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-7",
+        "button": "Up,Right",
+        "cycles": 1000000
+      },
+      {
+        "type": "joystick",
+        "label": "second-slice-8",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "expectedFrameHash": "360991C66E8074286B8F5F5025F839C16A0CBA120E2677DEDF97889E2E8DDE72",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "label": "second-slices-result",
+        "cycles": 500000,
+        "expectedFrameHash": "0C3883A5258946A7E2A21566DFDE74F39EC07DCAB56959DE0EB47ACCC81AFDAA",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-slice-9",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick"
+      },
+      {
+        "label": "second-slice-10",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick",
+        "expectedFrameHash": "D9C90560DC370E99FEE5B9617DC53F2C640A268D3E29FB1BBBEC9555A901C8B5",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-slice-11",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick"
+      },
+      {
+        "label": "second-slice-12",
+        "cycles": 1000000,
+        "button": "Up,Right",
+        "type": "joystick",
+        "expectedFrameHash": "21F3ECB0EAE3EBBBF1D26FDACD01BC368D37AE78A7C773D9B5C55E927DE64B06",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "second-extended-result",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "1714AA0F43BE42FB2B55946F02B2FF70AA3065044D7AC1E16399CFD1B8625169",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "held-jump-start",
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 500000,
+        "expectedJoy1": "0103"
+      },
+      {
+        "label": "held-jump-sample-1",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-2",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedFrameHash": "3CECF3E696FCE42225C8FF70167583F58DFD03FB91C3A6D634DAD3996895FE84",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "held-jump-sample-3",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-4",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-5",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "held-jump-sample-6",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedFrameHash": "EB759B7E41D0C8C4B2C6F9574B481FA3751A237FC4DC6AE389CA1DE301B2733E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "cycles": 500000,
+        "label": "jump-release-up",
+        "expectedJoy1": "0003",
+        "button": "Up",
+        "type": "joystick-up"
+      },
+      {
+        "cycles": 0,
+        "label": "jump-repress-up",
+        "expectedJoy1": "0103",
+        "button": "Up",
+        "type": "joystick-down"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-1",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-2",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-3",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-4",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-5",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "86DB57EE39C69587A30892F69EEAB7DDFD1782E7E5BC97FAA5D29B95610EE95C",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-6",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-7",
+        "cycles": 500000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "label": "second-held-sample-8",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "D7E5BB72E4E9176CFA08B1B31D0CEA54DBA41C9D9707D03E22275238089FA59B",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "cycles": 0,
+        "label": "second-held-release",
+        "expectedJoy1": "0000",
+        "button": "Up,Right",
+        "type": "joystick-up"
+      },
+      {
+        "expectedJoy1": "0000",
+        "label": "second-held-result",
+        "cycles": 500000,
+        "type": "wait",
+        "expectedFrameHash": "9D566FD4A0F2E6AE23BBA3E18A07D2B6B09B21D2B5B03CC36C5C8430C039F249",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "label": "gap-jump-start",
+        "button": "Up,Right",
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-1",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-2",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-3",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-4",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "gap-sample-5",
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedFrameHash": "A761A9A83F57D9BC7A9E28E3450DCEA2F49CD8746EBBAF193D8071EEB6BE1803",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-up",
+        "expectedJoy1": "0000",
+        "button": "Up,Right",
+        "cycles": 0,
+        "label": "ice-release-at-apex"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-1"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-2"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-3"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 300000,
+        "label": "ice-landing-4",
+        "expectedFrameHash": "539F99F2AB240D489FD23E8996F67C7187F7970EAD1775AA9518C9DBDAEC308E",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "cycles": 500000,
+        "button": "Up,Right",
+        "label": "short-ice-hop-start"
+      },
+      {
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "cycles": 0,
+        "button": "Up,Right",
+        "label": "short-ice-hop-release"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-1"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-2"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-3"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-4"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-5"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-6"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-7"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-8"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-9"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-10"
+      },
+      {
+        "type": "wait",
+        "expectedJoy1": "0000",
+        "cycles": 400000,
+        "label": "short-ice-hop-11",
+        "expectedFrameHash": "C9B1898C4571A13114611C0361003C63402127F6EC19C5DEB9324805C1D68B8B",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "button": "Up,Right",
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "label": "second-ice-to-plateau-start",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-1",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-2",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-3",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-4",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-5",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-6",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-7",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-8",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-9",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0103",
+        "type": "wait",
+        "label": "second-ice-to-plateau-10",
+        "cycles": 500000,
+        "expectedFrameHash": "B1D8999A013F7D4B330320E42294E9A0C613BAB78484B8DECA03C6CFB8C4149C",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "button": "Up,Right",
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "label": "second-ice-to-plateau-release",
+        "cycles": 0
+      },
+      {
+        "button": "Right",
+        "cycles": 500000,
+        "type": "joystick-down",
+        "label": "post-spider-run-start",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-1",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-2",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-3",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-4",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-5",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-6",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-7",
+        "expectedJoy1": "0003"
+      },
+      {
+        "cycles": 500000,
+        "type": "wait",
+        "label": "post-spider-run-8",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "5E75E30C0C9907C566E20EBA08672D5C621826F1C131347607EAA5F1236CA3B6",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "button": "Right",
+        "cycles": 0,
+        "type": "joystick-up",
+        "label": "post-spider-run-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "lower-route-start",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-1",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-2",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-3",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-4",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-5",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-6",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-7",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-8",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-9",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "lower-route-10",
+        "expectedJoy1": "0003",
+        "cycles": 500000,
+        "expectedFrameHash": "18B72EEF727101B5C4553B69AEAD7EF204BC13A600CFC727A9A4BC8822160369",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "lower-route-release",
+        "expectedJoy1": "0000",
+        "cycles": 0
+      },
+      {
+        "label": "first-orb-jump",
+        "cycles": 1000000,
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "button": "Up,Right"
+      },
+      {
+        "label": "first-orb-brake",
+        "cycles": 2000000,
+        "expectedJoy1": "0100",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "label": "first-orb-release",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "button": "Up"
+      },
+      {
+        "label": "before-orbs",
+        "minimumNonBlackPixels": 190000,
+        "type": "wait",
+        "cycles": 3000000,
+        "expectedFrameHash": "17C962471396A1BE8784FA13038CE63EAA9AA29103AD70F3AD810B07FB0E9ECB"
+      },
+      {
+        "label": "second-orb-jump",
+        "cycles": 1500000,
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "button": "Up,Right"
+      },
+      {
+        "label": "second-orb-brake",
+        "cycles": 2000000,
+        "expectedJoy1": "0100",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "label": "second-orb-release",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "button": "Up"
+      },
+      {
+        "label": "past-orbs",
+        "minimumNonBlackPixels": 190000,
+        "type": "wait",
+        "cycles": 2000000,
+        "expectedFrameHash": "4F969041B6D0FD8E03D079571AC3FDA96D262E3A0E1D390D2F3B9636003F4D9D"
+      },
+      {
+        "minimumNonBlackPixels": 190000,
+        "cycles": 2000000,
+        "label": "move-beyond-hazards",
+        "expectedFrameHash": "B2788B1AC9A7A00DEFA815B2FBA90CFB5AD6D96F8278D23C2DE88FFE2247960B",
+        "expectedJoy1": "0003",
+        "button": "Right",
+        "type": "joystick-down"
+      },
+      {
+        "label": "release-beyond-hazards",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "label": "live-beyond-hazards",
+        "expectedFrameHash": "17681F33394FD3DD201FE7133E4E373E06F587EED57CF8145231B7D11DE0D336",
+        "type": "wait",
+        "minimumNonBlackPixels": 190000,
+        "cycles": 1000000
+      },
+      {
+        "button": "Right",
+        "type": "joystick-down",
+        "label": "continue-right",
+        "cycles": 3000000,
+        "expectedJoy1": "0003"
+      },
+      {
+        "label": "continue-right-2",
+        "type": "wait",
+        "cycles": 3000000,
+        "expectedJoy1": "0003"
+      },
+      {
+        "button": "Right",
+        "type": "joystick-up",
+        "label": "release-right",
+        "cycles": 0,
+        "expectedJoy1": "0000"
+      },
+      {
+        "label": "second-orbs-start",
+        "type": "wait",
+        "minimumNonBlackPixels": 190000,
+        "cycles": 1000000,
+        "expectedFrameHash": "E74CCAFF9164F0F9F1595C62974CA161B13022BE3A5BAB025583FBAA9163828E"
+      },
+      {
+        "button": "Up,Right",
+        "label": "orb2-first-jump",
+        "expectedJoy1": "0103",
+        "cycles": 1500000,
+        "type": "joystick-down"
+      },
+      {
+        "button": "Right",
+        "label": "orb2-first-brake",
+        "expectedJoy1": "0100",
+        "cycles": 2000000,
+        "type": "joystick-up"
+      },
+      {
+        "button": "Up",
+        "label": "orb2-first-release",
+        "expectedJoy1": "0000",
+        "cycles": 0,
+        "type": "joystick-up"
+      },
+      {
+        "label": "orb2-first-end",
+        "minimumNonBlackPixels": 190000,
+        "cycles": 3000000,
+        "type": "wait",
+        "expectedFrameHash": "9DB04CCDE8AD5E662F5A12A844153A74D15E644792EE37ED52C8CA42BE9D3621"
+      },
+      {
+        "type": "joystick-down",
+        "cycles": 1500000,
+        "expectedJoy1": "0103",
+        "label": "orb2-second-jump",
+        "button": "Up,Right"
+      },
+      {
+        "type": "joystick-up",
+        "cycles": 2000000,
+        "expectedJoy1": "0100",
+        "label": "orb2-second-brake",
+        "button": "Right"
+      },
+      {
+        "type": "joystick-up",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "label": "orb2-second-release",
+        "button": "Up"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "minimumNonBlackPixels": 190000,
+        "label": "orb2-second-end",
+        "expectedFrameHash": "820BBBE5719E0446BEABE4774B21C9B8756C5F0667FF873EB06A7F2A457F9289"
+      },
+      {
+        "label": "approach-mirror",
+        "button": "Right",
+        "cycles": 2000000,
+        "expectedJoy1": "0003",
+        "type": "joystick-down"
+      },
+      {
+        "label": "mirror-release",
+        "button": "Right",
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "type": "joystick-up"
+      },
+      {
+        "label": "mirror-result",
+        "cycles": 1500000,
+        "minimumNonBlackPixels": 190000,
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0103",
+        "button": "Up,Right",
+        "label": "pillar-jump",
+        "type": "joystick-down",
+        "cycles": 1500000
+      },
+      {
+        "expectedJoy1": "0100",
+        "button": "Right",
+        "label": "pillar-brake",
+        "type": "joystick-up",
+        "cycles": 2000000
+      },
+      {
+        "expectedJoy1": "0000",
+        "button": "Up",
+        "label": "pillar-release",
+        "type": "joystick-up",
+        "cycles": 0
+      },
+      {
+        "label": "pillar-result",
+        "type": "wait",
+        "cycles": 1500000,
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "3BB00A26013A9E7F76180185F697869E93BA7B0C615AD97FBD9D7DCF77F9EEAE"
+      },
+      {
+        "label": "tall-pillar-jump",
+        "button": "Up,Right",
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "cycles": 2300000
+      },
+      {
+        "label": "tall-pillar-brake",
+        "button": "Right",
+        "expectedJoy1": "0100",
+        "type": "joystick-up",
+        "cycles": 2000000
+      },
+      {
+        "label": "tall-pillar-release",
+        "button": "Up",
+        "expectedJoy1": "0000",
+        "type": "joystick-up",
+        "cycles": 0
+      },
+      {
+        "label": "tall-pillar-result",
+        "minimumNonBlackPixels": 190000,
+        "type": "wait",
+        "cycles": 1500000,
+        "expectedFrameHash": "FEDDCF9427433DFD6A3ACDAE36CC21053E0690AECB21AD3202051595A86F145A"
+      },
+      {
+        "cycles": 2500000,
+        "expectedJoy1": "0003",
+        "type": "joystick-down",
+        "label": "after-tall-move",
+        "button": "Right"
+      },
+      {
+        "cycles": 1000000,
+        "label": "after-tall-result",
+        "expectedJoy1": "0000",
+        "button": "Right",
+        "type": "joystick-up",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "A1459EEFC3E42808C42E9914A63198E657C692C6BBA63ACA06BEBC9C31D1AF51"
+      },
+      {
+        "cycles": 1500000,
+        "expectedJoy1": "0103",
+        "button": "Up,Right",
+        "type": "joystick-down",
+        "label": "next-short-jump"
+      },
+      {
+        "cycles": 2000000,
+        "expectedJoy1": "0100",
+        "button": "Right",
+        "type": "joystick-up",
+        "label": "next-short-brake"
+      },
+      {
+        "cycles": 0,
+        "expectedJoy1": "0000",
+        "button": "Up",
+        "type": "joystick-up",
+        "label": "next-short-release"
+      },
+      {
+        "cycles": 1500000,
+        "minimumNonBlackPixels": 190000,
+        "label": "next-short-result",
+        "type": "wait",
+        "expectedFrameHash": "628BF4E81EF9FE37BB6B01CBA3AF42F45712F32FE0F553366B1C76B57E2D1436"
+      },
+      {
+        "expectedJoy1": "0103",
+        "cycles": 2100000,
+        "label": "upper-platform-jump",
+        "type": "joystick-down",
+        "button": "Up,Right"
+      },
+      {
+        "expectedJoy1": "0100",
+        "cycles": 2000000,
+        "label": "upper-platform-brake",
+        "type": "joystick-up",
+        "button": "Right"
+      },
+      {
+        "expectedJoy1": "0000",
+        "cycles": 0,
+        "label": "upper-platform-release",
+        "type": "joystick-up",
+        "button": "Up"
+      },
+      {
+        "minimumNonBlackPixels": 190000,
+        "label": "upper-platform-result",
+        "type": "wait",
+        "cycles": 300000,
+        "expectedFrameHash": "C9128DD92521844123BBD008A422BB1E84E1E6C45FAAA932A89464C49FD6CD37"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 2400000,
+        "label": "upper-spider-leap",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "upper-spider-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-spider-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 800000,
+        "label": "upper-spider-clear",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "1D94F67B779D7FE5EA6294333212ACEB5BB3497B1E7A2054B21EED35867BF0AD"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 2600000,
+        "label": "platform-to-pillar-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1500000,
+        "label": "platform-to-pillar-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "platform-to-pillar-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "platform-to-pillar-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "42228D9E2293677A1C21A70985FB63C77FEAC7D49C426DA4CD79541DCA5BA7ED"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "tall-pillar-to-floating-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up,Right",
+        "cycles": 1800000,
+        "label": "floating-jump-brake",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 1200000,
+        "label": "floating-platform-land",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "220B399B7DCBCFE5F66A31554BDDEA0EFA33874A5219DBFD00B28447144F4F1F"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 400000,
+        "label": "floating-platform-live-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "floating-platform-live-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 700000,
+        "label": "floating-platform-live-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "CC5FF1F070A7144463A2CAFEA142981F71D99A3A933BFDE733CE22BDAA365679"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 500000,
+        "label": "mini-platform-edge-step",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "mini-platform-edge-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 1200000,
+        "label": "bridge-at-1p2",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "wait",
+        "cycles": 1800000,
+        "label": "bridge-at-3p0",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 500000,
+        "label": "bridge-early-up-release",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "36665001CE9C64C2E87D39FAF0252192E3DE640DEA772A1AFD8FCEE115112DC9",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 1000000,
+        "label": "bridge-second-jump-probe",
+        "expectedJoy1": "0103",
+        "expectedFrameHash": "A349E23B55080C466A51632960ABCA1C9018B2E57FC50375E9BA638AFCFE27E4",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "cycles": 2500000,
+        "label": "bridge-second-jump-cross",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "bridge-second-jump-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 600000,
+        "label": "bridge-second-jump-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "8E751A61746FC8B1326E805AE356FF43695E738BD56E47E05818EEF901EFD3F7"
+      },
+      {
+        "type": "wait",
+        "cycles": 1200000,
+        "label": "next-tall-pillar-control",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "1E72E02EE147133F8E257DAE0761A3E2B98464E9E18ECEFB620C2B1265D7EE46"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 1000000,
+        "label": "pillar-to-small-float-jump",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 2000000,
+        "label": "pillar-to-small-float-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-to-small-float-result",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 2200000,
+        "label": "beyond-pillar-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "beyond-pillar-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "beyond-pillar-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "beyond-pillar-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "7B15916AF1F1FB53E44D74800E2E06312C9BB8091D5A3D62C5D13F35E1BD031B"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "beyond-pillar-live-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "beyond-pillar-live-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "beyond-pillar-live-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "5C8BB8E808CB5EE335B7665D1A9C4BFC48F45D3D9236ABB8F0CC4EEAC77EAA84"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 2500000,
+        "label": "post-pillar-next-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1200000,
+        "label": "post-pillar-next-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "post-pillar-next-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 900000,
+        "label": "post-pillar-next-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "6C5DC7754842A149C1F64BC5134EB154098A95196AA4657F4E2289782C688894"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 2000000,
+        "label": "toward-green-marker",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "toward-green-marker-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "toward-green-marker-result",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "green-marker-control-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "green-marker-control-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "green-marker-control-result",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 3000000,
+        "label": "enemy-overflight",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "enemy-overflight-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "enemy-overflight-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "enemy-overflight-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "C18B05520438340B245616C30D39FA6FC51A7AB9C0F5DCF95480C8556DBC1102"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 3000000,
+        "label": "post-enemy-run",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "post-enemy-run-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-enemy-run-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "167A5A6A85720AE423F430EAF1B8E6AF27C6DE51C37136768665F7670E2AF771"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 2800000,
+        "label": "later-orb-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "later-orb-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "later-orb-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 700000,
+        "label": "later-orb-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "01DAA38B91F170FB9C4D2E768AF6BCAC44E743C0D7EFDCA6CC8226AD8BD10CFF"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 500000,
+        "label": "later-orb-live-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "later-orb-live-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "later-orb-live-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "DD6B784CE6C230C7CE475FC3DBB2F75333F3361521CDC066B1D34CBA98912FB1"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "cliff-approach-one",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "cliff-approach-one-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000,
+        "label": "cliff-approach-one-result",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1200000,
+        "label": "cliff-approach-two",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "cliff-approach-two-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000,
+        "label": "cliff-approach-two-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "68AE35EACBF1922BE89446CF75DE1F124F5908E2A249C77CAA953F3739410560"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 2200000,
+        "label": "cliff-timed-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "cliff-timed-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "cliff-timed-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 600000,
+        "label": "cliff-timed-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "3B04AE845DB8117DC3991182A98D18F96337E55652F4A6A74DDC059C27D28813"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 500000,
+        "label": "raised-side-live-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "raised-side-live-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "raised-side-live-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "3EA3B32C34637D3C60B8FB1E6382431FC292E0E69165D4EF78AFD5E481DF6C59"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 1200000,
+        "label": "raised-pillar-early-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "wait",
+        "cycles": 1400000,
+        "label": "raised-pillar-cross",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "raised-pillar-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "raised-pillar-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 600000,
+        "label": "raised-pillar-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "132C45BD8BD388CCEE4A49AC662533435593C61B4C78D04DD630D06709CC5A2F"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "raised-exit-live-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "raised-exit-live-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "raised-exit-live-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "4B04E69285939E2A7286AFAA7622A8EB92147769BCECECC5EEF18845C0F5189B"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 1000000,
+        "label": "retreat-first-jump",
+        "expectedJoy1": "0103"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1500000,
+        "label": "retreat-air-brake",
+        "expectedJoy1": "0100"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "retreat-release-up",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Left",
+        "cycles": 1000000,
+        "label": "retreat-left",
+        "expectedJoy1": "0300"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Left",
+        "cycles": 0,
+        "label": "retreat-left-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "retreat-ground-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "777D5A24EF9ADCE74BB23C93761D4C0872826E1286125FBC734877D19BC3B254"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up,Right",
+        "cycles": 500000,
+        "label": "retreat-second-rise",
+        "expectedJoy1": "0103",
+        "expectedFrameHash": "B20D69C045230CFCD5B0D44F8FBE2B38A9A0ADDEDD84F81BD857F78A28015195"
+      },
+      {
+        "type": "wait",
+        "cycles": 1200000,
+        "label": "retreat-second-cross",
+        "expectedJoy1": "0103",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "0D969A23C532F1F9611DF98F390F16647F69851D132CD8325BB7E7CE0B7CA6E3"
+      },
+      {
+        "type": "wait",
+        "cycles": 1200000,
+        "label": "retreat-second-over-tree",
+        "expectedJoy1": "0103",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "retreat-second-descent",
+        "expectedJoy1": "0103",
+        "minimumNonBlackPixels": 190000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up,Right",
+        "cycles": 300000,
+        "label": "tree-cross-release",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "tree-cross-live-move",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "tree-cross-live-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 400000,
+        "label": "tree-cross-live-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "306CF6A4A396016AF8D39E35A045370D8B7966EB6CEB2A99BE606B388D9BDA4B"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 2000000,
+        "label": "mirror-approach-right",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "mirror-approach-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000,
+        "label": "mirror-approach-result",
+        "minimumNonBlackPixels": 190000,
+        "expectedFrameHash": "3AF7BD2B7E79479FF2AEBFD6FC6DB5BA1538D1899B1E19872C19DE5A68FD1B7F"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 2000000,
+        "label": "mirror-enter-right",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "mirror-enter-stop",
+        "expectedJoy1": "0000"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "mirror-enter-result",
+        "expectedFrameHash": "3DEC6B4B8D5A07389C3219CA2F6E655D5CDDF5593C0FF9C3A4B4741CCA68BECD"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 300000,
+        "label": "level-complete-confirm",
+        "expectedJoy1": "0000",
+        "expectedCiaAPortA": "40"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "level-complete-confirm-release",
+        "expectedJoy1": "0000",
+        "expectedCiaAPortA": "C0"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "next-stage-after-confirm",
+        "expectedFrameHash": "E714F6F7F602AE150352BA91FB88B54071328D694992D1ED3010C82E2AFE902A"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 300000,
+        "label": "stage-two-start",
+        "expectedJoy1": "0000",
+        "expectedCiaAPortA": "40"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage-two-start-release",
+        "expectedJoy1": "0000",
+        "expectedCiaAPortA": "C0"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "stage-two-play",
+        "expectedFrameHash": "0F2B0515F36D5C49EDEAB4E1491F4F1DCA1A152DD8E1BD17B1C03F0505C75F02"
+      },
+      {
+        "type": "wait",
+        "cycles": 2100000,
+        "label": "stage-two-autonomous-ready",
+        "expectedFrameHash": "8036929963DF384F6021084F05C920B38A1A48BDF012D7DA2BEC9E31E48C6B80"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 500000,
+        "label": "stage-two-ready-confirm",
+        "expectedCiaAPortA": "40"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 300000,
+        "label": "stage-two-ready-release",
+        "expectedCiaAPortA": "C0"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 1000000,
+        "label": "stage-two-post-ready-right",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "555967BF5CBDBD469971A3A161CD5D16503C8FFF163CF887B67D434C5071308C"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 3000000,
+        "label": "stage-two-tree-jump",
+        "expectedJoy1": "0103",
+        "expectedFrameHash": "E934DF12F54F2088C934ECD39E778AF73F5178CC54B892D94EDEB366C6255813"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage-two-tree-release",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "stage-two-past-tree",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "6A906D1C7633157A86B1881D1A9E90810D18A1B2AF37DBC0EECC909B511301EE"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 2000000,
+        "label": "stage-two-orb-jump",
+        "expectedJoy1": "0103",
+        "expectedFrameHash": "A0D149EACCF2CCFEFA0B38984F0D65F6A95742FEC7AF6A0516A7544570B58B24"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 2000000,
+        "label": "stage-two-orb-landing",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "E3A74A24AF5C9EDF63BEF31CACC7E9AB631A5A65EEE01117E5E8D48F299CF5BD"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 1200000,
+        "label": "ledge-stall-jump",
+        "expectedJoy1": "0103",
+        "expectedFrameHash": "625AD945DB720AA2BCCF96C1A4911BAF4DFE131FD9C4D9731BAEF3D7CC210CB5"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "ledge-stall-release-up",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1400000,
+        "label": "ledge-stall-neutral",
+        "expectedJoy1": "0000",
+        "expectedFrameHash": "87BE5CB9319525D1EF29A4A1373BBAF0FD17F4B740446575F30E29FCDFD95B4F"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "ledge-stall-fire",
+        "expectedJoy1": "0000",
+        "expectedFrameHash": "A1ABE7B62C8BAC7A2C0592D8FBEA292C8A57BFEEF51748325361B2855B3EE24B"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 1000000,
+        "label": "ledge-stall-fire-release",
+        "expectedJoy1": "0000",
+        "expectedFrameHash": "9DA65FFC31AA3B04F2488F24E11A0B62761FAE32CE7941A97B6C2F3982144065"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 3000000,
+        "label": "ledge-stall-right",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "54FCD6C51D492D3829DCED8BFF2A24C1E4C7BA76D007760FAF0183D506FE4CE5"
+      },
+      {
+        "type": "wait",
+        "cycles": 3000000,
+        "label": "ledge-stall-farside-1",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "68584B8EBC04E78B51C4FD5E0C2337C3FAFD1522538ECF28BC9BBD7FFE790B4D"
+      },
+      {
+        "type": "wait",
+        "cycles": 3000000,
+        "label": "ledge-stall-farside-2",
+        "expectedJoy1": "0003",
+        "expectedFrameHash": "4F1D334C97E81CE396B4DBEF30751F8DA78CD9954A87BEDDBDE5A28B579C5D87"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 1200000,
+        "label": "second-ledge-jump",
+        "expectedJoy1": "0103",
+        "expectedFrameHash": "212D74121FEB85D0FE5B25E86416A9D413BA569607D75DAD65063837E7FE8058"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "second-ledge-release-up",
+        "expectedJoy1": "0003"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 1400000,
+        "label": "second-ledge-neutral",
+        "expectedJoy1": "0000",
+        "expectedFrameHash": "2BEEA375891FF7D1414B997D7428A53BE9151A5A167E4596B8E10B35AE0A9364"
+      },
+      {
+        "type": "wait",
+        "cycles": 2000000,
+        "label": "second-ledge-hold",
+        "expectedJoy1": "0000",
+        "expectedMemoryBytes": {
+          "134182154": "FF",
+          "134182172": "00",
+          "134182092": "01",
+          "134182093": "C4",
+          "134182094": "00",
+          "134182095": "79"
+        },
+        "expectedFrameHash": "B7F413FB3CCB925E58D0F27C972B9C8420EF80B4D3080A03A32CCE42D6D0D8C0"
+      },
+      {
+        "cycles": 0,
+        "expectedJoy1": "0003",
+        "button": "Right",
+        "label": "castle-air-right",
+        "type": "joystick-down"
+      },
+      {
+        "cycles": 1000000,
+        "expectedJoy1": "0103",
+        "button": "Up",
+        "label": "castle-air-takeoff",
+        "type": "joystick-down"
+      },
+      {
+        "cycles": 800000,
+        "expectedJoy1": "0103",
+        "button": "Fire",
+        "label": "castle-air-fire",
+        "type": "joystick-down"
+      },
+      {
+        "cycles": 700000,
+        "expectedJoy1": "0103",
+        "button": "Fire",
+        "label": "castle-air-release-fire",
+        "type": "joystick-up"
+      },
+      {
+        "cycles": 1400000,
+        "expectedJoy1": "0003",
+        "button": "Up",
+        "label": "castle-air-land",
+        "type": "joystick-up"
+      },
+      {
+        "cycles": 6000000,
+        "expectedJoy1": "0003",
+        "label": "castle-air-control",
+        "type": "wait"
+      },
+      {
+        "expectedJoy1": "0003",
+        "cycles": 6000000,
+        "type": "wait",
+        "label": "castle-air-long-control"
+      },
+      {
+        "cycles": 1200000,
+        "expectedJoy1": "0103",
+        "type": "joystick-down",
+        "label": "castle-air-retry-jump",
+        "button": "Up"
+      },
+      {
+        "cycles": 2200000,
+        "expectedJoy1": "0003",
+        "type": "joystick-up",
+        "label": "castle-air-retry-land",
+        "button": "Up"
+      },
+      {
+        "expectedJoy1": "0003",
+        "type": "wait",
+        "label": "castle-contact-01",
+        "cycles": 500000
+      },
+      {
+        "expectedJoy1": "0003",
+        "type": "wait",
+        "label": "castle-contact-02",
+        "cycles": 500000
+      },
+      {
+        "cycles": 100000,
+        "label": "castle-cower",
+        "type": "joystick-down",
+        "button": "Down"
+      },
+      {
+        "cycles": 700000,
+        "label": "castle-cower-fire",
+        "type": "joystick-down",
+        "button": "Fire"
+      },
+      {
+        "cycles": 200000,
+        "label": "castle-cower-fire-release",
+        "type": "joystick-up",
+        "button": "Fire"
+      },
+      {
+        "cycles": 500000,
+        "expectedJoy1": "0003",
+        "label": "castle-cower-resume-1",
+        "type": "joystick-up",
+        "button": "Down"
+      },
+      {
+        "cycles": 500000,
+        "expectedJoy1": "0003",
+        "type": "wait",
+        "label": "castle-cower-resume-2"
+      },
+      {
+        "type": "wait",
+        "label": "castle-cower-resume-3",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle-cower-resume-4",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle-cower-resume-5",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "label": "castle-second-strike",
+        "expectedJoy1": "0003",
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 500000
+      },
+      {
+        "label": "castle-second-strike-release",
+        "expectedJoy1": "0003",
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 500000
+      },
+      {
+        "label": "castle-second-strike-control",
+        "type": "wait",
+        "cycles": 500000,
+        "expectedJoy1": "0003"
+      },
+      {
+        "label": "castle-second-long-1",
+        "type": "wait",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "label": "castle-second-long-2",
+        "type": "wait",
+        "expectedJoy1": "0003",
+        "cycles": 500000
+      },
+      {
+        "button": "Right",
+        "type": "joystick-up",
+        "label": "knight-stop",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "knight-wait-cooldown",
+        "cycles": 800000
+      },
+      {
+        "button": "Fire",
+        "type": "joystick-down",
+        "label": "knight-late-fire",
+        "cycles": 500000
+      },
+      {
+        "button": "Fire",
+        "type": "joystick-up",
+        "label": "knight-late-release",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-4",
+        "cycles": 500000,
+        "expectedMemoryBytes": {
+          "134184710": "01",
+          "134182154": "FF",
+          "134184757": "00"
+        }
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-hold-9",
+        "cycles": 500000
+      },
+      {
+        "button": "Right",
+        "type": "joystick-down",
+        "label": "knight-late-move-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "knight-late-move-2",
+        "cycles": 500000
+      },
+      {
+        "label": "after-knight-1",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "after-knight-2",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "label": "after-knight-3",
+        "type": "wait",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "spider-ground-stop",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Down",
+        "label": "spider-ground-cower",
+        "cycles": 100000
+      },
+      {
+        "label": "drop-wait",
+        "cycles": 1300000,
+        "type": "wait"
+      },
+      {
+        "button": "Down",
+        "label": "drop-rise",
+        "cycles": 0,
+        "type": "joystick-up"
+      },
+      {
+        "button": "Right",
+        "label": "drop-run-to-edge",
+        "cycles": 1000000,
+        "type": "joystick-down"
+      },
+      {
+        "button": "Right",
+        "label": "drop-stop-at-edge",
+        "cycles": 0,
+        "type": "joystick-up"
+      },
+      {
+        "label": "drop-land",
+        "cycles": 800000,
+        "type": "wait"
+      },
+      {
+        "button": "Down",
+        "label": "low-ground-cower",
+        "cycles": 100000,
+        "type": "joystick-down"
+      },
+      {
+        "button": "Fire",
+        "label": "low-ground-fire",
+        "cycles": 500000,
+        "type": "joystick-down"
+      },
+      {
+        "button": "Fire",
+        "label": "low-ground-release",
+        "cycles": 300000,
+        "type": "joystick-up"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-1",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-2",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-3",
+        "type": "wait",
+        "expectedMemoryBytes": {
+          "134182154": "FF",
+          "134184677": "00"
+        }
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-4",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-5",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-6",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-7",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-8",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-9",
+        "type": "wait"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-hold-10",
+        "type": "wait"
+      },
+      {
+        "button": "Down",
+        "label": "low-ground-rise",
+        "cycles": 300000,
+        "type": "joystick-up"
+      },
+      {
+        "button": "Right",
+        "label": "low-ground-forward-1",
+        "cycles": 500000,
+        "type": "joystick-down"
+      },
+      {
+        "cycles": 500000,
+        "label": "low-ground-forward-2",
+        "type": "wait"
+      },
+      {
+        "type": "wait",
+        "label": "after-spider-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "after-spider-2",
+        "cycles": 500000,
+        "expectedFrameHash": "B3DA26C829022A6209111FBF26EE59130F2A6ACA00D4E7A7B0654B4710C36663",
+        "expectedMemoryBytes": {
+          "134182093": "1C",
+          "134182092": "03",
+          "134184677": "00",
+          "134182095": "79",
+          "134182154": "FF",
+          "134184757": "00",
+          "134182094": "00"
+        }
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "gap-jump-start",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-hold-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-hold-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-hold-3",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "gap-stop-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "gap-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "gap-land-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-14",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-15",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-16",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-17",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-18",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-19",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-20",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "platform-cycle-21",
+        "cycles": 500000,
+        "expectedFrameHash": "DFAFE27542117E1B50AED920D90F069EC2A4D41C688351E9514039AEC1C83FA5",
+        "expectedMemoryBytes": {
+          "134182092": "03",
+          "134182093": "7E",
+          "134182154": "FF",
+          "134182094": "00",
+          "134182095": "82"
+        }
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "pillar-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "pillar-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "pillar-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "pillar-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "pillar-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "second-platform-stop",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "second-platform-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-14",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-platform-land-15",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "castle2-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "castle2-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "castle2-air-14",
+        "cycles": 500000,
+        "expectedFrameHash": "BBDE509C08E8A3C4502DE35966CC32C9B73FB721CF718C6502189CEBF761E6AE",
+        "expectedMemoryBytes": {
+          "134182095": "79",
+          "134182154": "FF",
+          "134182092": "04",
+          "134182094": "00",
+          "134182093": "E3"
+        }
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "far-castle-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-14",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "snake-approach-15",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-approach",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "late-jump-start",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-jump-6",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "second-jump-rearm",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-approach-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-approach-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-approach-3",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "second-jump-start",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "second-jump-6",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "third-jump-rearm",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-approach-7",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "third-jump-start",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "third-jump-8",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "pillar-rearm",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "pillar-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "pillar-over-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "pillar-over-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "pillar-over-3",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "short-pillar-stop",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "short-pillar-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "short-pillar-land-14",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "high-pillar-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "high-pillar-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-air-4",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "high-pillar-stop",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "high-pillar-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "high-pillar-stand-9",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "upper-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "upper-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "upper-air-11",
+        "cycles": 500000,
+        "expectedFrameHash": "45F9223BA5CA4373AF87EF5022495C486D253DB939B6B1AA07A70AFF057D76E1",
+        "expectedMemoryBytes": {
+          "134182094": "00",
+          "134182092": "08",
+          "134182095": "39",
+          "134182093": "77",
+          "134182154": "FF"
+        }
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "ice-stop",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "ice-rearm",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "ice-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "ice-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "ice-mid-stop",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "ice-mid-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "ice-mid-land-14",
+        "cycles": 500000,
+        "expectedFrameHash": "4DE13B6200A18A4E95AB52C0471F64045B0A8C4DA487D66351CEEE56F470384D",
+        "expectedMemoryBytes": {
+          "134182094": "00",
+          "134182092": "08",
+          "134182093": "B4",
+          "134182095": "B9",
+          "134182154": "FF"
+        }
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "post-gap-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "post-gap-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-14",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-15",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "post-gap-air-16",
+        "cycles": 500000,
+        "expectedFrameHash": "353A88DA57BEBB2FA4EA104DDB9F86F77D05554CE938DBCAF38EC76BB65FB4D0",
+        "expectedMemoryBytes": {
+          "134182095": "B9",
+          "134182093": "90",
+          "134182154": "FF",
+          "134182094": "00",
+          "134182092": "09"
+        }
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "building-rearm",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "building-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "building-over-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "building-over-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "building-over-3",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "corridor-stop-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "label": "corridor-release-up",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "corridor-still-1",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "label": "corridor-strike",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "label": "corridor-strike-release",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "corridor-after-strike-right",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "corridor-after-strike-7",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "label": "phase-release-right",
+        "cycles": 0
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-12",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-13",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-14",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-15",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-16",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-17",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-18",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-19",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-20",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-21",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-22",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-23",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-24",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-25",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-hold-26",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "label": "phase-right",
+        "cycles": 0
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "label": "phase-jump",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-9",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-11",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "phase-air-12",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "delayed-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "delayed-release-up"
+      },
+      {
+        "type": "wait",
+        "label": "delayed-hold-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-hold-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-hold-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-hold-4",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "label": "delayed-fire",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "label": "delayed-release-fire",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-5",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-6",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-7",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-8",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "delayed-follow-9",
+        "cycles": 500000,
+        "expectedFrameHash": "FDF948BF3E8E8D53F1D851AC36B6B4FB78CA99D27F5EDD4BAA853754B98B98CC",
+        "expectedMemoryBytes": {
+          "134182154": "FF",
+          "134183235": "40"
+        }
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-01",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-02",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-03",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-04",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-05",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-06",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-07",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-08",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-09",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-10",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-hold-11",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "late-right"
+      },
+      {
+        "type": "wait",
+        "label": "late-cross-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-cross-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-cross-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "late-cross-4",
+        "cycles": 500000,
+        "expectedFrameHash": "582B41E12D45B6FC98F4A459AB5234011110C3809F661FFCDD0C8E4181131AFF",
+        "expectedMemoryBytes": {
+          "134182154": "FF",
+          "134182093": "F0",
+          "134182092": "0A",
+          "134183235": "40"
+        }
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "late-release"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 500000,
+        "label": "wall-lift-up"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "wall-lift-right"
+      },
+      {
+        "type": "wait",
+        "label": "wall-lift-cross-1",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "wall-lift-cross-2",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "wall-lift-cross-3",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "wall-lift-cross-4",
+        "cycles": 500000
+      },
+      {
+        "type": "wait",
+        "label": "wall-lift-cross-5",
+        "cycles": 500000
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stair-edge-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stair-edge-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-edge-rearm"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stair-edge-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stair-edge-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-edge-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-edge-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-edge-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-edge-4"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stair-ledge-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stair-ledge-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-ledge-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-ledge-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-ledge-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-ledge-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-ledge-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-ledge-6"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stair-two-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stair-two-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-jump-4"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stair-two-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stair-two-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-land-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stair-two-land-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-phase-11"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "platform-board-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-board-step"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "platform-board-stop"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-11"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-12"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-13"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-ride-14"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-approach-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-approach-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-approach-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-approach-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "platform-approach-5"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "upper-edge-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-edge-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-jump-5"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "upper-edge-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-edge-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-land-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-edge-land-6",
+        "expectedFrameHash": "6D40CFCA354190A6F087DA36A3F35ADEB46FCFB2B6A26ADCC97F13937047B468",
+        "expectedMemoryBytes": {
+          "134185288": "0B",
+          "134185289": "E4",
+          "134182095": "29",
+          "134182093": "7C",
+          "134182092": "0C",
+          "134182154": "FF",
+          "134182094": "00"
+        }
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "upper-enemy-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-enemy-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-enemy-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-enemy-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-enemy-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-enemy-jump-4"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "upper-safe-tile-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-safe-tile-stop-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-safe-tile-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-safe-tile-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-safe-tile-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-safe-tile-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-safe-tile-land-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-safe-tile-land-6"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "second-spike-jump-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "second-spike-jump-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-jump-4"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "second-spike-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "second-spike-stop-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-spike-land-3"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "upper-gap-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-gap-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-jump-6"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "upper-gap-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "upper-gap-stop-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-land-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "upper-gap-land-6"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "pillar-jump-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "pillar-jump-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-jump-7"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "pillar-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "pillar-stop-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pillar-land-5"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "post-pillar-jump-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "post-pillar-jump-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "post-pillar-jump-7"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "pit-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-approach-edge"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "pit-jump-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "pit-jump-10"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "second-pit-phase-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "second-pit-phase-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-wait-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-wait-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-wait-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-wait-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-wait-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-wait-6"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "second-pit-phase-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "second-pit-phase-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "second-pit-phase-jump-8"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "immediate-knight-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "immediate-knight-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-rearm"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "immediate-knight-resume-right"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "immediate-knight-jump-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-11"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "immediate-knight-jump-12"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage2-exit-stop-right"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage2-exit-release-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-11"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-complete-check-12"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage2-confirm-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage2-confirm-10",
+        "expectedFrameHash": "E935C0826473E8D72FEAE4A5E64ABA374DFC7569BE110868CAEBB2BC3358851B"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-long-release"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-release-wait"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-long-press"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-press-wait"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-long-fire-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-11"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-12"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-13"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-14"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-15"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-16"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-17"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-18"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-19"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-20"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-21"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-22"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-23"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-24"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-25"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-26"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-27"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-28"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-29"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-30"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-31"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-32"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-33"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-34"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-35"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-36"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-37"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-38"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-39"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-40"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-41"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-42"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-43"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-44"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-45"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-46"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-47"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-48"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-49"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-50"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-51"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-52"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-53"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-54"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-55"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-56"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-57"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-58"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-59"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-60"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-61"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-62"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-63"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-64"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-65"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-66"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-67"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-68"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-69"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-70"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-71"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-72"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-73"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-74"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-75"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-76"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-77"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-78"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-79"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-80"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-81"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-82"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-83"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-84"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-85"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-86"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-87"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-88"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-89"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-90"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-91"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-92"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-93"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-94"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-95"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-96"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-97"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-98"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-99"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-long-wait-100"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-ready-fire-down"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-ready-fire-wait"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-ready-fire-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-wait-10"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-start-right-down"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-right-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-right-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-right-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-right-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-start-right-5"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage3-gap-jump-down"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-gap-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-gap-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-gap-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-gap-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-gap-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-gap-jump-6"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-platform-land-stop"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-11"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-land-12"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-11"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-12"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-13"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-14"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-15"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-16"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-17"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-18"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-19"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-20"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-21"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-22"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-23"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-24"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-25"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-26"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-27"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-28"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-29"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-30"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-31"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-32"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-33"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-34"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-35"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-36"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-37"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-38"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-39"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-platform-ride-40"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage3-rearm-up"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-rearm-wait"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-before-cross"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage3-delay-cross-up"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-delay-cross-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-cross-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-cross-2"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-delay-stop-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-delay-land-8",
+        "expectedFrameHash": "61A218CA09CC66DD0F6DA05AE8CA46548CB388C00DBC0550F4F51E96DA71DF10",
+        "expectedMemoryBytes": {
+          "134182092": "00",
+          "134182093": "E4",
+          "134182094": "00",
+          "134182095": "39",
+          "134182154": "FF"
+        }
+      },
+      {
+        "type": "joystick-up",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage3-advanced-pillar-release-up"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-advanced-pillar-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 300000,
+        "label": "stage3-advanced-pillar-step"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-advanced-pillar-stop"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-7"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-8"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-9"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-10"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-phase-11"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Down",
+        "cycles": 0,
+        "label": "stage3-advanced-pillar-cower"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-cower-establish"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-advanced-pillar-fire"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-advanced-pillar-strike-7"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Fire",
+        "cycles": 0,
+        "label": "stage3-post-dino-release-fire"
+      },
+      {
+        "type": "joystick-up",
+        "button": "Down",
+        "cycles": 0,
+        "label": "stage3-post-dino-release-down"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Up",
+        "cycles": 0,
+        "label": "stage3-post-dino-jump-up"
+      },
+      {
+        "type": "joystick-down",
+        "button": "Right",
+        "cycles": 0,
+        "label": "stage3-post-dino-jump-right"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-3"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-4"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-5"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-6"
+      },
+      {
+        "type": "wait",
+        "cycles": 500000,
+        "label": "stage3-post-dino-jump-7",
+        "expectedFrameHash": "C593760E7793C1BA530C14AAFAA65665D98F29CC27507EE2B221DAF688B967D6",
+        "expectedMemoryBytes": {
+          "134182154": "FF",
+          "134182095": "3A",
+          "134182092": "01",
+          "134182093": "50",
+          "134182094": "00",
+          "134184515": "40",
+          "134184517": "00"
+        }
+      }
+    ],
+    "model": "A3000",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "memoryWatchAddresses": [
+      134182092,
+      134182093,
+      134182094,
+      134182095,
+      134182154,
+      130081062,
+      130081064,
+      130081158,
+      130081160,
+      134185288,
+      134185289,
+      134184488,
+      134184489,
+      134184490,
+      134184491,
+      134184515,
+      134184517,
+      134184516
+    ]
+  }
+]

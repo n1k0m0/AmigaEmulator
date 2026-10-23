@@ -31,6 +31,7 @@ namespace AmigaEmulator.Core
         public int ChipMasterClockHz { get; private set; }
         public Media.AmigaIdeModel IdeModel { get; private set; }
         public bool HasDesktopResources { get; private set; }
+        public int ZorroIIIRamBytes { get; private set; }
         public bool HasRicohClock => HasDesktopResources;
         public uint MotherboardFastRamStart => HasDesktopResources ? 0x08000000u - (uint)FastRamBytes : 0;
         public bool HasBuiltInIde => Machine == AmigaMachineModel.A600 || Machine == AmigaMachineModel.A1200 || Machine == AmigaMachineModel.A4000Ec030;
@@ -129,7 +130,8 @@ namespace AmigaEmulator.Core
             if (clockHz < ChipMasterClockHz || clockHz > 100000000) throw new ArgumentOutOfRangeException(nameof(clockHz));
             return new AmigaModel(Name + " CPU DEVELOPMENT", clockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
-                { Machine = Machine, Chipset = Chipset, Cpu = cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel, HasDesktopResources = HasDesktopResources };
+                { Machine = Machine, Chipset = Chipset, Cpu = cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel,
+                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes };
         }
 
         /// <summary>Custom-chip bring-up; not a complete A1200/A4000 motherboard.</summary>
@@ -138,7 +140,8 @@ namespace AmigaEmulator.Core
             if (!Enum.IsDefined(chipset)) throw new ArgumentOutOfRangeException(nameof(chipset));
             return new AmigaModel(Name + " CHIPSET DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
-                { Machine = Machine, Chipset = chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel, HasDesktopResources = HasDesktopResources };
+                { Machine = Machine, Chipset = chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel,
+                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes };
         }
 
         public AmigaModel WithDevelopmentIde(Media.AmigaIdeModel ide)
@@ -146,7 +149,8 @@ namespace AmigaEmulator.Core
             if (!Enum.IsDefined(ide)) throw new ArgumentOutOfRangeException(nameof(ide));
             return new AmigaModel(Name + " IDE DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
-                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = ide, HasDesktopResources = HasDesktopResources };
+                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = ide,
+                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes };
         }
 
         public AmigaModel WithDevelopmentDesktopResources()
@@ -155,7 +159,21 @@ namespace AmigaEmulator.Core
                 throw new InvalidOperationException("Motherboard Fast RAM requires 32 physical CPU address lines.");
             return new AmigaModel(Name + " DESKTOP DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
-                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel, HasDesktopResources = true };
+                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel,
+                  HasDesktopResources = true, ZorroIIIRamBytes = ZorroIIIRamBytes };
+        }
+
+        /// <summary>Opt-in Zorro III RAM board for bus bring-up; not a released machine configuration.</summary>
+        public AmigaModel WithDevelopmentZorroIIIRam(int bytes)
+        {
+            if (!HasDesktopResources || Cpu == AmigaCpuModel.M68000 || Cpu == AmigaCpuModel.M68EC020)
+                throw new InvalidOperationException("Zorro III requires a 32-bit desktop motherboard and CPU.");
+            if (bytes != 8 * 1024 * 1024 && bytes != 16 * 1024 * 1024 && bytes != 32 * 1024 * 1024)
+                throw new ArgumentOutOfRangeException(nameof(bytes), "Only 8, 16 or 32 MiB boards are implemented.");
+            return new AmigaModel(Name + " ZORRO III DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
+                ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
+                { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz,
+                  IdeModel = IdeModel, HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = bytes };
         }
 
         public static AmigaModel ForRamProfile(AmigaRamProfile profile)

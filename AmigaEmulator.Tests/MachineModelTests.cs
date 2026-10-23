@@ -601,7 +601,8 @@ namespace AmigaEmulator.Tests
         {
             using var state = new MemoryStream(); using var writer = new BinaryWriter(state);
             writer.Write(version); writer.Write(current, 4, 4);
-            int header = BitConverter.ToInt32(current, 0) >= 14 ? 41 : 20;
+            int header = BitConverter.ToInt32(current, 0) >= 18 ? 45 :
+                BitConverter.ToInt32(current, 0) >= 14 ? 41 : 20;
             writer.Write(current, header, current.Length - header - tailBytes); // Strip RAM/CPU/board identity headers.
             return state.ToArray();
         }

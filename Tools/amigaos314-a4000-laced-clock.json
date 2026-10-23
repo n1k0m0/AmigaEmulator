@@ -1,0 +1,747 @@
+[
+  {
+    "name": "A4000-OS314-LACED-CLOCK",
+    "model": "A4000Ec030",
+    "ram": "Chip2MbFast8Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK314-A4000.ROM",
+    "hardDisk": "tmp/os-lace-test.hdf",
+    "hardDiskReadOnly": true,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "desktop",
+        "expectedFrameHash": "A796899ACCB8AF5D3F10E01914FB8E2A8F2E64984C8CC52D060E6A673FA15175"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "modifiers": [
+          103
+        ],
+        "label": "execute-command"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "dialog-ready"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-00"
+      },
+      {
+        "type": "key",
+        "key": 21,
+        "cycles": 120000,
+        "label": "cmd-01"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-02"
+      },
+      {
+        "type": "key",
+        "key": 41,
+        "cycles": 120000,
+        "label": "cmd-03",
+        "modifiers": [
+          96
+        ]
+      },
+      {
+        "type": "key",
+        "key": 25,
+        "cycles": 120000,
+        "label": "cmd-04"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "cmd-05"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-06"
+      },
+      {
+        "type": "key",
+        "key": 35,
+        "cycles": 120000,
+        "label": "cmd-07"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-08"
+      },
+      {
+        "type": "key",
+        "key": 58,
+        "cycles": 120000,
+        "label": "cmd-09"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "cmd-10"
+      },
+      {
+        "type": "key",
+        "key": 51,
+        "cycles": 120000,
+        "label": "cmd-11"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "cmd-12"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-13"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-14"
+      },
+      {
+        "type": "key",
+        "key": 54,
+        "cycles": 120000,
+        "label": "cmd-15"
+      },
+      {
+        "type": "key",
+        "key": 55,
+        "cycles": 120000,
+        "label": "cmd-16"
+      },
+      {
+        "type": "key",
+        "key": 24,
+        "cycles": 120000,
+        "label": "cmd-17"
+      },
+      {
+        "type": "key",
+        "key": 34,
+        "cycles": 120000,
+        "label": "cmd-18"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "cmd-19"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 120000,
+        "label": "cmd-enter"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "screenmode-prefs"
+      },
+      {
+        "type": "mouse",
+        "x": 100,
+        "y": 50,
+        "mouseStepCycles": 20000,
+        "label": "pointer-probe"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "pointer-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 35,
+        "y": 55,
+        "mouseStepCycles": 20000,
+        "label": "list-pointer"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "choose-laced"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "selected-mode"
+      },
+      {
+        "type": "mouse",
+        "x": 180,
+        "y": 220,
+        "mouseStepCycles": 20000,
+        "label": "use-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "use-pointer-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 5,
+        "y": 50,
+        "mouseStepCycles": 20000,
+        "label": "use-button-pointer"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "use-laced"
+      },
+      {
+        "type": "wait",
+        "cycles": 8000000,
+        "label": "laced-desktop"
+      },
+      {
+        "type": "mouse",
+        "x": 12,
+        "y": 20,
+        "mouseStepCycles": 20000,
+        "label": "use-button-center"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "use-laced-center"
+      },
+      {
+        "type": "wait",
+        "cycles": 10000000,
+        "label": "laced-result"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 120000,
+        "label": "confirm-use"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "interlace-workbench"
+      },
+      {
+        "type": "mouse",
+        "x": -305,
+        "y": -205,
+        "mouseStepCycles": 20000,
+        "label": "confirm-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "confirm-pointer-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -25,
+        "mouseStepCycles": 20000,
+        "label": "confirm-use-pointer"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "confirm-use-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "laced-workbench"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "label": "confirm-use-again"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "laced-workbench-again",
+        "expectedInterlacedFrameHash": "E83ED0DD0FF78808C47E3CBBE2CF4143B7E897F915207C54EF133C5A8DBD2549",
+        "expectedBplcon0": "A306",
+        "expectInterlacedFrame": true,
+        "expectNativeInterlacedFrame": false
+      },
+      {
+        "type": "wait",
+        "cycles": 75000,
+        "label": "field-0"
+      },
+      {
+        "type": "wait",
+        "cycles": 75000,
+        "label": "field-1"
+      },
+      {
+        "type": "wait",
+        "cycles": 75000,
+        "label": "field-2"
+      },
+      {
+        "type": "wait",
+        "cycles": 75000,
+        "label": "field-3"
+      },
+      {
+        "type": "mouse",
+        "x": 80,
+        "y": 40,
+        "mouseStepCycles": 20000,
+        "label": "laced-pointer-move"
+      },
+      {
+        "type": "wait",
+        "cycles": 1000000,
+        "label": "laced-pointer-settled"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "modifiers": [
+          103
+        ],
+        "label": "laced-execute-command"
+      },
+      {
+        "type": "wait",
+        "cycles": 12000000,
+        "label": "laced-dialog",
+        "expectedInterlacedFrameHash": "A99D454837289FC8D2F6A11CBF25ACEC8E96B7524BD852901204AF912FAB8A19",
+        "expectedBplcon0": "A306",
+        "expectInterlacedFrame": true,
+        "expectNativeInterlacedFrame": false
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-00"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-01"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-02"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-03"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-04"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-05"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-06"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-07"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-08"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-09"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-10"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-11"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-12"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-13"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-14"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-15"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-16"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-17"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-18"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-19"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-20"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-21"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-22"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-23"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-24"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-25"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-26"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-27"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-28"
+      },
+      {
+        "type": "key",
+        "key": 65,
+        "cycles": 120000,
+        "label": "clock-clear-29"
+      },
+      {
+        "type": "key",
+        "key": 19,
+        "cycles": 120000,
+        "label": "clock-cmd-00"
+      },
+      {
+        "type": "key",
+        "key": 22,
+        "cycles": 120000,
+        "label": "clock-cmd-01"
+      },
+      {
+        "type": "key",
+        "key": 54,
+        "cycles": 120000,
+        "label": "clock-cmd-02"
+      },
+      {
+        "type": "key",
+        "key": 64,
+        "cycles": 120000,
+        "label": "clock-cmd-03"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "clock-cmd-04"
+      },
+      {
+        "type": "key",
+        "key": 21,
+        "cycles": 120000,
+        "label": "clock-cmd-05"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "clock-cmd-06"
+      },
+      {
+        "type": "key",
+        "key": 41,
+        "cycles": 120000,
+        "label": "clock-cmd-07",
+        "modifiers": [
+          96
+        ]
+      },
+      {
+        "type": "key",
+        "key": 22,
+        "cycles": 120000,
+        "label": "clock-cmd-08"
+      },
+      {
+        "type": "key",
+        "key": 20,
+        "cycles": 120000,
+        "label": "clock-cmd-09"
+      },
+      {
+        "type": "key",
+        "key": 23,
+        "cycles": 120000,
+        "label": "clock-cmd-10"
+      },
+      {
+        "type": "key",
+        "key": 40,
+        "cycles": 120000,
+        "label": "clock-cmd-11"
+      },
+      {
+        "type": "key",
+        "key": 23,
+        "cycles": 120000,
+        "label": "clock-cmd-12"
+      },
+      {
+        "type": "key",
+        "key": 20,
+        "cycles": 120000,
+        "label": "clock-cmd-13"
+      },
+      {
+        "type": "key",
+        "key": 23,
+        "cycles": 120000,
+        "label": "clock-cmd-14"
+      },
+      {
+        "type": "key",
+        "key": 18,
+        "cycles": 120000,
+        "label": "clock-cmd-15"
+      },
+      {
+        "type": "key",
+        "key": 33,
+        "cycles": 120000,
+        "label": "clock-cmd-16"
+      },
+      {
+        "type": "key",
+        "key": 58,
+        "cycles": 120000,
+        "label": "clock-cmd-17"
+      },
+      {
+        "type": "key",
+        "key": 51,
+        "cycles": 120000,
+        "label": "clock-cmd-18"
+      },
+      {
+        "type": "key",
+        "key": 40,
+        "cycles": 120000,
+        "label": "clock-cmd-19"
+      },
+      {
+        "type": "key",
+        "key": 24,
+        "cycles": 120000,
+        "label": "clock-cmd-20"
+      },
+      {
+        "type": "key",
+        "key": 51,
+        "cycles": 120000,
+        "label": "clock-cmd-21"
+      },
+      {
+        "type": "key",
+        "key": 39,
+        "cycles": 120000,
+        "label": "clock-cmd-22"
+      },
+      {
+        "type": "key",
+        "key": 68,
+        "cycles": 120000,
+        "label": "clock-cmd-enter"
+      },
+      {
+        "type": "wait",
+        "cycles": 20000000,
+        "label": "clock-window"
+      },
+      {
+        "type": "mouse",
+        "x": -120,
+        "y": -245,
+        "mouseStepCycles": 25000,
+        "label": "clock-output-close-aim"
+      },
+      {
+        "type": "wait",
+        "cycles": 700000,
+        "label": "clock-output-close-aim-settled"
+      },
+      {
+        "type": "mouse",
+        "x": 10,
+        "y": 32,
+        "mouseStepCycles": 30000,
+        "label": "clock-output-gadget-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 700000,
+        "label": "clock-output-gadget-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "clock-output-gadget-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "clock-after-output-gadget",
+        "expectedBplcon0": "A306",
+        "expectInterlacedFrame": true
+      },
+      {
+        "type": "wait",
+        "cycles": 100000000,
+        "label": "clock-late",
+        "expectedBplcon0": "A306",
+        "expectInterlacedFrame": true
+      },
+      {
+        "type": "mouse",
+        "x": 0,
+        "y": -14,
+        "mouseStepCycles": 20000,
+        "label": "clock-close-pointer"
+      },
+      {
+        "type": "wait",
+        "cycles": 700000,
+        "label": "clock-close-settled"
+      },
+      {
+        "type": "click",
+        "button": "Fire",
+        "cycles": 150000,
+        "label": "clock-close-click"
+      },
+      {
+        "type": "wait",
+        "cycles": 5000000,
+        "label": "workbench-after-clock",
+        "expectedBplcon0": "A306",
+        "expectInterlacedFrame": true
+      }
+    ],
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "strict": true
+  }
+]

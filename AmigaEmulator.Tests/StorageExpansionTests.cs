@@ -22,11 +22,62 @@ namespace AmigaEmulator.Tests
             yield return Test("deferred 68000 longword FIFO reads preserve distinct words", TestCpuFifo);
             yield return Test("savestate resumes partial ATA transfer and does not snapshot the host disk", TestState);
             yield return Test("Zorro II 2/4/8 MB Autoconfig assignment registers non-aliased RAM", TestAutoConfig);
+            yield return Test("Zorro III 8/16/32 MB native Autoconfig, 32-bit RAM, reset and restore", TestZorroIII);
             yield return Test("A4000 IDE uses DD2020, automatic interrupt acknowledgement and distinct board state", TestA4000Wiring);
             yield return Test("A4000 bus transfers preserve multi-sector writes, partial restore and read-only errors", TestA4000Transfer);
         }
         private static ChipTestCase Test(string name, Action run) => new ChipTestCase("Storage/Expansion", name,
             "ATA PIO; A600 Gayle; Amiga RDB/Autoconfig hardware interfaces", run);
+
+        private static void TestZorroIII()
+        {
+            bool rejected = false;
+            try { AmigaModel.Create(AmigaMachineModel.A500, AmigaRamProfile.Chip512K).WithDevelopmentZorroIIIRam(16 * 1024 * 1024); }
+            catch (InvalidOperationException) { rejected = true; }
+            Check.True(rejected, "A 24-bit A500 cannot host a Zorro III board.");
+
+            foreach (int size in new[] { 8 * 1024 * 1024, 16 * 1024 * 1024, 32 * 1024 * 1024 })
+            {
+                var model = AmigaModel.Create(AmigaMachineModel.A3000, AmigaRamProfile.Chip2MbFast4Mb)
+                    .WithDevelopmentZorroIIIRam(size);
+                Check.Equal(size, model.WithDevelopmentProcessor(AmigaCpuModel.M68030, 25000000).ZorroIIIRamBytes,
+                    "Development CPU clone retains the optional expansion board.");
+                using var system = new AmigaSystem(model);
+                var bus = system.Bus;
+                Check.Equal(AmigaAddressRegion.ZorroIIIConfig, bus.GetRegion(0xFF000000), "Zorro III native config aperture.");
+                Check.Equal((byte)0xA0, bus.ReadByte(0xFF000000), "Zorro III type and size upper nibble.");
+                Check.Equal((byte)(size == 32 * 1024 * 1024 ? 0x10 : 0x00), bus.ReadByte(0xFF000100), "Size low nibble.");
+                Check.Equal((byte)(size == 8 * 1024 * 1024 ? 0x6F : 0x4F), bus.ReadByte(0xFF000008), "Memory flags are complemented.");
+                uint baseAddress = size == 32 * 1024 * 1024 ? 0x12000000u : 0x10000000u;
+                bus.WriteByte(0xFF000048, (byte)(baseAddress >> 16));
+                bus.WriteByte(0xFF000044, (byte)(baseAddress >> 24));
+                Check.True(bus.ZorroIII.Configured, "High-byte write completes Zorro III configuration.");
+                Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(0xFF000000), "Configured card releases config space.");
+                Check.Equal(AmigaAddressRegion.ZorroIIIRam, bus.GetRegion(baseAddress), "32-bit board base is mapped.");
+                Check.Equal(AmigaAddressRegion.ZorroIIIRam, bus.GetRegion(baseAddress + (uint)size - 1), "Last RAM byte is mapped.");
+                Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(baseAddress + (uint)size), "No RAM alias beyond board.");
+                bus.WriteLong(baseAddress + 0x100u, 0x12345678u);
+                Check.Equal(0x12345678u, bus.ReadLong(baseAddress + 0x100u), "32-bit expansion RAM transfer.");
+                Check.True(bus.IsInstructionCacheable(baseAddress + 0x100u) && bus.IsDataCacheable(baseAddress + 0x100u), "Zorro III RAM is cacheable.");
+                using (var state = new MemoryStream())
+                {
+                    system.SaveState(new BinaryWriter(state));
+                    bus.WriteLong(baseAddress + 0x100u, 0);
+                    bus.ResetExpansionDevices();
+                    state.Position = 0; system.LoadState(new BinaryReader(state));
+                    Check.Equal(baseAddress, bus.ZorroIII.BaseAddress, "Restore retains board assignment.");
+                    Check.Equal(0x12345678u, bus.ReadLong(baseAddress + 0x100u), "Restore retains expansion RAM.");
+                }
+                bus.ResetExpansionDevices();
+                Check.Equal(AmigaAddressRegion.ZorroIIIConfig, bus.GetRegion(0xFF000000), "Reset returns card to Autoconfig.");
+                Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(baseAddress), "Reset unmaps prior base.");
+                bus.WriteWord(0xFF000044, (ushort)(baseAddress >> 16));
+                Check.Equal(baseAddress, bus.ZorroIII.BaseAddress, "Word assignment sets both high and low address bytes.");
+                bus.ResetExpansionDevices();
+                bus.WriteByte(0xFF00004C, 0);
+                Check.True(bus.ZorroIII.Configured && bus.ZorroIII.BaseAddress == 0, "Shut-up hides the board until reset.");
+            }
+        }
         private static void TestA4000Transfer()
         {
             using var fixture = new Fixture();

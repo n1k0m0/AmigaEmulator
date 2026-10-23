@@ -1,6 +1,6 @@
 # Machine models: implementation and validation
 
-Status: 2026-10-12. Select a machine through **F10 -> SETTINGS -> HARDWARE**.
+Status: 2026-10-22 (roadmap ongoing). Select a machine through **F10 -> SETTINGS -> HARDWARE**.
 Changing the model restarts the guest. Every model except A500 is currently
 marked **PREVIEW**. Preview means incomplete hardware/software coverage.
 
@@ -30,7 +30,9 @@ through the existing emulated Zorro II-style expansion; this is not an exact
 trapdoor accelerator board implementation. A3000/A4000/030 Fast RAM uses 32-bit
 motherboard addresses ending at $08000000, without advertising a Zorro II card.
 The selectable 2 MiB Fast configuration is a synthetic reduced RAM layout;
-physical Ramsey SIMM bank geometry is not fully modeled. Zorro III is absent.
+physical Ramsey SIMM bank geometry is not fully modeled. An opt-in single
+Zorro III RAM development card is available for A3000/A4000/030 core tests;
+it is not a selectable or generally validated expansion subsystem.
 A2000 OCS supports 512 KiB Chip RAM and optional 512 KiB Slow RAM; ECS models
 use 1/2 MiB Chip RAM. Legacy enum and RAM-profile IDs retain their values.
 
@@ -289,12 +291,12 @@ broader application and all-model storage coverage remain open.
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
 | 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection retains media/partial writes; separate Pinball writer repair persists all eleven score sectors on the correct track on both native desktops; late Cannon sprite no longer collapses the host presentation to its final 80–88 source rows (2026-10-12) | Current Siedler border report remains open; raw/custom-track preservation remains incomplete; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
-| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and actual score-sector writes on all four tables using an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands with explicit RAM/media requirements; Cannon Fodder's first mission on all eight native boards with data drives (2026-10-11) | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned new Pinball highscore entry and broader score reload/model coverage, Desert land combat/objectives, Cannon single-drive requests and longer campaigns, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
+| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and score-sector writes on all four tables with an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands; Cannon Fodder's first mission on all eight native boards with data drives; Celtic Heart Snow Mountains Stages 1 and 2 completed on A3000 through real inputs, followed by independently replayed active Stage-3 movement, stable passage of its first gap, defeat of the first far-side type-9 enemy, a timed Fire kill of the type-12 bat, and two grounded Fire kills followed by live movement through the raised knight corridor to X=780 and independently replayed timed passage across three water stones, castle landing, Type-6 knight defeat and sustained upper-platform landing beyond the Type-5 enemy and two defeated lower-castle knights, first castle-wall ledge, near Type-12 bat, higher castle step, sustained roof landing, timed passage to the right-side platform at X=1492/Y=73, and independently replayed Fire defeats of both far bats and the lower Type-9 enemy, followed by timed passage beneath the far castle wall to X=1680/Y=185 and a raised Type-5 defeat with stable live movement to X=1836/Y=137, a higher-platform landing at X=1738/Y=89, a safe jump over deadly GID 66 to X=1696/Y=89, a tiny high-step landing at X=1668/Y=41, a grounded Fire defeat of the high Type-6 knight at X=1752/Y=9, an independently replayed living landing past the X=1888 pillar at X=1924/Y=89, the grounded Fire defeat of the next Type-6 knight, and timed far-side jumps with stable landings at X=2180/Y=121 and X=2324/Y=25, a jump over the animated upper tile to X=2380/Y=25, a living landing past the second tall column at X=2464/Y=185, a grounded Fire defeat of its Type-6 knight, and a jump over the Type-7 ground enemy, followed by the animated-tile and two-water-gap passages, far-side Type-6 and Type-8 kills, three fixed steps and a wall overjump, and independently cold-replayed visible Stage-3 and Stage-4 completions, followed by active Stage-5 passages through the Type-7 ground enemy, three Type-5 patrols and a timed foreground-tile jump to X=2232 and an independently repeated Type-15 magical-fire bypass through the X=2304 wall, a Type-9 Dino defeat, animated hazard and Type-8 spider bypass, moving-platform water crossing and two fixed-step landings to X=2888/Y=57 and a second independently replayed moving-platform passage to X=3052/Y=57, then a defeated lower Type-5 spider and genuine raised-stone gameplay through the visibly complete Stage 5 and Stage-6 title, then active cave movement, first skeleton bypass, first cavern gap, two further Type-17 defeats and a Type-20 green-walker defeat at X=364/Y=121 (2026-10-21). Later detailed full-cold routes below document visible completions through Stage 9 and active Stage 10. | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned Pinball highscore entry and broader reload/model coverage, Desert land objectives, Cannon single-drive requests and longer campaigns, Celtic Heart Stage 10 and later stages, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
 | 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; profile-driven floppy selection/index/tick optimization with paired identical CPU/frame states (2026-10-12); timing lookup and duplicate bus-classification candidates rejected | Continue profiling remaining allocations and repeat paired measurements after further changes |
 | 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; all eight boards have matching 46.143 desktop/application evidence; A1200 IDE/A3000 SCSI Shell/Clock/ShowConfig and independently verified file persistence/reset/restore repeated on the current core (2026-10-12) | Broader applications and complete controller coverage; A1200 native 3.1 comparison remains unresolved; optional hardware remains gated |
-| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented and independently tested; LOF/VPOSW field selection and 312/313-line PAL field timing/presentation corrected with failing-before fixtures (2026-10-12) | Native superhires, full interlace weaving, programmable timing, scan doubling, additional references |
+| 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented; LOF/VPOSW field selection and 312/313-line PAL field timing corrected; native 1408-pixel SuperHires and 576-line field-pair presentation exercised through real 3.1.4 Workbench mode changes, window dragging and restore on bounded ECS/AGA configurations (2026-10-15) | Compare against independent hardware/reference output; mixed-resolution and mid-field Copper changes, programmable timing, scan doubling and broader application transitions remain open |
 | 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested; overlapping TT windows combine cache inhibit correctly; fixed-slot ATC history replacement and legacy restore checked; bounded 030 MOVE.B/W postincrement retry, split-long source read, prechecked register-source split-long write, MOVEM read/write transfer probes including odd byte/word page crossings, and MOVEP word/long byte-transfer probes after MMU faults (2026-10-13) | Complete timing and full restartable format A/B faults, including real partial-transfer continuation, device reads after successful translation, indexed-EA side effects and multi-transfer writes |
-| 7. Further hardware | Dependencies and test gates remain explicit; unsupported models stay unavailable | Optional 68881/68882, distinct 68040 CPU/MMU/FPU, then Zorro III enumeration |
+| 7. Further hardware | Opt-in native Zorro III RAM board (8/16/32 MiB) is under core/guest validation; unsupported models stay unavailable | Installed-OS Zorro III enumeration and multi-card/IRQ/DMA coverage; optional 68881/68882; distinct 68040 CPU/MMU/FPU; A1000 bootstrap/WCS and full boot |
 
 ### Gameplay evidence
 
@@ -2274,8 +2276,10 @@ roadmap remains active.
 
 This execution follows the seven-point chat list: game defects, broader gameplay,
 graphics, CPU/MMU, performance, OS/additional hardware, then release/relay.
-The overall scope remains active. Evidence is in
-`%APPDATA%/AmigaEmulator/diagnostics/RoadmapSeven-20261012-4fcc1fe9/`.
+The overall scope remains active. Historical test output was recorded in
+`%APPDATA%/AmigaEmulator/diagnostics/RoadmapSeven-20261012-4fcc1fe9/`;
+the user-requested AppData cleanup later removed that tree. The results
+below are the durable summary, not a claim that its files remain available.
 The baseline hashes cover 63 existing user files: fifty root ADFs, both permanent
 HDFs and eleven ROMs. New diagnostics and OS writes use external test outputs
 and fresh HDF copies. None of this media is distributed.
@@ -5588,3 +5592,5394 @@ media was created. Next approach the dead-tree spider from the live
 frame-8676 state in short increments, test a timed jump/attack with a
 later independent movement check, and continue only after reviewing the
 resulting image. This does not establish a level-clear pass.
+
+Follow-up 2026-10-17 (dead-tree approach): the independent native
+A3000/Kickstart-3.1 cold replay now reaches frame 8733 with the knight still
+upright beside the dead tree. From the verified frame-8676 state, an early
+1.8-million-clock Up+Right jump, 1-million-clock horizontal brake, release,
+then a separate short Right input moves the live knight closer to the tree.
+The reviewed frame-8733 image and exact full-frame guards at frames 8723
+(`9A092E8D7B2A7FB56555ACE153ACA64ACF4F7D1C3FE292E337B73F2499A280F6`)
+and 8733 (`4E1FFDF53567E2727C7F60BFB5D532AB2E29BD3A219CF80BAD2103EFCA4EDDD3`)
+passed a second fresh cold replay with `--no-final-checkpoint --no-images`;
+the guards are in `Tools/a3000-celtic-heart-dead-tree-approach-route.json`.
+Direct Right movement from 8676 instead ends in a horizontal death pose by
+frame 8712. A second Up+Right jump and two Fire+Right advances from the
+frame-8733 vicinity likewise end in a death pose; the runner's zero exit and
+nonblack image were rejected as gameplay evidence. These negative trials had
+zero non-ROM exceptions and HDF writes. The next step is to vary the timing
+of the first jump/landing before the tree and inspect short-interval images,
+then verify any passage with a separate movement input and a stage-change
+image before calling the level complete.
+
+Follow-up 2026-10-17 (timing controls): repeated compact checkpoint
+replays narrowed this to a moving hazard, rather than a static passage.
+From the live frame-8733 state, even a neutral 2-million-clock wait ends in
+the horizontal death pose by frame 8761. Standing Fire for 1.8 million
+clocks, a short Fire pulse followed by a separate Right command, and a
+second jump started immediately at frame 8723 also end in death poses.
+An earlier 0.3-million-clock Right prestep before a longer jump and a
+2.3-million-clock Up+Right+Fire jump do not clear the tree either. The
+Up+Right+Fire branch is still upright at frame 8729 and after a short
+Fire+Right approach at frame 8755, but the following jump is fatal. Each
+trial held the runner's input/visibility checks with zero non-ROM exceptions
+and HDF writes; all apparent passes were rejected on image review.
+Next capture one or two intermediate frames around 8745-8760 to locate
+the knight and moving spider just before collision, then adjust the first
+jump and attack release at that point. Do not promote the current state to
+a level pass.
+
+The intermediate attack-approach capture at frame 8744 shows an upright
+knight near x=388 and the approaching ground spider near x=437 in the
+presented image; by frame 8755 their separation has visibly narrowed.
+Starting the second Up+Right jump at frame 8744 or about frame 8737 still
+ends in the horizontal death pose. The next useful probe is to inspect the
+first jump's ascent/landing frames and try a different takeoff before frame
+8676 or a released/repulsed attack before the spider reaches this corridor.
+
+Follow-up 2026-10-17 (first-jump timing): the first `Up+Right` press
+visibly lifts the knight above the ground by frame 8684. In contrast,
+fresh `Up+Right` presses around frames 8723 and 8744 leave him near ground
+height seven frames later, despite the expected `$0103` JOY1DAT input.
+Releasing Up earlier in the first jump and shortening its horizontal
+travel also failed to produce a safe second takeoff; the short-travel
+branch reaches a horizontal death pose by frame 8733. A segmented first
+jump (1.5 million clocks Right, 2 million clocks brake) shows the knight
+above ground near the tree at frame 8733, but later Right and second-Up
+controls do not establish a sustained live pass. This isolates the next
+question: determine the guest's landed/alive state after the first arc
+before interpreting a second Up press as a failed jump. Use short image
+intervals and a bounded RAM watch around landing/collision, then try a
+takeoff that clears the patrol while preserving a separate post-landing
+movement check. No graphics or CPU exception was observed in these runs.
+
+`Tools/a3000-celtic-heart-dead-tree-second-jump-repro.json` preserves this
+specific boundary from an independent native A3000/Kickstart-3.1 cold boot:
+the proven live frame-8723 image is followed by a fresh `Up+Right` press
+with JOY1DAT `$0103`; at frame 8730 the reviewed knight has not visibly
+risen. The exact final full-frame hash is
+`EC89C3696C590A3CB0ECC3B5444F3D79E0DA117C4108095FEE9D925D259221A7`.
+A second cold replay passed the stored hashes without images or a final
+checkpoint, with zero non-ROM exceptions and zero HDF writes. This is
+a reproducible diagnostic observation, not proof of an emulator input bug:
+the game's airborne, landing and damage flags have not yet been identified.
+
+Follow-up 2026-10-17 (Snow Mountains Stage 1 **completed** on the native
+A3000/Kickstart-3.1 route): retreating left during the first jump gives
+the knight room to finish that arc on live ground at frame 8740. A fresh
+`Up+Right` press then visibly starts the second jump at frame 8747, crosses
+above the dead tree at frames 8764/8781 and lands beyond its spider patrol
+by frame 8795. After a separate release and Right-only movement check,
+the knight is upright past the tree at frame 8819. Further Right inputs
+enter the green mirror: the reviewed frame 8907 explicitly reads
+`LEVEL COMPLETE / PRESS BUTTON`. Fire confirmation produces the
+`SNOW MOUNTAINS STAGE 2 / CODE: 35DH` screen at frame 8982. A second
+Fire press enters the next active snowy gameplay scene at frame 9056;
+the subsequent Right command is delivered to JOY1DAT. The images,
+input edges and actual transition were reviewed; this is a Stage-1 pass
+for this one title/model route, not a pass for later stages or all models.
+
+`Tools/a3000-celtic-heart-stage-two-route.json` independently replays the
+entire path from a fresh native cold boot without a save. It passed exact
+full-frame guards at the live landing (8740), second ascent (8747), airborne
+crossing (8764), post-tree movement (8819), mirror approach (8851), level
+complete (8907), Stage-2 title (8982), Stage-2 scene (9056), and post-input
+Stage-2 scene (9068; hash
+`170CBBC2160C7220C70A939F5BC45A2B0CBE4B74246B96FE4C85FE8BD0EB998E`).
+JOY1DAT and CIA-A Fire press/release guards passed, with zero non-ROM
+exceptions, zero floppy/HDF writes, no final checkpoint and no new
+permanent media. The post-input image guard verifies replay stability,
+not yet player movement in Stage 2; retain the other unresolved
+game/model variants.
+
+Follow-up 2026-10-17 (matched Stage-2 input control): starting from the
+same frame-9056 checkpoint, an 800,000-clock neutral wait reaches frame
+9068 with exactly the same full-frame hash as the earlier Right pulse and
+release (`170CBBC2160C7220C70A939F5BC45A2B0CBE4B74246B96FE4C85FE8BD0EB998E`).
+The visual change at 9068 is therefore autonomous animation, not evidence
+that the Stage-2 player moved. The later `GET READY / PRESS BUTTON` overlay
+at frame 9086 also occurs after a matched neutral 2.1-million-clock wait
+from frame 9056 (hash
+`8036929963DF384F6021084F05C920B38A1A48BDF012D7DA2BEC9E31E48C6B80`),
+so it cannot be attributed to the Right input either. These checkpoint
+probes had no non-ROM exceptions or media writes. Fire at that prompt
+resumes the live scene by frame 9097. A paired one-million-clock branch
+from there isolates an actual Right response at frame 9111: the left-hand
+knight has moved from about x=96 to x=143, while the matched neutral
+branch leaves him near x=96. The Right branch hash is
+`555967BF5CBDBD469971A3A161CD5D16503C8FFF163CF887B67D434C5071308C`;
+the neutral branch hash is
+`FD3994EB29D210876067A01FC63EDD48769876C11EAD6D79BD6311D902F54A85`.
+The extended `Tools/a3000-celtic-heart-stage-two-route.json` passed a
+fresh native cold boot through this post-prompt Right movement, including
+exact frame-9086 and frame-9111 guards, zero non-ROM exceptions and no
+media writes. Stage 2 remains open: continue from this verified movement
+through its hazards and objective, then require a visible level-complete
+transition before calling the stage passed.
+
+Follow-up 2026-10-17 (Stage-2 terrain traversal): after the verified
+post-prompt movement at frame 9111, a fresh `Up+Right` jump carries the
+upright knight past the first dead tree by frame 9154. Continued Right
+movement scrolls the snowy scene by frame 9182. A second jump clears the
+floating hazards at frame 9210, and the knight is back on the ground
+approaching the raised stone slope at frame 9238. A third `Up+Right`
+input puts him visibly airborne over the slope at frame 9266. The
+extended independent cold-start route now asserts exact full-frame
+hashes at 9154, 9182, 9210, 9238 and 9266; replay passed with zero
+non-ROM exceptions and no floppy/HDF writes. Releasing Up and continuing
+Right from 9266 produces a horizontal red pose near the slope by frame
+9280 and no clearly visible knight by frame 9294. Pressing Fire during
+that interval did not visibly clear the hazard. These later pictures
+are not a Stage-2 pass. Next bracket frames 9266-9280 and compare
+earlier/later slope takeoff and horizontal release timings, then require
+an upright post-slope movement check before proceeding to the objective.
+
+Follow-up 2026-10-17 (slope controls): compact checkpoint branches from
+the live frame-9238 approach tested the takeoff 0.5 million clocks
+earlier and later. The early branch has no visible knight by frame 9273;
+the late branch shows a horizontal red pose on the slope by frame 9287.
+Releasing both Up and Right after the original airborne frame 9266 keeps
+an upright knight at frame 9273, but by frame 9301 a separate Right
+command leaves only the horizontal red pose. Holding Fire with the
+cliff jump changes the route: the knight remains upright before the
+ledge at frame 9280, and a later fresh Up press visibly ascends at
+frame 9322. The apparent red figures beyond that point are not proof
+of passage: continued Right input returns the whole scene to the
+Stage-2 starting tree by frame 9407, consistent with a death/respawn.
+All branches reported expected JOY1DAT inputs and zero non-ROM
+exceptions. Keep the independent cold route guarded only through the
+reviewed frame-9266 ascent. Next capture short intervals around
+frames 9266-9301 and identify the knight versus the moving slope enemy;
+vary jump release or Fire timing before contact, then verify survival
+by a separate post-slope movement command and image.
+
+Follow-up 2026-10-17 (slope patrol phase): delaying the frame-9238
+takeoff by 1, 2, 3, 4 or 5 million chip clocks while releasing Right
+during the wait changes the sprite overlap, but none of the checked
+branches establishes a durable passage. The one-million-clock wait
+shows an upright knight at frame 9294, followed by apparent knockback
+at frame 9322 and a return to the opening tree after continued Right.
+With a five-million-clock wait, the airborne knight and a ground enemy
+are distinct at frame 9351; Fire pauses him at the ledge while the
+enemy moves away, but Right after release again returns to the opening
+tree at frame 9407 (full-frame hash
+`E123656C343398AC559E357023A3F5CA43E09D1A9EC67F4D9C8BDDCE4D2E8D41`).
+The bounded runs passed input checks with zero non-ROM exceptions and
+media writes. Next inspect a short frame sequence and the game-side
+sprite/position state around the ledge; try a Fire pulse only when the
+patrol is within range, then require a separate rightward movement on
+the *far* side of the slope. Do not count the momentary upright frame
+as a level or obstacle pass.
+
+Follow-up 2026-10-17 (GameRunner hash preflight):
+`expectedFrameHash` now receives the same 64-character hexadecimal
+SHA-256 validation as the native and interlaced expected hashes. Before
+this correction, a typo could start a full guest replay and create
+diagnostic output before failing only at the affected action. The x64
+Release GameRunner build passed; a malformed `BAD` hash was rejected by
+`--validate` before output creation, while the existing Stage-2 route
+validated. A new native A3000/Kickstart-3.1 cold replay of that route
+also passed every stored image/input guard through frame 9266 using
+`--no-images --no-final-checkpoint`. This hardens diagnostics but does
+not advance the open slope/Stage-2 objective; next isolate the moving
+hazard with short input-controlled captures and continue the broader
+seven-point hardware and gameplay checks.
+
+Follow-up 2026-10-17 (targeted captures and game-side control): GameRunner
+now accepts several `--image-label=LABEL` selectors in one replay, while
+retaining all per-action hashes and guards. This avoids repeating the
+long Stage-1-to-Stage-2 prefix merely to review two frames and keeps PNG
+output small. The x64 Release build and a real A3000/Kickstart-3.1
+checkpoint replay passed: exactly the requested frame-9238 and frame-9435
+images were recorded, with zero non-ROM exceptions and HDF writes.
+[The game's author explains](https://night.owl.de/index.php?id=3) that
+Eric's magical strike has a short delay and only a near-range hit;
+the [published controls](https://night.owl.de/index.php?id=8) identify
+Fire as that strike. The released source archive's `hero.asm` also
+suppresses horizontal movement and jumping during a strike animation.
+This explains why holding Fire from far before the slope is a poor
+passage test. Short Fire presses at two late airborne points still
+produced the horizontal collision pose by frame 9280; a long grounded
+hold in another patrol phase returned to the opening `GET READY` scene
+by frame 9435. These are negative gameplay observations, not an
+emulator fault. Next capture the patrol at several nearby frames in
+one bounded replay and time a grounded short-range strike, followed
+by an independent rightward traversal beyond the slope.
+
+Follow-up 2026-10-17 (grounded strike control): a real A3000/Kickstart-3.1
+checkpoint replay pressed Fire for one million clocks from the verified
+frame-9238 landing, released it, jumped for three million clocks, landed,
+and continued Right for another three million clocks. Targeted captures
+show the knight reach the ledge and jump above a separate red ground
+enemy; after landing the red horizontal collision pose returns on the
+ledge. This is still no durable Stage-2 obstacle pass, but establishes
+that simply striking before the ledge does not clear the enemy. The
+bounded replay reported expected JOY1DAT values, no non-ROM exceptions
+and no media writes. Next bracket the enemy's ledge position, time Fire
+close enough after landing or use an airborne bypass, and require a
+separate upright rightward movement on the far side before adding a
+Stage-2 route guard.
+
+GameRunner's multi-label capture preflight now rejects a misspelled
+`--image-label` before creating an output directory. The x64 Release
+build passed; a nonexistent label returned exit 2 with no output tree,
+while a real Stage-2 route label passed `--validate`. This prevents a
+successful scenario exit with silently absent requested visual evidence.
+
+Follow-up 2026-10-17 (Stage-2 ledge contact): two further bounded
+A3000/Kickstart-3.1 input branches from the same verified landing kept
+the enemy and knight visible separately on the first raised ledge.
+Starting Fire while airborne briefly leaves the knight over the moving
+enemy, but continuing Right ends with the horizontal collision pose.
+Waiting 350,000 chip clocks after landing brings the upright knight
+closer to the enemy; starting a grounded Fire strike there still collides,
+then the scene returns to the starting tree by frame 9384. Neither
+branch advances the level. Both scripts exited normally with no
+non-ROM exception or HDF write; the images, not the process exit,
+determine this negative gameplay result. Next try the documented
+crouching strike (`Down+Fire`) or adjust ledge timing so the short-range
+strike activates before contact, then require continued upright
+movement beyond the enemy and a fresh independent cold replay.
+
+A fourth branch tested `Down+Fire` from the same near-ledge position.
+The controller trace confirms `Down+Right` as JOY1DAT `$0002` and the
+Fire edge reached the guest. The enemy remained visible beside the
+knight; continued Right returned to the initial tree by frame 9382.
+This crouching strike timing also fails the obstacle, without a
+non-ROM exception or media write.
+
+Follow-up 2026-10-17 (later moving jump): moving Right for 600,000 chip
+clocks after the frame-9238 landing before taking off changes the ledge
+contact. The knight appears upright on the ledge at frame 9324, but a
+separate two-million-clock Right continuation returns to the Stage-2
+starting tree by frame 9352. The momentary upright image is therefore
+not a passage. The run reported expected JOY1DAT values, zero non-ROM
+exceptions and no HDF writes. Next test an earlier active short-range
+strike against the patrolling enemy or a jump landing beyond it, then
+require sustained far-side movement and a cold route before a pass.
+The ignored targeted replay-output folders are small. A checked
+PowerShell cleanup confined to repository `tmp` was rejected by
+automatic command review, so those files remain; no ROM, ADF, HDF or
+user save was touched.
+
+Follow-up 2026-10-18 (longer ledge jump): holding `Up+Right` for four
+million chip clocks from the reviewed frame-9238 landing, then releasing
+Up and continuing Right, produced a single upright red figure on the
+ledge at frame 9337. A further two-million-clock Right input returned
+to the opening `GET READY`/tree scene at frame 9365; the apparent ledge
+survival was transient. Sprite identity in a single frame is uncertain,
+so this is not a confirmed knight passage. The bounded native A3000
+replay held JOY1DAT guards, zero non-ROM exceptions and zero HDF writes.
+Next isolate player and patrol sprites with the game's published sprite
+frames or an independent memory-state probe, then test one phase-adjusted
+landing; require sustained rightward movement on the far side before
+extending the independent Stage-2 route. The graphics status table above
+has also been reconciled with the already documented native SuperHires
+and interlace Workbench tests; hardware-reference parity remains open.
+
+Follow-up 2026-10-18 (A4000 laced application control): reused the
+existing private `tmp/os-lace-test.hdf` **read-only** and the guarded
+A4000/030 AmigaOS 3.1.4 PAL Hi Res Laced Workbench route. A new bounded
+continuation entered the Clock command through Execute Command, using
+the already documented A1200 key sequence. The guest opened a `Clock`
+screen title and a CLI Output Window; reviewed logical and 704x576
+interlaced captures at frame 3705 show that window covering the work
+area, so this is **not** a visible running-clock acceptance pass.
+Mouse input closed the Output Window and returned to a readable laced
+Workbench desktop by frame 4224. Further screen-depth input changed
+the instantaneous BPLCON0 sample from `$A306` to `$8307`; the logical
+capture at frames 4315 and 4456 showed a clipped screen transition,
+while the last completed interlaced pair retained the Workbench image
+hash `DC2E418A0C9DE4659254EE1509163184FF3147BA4AD8B41458FCFF96E5E3FD1F`.
+That difference may reflect the current beam versus the last complete
+field in a multi-screen Copper transition; it is not yet proof of a
+renderer defect or of Clock operation. The guarded replay reported zero
+non-ROM exceptions and zero HDF writes, with a compact ~1.1-MB ignored
+output folder and no new HDF copy. The following continuation resolves
+the missing visible Clock control; the mixed-screen transition still
+needs independent reference comparison. The CLI window and clipped
+current field alone were not counted as an application pass.
+
+Follow-up 2026-10-18 (visible A4000 laced Clock): from the same guarded
+cold A4000/030 Kickstart 3.1.4 route, moving the pointer to the top-left
+of the CLI Output Window (`x=10, y=32`) and clicking its close gadget
+exposed the **running analog Clock face** at frame 3815 in the completed
+704x576 interlaced pair. After another 100 million chip clocks, frame
+5225 showed the hand position changed while the Clock window remained
+open (144 changed pixels inside the face on the guarded cold replay,
+bounded to image coordinates 84–134, 100–108). Clicking the Clock close
+gadget (`x=10, y=18`) returned to the readable PAL Hi Res Laced
+Workbench at frame 5313. All three images were
+visually reviewed, with BPLCON0 `$A306`, zero non-ROM exceptions, and
+zero writes to the existing read-only private HDF. Repeated cold runs
+showed different Clock image hashes, so the new reusable
+`Tools/amigaos314-a4000-laced-clock.json` guards the mode and field-pair
+presence rather than an invalid fixed live-clock hash. This establishes
+one real A4000 OS application launch, visible operation, and clean exit;
+it does not close the wider application/controller matrix. Next compare
+the 020/030 mixed-screen/field timing against independent reference
+captures and run another application/controller transition with the
+same read-only HDF; preserve the installed source image. The two compact
+ignored A4000 Clock replay-output folders total about 2.1 MB. Their
+resolved paths were verified inside repository `tmp`, but automatic
+command review rejected recursive deletion; they remain for manual
+cleanup. No other data was removed.
+
+Follow-up 2026-10-18 (Stage-2 patrol strike timing): inspected the
+author-published Celtic Heart source archive in ignored `tmp` without
+building or altering the game. `monster.asm` identifies the spider
+variants as killable only by a cowering strike; `hero.asm` starts that
+strike three animation phases after the Fire edge and suppresses
+horizontal movement while cowering. This was an initial reason to test
+Down+Fire, but the source-map inspection below distinguishes the red
+ledge patrol from a spider; these crouching tests remain negative controls.
+Three bounded A3000/Kickstart-3.1 continuations from the verified route
+varied the post-jump approach to 50,000 or 500,000 chip clocks and the
+pre-Fire Down hold to 200,000 or 1,200,000 clocks. JOY1DAT confirmed the
+Down+Right input (`$0002`), all runs had zero non-ROM exceptions and
+zero floppy/HDF writes, but visually reviewed frames 9378, 9384 and
+9396 all returned to the Stage-2 opening tree after contact. A longer
+Down hold had already lost the left-hand figure by frame 9351. These
+are deaths/respawns, not patrol clears; the screenshots do not yet prove
+that the hero was grounded and actually crouched when Fire arrived.
+Next capture short intervals around the first ledge landing, identify
+the hero and patrol separately using the published sprite frames, then
+time a standing strike against the red patrol. Require sustained upright
+movement beyond the ledge and a fresh cold-route replay before
+recording a Stage-2 advance.
+
+Follow-up 2026-10-18 (source-map correction): the source archive's
+`maps/level02.tmx` places a red enemy object with GID 681 at world
+`x=432, y=176`; its monster sheet starts at GID 641, giving animation
+index 40. `monster.asm` uses index 40 for `moveKnight`, whose comment
+does **not** require a cowering strike. The extracted `gfx/hero.bmp` and
+`gfx/snowenemy.bmp` provide a way to distinguish the hero from the red
+knight-type enemies. The first ledge patrol's exact source-map object
+still needs a scroll-offset/position match, but the earlier
+spider-specific inference was too broad for this obstacle. `hero.asm`
+delays a standing strike four animation phases after Fire, so the next
+bounded test must trigger it before contact at matching height and
+inspect a short frame sequence for an enemy death animation and durable
+passage.
+
+Two A3000/Kickstart-3.1 standing-strike continuations triggered Fire
+10,000 or 150,000 chip clocks after the frame-9330 landing step, then
+held Right long enough to test sustained passage. The reviewed
+frame-9344 close-up shows the hero's yellow strike flash but the
+red patrol remains beyond its visible edge; subsequent frames lose
+the hero, and frames 9407/9409 show `GET READY` at the opening tree.
+Both runs had zero non-ROM exceptions and zero floppy/HDF writes. This
+is still a gameplay failure, not a strike hit.
+
+Follow-up 2026-10-18 (ledge-contact timing): a neutral-input control
+after the supposed frame-9330 landing held JOY1DAT at `$0000`, yet the
+left-hand upright red figure walked right while the right-hand low
+figure stayed fixed. Short captures at frames 9313, 9317, 9321, 9325,
+and 9330 show the airborne figure descending and a low horizontal pose
+by frame 9330. This is consistent with a death animation already under
+way, so the later Fire probes cannot establish a valid standing strike
+against a living, grounded hero. A separate direct ledge jump without
+the preceding ground strike likewise shows the low pose at frame 9301;
+its frame-9344 image has returned to the opening tree instead of
+demonstrating a far-side pass. All three continuations had zero non-ROM
+exceptions and zero floppy/HDF writes. Stage 2 remains open. Next vary
+the jump trajectory or attack **before frame 9325** and capture the
+contact frames closely enough to identify the hero and knight by their
+source sprites. Accept progress only with sustained upright far-side
+movement, then replay the successful route from a cold start.
+
+Follow-up 2026-10-18 (Stage-2 ledge variations): four more bounded
+A3000/Kickstart-3.1 continuations branched from the verified frame-9238
+orb landing. Delaying the ledge jump 600,000 chip clocks still produced
+the low pose on the upper platform and returned to the opening tree by
+frame 9352. Three airborne Fire starts at 1.2, 1.4, and 2.0 million
+clocks after takeoff briefly showed an upright airborne or ledge figure,
+but the longer Right holds all returned to `GET READY` by frames 9410,
+9413, and 9421 respectively. Those brief upright images are **not**
+durable passage or proof of a patrol kill. All four tests had zero
+non-ROM exceptions and zero floppy/HDF writes; they mounted no HDF.
+Next inspect the first collision in smaller intervals and match the
+hero/knight sprites and their world coordinates before changing attack
+timing again. The visible sequence alone does not yet distinguish a
+missed strike from an upper-platform collision or hazardous tile.
+
+Follow-up 2026-10-18 (contact bracket): six 150,000-clock captures
+after the 1.4-million-clock airborne Fire branch narrow the first
+upright-to-horizontal change to frames **9286–9288**. At frame 9286 the
+left-hand figure is upright on/above the upper ledge with another red
+figure farther right; at frame 9288 it has entered a low horizontal
+pose that persists through frame 9299. The game's `monster.asm`
+`hero_coll` kills the hero when the rectangles overlap, and the
+source-map knight at world x=432 is spatially consistent with the
+right-hand figure, but the captures alone do not yet prove the exact
+object or rule responsible. Airborne Fire started at 1.6 and 1.8
+million clocks after takeoff also briefly showed an upright ledge
+figure, then returned to `GET READY` by frames 9415/9418. Both had
+zero non-ROM exceptions and zero floppy/HDF writes. Next measure the
+world-to-screen offset and strike rectangle at frames 9284–9288,
+then adjust the first Fire trigger only if its active rectangle can
+actually meet the knight before hero contact; replay any candidate
+through sustained far-side movement from a cold start.
+
+A further 1.4-million-clock airborne-strike branch inserted a second
+Fire press after only 900,000 clocks of renewed Right input. Its first
+selected frame already shows the low horizontal pose on the ledge;
+the next frames show a red figure upright but the run still reaches
+`GET READY` at frame 9370. The apparent second attack therefore does
+not establish a living hero's successful strike. It had zero non-ROM
+exceptions and zero media writes. The immediate next diagnostic is a
+short-interval capture between the first Fire release (frame 9286 in
+this branch) and that low pose, rather than more post-contact attacks.
+
+Follow-up 2026-10-18 (verified first Stage-2 ledge): changing the
+trajectory, rather than only the attack timing, passed the obstacle.
+From the guarded frame-9238 orb landing, Up+Right runs for 1,200,000
+chip clocks; releasing Up and Right leaves a neutral 1,400,000-clock
+landing interval. Fire is then held and released for 1,000,000 clocks
+each while stationary, before holding Right for three successive
+3,000,000-clock intervals. The reviewed images show the hero upright
+on the first ledge at frame 9303, then farther right at frame 9387,
+and at the next raised ledge beside the castle and a new enemy at frame
+9429. There is no `GET READY` or return to the opening tree. This is
+**sustained Stage-2 progress past the first ledge**, not a completed
+Stage 2 or proof that the knight was killed.
+
+`Tools/a3000-celtic-heart-stage-two-first-ledge-route.json` replays
+the entire route from a real A3000/Kickstart-3.1 DF0 cold boot, with
+no save loaded, through Stage 1 completion and the Stage-2 guard.
+The existing frame-9238 guard and all seven new nonzero-cycle frames
+matched their full SHA-256 image hashes from the independent checkpoint
+continuation, including frames 9303, 9387 and 9429. The cold run ended
+at frame 9429 with zero non-ROM exceptions, zero floppy/HDF writes and
+visually reviewed live play. The route then applies Up+Right for
+1,200,000 clocks, releases both directions for a neutral 1,400,000-clock
+landing, and waits another 2,000,000 clocks. A second full cold replay
+matched the three added full frame hashes at frames 9446, 9466 and
+9494. Visual review shows the hero airborne over the next rise and
+then upright on its upper platform by the castle; a moving enemy and
+orb remain farther right. The second cold run also had zero non-ROM
+exceptions and zero floppy/HDF writes. Next test controlled movement
+and a timed attack near those hazards, with a later frame proving the
+hero remains active beyond them. Do not mark Stage 2 complete until
+its actual transition is visible and replayed.
+
+Follow-up 2026-10-18 (castle approach controls): from the guarded
+second ledge at frame 9494, another 2,000,000 clocks of Right reaches
+the castle frontage at frame 9522 with the hero still upright near an
+orb and several moving enemies. Holding Up+Right through the obstacle
+and then continuing Right returned to the opening tree by frame 9638.
+A second branch released both directions for a neutral landing, tried
+a stationary Fire strike, then continued Right; its short-lived castle
+figures did not establish a hit or passage and it too returned to the
+opening tree by frame 9714. Both branches had zero non-ROM exceptions
+and zero floppy/HDF writes. The verified cold route still ends safely
+at frame 9494. Next bracket the orb/hero contact and enemy movement
+near the castle, then test a timed strike or jump with a long enough
+continuation to rule out a delayed respawn before extending the cold
+route.
+
+Follow-up 2026-10-18 (early castle jump): from the same guarded frame
+9494, Up+Right began immediately, before the separate 2,000,000-clock
+castle approach. The hero was airborne at frame 9529; the later castle
+images at frames 9550–9621 did not show a sustained passage. Continuing
+Right for another 6,000,000 clocks returned to the Stage-2 opening tree
+at frame 9705, confirming a delayed respawn. The run reported zero
+non-ROM exceptions and zero floppy/HDF writes. Keep the verified cold
+route at frame 9494. Next capture shorter intervals around the castle
+contact and time Fire against the first nearby enemy or orb; require
+continued live movement beyond the castle before adding a route guard.
+
+The early-jump variant with Fire held in midair from frame 9508 to
+9520 and released at frame 9529 still showed the hero near the castle
+approach at frames 9634 and 9718. A second Up+Right jump moved the
+camera across more of the castle front by frame 9836, but continued
+Right ended on the Stage-2 `GET READY` opening at frame 9921. Thus the
+intermediate castle image is **not** a passage or Stage-2 completion.
+This branch also recorded zero non-ROM exceptions and zero floppy/HDF
+writes. Next capture the second-jump contact between frames 9766 and
+9836 in shorter intervals and vary attack timing against the orb and
+moving enemies; only add a new cold-route guard after a sustained live
+screen beyond those hazards and a clean independent DF0 replay.
+
+Follow-up 2026-10-18 (castle contact bracket): the latter branch was
+replayed with ten 500,000-chip-clock observations at frames 9773–9836.
+The castle view scrolls through frame 9801, then stays around the same
+group of red enemies, pink hazards and an orb. The small red sprite in
+that group is ambiguous against the game's published `hero.bmp` and
+`snowenemy.bmp` sheets; these intermediate frames do not prove the
+hero survived. The original continuation reaches `GET READY` at frame
+9921. Triggering Fire at frame 9787, or issuing a further Up+Right jump
+there, also ended back at the opening tree by frames 9919 and 9914.
+`hero.asm` confirms that a running one-shot strike suppresses horizontal
+movement and jumping, making attack timing material. All three bounded
+branches recorded zero non-ROM exceptions and zero floppy/HDF writes.
+Next identify the hero's alive/death state at the first castle contact
+with a guest-memory or sprite-state probe, then move the strike or jump
+before that contact and require a sustained frame beyond the castle.
+
+Follow-up 2026-10-18 (guest-state confirmation): GameRunner now permits
+read-only byte watches in a desktop board's motherboard Fast RAM and an
+explicit, bounded `memory-snapshot` action. The latter produced a
+65,536-byte snapshot without changing the frame, framebuffer hash or CPU
+debug state; invalid sizes and the address immediately beyond Fast RAM
+were rejected by `--validate`. Comparing snapshots with the published
+`hero.i` status layout located this Celtic Heart build's `HSalive` at
+`$07FF750A` and `HSflags` at `$07FF751C` (game-instance addresses, not
+portable symbols). A fresh A3000/Kickstart-3.1 checkpoint replay watched
+those bytes through the castle contact: at frame 9794 they were
+`FF/00` (alive/no death flag), and at frame 9801 `00/40`
+(deactivated/invulnerable). This proves the apparent red sprites after
+frame 9801 in the unmodified branch are enemies or death animation, not
+surviving gameplay.
+
+Fire triggered at frame 9794 was too late: `HSalive` had cleared by
+frame 9798. Triggering it at frame 9791 retained `FF/00` at frame 9801,
+but the next 500,000-clock interval ended `00/40` at frame 9808;
+additional Up or Fire inputs at frame 9801 also failed. The corresponding
+screen sequences and continued runs still return to `GET READY`, so no
+castle passage or Stage-2 completion is claimed. These diagnostic runs
+had zero non-ROM exceptions and zero floppy/HDF writes. Next use the
+confirmed alive-state watch to test an earlier launch/strike that is
+still active before frame 9801, then continue through a distant castle
+frame and repeat any successful sequence from a DF0 cold boot.
+
+Follow-up 2026-10-18 (earlier castle actions): the guest-state watch
+confirmed that an Up+Right jump started at frame 9787 (`HSflags=01` at
+9791), but the hero was dead by frame 9797; jumping at frame 9780 had
+already landed by frame 9794 and died by 9805. Holding Fire from frame
+9789 kept `HSalive=FF` through frame 9803, but a second Fire at 9803
+ended `00/40` by frame 9810. A shorter Fire pulse at frames 9789–9792
+kept the hero alive through 9806, then the unchanged Right continuation
+ended `00/40` by 9813. Adding Up+Right at 9806 produced the same death
+frame. Visual inspection still shows the hero left of multiple red
+enemies and an orb at the castle; none of these intermediate images
+establishes a passage. All new branches had zero non-ROM exceptions and
+zero floppy/HDF writes. The verified cold route remains at frame 9494.
+Next vary the castle approach before frame 9780 (including a short
+neutral pause or an earlier strike) and use the live-status watch plus
+later images to require sustained movement beyond the enemy/orb group;
+only then extend and independently replay the DF0 cold route.
+
+Follow-up 2026-10-18 (castle patrol wait controls): releasing Right at
+frame 9780 for 1,000,000 clocks left the hero alive at frame 9794, but
+resumed Right died between frames 9801 and 9808. A longer 5,000,000-clock
+neutral wait at 9780 itself ended `HSalive=00/HSflags=40` by frame 9850.
+Releasing Right earlier, at frame 9766, for 2,000,000 clocks also ended
+`00/40` by frame 9794. Thus pausing at either of these castle-front
+positions is unsafe; the nearby hazards can reach a stationary hero.
+The live-state watch and image review reject all three branches as
+Stage-2 passages. No non-ROM exceptions or floppy/HDF writes occurred.
+Next change the path before the second castle-front jump (frame 9718),
+keeping the hero above or behind the moving hazards, then bracket the
+first enemy/orb contact with the same alive-state probe. Do not extend
+the guarded cold route without a sustained live continuation.
+
+Follow-up 2026-10-18 (live gameplay assertion): GameRunner now accepts
+per-action `expectedMemoryBytes` for up to 32 validated, read-only RAM
+bytes. This makes a reviewed scene fail if the guest hero has died even
+when enemy/death sprites resemble ongoing play. A positive checkpoint
+replay asserted Celtic Heart's `HSalive=FF/HSflags=00` at frame 9794 and
+`00/40` at frame 9801; a negative control requiring `FF` at 9801 failed
+with the actual `$00`, and an out-of-range Fast-RAM address failed
+validation. The full DF0/Kickstart-3.1 cold route to the guarded second
+ledge now asserts `FF/00` at frame 9494 as well as its existing exact
+frame hash. The fresh replay passed with zero non-ROM exceptions and zero
+floppy/HDF writes. This proves the guarded ledge is live gameplay, not
+just a matching image. On a separate checkpoint branch, moving the
+second castle-front jump 1,000,000 clocks earlier or later and
+3,000,000 clocks later still ended `00/40` near frames 9787, 9808 and
+9808 respectively. No Stage-2 completion is claimed. Next find a route
+that keeps `HSalive=FF` well beyond the castle enemies and orb, then
+extend the full cold guard and visually confirm a level transition.
+
+Follow-up 2026-10-18 (castle cower/strike sequence): the game's published
+`hero.i` identifies flag `$10` as cowering, and the snow-enemy sprite
+sheet contains the large pink monsters visible at this castle frontage.
+From the same live checkpoint, Down at frame 9780 set `HSflags=10`;
+Fire during the crouch and a return to Right kept `HSalive=FF` through
+frame 9829, past the ordinary branch's death at frame 9801. Continued
+Right alone then died by frame 9836. A second Fire at 9829 kept the hero
+alive through frame 9878 with visibly changed castle frontage; without
+a further action he died by frame 9885. An earlier third Fire at 9864
+extended live status to frame 9885 but died by 9893. A jump begun at
+9871 was genuinely airborne (`HSflags=01` at 9876), landed by 9883,
+and died by 9890; a Fire started at 9878 also failed by 9893.
+These are checkpoint branches, not yet full DF0 cold-route guards or
+a sustained passage beyond the whole hazard group. The image at 9878
+still contains an orb and hostile sprites, and no level transition is
+visible. Runs had zero non-ROM exceptions and zero floppy/HDF writes.
+Next bracket the remaining contact between frames 9878 and 9893;
+try an attack or jump before the next collision, then require a live
+continuation beyond the castle and independently replay it from cold.
+
+Follow-up 2026-10-18 (late castle contact/restore): an explicit private
+checkpoint at live frame 9864 (`FF/00`) restored with the exact same
+frame hash, and unmodified Right reproduced the hashes at frames 9871,
+9878 and the dead frame 9885. This allows bounded input comparisons
+without repeatedly rebuilding the long Stage-1/Stage-2 prefix; the
+published cold route remains the independent acceptance gate. Cower
+plus Fire begun at 9864 retained `FF/10` through frame 9891, but
+normal continuation died at frame 9897. A one-frame contact bracket
+showed cower clearing at frame 9895 and death within two frames.
+Jump or standing Fire at 9895 also died at frame 9897. Re-cowering at
+9893 retained the live state through frame 9907; releasing Down died by
+9914, and a longer Down hold still died by 9928. Re-cower plus another
+Fire died by 9912. These results show that crouching delays contact but
+does not yet clear the hazard. Next vary the third strike earlier than
+9864 and inspect whether the hostile orb/monster is actually removed;
+require live Right motion after the crouch before claiming a passage.
+
+Follow-up 2026-10-18 (earlier strike/retreat controls): a second private
+checkpoint at live frame 9850 restored exactly and reproduced the
+unchanged frame hashes at 9857 and 9864. Standing Fire already pressed
+at 9850 did not improve the unmodified death at 9885; an attempted
+crouch at 9850 did not initially set the crouch flag, consistent with
+the preceding strike animation still inhibiting the action. A crouch
+initiated at 9857 became active by 9866 but also died by 9891.
+From the effective 9864 crouch branch, reversing Left at 9893 and then
+resuming Right kept `HSalive=FF` to frame 9914, but continuing Right
+alone died by 9921. A preemptive standing Fire after the retreat kept
+the hero alive to 9922, and crouch plus Fire after the retreat retained
+`FF/10` through frame 9928; the next observation at 9935 was `00/50`.
+The castle enemies/orb remain visible in the captured active scene;
+these timing changes delay contact, not a verified passage or Stage-2
+completion. The short private checkpoint files were removed after the
+comparisons; normal saves and source media were untouched. Next inspect
+the guest enemy/collision state around the last live frames, then time
+an actual enemy removal or alternate jump path and replay any sustained
+success from DF0 cold boot.
+
+Follow-up 2026-10-18 (guest-coordinate control): the Celtic Heart
+source defines the hero's world X/Y words at offsets 4/6 of `Hero`.
+Watching the corresponding live guest RAM on the reproducible Stage-2
+branch yielded X/Y `452/121` at frame 9494, `480/121` after the first
+castle jump, `638/105` at the second strike, and `668/105` at the last
+live observation at frame 9878. The unchanged Right continuation died
+at frame 9885 with X/Y `682/105`. Two alternate jumps begun at 9874
+and 9878 also died, by frames 9890 and 9887 respectively. This bounds
+the hazard in world coordinates; jumping or striking that late has not
+passed it. The cold-start first-ledge route now additionally asserts
+its live hero position at frame 9494. Next bracket the contact between
+world X 668 and 682 with shorter steps, identify the responsible enemy
+or orb, and test an earlier evasive/attack input. Require sustained live
+rightward world-X motion and then a visible level transition before
+calling Stage 2 complete.
+
+Follow-up 2026-10-18 (castle-contact bracket): a restored, hash-matched
+Stage-2 continuation advanced the live hero from world X/Y `668/105`
+at frame 9878 to `680/105` at frame 9884; the next observed frame,
+9885, was dead at `682/105`. The corresponding six selected frames
+show an on-screen moving round foe/projectile and another red character;
+the exact damaging object is still unproven. An Up input begun earlier
+at frame 9857 briefly raised the hero to Y=100 but landed by frame
+9871 and died at the same X=682/frame 9885. Standing Fire begun at
+frame 9864 held X=642 during its attack and delayed death to frame
+9893, without clearing the hazard. These are negative gameplay controls,
+not a Stage-2 pass. Next identify the moving object's type and collision
+window from guest state or a denser visual bracket, then test an input
+that demonstrably removes or avoids it and verify sustained live X>682
+from a full DF0 cold start.
+
+Follow-up 2026-10-18 (strike latency and map evidence): the Stage-2
+source map places a `MONSTER` sprite with sheet index 100 at X=768,
+Y=144; the game source identifies that index with the low spider
+animation and comments that the spider needs a cowering attack. This
+is a plausible identity for the round foe at the castle, but its exact
+guest MOB and the fatal collision have not yet been linked. RAM watches
+of `HeroStrike` show why late crouch/Fire attempts failed: Fire at
+frame 9880 started the hero animation, but the strike MOB remained
+inactive through frame 9891, before the hero died. An earlier cowering
+Fire at frame 9866 launched a low strike at X=658 by frame 9891, kept
+the hero alive at X=642 through frame 9919, then died by frame 9926.
+Waiting in crouch until frame 9878 before Fire died even earlier, by
+frame 9897, before its delayed strike became active. Skipping the
+preceding second standing strike was also fatal by frame 9836 at
+X=642, so that attack cannot simply be removed from this route.
+Next trace the spider MOB's world position/active state against the
+strike MOB's active animation window and adjust earlier positioning or
+attack timing; a new route counts only after live movement past the
+hazard is reproduced from a DF0 cold boot.
+
+Follow-up 2026-10-18 (fatal actor identified): a private frame-9880
+checkpoint and the known hero RAM signature let us locate two adjacent
+80-byte monster records in the serialized guest RAM, then confirm their
+addresses through live GameRunner memory watches. The map's X=768
+spider (type 8) was at world X=746/Y=121, moved only to X=739 by
+frame 9894, and was not the immediate contact. The neighboring
+X=624-origin knight (type 6) was active and visible at X=696/Y=105
+while the crouched hero was at X=670/Y=105. It advanced to X=682 by
+frame 9894 and X=675 at the first dead observation at frame 9901;
+the spider was still at X=746 then. Thus the next action must clear
+or evade the approaching knight before addressing the spider. A
+standing Fire attempted at frame 9869 from hero X=650 did not create
+a fresh strike: the previous strike MOB was still active, the knight
+remained active and the hero died by frame 9890. This explains why
+simply adding another early Fire did not help. Next inspect the two
+knight records and strike cooldown around frames 9829–9885, then
+alter the prior attack/movement sequence so a new valid strike or
+other evasion precedes knight contact. Preserve the Stage-1 and
+first-ledge cold-route gates; claim passage only after the live hero
+moves beyond X=682 and the change replays from DF0 cold boot.
+
+Follow-up 2026-10-18 (castle knight passed): holding at hero X=640
+after the earlier strike, releasing Right, waiting for its cooldown,
+and pressing standing Fire at frame 9876 produced a fresh strike at
+X=656 by frame 9904. The approaching knight changed to killed
+animation type `00` by frame 9918 while `HSalive=FF`. Resuming Right
+then passed the old fatal X=682 alive at frame 9974 and reached world
+X=738 alive at frame 10002. This route was independently replayed
+twice from a DF0 disk-1 cold boot (A3000/Kickstart 3.1), through the
+completed Stage 1 and the previous first-ledge guards. The durable
+`Tools/a3000-celtic-heart-stage-two-knight-passage-route.json` asserts
+the exact final framebuffer SHA-256
+`85E683C77288CFB38DA94DA54BC7F3688BE189992C2E40E69477FF451FDEBCC4`,
+live hero X=738, killed knight type, and active next spider; no final
+checkpoint was generated. A continued Right input subsequently died
+at world X=740 by frame 10009 with the spider active, so Stage 2 has
+not been completed. Next use the live X=738 approach to time the low
+cowering strike against that spider, then require a visible level
+transition and repeat the full cold route. The two short private test
+checkpoints created during the knight analysis were removed afterward;
+original media and normal saves were untouched.
+
+Follow-up 2026-10-18 (Stage-2 spider passed): the elevated walkway
+left the hero's standing strike above the spider's hit box; two jump
+attempts and continued Right died before passage. From live world
+X=710, a brief Down/wait let the spider move right, then Right moved
+the hero to X=740 and the lower ground. Down+Fire produced a low
+strike at X=756/Y=133. The spider's guest MOB changed from type `08`
+to killed animation type `00` at frame 10067 while `HSalive=FF`.
+After rising and moving right, the hero reached X=796/Y=121 alive at
+frame 10149, beyond the former fatal contact. The full route in
+`Tools/a3000-celtic-heart-stage-two-spider-passage-route.json` replayed
+from DF0 disk 1 cold boot on native A3000/Kickstart 3.1, with memory
+guards for the killed spider and living hero and exact final framebuffer
+SHA-256 `B3DA26C829022A6209111FBF26EE59130F2A6ACA00D4E7A7B0654B4710C36663`.
+The inspected frame shows the hero at the castle's right edge with a
+gap and floating orb ahead, not a level transition. Holding Right
+without jumping falls from X=810 and is dead by frame 10170 at
+X=838; this continuation is a negative control, not passage. Stage 2
+remains open. Next time a jump from the guarded X=796 edge across the
+gap, account for the orb, and require visible level completion plus a
+second cold replay before marking Stage 2 complete. This run produced
+no final checkpoint and made no floppy/HDF writes. Two short private
+checkpoints from the exploratory frame-9988/10002 runs remain only in
+the ignored repository `tmp` directory because automatic approval
+review blocked their explicit removal; remove those exact files when
+the policy permits.
+
+Follow-up 2026-10-18 (first moving platform reached): jumping with
+Right+Up from the guarded X=796 castle edge kept the hero alive over
+the gap. Releasing Right near world X=852 let the hero land at
+Y=130 on the small horizontally moving platform. With controls
+released, it carried the hero left to X=810 and then right to X=894
+at frame 10325, still alive. The complete DF0 disk-1 cold route in
+`Tools/a3000-celtic-heart-stage-two-moving-platform-route.json`
+asserts this guest position and exact framebuffer SHA-256
+`DFAFE27542117E1B50AED920D90F069EC2A4D41C688351E9514039AEC1C83FA5`;
+the reviewed image shows the hero standing on that platform, with a
+pillar and another moving platform ahead. Blind Right during the
+first leap falls into the gap and dies by frame 10212. A second
+Right+Up jump from platform X=852 and one from its rightward X=894
+phase both miss the next safe surface and die at frames 10346 and
+10388 respectively. These are negative controls, not completion.
+Next inspect the moving-platform and pillar collision geometry and
+vary the second jump's launch phase and Right release so the hero
+lands alive on the next support. Then demand a visible Stage-2
+transition and cold replay before calling the level complete. No
+floppy/HDF writes or final checkpoint were produced.
+
+Follow-up 2026-10-18 (second moving platform and far castle): the
+source level map places two moving supports over the gap. A second
+Right+Up jump from the first platform at X=894 overshot the next
+support and died when Right remained held. Releasing Right midair at
+X=947 instead landed at Y=130 on the second moving platform at frame
+10374; it carried the live hero right to X=1038 by frame 10458.
+Another Right+Up jump reached the far castle floor at Y=121 and X=1251
+alive at frame 10564. The inspected frame shows an active black ground
+enemy ahead; it is not a Stage-2 transition. The complete route in
+`Tools/a3000-celtic-heart-stage-two-second-platform-route.json` replayed
+from a DF0 disk-1 cold boot on native A3000/Kickstart 3.1, asserting
+the hero's live coordinates and exact framebuffer SHA-256
+`BBDE509C08E8A3C4502DE35966CC32C9B73FB721CF718C6502189CEBF761E6AE`.
+The prior overshoot remains a negative control. Stage 2 remains open:
+next identify and pass the far-castle enemy with actual input, then
+continue until a visible level transition and reproduce it from cold
+boot. No floppy/HDF writes or final checkpoint were produced.
+
+Follow-up 2026-10-19 (far-castle patrols, pillars and ice gap):
+continuing Right from X=1251 reached the lower path, but died at the
+first ground patrol by frame 10683. An early or late standing Fire
+also failed. Starting a Right+Up jump at X=1475 cleared the first
+pair of ground enemies, then releasing Up on landing and jumping
+again at X=1615 cleared the second pair; the hero reached X=1827
+alive. At X=1837 a new ground hazard killed an unguarded walk.
+Jumping from X=1813 cleared it and reached the short pillar at X=1903.
+A released, rearmed jump landed on top of that pillar at X=1927/Y=137;
+another carefully stopped jump landed on the tall pillar at
+X=1999/Y=105. A Right+Up leap from there reached the upper ice
+platform alive at X=2167/Y=57. Blind continued Right died at X=2215;
+early and late attempted jumps into the next spike patrol also died.
+Stopping horizontal movement midair at X=2224 instead survived and
+dropped through the gap between ice platforms to the lower ground at
+X=2228/Y=185. A further Right+Up jump passed the ground patrol and
+reached the far building at X=2448/Y=185 alive, frame 11479.
+The complete `Tools/a3000-celtic-heart-stage-two-far-building-route.json`
+replayed from DF0 disk-1 cold boot on native A3000/Kickstart 3.1,
+asserting a living hero at X=2448 and exact framebuffer SHA-256
+`353A88DA57BEBB2FA4EA104DDB9F86F77D05554CE938DBCAF38EC76BB65FB4D0`.
+The frame was visually inspected: it shows active game graphics and
+the hero at the building face, not a level-completion screen. A
+rearmed Right+Up attempt into this face died at X=2498/Y=169 by
+frame 11521; the cause is still unresolved and this is a negative
+control. Next inspect the building's tile collision/entrance and
+the nearby guest actor state, vary the approach and inputs, and
+require a visible Stage-2 transition followed by an independent cold
+replay. Stage 2 and the broader roadmap remain open. These runs
+made no floppy/HDF writes and generated no final checkpoint.
+
+Follow-up 2026-10-19 (far-building ground approach): three private
+continuations from the existing far-castle checkpoint isolate the
+obstacle. With Right held and Up released, the living hero remains at
+X=2448/Y=185 for 70 frames, so the facade blocks a ground-level walk.
+A vertical jump with Right released rises to Y=135 and returns to
+X=2448/Y=185 alive; the later death while standing there is a separate
+incoming-enemy collision, not evidence of a passage. A run that rearms
+Up earlier at X=2396 and jumps while moving Right reaches X=2448 at
+Y=138, then falls to Y=169 while crossing toward X=2498 and dies.
+The framebuffer at the face shows the hero below the dark foundation's
+top and no visible ground-level doorway. These observations narrow the
+next test to the elevated ice-platform route: time the upper spider
+and spike gaps, approach the building above its foundation, and verify
+the entrance and Stage-2 transition with a full DF0 cold replay. These
+negative probes used only ignored `tmp/` outputs, produced no final
+checkpoint, and did not write floppy or HDF media. Stage 2 remains open.
+
+Follow-up 2026-10-19 (farther upper ice ledge): the first attempt to
+continue over the upper ice killed the hero at X=2262/Y=57; a later
+jump died at X=2277. Releasing Right at X=2224 instead let the hero
+reach X=2228/Y=57 alive between the raised ice sections. Releasing Up
+there and pressing it again produced a new, visibly rising jump; with
+Right held it cleared the second spider. Stopping Right at X=2298
+landed the hero alive at X=2300/Y=57, sustained for ten 500,000-clock
+intervals. Stopping earlier at X=2284 died on the spider; walking or
+jumping onward from X=2300 drops to the lower path and is not a roof
+passage. The complete independent DF0 cold route
+`Tools/a3000-celtic-heart-stage-two-ice-beyond-spike-route.json`
+reproduced the living upper-ledge position at frame 11387 with
+framebuffer SHA-256
+`7945FB72A35FAC1A02FB8D09FDAAB247D4CA17A167286E62F5FFE58CC02AD2FF`;
+the screenshot shows active play on the upper ice, not level completion.
+Next determine how to bridge the remaining upper-to-building gap or
+reach a real ground entrance, then require a visible Stage-2 transition
+and full cold replay. The runs wrote no floppy/HDF media or final
+checkpoint. Stage 2 and the seven-point roadmap remain open.
+
+Follow-up 2026-10-19 (far-building lower corridor): the published
+`w1types.tmx` tile attributes in the Celtic Heart source archive show
+that the ice castle is solid around a narrow lower passage. At
+X=2448/Y=185, Right alone is blocked by the raised floor. Right+Up
+enters the passage at Y=169, but an unmodified continuation died at
+X=2498. Releasing Right at X=2496 kept `HSalive=FF` for 84 frames;
+resuming directly still died at X=2500. A Fire edge at X=2496,
+followed by release and Right, allowed living movement through the
+passage to X=2576/Y=169, where the next raised step blocks Right.
+The complete independent DF0 cold route
+`Tools/a3000-celtic-heart-stage-two-castle-corridor-route.json`
+reproduced frame 11612 with `HSalive=FF` and exact framebuffer SHA-256
+`AB8CF1B3F03DFB91A7F590E00F6597F0C94F03D2019E1BFAF8B336E56343A2CC`.
+The inspected image shows the hero standing inside the castle corridor,
+with a pink hazard behind and another red sprite ahead; it is active
+gameplay, not a level transition. Right+Up from the raised step,
+earlier jump timing, a preliminary Fire, a midair Fire and a cowering
+strike all ended with `HSalive=00` between X=2596 and X=2634. They
+remain negative controls. Next identify and time the nearby moving
+hazard using the game's monster/hero state, clear the step while alive,
+then extend the independent cold route toward the actual Stage-2 exit.
+The probes wrote no floppy/HDF media or final checkpoint. Stage 2 and
+the wider roadmap remain open.
+
+Follow-up 2026-10-19 (raised-step timing): private `--no-final-checkpoint`
+continuations of the corridor route shifted the wait before the first
+Fire strike by 2, 4 and 8 intervals of 500,000 chip cycles. Two extra
+intervals still reached X=2630/Y=137 alive at frame 11641 but died at
+X=2632 by frame 11648; four and eight extra intervals died earlier in
+the lower corridor at X=2508 and X=2500. An aerial Fire edge at
+X=2616, or after finely spaced approaches to X=2620/2622/2624/2626,
+left the hero stationary during the strike and then dead at or before
+X=2628. Starting Fire at X=2628 was already too late. These are
+negative controls, not a passage or game regression. The level source
+places monster tile 40 (TYPE 6) at X=2688/Y=160, a candidate for the
+red moving sprite near the raised step; its live position and collision
+must still be confirmed. Next measure that monster's position and
+attack-active interval near frames 11635-11648, then time a strike or
+avoidance route that remains alive beyond X=2632. The tested saves and
+outputs were private files under ignored `tmp`; no disk media, normal
+save, or final checkpoint was written. Cleanup of only this follow-up's
+regenerable scenarios and run outputs was rejected by the automatic
+command approval review (`Remove-Item -LiteralPath ... -Recurse -Force`,
+with each resolved target checked inside repository `tmp`); these
+ignored files remain and must be removed when permitted. Stage 2 and
+the roadmap remain open.
+
+Follow-up 2026-10-19 (castle knight phase): instead of striking at the
+raised step, the hero can release Right at X=2568/Y=169 and remain alive
+while the upper knight traverses its patrol. Screenshots at frames
+11605, 11648, 11676, 11704 and 11732 show the red sprite move left,
+turn, and return right. A jump after 28 stationary intervals of 500,000
+chip cycles avoids the immediate collision and carries the hero alive
+past the former X=2632 limit to X=2758/Y=137 at frame 11887. Holds of
+20, 24 and 32 intervals instead died at X=2654, X=2642 and X=2656;
+the 28-interval timing is a measured window, not a general immunity.
+The independent DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-two-knight-phase-route.json` reproduced
+the private result with exact framebuffer SHA-256
+`B55F579C0DDB940DA14076CCB69EC1932CFA2B068B9E1FF5F2263473CC33EC90`,
+`HSalive=FF`, X=2758, Y=137, zero non-ROM exceptions, and an inspected
+active-gameplay image. Continuing Right, or stopping at X=2758, still
+causes death at X=2760-2762 by frame 11894; the screenshot shows the hero
+and another red sprite but does not identify the fatal contact. Next
+isolate that collision with shorter frame steps and the castle tile/
+monster definitions, then extend the verified cold route. Stage 2 is
+not complete. The cold replay used `--no-final-checkpoint` and wrote no
+floppy/HDF media or normal save. Regenerable `tmp` outputs remain
+because the previous automatic cleanup rejection still applies.
+
+Follow-up 2026-10-19 (animated trap and next knight): narrow opt-in
+`traceMemoryWriteAddresses` tracing in GameRunner now records watched RAM
+writes with frame, PC and guest stack context. At the former X=2762 death,
+the `HSalive` write returns to `$07FEBADE`, immediately after
+`foregd_left_coll` in `hero.asm`. The Stage-2 foreground tile at X=2768
+animates from a harmless TYPE 0 base into TYPE 9 lethal frames: this is
+a timed foreground trap, not an unexplained graphics failure. Shorter
+waits at X=2568 changed the window; 25/26/27 intervals passed X=2762
+briefly, whereas 28 hit the trap and 29-31 died earlier. An independent
+full DF0 cold replay with 26 intervals, in
+`Tools/a3000-celtic-heart-stage-two-trap-window-route.json`, reached
+frame 11887 at X=2786/Y=137 with `HSalive=FF`, zero non-ROM exceptions,
+and exact framebuffer SHA-256
+`6AE337BBA8A6288D66F19A1BF4992AD45B973C897BFB4F4E6875034862FA64E4`.
+Its screenshot shows active castle gameplay. At X=2790 two frames later,
+the next `HSalive` write returns to `$07FEC580`, the `hero_coll` return
+after `killHero` in `monster.asm`: this is a separate knight collision.
+Simple continuation, cower, and right-facing Fire from X=2716-2772
+failed before the strike became active. A left-facing Fire from X=2744
+kept the hero alive stationary until frame 11937, but subsequent Right
+movement again died near X=2743-2755; neither result proves the knight
+was destroyed. Next determine the knight's live position and the strike
+hit frame, then synchronize a surviving attack or use the elevated ice
+route to bypass it. Stage 2 remains open until a visible, reproduced
+level transition. The opt-in tracer was exercised on real guest writes;
+GameRunner builds cleanly and all 27 `Tools/test_game_runner.py` tests
+pass. These probes used `--no-final-checkpoint`, touched no floppy/HDF
+media or normal saves, and left only regenerable ignored `tmp` outputs
+under the earlier automatic cleanup restriction.
+
+Follow-up 2026-10-19 (next-knight negative controls): three bounded
+`--no-final-checkpoint` continuations further constrain the passage.
+Stopping at X=2644 and firing to the right before the knight approaches
+still cleared `HSalive` at X=2644 by frame 11866, so the earlier attack
+is not a safe stationary solution. Releasing Up for 200,000 chip cycles
+at X=2716, then pressing Up again while continuing Right, left the hero
+at Y=137 rather than raising him above the low castle corridor; this
+branch reached X=2778 alive and died at X=2792 by frame 11890. A 250,000
+chip-cycle shift after the 26-interval hold kept the hero alive through
+X=2784/frame 11890, then the next monster collision killed him at
+X=2788/frame 11897. None of these is a Stage-2 passage. Next inspect
+the moving knight's position and strike-hit overlap at the live
+X=2716-2786 endpoints; vary the Fire edge or route above the castle
+only after identifying a viable overlap/window. The upper ice route at
+X=2300/Y=57 remains a separate living alternative. Private runs wrote
+only ignored `tmp` outputs and no floppy/HDF data or normal save.
+
+Follow-up 2026-10-19 (second knight defeated, next trap open): a
+64-KiB read-only Fast-RAM snapshot at the live X=2786/frame-11887 route
+located the Stage-2 knight whose TMX object is X=2688/Y=160 and whose
+runtime `Morgx/Morgy` is X=2688/Y=137. Its monster
+record begins at `$07FF7924`: at frame 11887 `Mx=2800`, `Mvx=+1`,
+and `MOflags=80`; by frame 11894 it had turned (`Mx=2794`, `Mvx=-1`).
+This explains the immediate collision on a direct chase. The hero can
+instead stop at X=2744, wait four 500,000-chip-cycle intervals, and
+start a right-facing Fire at frame 11894. As the knight returns, it
+halts at X=2763 after the strike, with `MOflags=40` (freed/inactive),
+while `HSalive=FF` through frame 11971. The independently rerun full
+DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-two-knight-kill-route.json` asserts
+both status bytes and the exact framebuffer SHA-256
+`FDF948BF3E8E8D53F1D851AC36B6B4FB78CA99D27F5EDD4BAA853754B98B98CC`;
+it passes with zero non-ROM exceptions and an inspected active-gameplay
+image. This is a confirmed defeat of that knight, not a Stage-2 exit.
+
+The next Right continuation dies at X=2780/frame 11989. Its watched
+`HSalive` write returns through foreground collision code
+(`$07FEBA7A`), while the knight remains inactive. Delaying the run by
+six more 500,000-chip-cycle intervals also dies from the foreground
+trap, now at X=2758/frame 12028. Next map the animated foreground
+tile's safe phase after the knight kill, then time a Right traversal
+across it and extend the cold route beyond the castle corridor. These
+runs used `--no-final-checkpoint`, modified no floppy/HDF or normal save,
+and left only ignored `tmp` diagnostics pending permitted cleanup.
+
+Follow-up 2026-10-19 (post-knight foreground phase crossed): a read-only
+16-KiB Fast-RAM map capture located the two relevant Stage-2 foreground
+columns at X=2720 and X=2768. Their live map words at rows 8 and 9
+change from nonlethal type 0 (`30/70` high bytes) to lethal type 9
+(`09/09`) during the animation. A frame-bounded DF0 cold run showed
+the activation at frame 11989 and the return to type 0 by frame 12042.
+Waiting at X=2754 was unsafe: its collision box still touched the trap
+when it activated, and `HSalive` cleared by frame 11991. Waiting at
+X=2744 kept the hero alive throughout that phase. After eleven
+500,000-chip-cycle intervals from the confirmed knight kill, Right
+crossed the trap in its safe window, reached X=2800/Y=137 alive at
+frame 12077, and left the knight inactive (`MOflags=40`). The full
+independent cold route
+`Tools/a3000-celtic-heart-stage-two-post-knight-trap-route.json`
+asserts the live hero bytes, inactive knight and exact presented SHA-256
+`582B41E12D45B6FC98F4A459AB5234011110C3809F661FFCDD0C8E4181131AFF`;
+its selected screenshot shows active castle gameplay, with zero
+non-ROM exceptions. This establishes passage of the second animated
+trap, not Stage-2 completion.
+
+At X=2800 the lower corridor meets a solid castle wall. A separate
+Right+Up continuation beginning at X=2772 remained at Y=137 and
+X=2800 through frame 12119, so it did not climb the wall. The Stage-2
+TMX background puts solid blocks across rows 7-11 at the next column;
+the independent upper-ice route at X=2300/Y=57 remains a candidate
+for approaching above it. Next follow that upper route toward the
+building, or find an earlier valid jump/alternate passage while
+watching the hero coordinates and foreground phase. Require a visible,
+reproduced level transition before declaring Stage 2 complete. These
+tests used `--no-final-checkpoint`; only compact ignored `tmp` output
+was written, with no floppy/HDF or normal-save writes.
+
+Follow-up 2026-10-19 (upper-ice alternative tested): the established
+DF0 cold route to Stage-2 X=2300/Y=57 was extended with held Right+Up.
+The hero jumped to X=2398/Y=79 alive by frame 11436, but was still
+falling across an open gap rather than approaching the roof on a
+walkable ledge. A second independent cold continuation stopped the
+first jump at X=2370, released both inputs and waited seven
+500,000-chip-cycle intervals. The hero fell to ground X=2372/Y=185
+by frame 11472; the decorative map tiles near X=2352-2384 did not
+support a landing. A new Right+Up jump from there reached only
+X=2484/Y=169 alive by frame 11528, beneath the castle roof. These
+runs preserve the earlier X=2300/Y=57 achievement but do not establish
+an upper entry or Stage-2 completion. Next inspect the castle's solid
+background tile geometry and the vertical clearance of the lower
+corridor before X=2800, then test a specific earlier jump or other
+legitimate passage. Continue to require a visible level transition.
+The bounded runs used `--no-final-checkpoint`, selected screenshots,
+zero media writes and only ignored `tmp` diagnostics.
+
+Follow-up 2026-10-19 (castle wall passed, next patrol open): the
+Stage-2 TMX geometry was checked against the correct Snow Mountains
+`w1types.tmx` tile properties and a read-only guest background-map
+snapshot. Column X=2816 has a solid row-9 block (`$8980`) but the
+space over it is open (`$09DC`/`$090A`); the former Right+Up attempt
+started beneath a solid ceiling at X=2772. From the confirmed live
+post-knight position X=2800/Y=137, releasing Right and pressing Up
+**in place** raises the hero to Y=108. Only then pressing Right
+crosses the wall. The independent DF0 cold run reaches X=2940/Y=185
+alive at frame 12154, with zero non-ROM exceptions and inspected
+active gameplay. Its exact presented SHA-256 is
+`BBE96994C3BCD7AA7C90F072D1643D3A2D1852DBCCB8AD5EC54E3EFA214D283B`.
+`Tools/a3000-celtic-heart-stage-two-wall-lift-route.json` asserts
+that hash, the hero's coordinates and `HSalive=FF`, and the defeated
+knight's inactive flag. A separate cold continuation also passed this
+guarded prefix. The lower castle wall is no longer the blocker.
+
+A straight Right continuation beyond X=2940 died at X=3006/frame
+12189 near the dead tree and ground patrol. An immediate Right+Up at
+X=2940 did not jump: the previous Up release had not yet been sampled
+by the game. A 500,000-chip-cycle neutral wait rearmed the jump and
+reached X=3038/Y=185 alive, but contact at X=3040 killed the hero.
+Moving to X=2996 before initiating the jump kept him alive as far as
+X=3066/Y=179; contact at X=3074/Y=162 then killed him. Those later
+positions are short-lived probes, not a proven patrol passage or
+Stage-2 exit. Next inspect the three TMX ground-patrol records near
+X=3056/3088/3120 and their runtime positions at the guarded X=2940
+checkpoint; time a strike or jump that lands beyond their collision
+boxes, then extend the full cold route. No game/media/save data was
+written. The probes used `--no-final-checkpoint` with selected images
+and bounded ignored `tmp` output.
+
+Follow-up 2026-10-19 (ground-patrol collision traced): a further
+independent DF0 cold replay preserved the wall-lift guard, captured one
+bounded 64-KiB Fast-RAM snapshot at X=2940 and traced writes to
+`HSalive` over the failing jump. The death at frame 12221 writes `00`
+at `$07FF750A`; the guest PC is `$07FEBE60` and the return stack
+includes `$07FEC580`, matching the previously identified
+`hero_coll`/`killHero` monster-collision path, rather than a renderer
+or CPU exception. The source `level02.tmx` in fact contains **three**
+consecutive ground monsters, object IDs 39-41 at X=3056, 3088 and
+3120 (plus a separate upper monster at X=3040). The runtime snapshot
+has monster records at `$07FF7834`, `$07FF77E4` and `$07FF7794`;
+the X=3056 monster is already active and moving left at the wall-lift
+checkpoint, while the other two initially sit at their map positions.
+With the delayed jump from X=2996, the hero reaches X=3052/Y=138
+alive at frame 12211, when the first two active ground monsters are
+already behind him at X=2995 and X=3043. Pressing Fire there stops
+horizontal travel: he is still alive at X=3056/Y=179 at frame 12225,
+then dies on landing at X=3062/frame 12232. The earlier strike issued
+at frame 12218 was likewise too late and died at frame 12225. These
+are negative timing controls, not a patrol clear. Next watch all three
+runtime X/active fields through the landing interval, then try a jump
+and right-facing strike timed against the **third** patrol without
+pausing over its collision path; assert sustained upright movement in
+the independently replayed cold route before claiming passage. Stage 2
+still has no visible level transition. All diagnostic outputs are
+bounded under ignored `tmp`, with `--no-final-checkpoint` and no
+ROM/game/HDF/save writes.
+
+Follow-up 2026-10-19 (three-patrol phase and strike controls): a full
+DF0 cold replay of the guarded wall-lift route watched the three
+80-byte guest monster records at `$07FF7834`, `$07FF77E4` and
+`$07FF7794`. With the hero held safely at X=2940, the first patrol
+(map X=3056) moves left from X=3051/frame 12154 to X=2973/frame
+12232; the second activates by frame 12175 at X=3088 and reaches
+X=3031/frame 12232. The third remains inactive at X=3120 while the
+screen is held. Fire begun at frame 12211 leaves the first at X=2961
+from frames 12246-12302 and the hero alive at X=2940, but does not
+clear it (`Mactive=01`). A subsequent Right+Up from frame 12302 dies
+at X=2946/frame 12309, so that stationary strike is not a passage.
+Starting Fire later, at frame 12232, is too late: the first reaches
+X=2952 and kills the hero by frame 12253 while still active. A
+right-facing midair Fire from X=3052/Y=138 at frame 12211 stops the
+hero's horizontal travel, and he dies on landing at X=3062/frame
+12232. This matches the source `hero.asm` rule that a one-shot strike
+temporarily blocks left/right/jump input, so a midair strike cannot be
+treated as a moving attack. Next bracket standing Fire onset between
+frames 12211 and 12232, watch strike-MOB active state and each monster's
+velocity/flags, then either remove the first two from a safe position
+or time a jump that lands beyond all three. Add a full cold route and
+review active gameplay only after sustained live movement past X=3120;
+Stage 2 remains open. The diagnostic runs used `--no-final-checkpoint`
+and compact ignored `tmp` output; no normal saves or media changed.
+
+Follow-up 2026-10-19 (three ground patrols passed): the apparently
+still-active first monster at X=2961 after the frame-12211 Fire was
+actually held in its fixed kill animation. Source `monster.asm`
+`killMonster` calls `setAnim(M_KILLED)`; `Mactive` remains `01` during
+that animation, so it alone is not a kill test. A second standing Fire
+from safe hero X=2940 at frame 12267 arrested the second patrol at
+X=2963 by frame 12302. The hero then walked **through** both frozen
+positions to X=2996 alive, confirming they no longer caused a lethal
+collision. The third patrol activated as the view advanced and moved
+left from X=3120. Releasing Right left the hero aligned at X=3000;
+waiting eight 500,000-chip-cycle intervals and pressing Fire at frame
+12450 arrested this third monster at X=3019 by frame 12485. After
+the strike animation the hero walked alive through all three former
+patrol positions to X=3184/Y=185 at frame 12640. The active game
+frame was inspected: the upright hero is on the ground beyond the
+dead tree, with the next raised enemies and golden ground objects
+visible ahead. The new **independent DF0 cold-start route**
+`Tools/a3000-celtic-heart-stage-two-three-patrol-passage-route.json`
+retains the earlier wall guard and asserts the exact presented SHA-256
+`BB7CD74252E1F4C33E6D018A40FA8CBAFEF673A1ECE9DE630F059BA362441C23`,
+hero X=`$0C70`/Y=`$00B9`, `HSalive=FF` and zero non-ROM exceptions.
+`GameRunner --validate` passed, and a separate full cold replay passed
+the new guard. This is a reproducible **patrol passage**, not Stage-2
+completion. Next inspect the level-02 objects beyond X=3184 (raised
+enemies near X=3216/3248 and ground objects farther right), then use
+real input to advance to a visible Stage-2 transition. Continue to
+distinguish momentary live probes from a guarded cold route. The run
+used `--no-final-checkpoint`, selected compact images and no
+ROM/game/HDF/normal-save writes.
+
+Follow-up 2026-10-19 (two missiles dodged; next wall mapped): a
+straight Right continuation of the guarded three-patrol route walked
+alive beneath the raised enemies to X=3366/Y=185 (frame 12731), then
+died at X=3372. A bounded `HSalive` bus-write trace placed the death
+at frame 12734, guest PC `$07FEBE60` with `$07FEC580` on the stack:
+again a monster collision. A 64-KiB read-only Fast-RAM snapshot at
+X=3366 identified **two active type-14 `shootMissile` MOBs**:
+`$07FF80A4` at X=3388/Y=185, velocity -2, and `$07FF80F4` at
+X=3414/Y=137, velocity -1. The source `mob.asm` dispatches type 14
+to `shootMissile`; `monster.asm` marks these missiles invulnerable.
+Simply crouching at X=3339 died by frame 12752. Holding Right+Up
+from X=3338 passed the lower missile while airborne but collided with
+the upper one at X=3390/Y=133 by frame 12745. A 14-frame pause much
+earlier at X=3184 merely shifted the same lower-path death in time,
+not beyond X=3372.
+
+The safe input is more precise: from X=3338/Y=185 initiate Right+Up
+for two 500,000-chip-cycle intervals, reaching X=3366/Y=139 at frame
+12731; **release Right there** and hold position through ten more
+intervals. The hero lands at X=3368/Y=185 and remains alive through
+frame 12802, while the lower and upper missiles move left behind him
+to X=3248 and X=3344. The active frame was reviewed, and the new
+full DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-two-missile-dodge-route.json`
+asserts presented SHA-256
+`EEACA33C9CA49801F3451D92572C8BA16621C7BA5EBBB62594C7EFD8B19B648A`,
+X=`$0D28`, Y=`$00B9`, `HSalive=FF`, both missile positions and zero
+non-ROM exceptions. `GameRunner --validate` and a separate cold
+replay passed. Thus this is a reproducible live passage of both shots,
+not a Level-2 exit.
+
+From this guarded spot a further real Right continuation passed to
+X=3440/Y=185 alive, but remained at X=3440 despite thirteen more
+500,000-chip-cycle intervals. Source `level02.tmx`/`w1types.tmx`
+place a solid background column at X=3456 (column 216), with solid
+tiles extending from row 6 through row 12. The direct ground route
+cannot be credited past that wall. Next find a legitimate ascent to
+the upper route before this column, using the earlier raised platforms
+and checked tile geometry; verify movement beyond X=3456 and an
+eventual visible level transition from a full cold start. These runs
+used `--no-final-checkpoint` and compact ignored `tmp` files; no
+ROM/game/HDF/normal-save media changed.
+
+Follow-up 2026-10-19 (raised-route probes): the guarded three-patrol
+DF0 cold route was extended only in ignored `tmp` for three input
+experiments, each using `--no-final-checkpoint` and zero non-ROM
+exceptions. A direct Right+Up from X=3184 reached X=3198/Y=156 alive
+but `HSalive` became `00` at X=3202/Y=142, before landing on the
+raised route. Walking right on the ground to X=3296 stayed alive;
+after releasing Right and waiting one 500,000-chip-cycle interval,
+Left+Up from there reached X=3282/Y=156 alive and became dead at
+X=3278/Y=142. These are failed raised-platform approaches, not
+passes. At the guarded missile-dodge point X=3368, pressing Right+Up
+immediately after releasing Up did not rearm a jump: X advanced to
+3440 while Y remained 185. One neutral 500,000-cycle interval first
+did rearm it; Right+Up then raised the live hero to X=3410/Y=135,
+but he fell back to Y=185 and remained blocked at X=3440 by the
+solid X=3456 column. Thus a ground-height jump cannot clear that
+column. Next use the level-02 object and tile data to locate the
+raised attackers at X=3216/3248 and a safe landing window on the
+mid-height platform; test a timed strike or a different takeoff point
+without counting a momentary airborne position as passage. Only
+extend a permanent cold route after a live landing above the lower
+path, then verify movement beyond X=3456 and the visible transition.
+
+Follow-up 2026-10-19 (mid-height route independently reproduced):
+waiting twenty 500,000-chip-cycle intervals at the safe ground
+X=3184 let the first raised patrol's dangerous phase pass. Up alone
+then lifted the hero to X=3184/Y=137, alive and stable on the
+mid-height solid row-10 platform. Right advanced to X=3212. A fresh
+Right+Up jump from there crossed the previously lethal X=3202 and
+X=3278-3244 encounters and landed alive on that platform; Right
+continued to X=3338/Y=137 at frame 12928. The active game image was
+inspected. The full DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-two-mid-platform-route.json` guards
+the exact presented SHA-256
+`402ECB5B2339D8754DF9699E9A57CE8F8CA17D3D45FA9494CF996A416A2B6378`,
+hero X=`$0D0A`/Y=`$0089`, `HSalive=FF` and zero non-ROM exceptions;
+read-only validation and a separate cold replay passed. This is a
+reproducible raised-platform passage, not a wall or level pass.
+
+The level-02 tile properties clarify the next obstacle: row 10,
+columns 199-209 (`BACK` 76-80), is solid and supports the mid-height
+route. The apparent small stepping tiles at row 7, columns 211-212
+(`BACK` 9-10), and the apparent upper pieces at row 5, columns
+207-210 (`BACK` 11-14), have `SOLID=0`. A jump from X=3338/Y=137
+through X=3396/Y=90 therefore fell through those visual tiles and
+returned to the ground by X=3440; holding at X=3396 also fell to
+Y=185. The tall solid column at X=3456 still blocks both the ground
+and this mid-height jump. Next inspect the earlier **solid** upper
+route and any moving platform or bounce mechanism that can raise
+the hero above the column top. Test a live, landed position above
+the wall before adding a full cold-start guard past X=3456.
+
+Follow-up 2026-10-19 (upper platform bridge): the solid-tile map
+exposed a legitimate staircase from the **earlier lower castle
+corridor**, avoiding the dead-end ground continuation. In the
+`wall-lift` route, stop Right at X=2870/Y=121 on the castle platform,
+release Up for one 500,000-chip-cycle interval, then jump Right+Up
+at the platform edge. The hero clears the overhead roof, reaches
+X=2928/Y=74, and, after releasing Right, lands alive at X=2928/Y=89
+on the single solid row-7 tile. A second jump lands on the single
+solid row-5 tile at X=2988/Y=57. These are **solid** map tiles,
+unlike the decorative pieces ahead of the X=3456 wall.
+
+The bounded Fast-RAM snapshot identified the moving type-13 platform
+at `$07FF8144`; its live X position oscillates from 2993 to 3120,
+Y=89. At frame 12344 it approached the small upper tile from the
+right (platform X=3004). Pressing Right for one 500,000-cycle
+interval stepped the hero onto it (hero X=3000/Y=66, platform
+X=2997). With Right released, the hero stayed attached through the
+turn and rode it to X=3122/Y=66 while the platform reached X=3120.
+An immediate Right+Up jump from there crossed the gap to the solid
+row-4 upper platform. Releasing Right at X=3193/Y=34 let the hero
+land and remain alive at X=3196/Y=41 through frame 12562.
+
+The new **independent full DF0 cold-start route**
+`Tools/a3000-celtic-heart-stage-two-platform-bridge-route.json`
+asserts the exact presented SHA-256
+`6D40CFCA354190A6F087DA36A3F35ADEB46FCFB2B6A26ADCC97F13937047B468`,
+hero X=`$0C7C`/Y=`$0029`, `HSalive=FF`, moving-platform X=`$0BE4`
+and zero non-ROM exceptions. Read-only route validation and a second
+full cold replay passed; the active upper-platform image was
+inspected. This is a reproducible **upper-platform passage**, not a
+pass of the X=3456 pillar or Stage 2.
+
+The next section needs controlled timing. A direct Right+Up jump
+from X=3196 survived to X=3266/Y=9 at frame 12598 but became dead
+at X=3276/Y=24 by frame 12605; stopping horizontally at X=3240
+still became dead while descending through Y=24. A standing Fire
+from X=3196 died sooner by frame 12584. A bounded HSalive bus trace
+for the direct jump recorded the write at frame 12602, guest PC
+`$07FEBE60`, stack top `$07FEBC80/$07FEBAF4/$07FEBA0C/$07FEC794`.
+A read-only Fast-RAM snapshot at frame 12598 found one active type-6
+upper knight at X=3206/Y=41 and two lower spiders at X=3270 and
+3334/Y=137; the **precise** cause of the descending death is not
+yet established, so these probes are not a passage. Next identify
+the write caller and the knight's actual overlap window, then
+reproduce a live move across the row-4 platform and the small solid
+row-3 tile at X=3392-3407. From there test a legitimate jump over
+the pillar at X=3456. Keep Stage 2 open until a visible,
+independently replayed level transition.
+
+Follow-up 2026-10-19 (upper hazards and pillar): controlled full-DF0
+cold-start inputs resolved the route above the castle. A vertical-only
+Up jump at X=3196 returned to Y=41 alive through frame 12626;
+walking Right instead died at X=3212 by frame 12576. The level-02
+BACK map has tile 66 at row 3/column 202 (X=3232) and column 205
+(X=3280); `w1types.tmx` marks tile 66 as background `TYPE=1`,
+which `hero.asm` dispatches to `bg_stddeath`. This explains why a
+continuous Right+Up jump dies while descending across those columns;
+the earlier nearby knight alone was not a sufficient explanation.
+Jumping from X=3196 and releasing Right after four 500,000-cycle
+intervals landed safely at X=3256/Y=41 between the two death tiles
+through frame 12633. A second four-interval Right+Up jump landed at
+X=3312/Y=41 by frame 12682. Holding there until frame 12696 died;
+an immediate jump from frame 12682 crossed the following gap and
+landed on the single solid row-3 tile at X=3396/Y=25, alive through
+frame 12766.
+
+The independently repeated full cold route
+`Tools/a3000-celtic-heart-stage-two-upper-gap-landed-route.json`
+guards X=`$0D44`/Y=`$0019`, `HSalive=FF` and exact presented SHA-256
+`B466D572EE3ED70497B2BE06F099592732610AC041683F59F511231FF6358590`.
+Read-only scenario validation passed and its active game image shows
+the hero on the small upper tile. From there, seven Right+Up
+intervals cleared the solid column at X=3456; releasing movement
+at X=3496 let the hero fall onto the ground **to the right of the
+column**, still alive through frame 12851. The independently repeated
+full cold route
+`Tools/a3000-celtic-heart-stage-two-pillar-passage-route.json`
+guards X=`$0DA8`/Y=`$00B9`, `HSalive=FF`, zero non-ROM exceptions and
+presented SHA-256
+`E922030548327747CD4DD93E489BC22DDB4FE37F6856925F2D7974C582A4E1B8`;
+the replay image shows active gameplay on the far side of the pillar.
+This is a **reproduced pillar passage**, not a Stage-2 completion.
+Continue with real Right/Fire/Up inputs from X=3496 past the visible
+ground and raised enemies, retain cold-start guards for any durable
+progress, and count Stage 2 only after a visible, independently
+replayed level transition. Cannon Fodder's later missions and the
+other roadmap items remain open.
+
+Follow-up 2026-10-19 (far-side pits): from the independently
+confirmed X=3496/Y=185 pillar passage, plain Right died at X=3550.
+Right+Up instead stayed alive past the first ground opponent, reaching
+X=3622/Y=185 at frame 12914; its full DF0 cold-start route is
+`Tools/a3000-celtic-heart-stage-two-post-pillar-first-enemy-route.json`.
+The next plain Right step died at X=3632. In `level02.tmx`, the
+background row-13 tiles at X=3632-3695 have `TYPE=1`, `SOLID=0`:
+the first four-tile death pit. Releasing Up at X=3594 for one
+500,000-cycle interval and pressing it again at X=3608 jumped across
+to X=3748/Y=185 alive (frame 12978). The independently repeated
+full cold route
+`Tools/a3000-celtic-heart-stage-two-first-pit-passage-route.json`
+guards image hash
+`D9FF33DE655B40F8A3F71892C6A24052147050BEAD7C67C7DDF5717660A41B1B`,
+`HSalive=FF` and zero non-ROM exceptions; its active game image was
+inspected.
+
+The second row-13 four-tile death pit spans X=3760-3823. A jump
+immediately from X=3748 cleared its far edge but died at X=3828 while
+descending. A bounded Fast-RAM snapshot just before that death found
+an active type-6 ground opponent at X=3835/Y=185; this is consistent
+with a separate monster contact, but no HSalive caller trace was
+taken for that specific collision. A phase shift by releasing Right
+and Up at X=3748 and waiting six 500,000-cycle intervals before the
+next Right+Up jump crossed the second pit and reached X=3864/Y=185
+alive at frame 13076. The independently repeated full cold route
+`Tools/a3000-celtic-heart-stage-two-second-pit-passage-route.json`
+guards image hash
+`B2343E71E9FBA71764D1E70F93729A0B6A265AFB9170E7F6E32F7EE7B4D1368F`,
+`HSalive=FF` and zero non-ROM exceptions; the active game image shows
+the hero on the far bank. This is a reproducible **two-pit passage**,
+not a Stage-2 completion. Five standing Fire intervals from X=3864
+kept the hero alive through frame 13111, but releasing Fire and
+pressing Right died at X=3896 by frame 13132. Next capture the
+nearby ground opponents' MOB positions and flags after Fire, then
+time or evade the next contact with real inputs. Preserve the two-pit
+cold route as the checkpoint and require a visible, independently
+replayed level transition before calling Stage 2 complete.
+
+Follow-up 2026-10-19 (Stage-2 exit): the preceding two-pit route was
+extended with real joystick inputs, without modifying the guest game.
+At X=3864/Y=185 after the pits, a bounded Fast-RAM snapshot following
+five standing Fire intervals found two active type-6 ground opponents:
+MOB `$07FF7604` at X=3909/Y=185 and MOB `$07FF75B4` at X=3922/Y=185,
+both with flags `$80`. Standing Fire from X=3878 died at frame 13147;
+a late Right+Up jump reached X=3934 alive but died near X=3942.
+Releasing Right and Up for one 500,000-chip-cycle interval immediately
+after frame 13076 rearmed an earlier Right+Up jump. It passed the two
+opponents and placed the living hero at X=3976/Y=185 at frame 13139.
+`Tools/a3000-celtic-heart-stage-two-far-ground-passage-route.json`
+guards `HSalive=FF`, zero non-ROM exceptions, and presented SHA-256
+`A04E7B0F28884FB4D7F2C5A8CC1922968EEF34026D48E98D378EE0BC11F5F8E7`;
+an independent full DF0 cold-start replay reproduced that image.
+
+Continuing Right from there made the guest write `HSalive=00` near
+X=3986/frame 13144, with PC `$07FEBE60` and stack
+`$07FEBE70/$07FEBC88/$07FEBACC/$07FEBA0C`. This alone was ambiguous
+because the hero is also deactivated by the game's exit path. The same
+PC/stack sequence was seen immediately before the known Stage-1
+completion. Further real Fire input and waiting resolved the ambiguity:
+at frame 13322 the screen visibly displays **SNOW MOUNTAINS STAGE 3**,
+`CODE: 0F2U`, `PRESS BUTTON`. The full DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-two-complete-stage-three-title-route.json`
+guards that final presented frame with SHA-256
+`E935C0826473E8D72FEAE4A5E64ABA374DFC7569BE110868CAEBB2BC3358851B`
+and zero non-ROM exceptions. This is a visible Stage-2-to-Stage-3
+transition. A separate complete DF0 cold-start run reproduced frame
+13322 and the exact hash with zero non-ROM exceptions, so **Stage 2 is
+complete**; previous notes that call it
+open describe earlier checkpoints and remain as the test history.
+Next confirm Stage-3 active gameplay after the title with movement,
+continue Cannon Fodder's later missions and the other seven-point
+roadmap acceptance work. Completion of Stage 2 does not complete the
+overall roadmap.
+
+Follow-up 2026-10-20 (Stage-3 entry and live movement): a complete DF0
+cold-start replay extended the guarded Stage-2 completion route.
+Releasing Fire and pressing it again at the Stage-3 title showed the
+Stage-3 mountain/platform scene. Right alone during that scene changed
+animation but left the hero watch at X=`$0020`, `HSalive=00` through
+frame 13477. A longer neutral wait revealed the actual second prompt,
+**GET READY — PRESS BUTTON**, still present at frame 14040. Thus the
+earlier Stage-3 scene was a pre-play sequence, not a movement pass.
+Pressing Fire at that prompt made `HSalive=FF` by frame 14047. After
+releasing Fire, genuine Right input moved the hero from X=`$0020` to
+X=`$0082`/Y=`$0052`, alive at frame 14167 in the platform scene.
+`Tools/a3000-celtic-heart-stage-three-active-movement-route.json`
+guards those bytes, zero non-ROM exceptions and presented SHA-256
+`7A3E15DF6B2FAEEC20D6A48E448A193C710012A3F66CFED814C966916E30CE9A`.
+A separate complete DF0 cold-start replay passed all guards; the
+frame-14167 image visibly shows the moving hero above the first gap.
+This establishes **active Stage-3 gameplay and input-driven movement**,
+not Stage-3 completion. A further uninterrupted Right interval fell
+into the gap and deactivated the hero at X=`$008E`/Y=`$0069` by frame
+14174. Next time the jump or moving platform before X=`$0082`, cross
+the first gap while alive, and extend the full cold-start route.
+
+Follow-up 2026-10-20 (Stage-3 first gap): plain Right fell from the
+starting ledge at X=142. Pressing Right+Up from X=102/Y=57 jumped
+out over the gap, but holding Right throughout missed the moving
+platform and the hero died at X=211/Y=108. Releasing Right too early
+at X=172 also missed it. Releasing Right at X=186/Y=51 instead
+landed the hero on the moving platform at X=177/Y=66 by frame 14209;
+with no horizontal input the platform carried the living hero left,
+then right again to X=204/Y=66 at frame 14561. Releasing Up for one
+500,000-chip-cycle interval rearmed a jump; Right+Up then reached
+X=273/Y=34 **alive above the far solid pillar** at frame 14603.
+`Tools/a3000-celtic-heart-stage-three-first-gap-airborne-route.json`
+guards X=`$0111`, Y=`$0022`, `HSalive=FF`, zero non-ROM exceptions
+and image SHA-256
+`4D1B608A62B07D492C87AEE988C906BCE8F1956B12B7C8C0CBF527339EC1B3EA`.
+A second full DF0 cold-start run reproduced the guards and the image
+visibly shows the hero above the far pillar. This is a reproduced
+moving-platform landing and **airborne gap crossing**, not a stable
+far-side landing or Stage-3 completion: continuing Right died at
+X=279/Y=37 by frame 14610, while stopping Right at X=231 died
+at X=232/Y=43 by that frame. Inspect the far-side tile/enemy collision,
+then time a live landing
+past X=279 before marking the first gap fully passed.
+
+The follow-up bounded write trace starts only after the guarded
+frame-14603 airborne checkpoint. It captures the `HSalive=00` write
+at frame 14606 from PC `$07FEBE60`, stack
+`$07FEBC80/$07FEBA90/$07FEBA0C/$07FEC794`. The author-published
+`hero.asm` confirms that `killHero` serves both monster and deadly-tile
+contacts; the shared PC/stack does **not** prove a monster collision.
+A bounded Fast-RAM snapshot at frame 14603 found the active type-9
+monster behind the hero at X=232/Y=57, moving left, with no active
+monster near X=279. The source `maps/level03.tmx` instead puts BACK
+tile 66 at row 4/column 17 (X=272-287/Y=64-79), and `w1types.tmx`
+marks it `TYPE=1`, dispatched by `hero.asm` to `bg_stddeath`.
+The timing and position therefore strongly implicate that deadly
+background tile. This is an inference from the map and RAM snapshot,
+not yet an isolated tile-collision trace. Adjust the takeoff position
+or jump phase to clear X=272-287 while higher; the airborne checkpoint
+must not be represented as a safe landing.
+
+Follow-up 2026-10-20 (first Stage-3 gap landed): the second jump was
+delayed by one additional 500,000-chip-cycle neutral interval while
+standing on the moving platform. The platform carried the hero left
+to X=199/Y=66 before takeoff. Two Right+Up intervals then reached
+X=226/Y=20; releasing Right let the hero land at X=228/Y=57 on the
+far solid pillar. He remained alive there for eight more intervals
+through frame 14645. The complete DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-three-first-gap-landed-route.json`
+guards X=`$00E4`, Y=`$0039`, `HSalive=FF`, zero non-ROM exceptions
+and image SHA-256
+`61A218CA09CC66DD0F6DA05AE8CA46548CB388C00DBC0550F4F51E96DA71DF10`.
+A separate full cold-start continuation passed this guard and its
+visible frame shows the hero standing on the far side. This is a
+**stable, reproduced first-gap passage**. The previous airborne
+route remains a useful but incomplete checkpoint.
+
+From the landed X=228 position, releasing Up for an interval and
+jumping Right+Up clears the tile-66 column in the air through
+X=300/Y=28, alive at frame 14688. The next interval deactivates the
+hero near X=310/Y=44. `level03.tmx` places a monster object at
+X=304/Y=80, but the contact source for this later death has not yet
+been isolated; it is not counted as a pass. Next snapshot/trace the
+active object at X≈304 and time a strike or another safe jump phase,
+then extend the full cold route only after a sustained live landing
+past it. Stage 3 and the overall seven-point roadmap remain open.
+
+Follow-up 2026-10-20 (far-side contact identified): a bounded 8 KiB
+Fast-RAM snapshot at the guarded frame-14688/X=300/Y=28 point found
+the active type-9 MOB at `$07FF7E24`, X=317/Y=57, flags `$80`.
+The following interval wrote `HSalive=00` at frame 14693 from
+`killHero` PC `$07FEBE60`, with stack
+`$07FEC580/$07FEC088/$07FEC794`; the hero stopped at X=310/Y=44.
+The nearby active MOB and monster-collision return address identify
+this contact more specifically than the prior map-only suspicion.
+A separate complete DF0 cold-start probe released Right and pressed
+Fire at X=300/Y=28. The hero remained alive at X=300/Y=55 on
+frame 14695, then died at X=300/Y=57 by frame 14702; that early
+airborne Fire did not clear the obstacle. These are negative controls,
+not a passage. Next capture the type-9 MOB's X/flags immediately before
+and after the strike, then time a grounded or differently phased
+right-facing attack from the far pillar, or a jump over the MOB. Keep
+the stable first-gap route unchanged until a later live checkpoint
+has survived multiple intervals.
+
+Follow-up 2026-10-20 (type-9 timing probes): the published `mob.asm`
+maps MOB type 9 to `moveDino`, whose `monster.asm` handler says the
+dino-bird can be killed only by a cowering strike. A full cold-start
+route with extra memory watches tracked its patrol from X=274 at
+frame 14645 to X=318 at frame 14695, then back left at one pixel per
+frame. From the stable X=228/Y=57 pillar, a Down+Fire begun at frame
+14744 kept the hero alive through frame 14793 but left the MOB active
+(`MOflags=$80`) at its left turn X=247. Delaying Fire until frame
+14758 caused collision/death by frame 14779. Establishing Down for one
+interval before Fire, or beginning that sequence at frame 14737,
+also failed to kill it. A bounded Right step from the pillar reached
+X=240/Y=57 safely; cowering Fire at frame 14734 kept the hero alive
+through frame 14783 while the MOB turned at X=257, still active.
+Moving instead to X=260 in the air died at frame 14695 before landing;
+that is no safe approach. These are full-DF0 negative controls, not a
+passed monster. The next concrete test is a grounded cowering strike
+from X=240 with a later activation phase or a slightly closer safe
+position, watching the strike MOB's X/Y and active flag as well as the
+type-9 MOB; only extend the durable cold route after a killed/inactive
+MOB and sustained live movement beyond it.
+
+Follow-up 2026-10-20 (far-side dino defeated and passed): the prior
+`MOflags=$80` check alone was misleading because `killMonster` starts a
+death animation before the MOB is removed. The published BSS layout
+puts `HeroStrike` at `$07FF7522`. A bounded snapshot during the
+X=240 cowering strike at frame 14762 found it active at X=256/Y=69,
+with collision bounds X=256..267/Y=73; the type-9 MOB at X=257/Y=57
+had bounds X=257..272/Y=57..79. The boxes overlap. Its `MOtype`
+had become 0 with the killed animation running, explaining why its
+X stopped at 257 even while `MOflags` remained `$80`. The flag later
+became `$40` when the animation finished. This establishes a real
+cowering Fire kill, not merely a harmless pause in the patrol.
+
+After releasing Fire/Down at frame 14783, a real Right+Up jump over
+the deadly tile-66 column reached X=336/Y=58 alive at frame 14833,
+beyond the dino. `Tools/a3000-celtic-heart-stage-three-dino-passage-route.json`
+is a complete DF0 cold-start route guarding hero X=`$0150`, Y=`$003A`,
+`HSalive=FF`, the defeated MOB's `MOtype=00`/`MOflags=40`, zero
+non-ROM exceptions and frame SHA-256
+`C593760E7793C1BA530C14AAFAA65665D98F29CC27507EE2B221DAF688B967D6`.
+A separate complete DF0 cold-start replay passed every guard; the
+captured frame was visually inspected as active gameplay above the
+next stone ledge. Treat the first Stage-3 far-side dino as defeated
+and passed. Next determine a safe landing or platform transfer from
+X=336/Y=58 and continue Stage 3 with real inputs; no level completion
+has yet been shown. The seven-point roadmap remains open.
+
+Follow-up 2026-10-20 (ground route beyond the dino): stopping Right
+at X=336/Y=58 caused a fall to X=340/Y=185 and death by frame 14875;
+it is not a safe landing. Keeping Right held instead continued the
+real jump and fell past the first ground enemy, landing safely and
+remaining alive on the lower stone floor through X=450/Y=185 at
+frame 14889. The full DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-three-ground-passage-route.json`
+guards X=`$01C2`, Y=`$00B9`, `HSalive=FF`, the killed dino's
+`MOtype=00`/`MOflags=40`, zero non-ROM exceptions, and exact frame
+SHA-256
+`68038E0DE44C6C88962335C448C0C9A46384C5B736652643235B053940097D9E`.
+A separate complete cold-start replay passed all guards; the capture
+visibly shows active ground gameplay to the right of the first wall.
+This ground passage is independently passed. A subsequent real
+Right+Up jump from X=450 reached X=520/Y=137 alive at frame 14924,
+then died at X=528/Y=133 by frame 14931. That short-lived jump is
+not a passed next obstacle. Next capture a bounded MOB/map-collision
+trace around X=520-528 and time a safe jump or strike from the
+reproduced X=450 ground checkpoint. Stage 3 remains open.
+
+Follow-up 2026-10-20 (middle platform and bat contact): a bounded 8 KiB
+Fast-RAM snapshot at frame 14924/X=520/Y=137 found an active type-12 bat
+at X=541/Y=137 (MOB `$07FF7564`, flags `$80`); a separate type-8 ground
+enemy was at X=526/Y=185. The following HSalive write at frame 14928,
+X=528/Y=133 had PC `$07FEBE60` and monster-collision return address
+`$07FEC580`. The bat's height and the collision stack identify this as
+the airborne threat rather than the lower ground enemy. A different real
+input sequence from the independently passed X=450 checkpoint jumps only
+to X=478/Y=139, releases Right and Up, then waits. The hero lands on the
+fixed middle platform at X=480/Y=137 and stays alive for nine neutral
+500,000-chip-cycle intervals through frame 14966. The complete DF0
+cold-start route `Tools/a3000-celtic-heart-stage-three-middle-platform-route.json`
+guards X=`$01E0`, Y=`$0089`, HSalive=`FF`, the earlier dino's killed
+state, zero non-ROM exceptions and exact frame SHA-256
+`7CF0369D9201FAA8362F5F0419B4C4E0EEF1A89E126489E1634148492D05F9EE`.
+A separate full cold-start replay passed every guard; the frame shows
+active gameplay with the hero on the platform. This landing is passed.
+Immediate standing Fire from frame 14966 is a negative control: the bat
+continued left from X=499 through X=485 and killed the hero at frame
+14980 before its active flag changed. Two further complete DF0 cold-start
+negative controls bounded the strike timing. Fire begun at frame 14931
+(bat X=534) expired before the bat arrived; at frame 14980 the bat was
+still type 12/flags `$80` and the hero died. Fire begun at frame 14938
+(bat X=527) changed the bat to type 0 on frame 14980, but the hero died
+in that same interval; a simultaneous kill does not establish passage.
+Next shift the strike a few frames within this narrow window, or time
+an evasive jump from the stable platform, watching bat type/flags and
+sustained live movement beyond it. Stage 3 and the seven-point roadmap
+remain open.
+
+Follow-up 2026-10-20 (type-12 bat defeated and passed): a fourth complete
+DF0 cold-start timing probe inserted 250,000 chip cycles after the stable
+frame-14931 platform landing. Standing right-facing Fire therefore began
+at frame 14935 with the bat at X=530. At frame 14977 the bat was X=491
+and its type changed to 0 while the hero remained alive at X=480/Y=137;
+it stayed dead through frame 14991. Releasing Fire, waiting four
+500,000-chip-cycle intervals for its death animation (flags `$40` by
+frame 15019), then holding real Right moved the living hero past the
+former bat to X=544/Y=185 at frame 15075. The complete route
+`Tools/a3000-celtic-heart-stage-three-bat-passage-route.json` guards
+X=`$0220`, Y=`$00B9`, HSalive=`FF`, bat type 0/flags `$40`, the earlier
+dino's killed state, zero non-ROM exceptions, and exact frame SHA-256
+`7B7374CE7768C7190A75B7E747294BC3133AEE966123EECA3883056F0FE1899E`.
+A separate full DF0 cold-start replay passed; its captured frame was
+visually checked as active ground gameplay at the next stone wall. This
+is a sustained live bat passage. The hero's Right movement stopped at
+X=544 against the next raised stone face. Pressing Up while Right remained
+held launched a legitimate jump over the wall, reaching X=642/Y=153 alive
+after eight 500,000-chip-cycle intervals at frame 15132. The complete
+DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-three-post-bat-jump-route.json`
+guards X=`$0282`, Y=`$0099`, HSalive=`FF`, bat type 0/flags `$40`, zero
+non-ROM exceptions and exact SHA-256
+`F536A7A59C51FE901D184D184477CB9211DB9AF0737159CD23C8F5311B16195B`.
+A separate full cold-start replay passed; the frame visibly shows the
+living hero on the raised snowy platform with further terrain and items
+to the right. This raised passage is passed. Continue with real inputs
+from X=642, releasing Up to rearm the next jump and testing the nearby
+item/enemy sequence; only a visible, reproduced stage transition counts
+as a Stage-3 completion. Stage 3 and the seven-point roadmap remain open.
+
+A bounded full DF0 cold-start continuation released Up and held Right
+for eight more intervals. The living hero moved to X=656/Y=153 by
+frame 15139 and stayed there through frame 15188: the next stone face
+blocks plain Right. This is a negative movement control, not passage of
+that face. Next press Up anew while holding Right from the reproduced
+X=642 or X=656 position and inspect the landing and any object contact.
+One complete cold-start probe pressed Up at X=656 while holding Right.
+The hero rose to X=656/Y=124 alive at frame 15195, then HSalive became
+`00` by frame 15202 at X=666/Y=108. The map's BACK tile at that height
+is empty (GID 1). A bounded 8 KiB Fast-RAM snapshot at frame 15195 found
+two active type-6 knights at X=681/Y=121 and X=724/Y=121. A trace over
+the next 500,000 chip cycles captured the HSalive write at frame 15201,
+PC `$07FEBE60`, with monster-collision return address `$07FEC580`.
+Thus the first knight, rather than the empty BACK tile, causes the jump
+death. This is a failed jump, not a passage. Next time a right-facing
+strike before reaching X=666 at knight height, or change the jump phase;
+guard a new route only after sustained live movement beyond both knights.
+
+A further full DF0 cold-start control released Right and pressed Fire in
+the air at X=656/Y=124, frame 15195. This safely stopped horizontal
+movement while the hero rose and landed alive at X=656/Y=153 through
+frame 15251, but it did not kill the first knight: its type remained 6
+and flags `$80`. Releasing Fire/Up and holding Right for eight intervals
+kept the hero alive through frame 15308 but still blocked at X=656;
+the knight moved from X=717 at frame 15251 to X=766 by frame 15301,
+then turned at X=765. This is a phase measurement, not a passage. Next
+rearm Up while the knight is moving away, release Right before the
+returning patrol meets the landing point, and only extend a guarded
+cold route after a sustained live crossing of the raised wall.
+
+The next full DF0 cold-start timing probe rearmed Up at frame 15265
+while the first knight moved right (X=731), climbed over the wall and
+reached X=696/Y=106 alive at frame 15294. Stopping Right there did
+not save the landing: HSalive became `00` by frame 15301 at X=700/Y=117.
+The other type-6 knight, which starts at X=724, was at X=716 on frame
+15294 and X=709 on frame 15301, type 6/flags `$80`; it was closing
+from the right as the first knight moved away to X=766. This is a
+second, separate knight contact rather than failure to clear the wall.
+Next time a right-facing Fire strike during the jump before the second
+knight reaches X≈709, or phase the jump to land while it is elsewhere.
+
+A full cold-start airborne-Fire control from X=682/Y=103 at frame 15287
+released Right and struck toward the approaching second knight. The
+hero stopped at X=684/Y=121 and survived through frame 15308 while the
+knight closed from X=723 to X=701, but died by frame 15315 with the
+knight still type 6/flags `$80` at X=694. The published `monster.asm`
+`moveKnight` calls the normal `hero_coll` strike check, so the knight
+should be vulnerable; this particular aerial strike did not overlap
+its collision rectangle during the active frames. Capture the
+HeroStrike X/Y/active flag near frame 15308 and retime the attack or
+use a safe higher landing position. This control is not a knight pass.
+
+The bounded 8 KiB snapshot at that exact frame showed why this aerial
+Fire did not work: `HeroStrike` still held the earlier X=496/Y=141
+coordinates and flags `$40` (inactive), while the hero was X=684/Y=121
+and the second knight was X=701/Y=121, type 6/flags `$80`. The input
+stopped horizontal motion, but no active strike overlapped this knight.
+The next test must let the hero land on the raised surface at a safe
+X before pressing Fire, or use another jump phase; compare the strike's
+live X/Y/flags with the knight's collision rectangle before calling it
+a kill.
+
+A full DF0 cold-start grounded-strike probe now defeats this second
+knight. From the safe X=656/Y=153 position at frame 15251, release
+Fire/Up, wait one interval, then press Right+Up and stop Right at
+X=668/Y=107 (frame 15272). Four neutral intervals land the hero on
+the raised stone at X=668/Y=121, alive at frame 15301 while the knight
+approaches at X=709. Pressing Fire **after landing** changes that
+knight's type from 6 to 0 at frame 15329/X=680; the hero remains alive
+through frame 15357. Its flags still indicate a running death animation
+at that checkpoint. The earlier airborne strike had left HeroStrike
+inactive and did not kill it; the grounded attack gives a concrete
+mechanical distinction. The first knight remains active to the right,
+so this is a killed second knight, not yet a sustained passage of both.
+Next release and rearm Fire promptly after the second knight's kill,
+then monitor the approaching first knight and the hero through the
+return trip before guarding a full cold route beyond them.
+
+The rearmed strike worked in a complete DF0 cold-start probe: release
+Fire at frame 15329 just after the second knight becomes type 0,
+wait one 500,000-chip-cycle interval to frame 15336, then press Fire
+again while standing at X=668/Y=121. The first knight came left from
+X=743 to X=696 and changed from type 6 to 0 at frame 15378; the hero
+remained alive through frame 15399. Both knight records were type 0,
+though the first still showed an in-progress death animation. This is
+a verified two-knight kill sequence. A cold replay with post-animation
+movement and independent frame/hash guards is still needed before the
+raised corridor can be counted as passed.
+Keep both knight passages unpassed until a live cold route persists.
+
+Follow-up 2026-10-20 (both knights passed): that full DF0 cold-start
+continuation now passes. After releasing Fire at frame 15399, four
+neutral 500,000-chip-cycle intervals let both knights finish their
+death animations (both type 0/flags `$40` at frame 15420). Eight real
+Right intervals carried the living hero from X=668/Y=121 to
+X=780/Y=121 at frame 15484, beyond the former patrols.
+`Tools/a3000-celtic-heart-stage-three-two-knights-passage-route.json`
+guards hero X=`$030C`, Y=`$0079`, HSalive=`FF`, both knight death states,
+the previously killed bat, zero non-ROM exceptions and exact frame
+SHA-256
+`7C672B0841F4049893FBC293A415571759F4563E34CC25A1789392682FCABECA`.
+An independent complete DF0 cold-start replay passed every guard. Its
+image was inspected: active gameplay shows the living hero at the right
+edge of the raised stone corridor. This passes both knights and the
+corridor; it does not finish Stage 3. The next concrete action is to
+map the terrain and gap immediately beyond X=780, then use real
+Right/Up input to find a sustained live landing and extend the cold
+route. Stage 3 and the seven-point roadmap remain open.
+
+A first full DF0 cold-start continuation from X=780 simply held Right.
+The hero left the platform and was still alive at X=796/Y=136 on frame
+15491, but HSalive became `00` by frame 15498 at X=806/Y=151. Later
+frames were respawn/death animation, not a successful ground landing.
+The visible map has lower ground at Y≈176 and sparse floating tiles;
+this seven-frame contact must be isolated before planning a jump or
+landing. A bounded MOB snapshot and HSalive write trace around frames
+15491-15498 is the next diagnostic. The passed two-knight corridor
+remains valid; the post-corridor descent is open.
+
+The bounded contact trace confirms `HSalive=00` at frame 15496 from
+`killHero` PC `$07FEBE60`, stack
+`$07FEBC80/$07FEBA90/$07FEBA0C/$07FEC794`. The preceding 8 KiB MOB
+snapshot contains no active monster between X=700 and X=950. This stack
+matches the earlier deadly-tile path, rather than the observed
+monster-collision return `$07FEC580`. The Stage-3 BACK map has a
+continuous lower strip of GIDs 141/144 at columns 48-63 (world
+X=768-1023), row 11; `w1types.tmx` marks them non-solid, type 1.
+The immediately higher row has isolated solid stepping tiles at
+columns 52, 56 and 60 (X=832, 896, 960), with normal ground starting
+near column 63. The evidence points to the lower strip as the fall
+hazard. Next release Up while still on the safe raised corridor and
+press Right+Up at its edge, checking a live landing on the first
+stepping tile before building a guarded route across the strip.
+
+A full cold-start jump released Up on the raised corridor at X=724,
+then pressed Right+Up from X=780. The hero crossed the former fatal
+fall point and reached X=880/Y=143 alive by frame 15533, but died at
+X=886/Y=148 before frame 15540. Continued Right overshot the first
+isolated stepping tile at X=832-847; that airborne distance is not a
+landing or strip passage. A follow-up probe stops Right near X=838 at
+the jump apex and waits for a sustained landing on that tile.
+
+Follow-up 2026-10-20 (first water stepping tile landed): the shorter
+real Right+Up jump stops Right at X=838/Y=74 on frame 15512. The hero
+settles at X=840/Y=105 on the first isolated solid tile, then stays
+alive for nine neutral 500,000-chip-cycle intervals through frame
+15575. The complete DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-three-first-water-stone-route.json`
+guards X=`$0348`, Y=`$0069`, HSalive=`FF`, both defeated knights,
+zero non-ROM exceptions and exact frame SHA-256
+`FBF888BA8A7E2360C402B4D1BE4CF7357390A685EF9E60BB2AA305C4E3CF8E49`.
+A separate complete DF0 cold-start replay passed all guards. Its frame
+was visually inspected as active gameplay: the hero stands on the
+first green stone above the lethal lower strip, with two more green
+stones visible to the right. This first landing is passed; the strip
+and Stage 3 are not. Next release Up, jump to the second solid tile at
+X=896, and guard only a sustained live landing there.
+
+The first full cold-start attempt at the second tile released Up on
+X=840/Y=105, waited one interval, then held Right+Up for five
+500,000-chip-cycle intervals. The hero reached X=910/Y=73 alive but
+coasted two more pixels to X=912 when Right was released, just past
+the 16-pixel tile at X=896-911. It fell to Y=127 alive, then died by
+frame 15638 at X=912/Y=156. This is a negative control. Stop Right
+one interval earlier, at X=896, to land within the tile width; only
+count the landing after multiple neutral intervals alive.
+
+Stopping at X=896 rather than X=910 did not fix the second landing:
+the hero was alive at X=896/Y=99 on frame 15624 but HSalive was `00`
+by frame 15631 without leaving that X. A check against `w1types.tmx`
+shows why the visual match was misleading: the first green tile at
+X=832 is GID 164, `SOLID=1/TYPE=8`, while the green-looking tile at
+X=896 is GID 168, initially `SOLID=0/TYPE=1`. In the tested phase
+it was hazardous on contact. The third tile at X=960 is GID 164 and
+solid. Later source and live-map analysis below established that
+GID 168 animates through solid phases; this negative landing only
+excluded the tested timing.
+
+Follow-up 2026-10-20 (third-stone range probe): a complete DF0 cold start
+reached the independently proved first stone and released Up to rearm
+the jump. A 200,000-chip-cycle Right alignment moved the live hero to
+X=846/Y=105. Holding Right+Up then reached X=944/Y=127 alive at frame
+15634, but the hero fell and died at X=958/Y=156 by frame 15641,
+before a sustained landing on the solid third stone at X=960. This is
+an airborne negative control, not a passage. A fresh full cold-start
+probe is testing a slightly farther right takeoff from the first stone;
+the landing must be observed alive over several neutral intervals.
+
+The separate 300,000-chip-cycle alignment probe reached X=848/Y=106
+alive on frame 15586, already one pixel below the standing height on
+the 16-pixel first stone. Pressing Up+Right there did not start a jump:
+the hero fell through X=876/Y=150 and died at X=878 by frame 15607.
+The usable takeoff ends before X=848; the previous X=846 jump fell
+short of the third solid stone. Neither airborne trace proves a route
+across the water. Next inspect the Stage-3 tile and moving-platform
+layout for a supported crossing or a different approach, then test it
+from the same proved first-stone cold start.
+
+Source correction 2026-10-20: the GID 168 map entry is animated.
+`w1types.tmx` cycles its tile images through IDs 167/168, 148,
+166/165, 163/164 and back in 120 ms phases. IDs 167-168 are
+non-solid type 1; IDs 163-166 are solid type 8. The published
+`tiles.asm` continuous-animation updater writes each phase's tile
+code into the live map, including its solid/type bits. Thus the
+second green-looking stone is unsafe in the tested phase, but may
+become a real platform during another phase. The static GID alone
+cannot rule out that intended timed crossing. A bounded live-map
+phase probe from the independently verified first-stone route is
+underway; land on the second stone only during a measured solid
+phase and hold it alive before extending the cold route.
+
+The bounded live-map probe from the complete first-stone DF0 route
+sampled the Stage-3 background entry at column 56/row 8 every
+500,000 chip cycles from frame 15575 through 15702. Its encoded tile
+word was solid-bit-set (`$C948/$C94A/$C94C`) for samples 0-2,
+non-solid (`$4928/$494E/$4950`) for samples 3-9, and solid again
+(`$C94C/$C946/$C948`) for samples 10-17. This directly confirms
+that the apparent second stone alternates between lethal/non-solid
+and solid phases. In the failed jump, the hero reached X=896/Y=99
+at frame 15624, inside the measured non-solid interval. A full
+DF0 cold-start test now delays that same jump by three 500,000-cycle
+intervals to target the measured solid window. A landing is passed
+only if HSalive remains `FF` and a genuine standing Y coordinate
+persists for several further neutral intervals.
+
+Follow-up 2026-10-20 (timed second stone passed): delaying the same
+real Right+Up jump by three 500,000-chip-cycle intervals from the
+proved first-stone state shifted contact into the measured solid
+phase. The hero landed at X=896/Y=105 on frame 15652 and remained
+alive there for two more neutral intervals through frame 15667.
+The runtime map word was `$C946` (solid bit set) at that checkpoint.
+The complete DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-three-second-water-stone-route.json`
+guards X=`$0380`, Y=`$0069`, HSalive=`FF`, zero non-ROM exceptions
+and exact frame SHA-256
+`DEF43DFB1C5C0C4AA42F64B292891D2511F0CF0A6B68CBAC5101CFF6D6829F9E`.
+An independent complete DF0 cold-start replay passed every guard;
+the first run's frame was visually inspected as active gameplay with
+the hero standing on the second green stone. This timed landing is
+passed. The tile later returns to a non-solid lethal phase, so the
+hero must jump onward before the phase change. A full cold-start
+Right+Up test to the third permanently solid stone is underway;
+Stage 3 and the water passage remain open.
+
+Follow-up 2026-10-20 (third water stone, initial cold run): from the
+timed second-stone checkpoint X=896/Y=105, Up was released for one
+500,000-cycle interval and then Right+Up held for five such intervals.
+The hero reached X=966/Y=73 alive; Right was released and the hero
+settled at X=968/Y=105 on the third permanently solid green stone.
+Seven neutral intervals kept HSalive=`FF` through frame 15758. The
+frame was visually inspected as active gameplay, with the next
+castle platform and a living enemy visible to the right. The
+guarded full cold-start route
+`Tools/a3000-celtic-heart-stage-three-third-water-stone-route.json`
+has exact frame SHA-256
+`AA82057EC55CCD6BCB833EB96CA2118BFBCD8C9FD2E254A381009CA769A1827F`;
+its independent full cold-start replay passed every guard at frame
+15758 with zero non-ROM exceptions. The timed second-stone jump and
+third-stone landing are passed. The next concrete
+step is to jump from X=968 to the returning solid castle terrain
+near X=1008, inspect the enemy there and establish a sustained live
+landing before extending the route.
+
+Follow-up 2026-10-20 (far castle return, initial cold run): from
+the third stone at X=968/Y=105, release Up for one interval and hold
+Right+Up for three 500,000-chip-cycle intervals. Release Right at
+X=1010/Y=55; the two-pixel coast places the hero at X=1012. Seven
+neutral intervals then land him on solid castle terrain at
+X=1012/Y=121, alive through frame 15835. The image was inspected:
+active gameplay, hero on the near lip and an approaching knight on
+the same platform. The guarded full DF0 route
+`Tools/a3000-celtic-heart-stage-three-far-castle-landing-route.json`
+has exact frame SHA-256
+`9E11F9AFAB6430DD68EAE5CB1A37AC3AFAEF003C3C54D6504B4C96360100B74B`.
+Its independent full DF0 cold-start replay passed all guards at frame
+15835 with zero non-ROM exceptions. The water crossing and live return
+to castle land are passed. The next concrete
+step is to measure and beat or evade the nearby knight with live
+Fire/Up/Right input, then extend the cold route to sustained movement
+past it. Stage 3 remains unfinished.
+
+Bounded follow-up at the far castle: an 8 KiB Fast-RAM snapshot at
+frame 15835 identifies the nearby active Type-6 knight at
+`$07FF7C94`, X=1038/Y=121, MOflags=`80`. Holding grounded Fire
+from X=1012 at that frame was too late: HSalive became `00` by
+frame 15857 while the knight remained active, and its later X=1033
+does not imply a kill. This is a negative control. The previous
+castle-landing route reaches the same grounded X=1012/Y=121 at
+frame 15814; start the standing right-facing strike at that earlier
+landing, inspect its active window and the knight's flags, and only
+extend the full route after sustained live movement beyond him.
+
+The earlier grounded right-facing Fire at X=1012/Y=121, frame 15814,
+was correctly phased. A full DF0 cold start kept the hero alive
+through eight 500,000-chip-cycle Fire intervals to frame 15871;
+the nearby knight's MOB at `$07FF7C94` changed to `MOtype=00`
+with its death animation active (`MOflags=80`), while X=1030/Y=121.
+The first knight is defeated, but this stationary probe alone does
+not establish a passage. A fresh full cold start is letting the
+death animation finish and testing real Right movement toward the
+next edge; require a sustained live image and independent replay.
+
+Follow-up 2026-10-20 (far-castle knight passage, initial cold run):
+the correctly phased Fire at X=1012 began on frame 15814 and kept the
+hero alive while the Type-6 knight changed to Type 0. Four further
+neutral Fire intervals allowed its death animation to finish. After
+releasing Fire, six real Right intervals moved the hero through the
+knight's former X=1030 position to X=1096/Y=121; three neutral
+intervals kept him alive through frame 15962. The knight record is
+`MOtype=00/MOflags=40`, HSalive=`FF`, zero non-ROM exceptions, frame
+SHA-256
+`37F88D4553004343921E81F6C55DDDEE490A5B9C643D55B91F167B8E2E2877E9`.
+The guarded full DF0 cold route
+`Tools/a3000-celtic-heart-stage-three-far-castle-knight-passage-route.json`
+validated structurally and passed an independent full DF0 cold-start
+replay at frame 15962 with every image/memory guard and zero non-ROM
+exceptions. The visible image was inspected as active gameplay:
+the hero stands alive at the next castle edge with the defeated
+knight behind him. Treat the Type-6 knight and X=1096 passage as
+passed. The
+next obstacle is the castle edge ahead; inspect the map and use
+real jumps to cross without treating an airborne frame as a landing.
+
+Map check for that next move: `level03.tmx` ends the current castle
+top at X=1104; row 11 tiles across the immediate descent are
+non-solid decorative tiles. Solid ground resumes at row 13/Y=208.
+An upper solid type-8 platform spans X=1152-1231 at row 6/Y=96.
+The source map also starts one monster at X=1152/Y=96 and two near
+X=1152-1184/Y=208. The next full DF0 cold-start probe should take a
+Right+Up jump from the live X=1096/Y=121 edge toward the upper
+platform, inspect the active MOB positions and establish a sustained
+live landing. Falling onto the lower ground without addressing its
+monsters is not an accepted passage.
+
+Follow-up 2026-10-20 (next Stage-3 platform, bounded probes): a full
+DF0 cold start from the independently checked X=1096/Y=121 route held
+Right+Up for five 500,000-chip-cycle intervals, reaching X=1166/Y=73
+above the solid platform, then released Right. The hero remained at
+X=1168/Y=73 and alive through frame 16018, but died by frame 16025;
+this airborne approach alone is **not** a platform pass. A second
+full cold start stopped at frame 16018 and captured only 8 KiB of
+Fast RAM under ignored `tmp`. It identified an active Type-5 MOB at
+`$07FF7C44`, X=1181/Y=73, flags `$80`, only 13 pixels from the
+hero. Two active Type-9 MOBs at X=1168/1175,Y=185 occupy the lower
+route. A full DF0 cold-start control started standing right-facing
+Fire immediately when Right was released at X=1166; the hero stayed
+at X=1167/Y=73 and still died by frame 16025. This is no kill or
+passage. Next release Up for one interval on the platform, rearm a
+Right+Up jump and test evasion of the Type-5 MOB. The full cold-start
+probe did rearm Up after one neutral interval and jumped from
+X=1168/Y=73 over that enemy, remaining alive through X=1232/Y=95
+at frame 16054. This last point is beyond the upper platform edge,
+still airborne, so it is not a passage. The next concrete probe
+stops Right at X=1210/Y=23 while above the solid X=1152-1231
+platform, waits for a stable live landing, then measures the enemy
+separation. Stage 3 and the overall roadmap remain open.
+
+Follow-up 2026-10-20 (Type-5 evasion and upper-platform landing):
+release Right at X=1166/Y=73, release Up for one 500,000-chip-cycle
+interval, then press Right+Up for three intervals. This moves the
+hero above the Type-5 enemy to X=1210/Y=23. Releasing Right coasts
+to X=1212; twelve neutral intervals land and keep him on the solid
+upper platform at X=1212/Y=73 through frame 16110. This is a
+sustained live landing, unlike the earlier X=1232 airborne probe.
+`Tools/a3000-celtic-heart-stage-three-upper-platform-landed-route.json`
+guards the final image SHA-256
+`01F3F64220996FE6863E29B4351996A192B2417EE21F6010CEE547C33BBD3EF7`
+and guest X/Y/HSalive. It validated and passed an independent full
+DF0 cold-start replay with zero non-ROM exceptions; the captured
+image was inspected as active gameplay, with the hero standing on
+the upper platform and the bypassed enemy behind him. Treat this
+platform landing as passed. Ahead, the source map shows a tall
+solid castle face starting at X=1248; next inspect its collision
+layout and test a legitimate way onward, keeping the full cold
+route and live-gameplay standard. Stage 3 and the overall roadmap
+remain open.
+
+Follow-up 2026-10-20 (castle-face descent, negative control): from the
+verified live X=1212/Y=73 upper platform, releasing Up and holding
+Right for six 500,000-chip-cycle intervals caused the hero to run
+off the right platform edge, descend beside the high solid castle
+face, and enter a lower opening. He was still alive at frame 16145,
+X=1248/Y=169, but died by frame 16152 at X=1262/Y=169. This is not
+a passage through the castle. The TMX tile metadata clarifies the
+geometry: the upper tower tiles are solid, while row-10 GID 239
+and adjacent interior GIDs 153-155 are non-solid; a lower entrance
+exists. Next capture a bounded MOB snapshot at live X=1248/Y=169,
+identify the immediate contact and time a real strike or dodge
+before extending the independently guarded cold route.
+
+Bounded live Fast-RAM snapshot at frame 16145 identified the immediate
+danger as two active Type-6 knights: MOBs `$07FF7B54` at X=1263/Y=169
+and `$07FF7B04` at X=1295/Y=169, both flags `$80`. A full DF0 cold
+start tested an early standing right-facing Fire from X=1234/Y=166
+at frame 16138. Releasing Right at strike start let the hero settle
+at X=1235/Y=169 and remain alive through nine 500,000-chip-cycle
+intervals to frame 16201. This is a safe strike position but does
+not by itself prove a knight kill or corridor passage. Next inspect
+the knights' Type/flags after Fire and attempt sustained live Right
+movement; retain the route only after an independent full cold replay.
+
+The next full DF0 cold-start probe captured another bounded 8 KiB
+snapshot at frame 16201 after that Fire: the first Type-6 MOB at
+`$07FF7B04` had changed to Type 0 at X=1264/Y=169, while the
+second at `$07FF7B54` remained active Type 6 at X=1319/Y=169.
+Releasing Fire and holding real Right for six intervals moved the
+living hero through the first knight's former position to
+X=1319/Y=169 at frame 16244, HSalive=`FF`, zero non-ROM exceptions.
+This confirms the first lower knight kill and live movement past it;
+the second knight and sustained corridor passage are still open.
+Next track the second knight's position while approaching, stop at a
+safe distance and phase a grounded strike before claiming passage.
+
+Second lower knight phase control (full DF0 cold start, no gameplay
+pass): from X=1319/Y=169, six further Right intervals advanced the
+hero to X=1375 alive at frame 16272, while the active Type-6 knight
+ran ahead from X=1361 at frame 16244 to X=1389. Continuing Right
+closed the separation and killed the hero at frame 16279/X=1387;
+the knight was X=1397, still Type 6/flags `$80`. Afterward it
+turned near X=1406/16293 and ran left. The next targeted test is to
+stop the living hero at X=1361 on frame 16265 (knight X=1382),
+start a grounded right-facing Fire strike while the knight is
+moving away, and monitor its return, Type/flags and HSalive. Only
+a sustained live move past it and a separate guarded full cold
+replay can establish the second lower-knight passage.
+
+Follow-up 2026-10-20 (second lower knight defeated, passage pending):
+the targeted full DF0 cold start stopped Right at hero X=1361/Y=169
+on frame 16265, pressed right-facing Fire and held it for twelve
+500,000-chip-cycle intervals. The knight at `$07FF7B54` advanced
+from X=1382 to its turnaround at X=1406, returned to X=1393 and
+changed from Type 6 to Type 0 by frame 16307 while HSalive stayed
+`FF`. By frame 16349 its death animation finished (flags `$40`),
+with the hero alive at X=1364/Y=169 and zero non-ROM exceptions.
+This proves the kill, not yet live movement past the former knight.
+The next full cold start releases Fire and tests sustained Right
+movement beyond X=1393 before a durable guarded passage is added.
+
+Follow-up 2026-10-20 (lower castle knight corridor passed): after the
+second knight's death animation finished, releasing Fire and holding
+Right for three 500,000-chip-cycle intervals moved the hero past its
+X=1393 position to X=1406/Y=169. A solid face stopped further Right
+at X=1408; five neutral intervals kept the hero alive to frame
+16441. The guarded route
+`Tools/a3000-celtic-heart-stage-three-lower-castle-knights-passage-route.json`
+requires hero X=1408/Y=169, HSalive=`FF`, second knight
+Type 0/flags `$40`, exact frame SHA-256
+`C5EAB5D91AB09374643572DCDB1393A147CF04395FDD1CB5116C48A42182E71A`
+and zero non-ROM exceptions. It validated and passed a separate full
+DF0 cold-start replay; the captured image shows active gameplay with
+the hero alive beyond both defeated knights. Treat the two lower
+knights and corridor to X=1408 as passed. The image and TMX show a
+high solid castle face ahead, narrow intermediate ledges and active
+Type-12 bats started at X=1408/Y=144 and X=1584/Y=96. Next measure
+the live bat positions and test a legitimate staged jump over the
+castle face; require a sustained landing and independently replayed
+route. Stage 3 and the overall roadmap remain open.
+
+Follow-up 2026-10-20 (first castle-wall ledge landed): a full DF0
+cold-start negative control pressed Up directly from X=1408/Y=169,
+then Right; the hero stayed at X=1408/Y=169 because the solid ceiling
+at map row 9 (X=1392-1423) blocks this jump. Returning left to
+X=1354/Y=169, pressing Right+Up for five 500,000-chip-cycle intervals,
+then releasing Right lands sustainably on that ledge at X=1408/Y=121.
+`Tools/a3000-celtic-heart-stage-three-wall-ledge-landed-route.json`
+validates and independently repeats the full DF0 cold start through
+frame 16553 with HSalive=`FF`, second knight Type 0/flags `$40`,
+zero non-ROM exceptions and exact image SHA-256
+`A41D664EB974FAEB607C14AEDA79C7A3C9EE075447633DC0CCF0066C0B8674AF`.
+The captured image shows active gameplay and the living hero standing
+on the narrow ledge before the high white castle face. This first
+ledge is passed; the castle face and Type-12 bats remain open. Next
+test a rearmed jump left from the stable ledge to the higher fixed
+step, then return right above the face; require a sustained landing
+and independent full-route replay before counting any new passage.
+
+The first leftward jump control from X=1408/Y=121 released and rearmed
+Up, then held Left+Up for six 500,000-chip-cycle intervals. It reached
+X=1380/Y=83 alive at its apex but crossed over the higher fixed step
+X=1328-1359 too late, fell to X=1324/Y=169 and stayed alive there.
+This is not the higher-step passage. The next test shifts left on the
+stable ledge before triggering the jump, so its apex can align with
+that step; the full DF0 route must prove both landing and survival.
+An over-shift negative control walked Left for two whole 500,000-cycle
+intervals: X=1394/Y=121 remained alive after one, but X=1386/Y=121
+had HSalive=`00` after two, before the jump input. A shorter
+sub-interval shift from the last safe X=1394 is the next concrete
+test; it must trigger Up before the ledge edge and align the airborne
+hero with the higher solid step while still above its top.
+A 250,000-cycle extra Left shift after the safe X=1394 also reached
+X=1386 with HSalive=`00` before Up. A finer shift is required; no
+higher-step landing is established by these controls.
+
+Follow-up 2026-10-20 (left-jump death isolated): a finer 175,000-cycle
+shift stayed alive at X=1388/Y=121, but Left+Up then died at
+X=1386/Y=107. Jumping immediately from X=1394 also died in the first
+interval at X=1388/Y=100. A bounded 8-KiB Fast-RAM snapshot and a
+one-address HSalive write trace for that latter full DF0 cold start
+identify **monster collision**, not proof that the ledge edge itself
+is lethal: frame 16563 wrote HSalive=`00` through `killHero` at
+`$07FEBE60`, with `hero_coll` return `$07FEC580`. The active Type-12
+bat record `$07FF8194` moved from X=1373/Y=121 to X=1380/Y=121
+across the contact; a second Type-12 bat remained farther right at
+X=1579→1572/Y=121. The next concrete test is a left-facing,
+grounded Fire from the safe X=1394 ledge position, monitoring the
+near bat's Type/flags and the hero's sustained survival before
+attempting the higher-step jump again.
+The first grounded left-facing Fire control at X=1394/Frame 16560
+started too late: the Bat advanced X=1373→1387 while still Type 12/
+flags `$80`, and HSalive changed to `00` by Frame 16574. The next
+control begins the same grounded strike soon after first landing on
+the ledge, before the Bat has approached; a kill and survival must
+both be observed.
+The earlier grounded strike control is promising but not yet a
+replayed passage: land at X=1408/Y=121 by Frame 16511, move Left one
+interval to X=1394, stop and press Fire facing left at Frame 16518.
+The near Type-12 bat (`$07FF8194`) approaches X=1331→1369, changes
+Type 12→0 by Frame 16560 while the hero remains alive at
+X=1393/Y=121, and reaches flags `$40` by Frame 16602. The next
+probe releases Fire and attempts the leftward higher-step jump;
+only a sustained landing and separate full DF0 replay can establish
+that passage.
+
+Follow-up 2026-10-20 (near bat and higher castle step passed): after
+the early left-facing Fire, the Type-12 bat at `$07FF8194` becomes
+Type 0 by Frame 16560 and flags `$40` by Frame 16602. Releasing Fire
+and pressing Left+Up from the living X=1393/Y=121 ledge position
+lands the hero on the higher fixed step at X=1332/Y=73; eight neutral
+500,000-chip-cycle intervals keep him alive through Frame 16687.
+`Tools/a3000-celtic-heart-stage-three-high-castle-step-route.json`
+guards hero X=1332/Y=73, HSalive=`FF`, bat Type 0/flags `$40`, zero
+non-ROM exceptions and exact frame SHA-256
+`0EA3738AD2E69D2F20B0816CB1036F34F701B81D36EC5D5050FEFBED773B59CC`.
+The route validated and passed a separate full DF0 cold-start replay;
+the captured image shows the living hero on the higher platform in
+active Stage-3 graphics. Count the near bat and this stable high
+step as passed. Next rearm Up, jump right to the castle roof above
+the solid face, and verify a sustained landing before extending the
+guarded route. The farther Type-12 bat and Stage 3 remain open.
+
+A direct Right+Up jump from the high step X=1332/Y=73 reached
+X=1374/Y=53, then met the roof's left face, fell and returned to
+the lower ledge X=1408/Y=121 alive by Frame 16800. This is not a
+roof landing. The next control moves right while grounded on the
+high step before starting Up, to align the jump apex with the roof
+above X=1392. Count the roof only after a sustained landing and
+independent full DF0 replay.
+
+Follow-up 2026-10-20 (castle roof landed): the aligned jump from
+the stable higher step succeeded. Release Up, walk Right from
+X=1332/Y=73 for 500,000 plus 200,000 chip cycles to X=1352/Y=73,
+then press Up while continuing Right. The hero clears the roof's
+left face at X=1394/Y=41 and remains on its solid top at
+X=1436/Y=41 through eight neutral intervals to Frame 16795.
+`Tools/a3000-celtic-heart-stage-three-castle-roof-landed-route.json`
+guards X=1436/Y=41, HSalive=`FF`, the near bat Type 0/flags `$40`,
+zero non-ROM exceptions and exact image SHA-256
+`476C6CDE6F16AAA7C1A1599A1B6E2DFB6241496986B5900716633A9E6786AA1A`.
+It validated and passed a separate full DF0 cold-start replay; the
+captured active game image shows the living hero standing above the
+formerly blocking white castle face. Count the roof landing as
+passed. Next traverse the roof and its right edge with real inputs,
+measure the farther Type-12 bat and require another sustained,
+independently replayed landing beyond it. Stage 3 and the full
+roadmap remain open.
+
+A first right-edge continuation walked from X=1436/Y=41 to
+X=1492/Y=46 while alive, released Right and began descending; it
+died at X=1492/Y=73 by Frame 16838. The farther active Type-12 bat
+(`$07FF8144`) approached from X=1538/Y=121 to X=1496/Y=121 at
+that time. This is a negative control, not a landed passage; the
+specific kill path was not yet traced. Test a rearmed Right+Up
+jump from the roof before its edge to clear the bat and land on the
+next solid right-side platform, then verify it independently.
+
+The Right+Up control from X=1464/Y=41 did not gain height: by
+X=1506/Y=67 the hero died while the active bat was X=1503/Y=121.
+Timing, rather than this jump, gives a reproducible live passage.
+Hold still on the roof X=1436/Y=41 for ten 500,000-chip-cycle
+intervals, allowing the bat (`$07FF8144`) to move left to X=1489,
+turn and reach X=1508 moving right. Then hold Right for four
+intervals, stop at X=1492 and wait seven more intervals. The hero
+lands at X=1492/Y=73 and remains alive through Frame 16943 while
+the bat retreats to X=1584/Y=121. The guarded route
+`Tools/a3000-celtic-heart-stage-three-far-roof-landed-route.json`
+requires HSalive=`FF`, bat Type 12/flags `$80` at that distant
+position, zero non-ROM exceptions and exact image SHA-256
+`BB4AC1AA5CF8F8C271A5A7E2A49E6BCB51B52A100A994EBD3897E1DEFCCB41EF`.
+It validated and passed a separate full DF0 cold-start replay;
+the captured image shows active Stage-3 graphics and a living hero
+on the right-side fixed platform. Count this timed roof-edge
+landing as passed. The second bat remains active, so the next step
+is to measure its safe approach or grounded strike window while
+moving right from X=1492; demand a sustained live passage and
+independent replay. Stage 3 remains open.
+
+A standing right-facing Fire control from X=1492/Y=73 started after
+three neutral intervals (Frame 16964) as the known Type-12 bat
+`$07FF8144` approached from X=1563/Y=121. It never changed Type 12
+or flags `$80`; HSalive became `00` at Frame 17035/X=1492/Y=73.
+This is not a kill. The vertical separation between hero and this
+bat makes a direct strike doubtful. A second, previously inactive
+Type-12 bat record `$07FF81E4` exists at X=1584/Y=73. The death
+source and both bats' live positions require a bounded trace before
+assuming which obstacle killed the hero or selecting the next
+legitimate route.
+
+The bounded right-edge HSalive write trace now resolves that earlier
+Frame-16835 death as a **monster collision** (`killHero` at
+`$07FEBE60`, `hero_coll` return `$07FEC580`). The third Type-12 bat
+`$07FF81E4` had activated and descended toward the same height as
+the hero: X=1515/Y=73 at Frame 16823, X=1508/Y=73 at Frame 16830,
+X=1501/Y=73 by Frame 16838. The previously watched second bat
+`$07FF8144` remained lower at Y=121. Thus the roof-edge death
+cannot be assigned to the lower bat alone. The fire control from
+X=1492 must watch **both** bats' Type/flags and HSalive before a
+passage or kill is claimed.
+
+Both bat watches in the full DF0 Fire replay show the earlier
+Frame-16964 standing strike was **too early for either bat**: the
+lower `$07FF8144` moved X=1563→1493/Y=121 and the upper
+`$07FF81E4` X=1568→1498/Y=73, but both stayed Type 12/flags `$80`.
+HSalive was written `00` at Frame 17029 through `killHero` with
+`hero_coll` return `$07FEC580`; the upper bat was X≈1504/Y=73 at
+contact. Source `hero.asm` gives a standing strike Y offset of 4
+and `monster.asm` requires overlapping strike/MOB rectangles. The
+nearer approach occurs only after the initial strike window, so
+the next bounded control delays Fire by one 500,000-chip-cycle
+interval while watching both bats and the hero. No kill or passage
+is claimed from the earlier Fire control.
+
+The one-interval-later Fire control at Frame 16971 hits the **upper**
+bat `$07FF81E4`: Type 12→0 by Frame 17013, flags `$40` by Frame
+17056, while the hero remains alive at X=1492/Y=73. The lower
+bat `$07FF8144` stays Type 12/flags `$80` at X=1504/Y=121.
+HSalive has no death write in this bounded trace. This is a live
+enemy defeat in a full DF0 cold probe, but a lasting passage beyond
+its old position still needs real Right input and independent route
+replay; neither bat should be conflated with the other.
+
+Follow-up 2026-10-20 (upper bat passage): after that timed Fire,
+release Fire, hold Right for five 500,000-chip-cycle intervals, then
+release Right and wait seven intervals on the fixed upper platform.
+`Tools/a3000-celtic-heart-stage-three-upper-bat-passage-route.json`
+guards the live hero X=1564/Y=73 through Frame 17140, upper bat
+Type 0/flags `$40`, lower bat still Type 12/flags `$80` at
+X=1581/Y=121, zero non-ROM exceptions and exact image SHA-256
+`0FA7EA0740DF9E764B92A6EADCFFDFA3ED95499C7FC1B67EB4022F2A3032FA30`.
+The route validated and passed a separate complete DF0 cold-start
+replay; its captured image shows active Stage-3 graphics and the
+living hero beyond the defeated upper bat. Count this upper bat and
+stable rightward passage as passed. The lower bat remains active
+beneath the platform. Next map the solid wall at X=1600 and the
+available take-off tiles near the platform's X=1567 edge, then test
+a legitimate jump or other passage with real input. Require a
+sustained live landing and independent full cold replay before
+claiming the wall. Stage 3 and the seven-point roadmap remain open.
+
+Follow-up 2026-10-20 (wall geometry and bounded controls):
+`level03.tmx` and `w1types.tmx` show solid BACK tiles across
+columns 100-102 (X=1600-1647) from rows 2-9 (Y=32-159).
+Rows 10-11 are non-solid there, while row 12 is solid, leaving a
+possible low approach with the hero standing at Y=169. The upper
+fixed platform carries the hero at Y=73 only through column 97
+(X=1567); columns 98-99 at row 6 are non-solid. A full DF0 cold
+probe from the guarded X=1564 state held Right for three intervals:
+the hero stepped off, fell to the lower fixed ledge at X=1584/Y=121
+and remained alive through Frame 17182, but Right was blocked by
+the solid wall. The lower Type-12 bat stayed active at Y=121 and
+travelled left from X=1574 to X=1539 during the hold. A second
+full cold probe jumped Left+Up from that ledge while the bat moved
+away; the hero rose over it and landed back on the upper fixed
+platform X=1512/Y=73, alive through Frame 17267. This does not
+cross the wall or reach the lower Y=169 route. Next time the lower
+bat's return or strike window, then leave the **lower** ledge to
+the left of its X=1520 start without re-jumping onto the upper
+platform; test descent to Y=169 and a real Right passage beneath
+rows 10-11. Guard any claimed passage with a fresh full cold
+replay, live HSalive and image evidence. Stage 3 remains open.
+
+Follow-up 2026-10-20 (lower bat and ground landing): the lower
+Type-12 bat `$07FF8144` reverses near X=1488 and returns right.
+From the live lower ledge X=1584/Y=121, one Left interval faces the
+hero left and leaves him near X=1568. Wait ten 500,000-chip-cycle
+intervals to Frame 17260, then use standing Fire. The bat moves
+X=1514→1548 and changes Type 12→0 at Frame 17295; its flags become
+`$40` by Frame 17337 while HSalive remains `FF`. After releasing
+Fire, five genuine Left intervals leave the lower ledge to the left
+of X=1520, and eight neutral intervals land the hero stably at
+X=1496/Y=169. The guarded route
+`Tools/a3000-celtic-heart-stage-three-lower-bat-ground-route.json`
+passed validation and a separate full DF0 cold-start replay through
+Frame 17464, with both bats Type 0/flags `$40`, HSalive=`FF`, zero
+non-ROM exceptions and exact image SHA-256
+`4F363F7CA882D820D82D5CEEDAB048A76485A5C5900507CAA57F87738DE4E006`.
+The captured frame shows the living hero on the lower castle floor.
+Count the lower bat defeat and stable ground landing as passed.
+
+The first Right probe from that ground position reached X=1594/Y=169
+alive at Frame 17513 but died at X=1596 by Frame 17520. A bounded
+Fast-RAM snapshot immediately before death identified an active
+Type-9 enemy record `$07FF7AB4` at X=1606/Y=169 (flags `$80`), near
+the hero. This suggests monster contact; the probe did not isolate
+the kill call, so do not claim a confirmed cause or a wall passage.
+Next stop earlier on the lower floor, measure this enemy's patrol
+phase and use a cowering Fire strike as required for Type 9, or
+an independently verified safe dodge. Then test a sustained living
+Right passage through the mapped Y=169 opening and guard it with
+another complete DF0 cold-start replay. Stage 3 remains open.
+
+Follow-up 2026-10-20 (far castle wall passed): a full DF0 cold
+probe stopped at ground X=1552/Y=169 and watched the Type-9 enemy
+`$07FF7AB4` walk left from X=1627/Frame 17492 to X=1571/Frame
+17548. The still hero died by Frame 17555 with the enemy at
+X=1564; this is a timing control. Crouch at Frame 17513, allow one
+500,000-chip-cycle interval to establish Down, then press Fire at
+Frame 17520. The Type-9 enemy changes to Type 0 by Frame 17548,
+flags `$40` by Frame 17590, and HSalive remains `FF`. Genuine Right
+input then reaches X=1594/Y=169 alive. Immediate continuation
+died at X=1606/Frame 17640 despite the defeated enemy. The map's
+FRONT tile GID 387 at column 101/row 10 is animated: its initial
+tile 66 has TYPE 0, but frames 126-128 have deadly TYPE 9. This
+explains a plausible separate timed hazard, though the kill call
+was not isolated; do not attribute the death conclusively to it.
+
+Stopping at X=1594 for eight neutral 500,000-chip-cycle intervals
+before pressing Right gives a reproducible safe window. The hero
+passes the low opening beneath solid BACK columns 100-102 and
+lands on the far ground at X=1680/Y=185, alive through Frame 17759.
+`Tools/a3000-celtic-heart-stage-three-low-wall-passage-route.json`
+guards HSalive=`FF`, both bats and the Type-9 enemy Type 0/flags
+`$40`, zero non-ROM exceptions and exact image SHA-256
+`77A936D37C2F7C06092A6CECBED71B63FC474D1C5FFD0EE40D27A32BD64AF917`.
+It validated and passed a separate complete DF0 cold-start replay;
+the captured active game frame shows the living hero beyond the
+castle wall. Count the crouching strike and this wall passage as
+passed. Next inspect the flying and ground hazards visible to the
+right of X=1680, measure their MOB phases and find a sustained
+living continuation with real inputs and a fresh independent cold
+replay. Stage 3 and the full roadmap remain open.
+
+Follow-up 2026-10-20 (far missiles and raised Type-5 enemy): from
+the independently replayed X=1680 route, genuine Right input reaches
+X=1778/Y=185 at Frame 17809. Waiting on the ground dies at Frame
+17837. A bounded 8 KiB Fast-RAM snapshot finds an active Type-14
+missile at X=1768/Y=185 and another at X=1768/Y=89 after that death;
+the first is a likely ground hazard, but the kill call was not traced.
+Pressing Up at X=1778 instead reaches the raised fixed platform at
+X=1780/Y=137 and stays alive while the lower missile travels left.
+A neutral continuation then dies at Frame 17914. A second bounded
+snapshot at the last live Frame 17907 identifies an active Type-5
+monster at `$07FF7A64`, X=1797/Y=137, 17 pixels from the hero;
+the kill call is again untraced, so this is a contact hypothesis.
+
+The timed counteraction is a real crouching Fire input begun at Frame
+17865 on the raised platform. The Type-5 monster changes Type 5→0
+at Frame 17900, its flags settle to `$40` by Frame 17942, and the
+hero stays alive. Releasing Fire and Down, then holding Right for
+four 500,000-chip-cycle intervals and waiting three more leaves the
+hero stably at X=1836/Y=137, beyond that monster. The guarded route
+`Tools/a3000-celtic-heart-stage-three-raised-spider-passage-route.json`
+validated and passed a separate complete DF0 cold-start replay through
+Frame 17999. It checks HSalive=`FF`, defeated Type-5 flags/type
+`$40`/`$00`, zero non-ROM exceptions and exact active-image SHA-256
+`9A258F19DB3D497440CE1EF5D3388695B3B6DFB5342AEAC2771509E8DFCAFF70`.
+The captured image shows live gameplay on the raised platform. Count
+the missile dodge, Type-5 defeat and stable raised passage to X=1836
+as passed. Next inspect the platform edge near X=1855 and the next
+missile/monster phase; test a real jump or timed descent, then require
+a sustained living landing and independent full cold replay. Stage 3
+and the full seven-point roadmap remain open.
+
+Follow-up 2026-10-20 (upper approach to the next pillar): a full DF0
+cold-start continuation from X=1836/Y=137 pressed Right+Up. The hero
+rose only to Y=87 and stopped at X=1872 against the mapped solid
+BACK column 118 (world X=1888), whose tiles are solid from Y=64
+through the ground. He fell to Y=185 and died after stopping at
+Frame 18069. This direct jump does not pass the pillar.
+
+A separate genuine route backtracked left on the raised platform to
+X=1794, jumped Left+Up, and landed stably on the **higher** fixed
+platform at X=1738/Y=89. Ten neutral 500,000-chip-cycle intervals
+kept HSalive=`FF` through Frame 18118. The guarded
+`Tools/a3000-celtic-heart-stage-three-upper-left-platform-route.json`
+validated and passed an independent complete DF0 cold-start replay,
+with exact image SHA-256
+`4711E21712D9B40044CF6DDC06915FEF8A943A6C369477C3178FC8AC5D0BCE79`,
+defeated Type-5 flags/type `$40`/`$00`, zero non-ROM exceptions,
+and an active frame showing the living hero on that higher platform.
+Count the higher-platform landing as passed; it is an alternative
+approach, not a crossing of X=1888.
+
+An independent full cold probe pressed Right+Up from this higher
+X=1738/Y=89 platform. Its apex was X=1780/Y=39 at Frame 18139;
+the hero reached X=1864/Y=146 while descending, then stopped at
+X=1872/Y=185 and died at Frame 18210. This confirms that a direct
+long jump from the higher platform also fails to clear the X=1888
+column. The result is a negative control, not a passage.
+
+Map collision data also shows the earlier wall at world X=1600 begins
+at Y=32. A full DF0 cold-start control jumped Right+Up from the
+previously passed upper-bat platform X=1564/Y=73; its apex was
+Y=35, leaving the hero blocked at X=1584 and later alive back on
+the lower X=1584/Y=121 ledge. This is not a high-wall passage.
+
+Follow-up 2026-10-21: the apparent direct Left approach from
+X=1738/Y=89 dies at X=1722/Y=89 (frame 18056). A bounded HSalive
+write trace has the BACK-collision return stack $07FEBC80/$07FEBA90/
+$07FEBA0C/$07FEC794, matching the animated, deadly GID 66 at
+X=1712-1727/Y=96. Releasing Up at X=1724 is too late: the hero dies
+while beginning to rise. A Left+Up jump from X=1738 avoids it. Stop
+Left after three 500,000-chip-cycle intervals at X=1696/Y=39, release
+Up, and wait ten intervals. The full DF0 cold route
+`Tools/a3000-celtic-heart-stage-three-dead-tile-overjump-route.json`
+lands alive at X=1696/Y=89, frame 18210, hash
+`13EC18F1212C05D640372BAD57CFF6778E6505E57636AC74CD13349B1C940E05`.
+An independent complete cold replay passed with zero non-ROM exceptions;
+the active image was reviewed. From that stable landing, two Left+Up
+intervals to X=1668/Y=43 followed by release and ten neutral intervals
+land on the tiny solid tile at X=1668/Y=41. The independently repeated
+full DF0 route `Tools/a3000-celtic-heart-stage-three-tiny-high-step-route.json`
+confirms frame 18294, HSalive=FF, dead Type-5 flags 40/type 00,
+zero non-ROM exceptions, and exact image hash
+`B3F4BC639C8967198ABB510C741D4C242213AAD8FA0626213BCEC5C9E7ACDFA4`.
+The image shows the living hero on that tile. Neither step crosses the
+X=1888 wall or completes Stage 3. A first full cold-start Right+Up
+probe from X=1668/Y=41 reached X=1724/Y=-6 alive at frame 18322,
+but died at X=1738/Y=9 by frame 18329. A bounded full-cold
+HSalive write trace records PC $07FEBE60 and return stack
+$07FEC580/$07FEC046/$07FEC794: this is the monster collision
+path, not the earlier BACK-tile collision path. The two watched
+Type-14 missiles were at X=1872/Y=89 and Y=185 at that time, so
+neither overlapped the hero. A bounded 8 KiB Fast-RAM snapshot at
+frame 18322 identifies the actual overlapping threat: active Type-6
+knight record $07FF7A14 at X=1746/Y=9, flags 80. It begins on the
+high platform near world X=1808/Y=32 in level03.tmx and patrols left.
+An independent full cold probe released Right at X=1724/Y=-6;
+the hero survived frame 18343 at X=1724/Y=63, then died by frame
+18351 at X=1724/Y=68 while falling back into the deadly GID-66
+tile below. Stopping before the knight therefore does not land on
+the high platform. Neither negative control is a passage. The high
+platform begins at X=1744/Y=32, with FRONT GID 354 at X=1760/Y=16.
+The next
+concrete step is to offset the Type-6 knight's patrol phase while
+safe on X=1668/Y=41, then jump into the platform after it moves away;
+if needed, time a genuine right-facing strike while airborne.
+A passing route must land alive on the high platform,
+survive an independent complete DF0 cold replay and active-image
+review, then clear X=1888. Stage 3 and the seven-point roadmap
+remain open.
+
+The first phase-offset control held the hero safely on X=1668/Y=41
+for ten more 500,000-chip-cycle intervals. The high Type-6 knight
+patrols X=1744..1808/Y=9: it was X=1774 at frame 18294, turned
+near X=1744 by frame 18329, and returned to X=1782 by frame 18365.
+The delayed Right+Up leap reached X=1752/Y=9 alive at frame 18407,
+then met the still-active knight at X=1774/Y=9 by frame 18421 and
+died. This is not a passage. It establishes a stable window on the
+high platform before contact; the next bounded Fire probe stops at
+X=1752 and attempts a grounded right-facing strike as the knight
+returns. Only a killed or avoided knight followed by sustained live
+movement can extend the durable cold-start route.
+
+That grounded Fire probe succeeded. From the tiny tile X=1668/Y=41,
+wait ten intervals for the knight to turn right, then hold Right+Up
+for six intervals to X=1752/Y=9, release both directions and press
+Fire facing right. The knight advances from X=1793 at frame 18407
+to X=1765 at frame 18435, where its Type changes from 6 to 0;
+the hero remains alive. By frame 18484 its flags are 40, and after
+eight further neutral intervals the hero remains grounded and alive
+at X=1752/Y=9 on the high platform (frame 18533), with zero
+non-ROM exceptions and reviewed active gameplay. The exact image
+hash is `7E5B18DAD567C001E024428A37BCAB4E2DD76BE2A161A1A89B95022A1B8547DF`.
+The durable `Tools/a3000-celtic-heart-stage-three-high-knight-passage-route.json`
+asserts that hash, position, HSalive and the dead knight. A separate
+complete DF0 cold replay passed every assertion, including the exact
+frame hash, with zero non-ROM exceptions; the active image was
+reviewed. This is a stable high-platform landing and knight passage.
+The next concrete step is to move right to the platform edge around
+X=1808 and attempt a rearmed Right+Up crossing of the X=1888 pillar,
+requiring a stable living landing beyond it.
+
+An immediate full-cold Right continuation after the high-knight
+route walks from X=1752/Y=9 to X=1810/Y=9, then Right+Up crosses
+the solid X=1888 pillar in the air: X=1908/Y=31 at frame 18611,
+X=1922/Y=59 at frame 18618, and X=1950/Y=89 alive at frame
+18632. The next neutral interval dies at X=1952/Y=89. This is
+an airborne crossing, not a completed far-side passage. Map data
+show a solid landing platform beginning at X=1920/Y=112 and a
+monster start around X=1984/Y=112. A short-stop probe at X=1922
+with a bounded MOB snapshot must establish a living landing before
+the cold route can be extended.
+
+The short-stop probe succeeded on the far side: release Right and Up
+at frame 18618/X=1922/Y=59, two pixels past the pillar, and wait ten
+500,000-chip-cycle intervals. The hero lands at X=1924/Y=89 by frame
+18632 and remains alive through frame 18688. The active frame was
+reviewed; the image hash is
+`B49C31A00863CC2559820D403905706C93C7E54DA1A931A00C4DEB457589A789`
+with zero non-ROM exceptions. A bounded MOB snapshot before landing
+shows a separate active Type-6 knight at X=1956/Y=89 (record
+$07FF79C4), plus two Type-14 missiles at X=1864/Y=89 and Y=185.
+The durable full-cold route
+`Tools/a3000-celtic-heart-stage-three-farside-pillar-landing-route.json`
+asserts the living landing. A separate full DF0 cold replay passed
+the exact hash and RAM assertions with zero non-ROM exceptions, and
+the active image was reviewed. The X=1888 wall crossing and far-side
+landing are therefore passed. The next concrete step is to measure the
+nearby knight's return phase and test a grounded right-facing Fire
+from the stable X=1924 ledge. The wall crossing is not a Stage-3
+level transition.
+
+A first full-cold Fire probe from the stable X=1924/Y=89 landing
+at frame 18688 was too late: the active Type-6 knight had already
+advanced to X=1944/Y=89, and the hero died at frame 18702 while
+the knight remained Type 6/flags 80. The knight is X=1972 at
+frame 18660 and X=1965 at frame 18667, approaching leftward by one
+pixel per frame. The next concrete control begins Fire at frame
+18667, while the hero is already grounded and the knight is still
+41 pixels away; watch Type, flags and HSalive to determine whether
+the strike activates before their collision. A death image is not
+evidence of further gameplay.
+
+The frame-18667 grounded Fire timing succeeded in a complete DF0
+cold run. From X=1924/Y=89, the approaching Type-6 knight was
+X=1965/Y=89 when Fire began; by frame 18695 it was X=1937 and
+its Type changed to 0 while HSalive stayed FF. After the death
+animation its flags are 40, and the hero remains alive and fixed
+at X=1924/Y=89 through frame 18780. The exact final image hash is
+`5AC32D2784C1AE5699EEE417C0723C1765151533C21D7739DCF4E8A71D271172`,
+with zero non-ROM exceptions. The durable route
+`Tools/a3000-celtic-heart-stage-three-farside-knight-passage-route.json`
+asserts these values. A separate complete DF0 cold replay passed
+the exact image and RAM assertions with zero non-ROM exceptions;
+the active gameplay image was reviewed. This far-side knight defeat
+and stable ledge position are passed.
+The next step is to continue with real Right/Up/Fire inputs beyond
+this far-side knight and require another stable, visible living
+landing before recording further Stage-3 progress.
+
+Follow-up 2026-10-21 (far-side elevated route): Direct Right from
+X=1924/Y=89 dies at X=1960/Frame 18798. A bounded HSalive write
+trace records the BACK-collision return stack
+`$07FEBC80/$07FEBA90/$07FEBA0C/$07FEC794`, rather than the
+monster-collision return; `level03.tmx` places GID 15 (TYPE 16 in
+`w1types.tmx`) at X=1952/Y=96. This is a rejected straight-walk
+control, not a gameplay pass. A real Right+Up jump avoids that tile
+and lands at X=2008/Y=137. Holding still there dies at Frame 18870:
+the separate write trace has monster-collision return `$07FEC580`,
+and bounded MOB watches show a right-moving Type-14 missile reaching
+the hero. One more real jump moves to X=2092/Y=137 but later standing
+still also meets the missile. A third rearmed Right+Up jump reaches
+the fixed green stone at X=2180/Y=121; eight neutral intervals leave
+the hero alive through Frame 18984. The durable full DF0 cold-start
+route `Tools/a3000-celtic-heart-stage-three-farside-three-jump-passage-route.json`
+asserts X/Y, HSalive=FF and image hash
+`021532D382F3DEEF94A3EC86F1E1752A018A9E6BB907D3152BE679F219F75670`.
+A separate full cold replay passed all assertions with zero non-ROM
+exceptions, and its active game image was reviewed. This is a passed
+three-jump missile/tile passage, not a Stage-3 level transition.
+
+From X=2180 a fourth real Right+Up jump lands on the next fixed
+stone at X=2236/Y=89. Directly jumping onto the animated GID 168
+step near X=2256 in the wrong phase kills the hero at X=2244.
+Four 500,000-chip-cycle intervals of waiting on the safe stone
+shift the phase: a short jump then lands at X=2268/Y=57 alive,
+but staying there through Frame 19156 dies when the animation
+changes (same BACK-collision return stack). An immediate rearmed
+Right+Up jump instead lands on the upper fixed platform at
+X=2324/Y=25 and remains alive for eight neutral intervals through
+Frame 19223. The durable route
+`Tools/a3000-celtic-heart-stage-three-farside-upper-platform-route.json`
+asserts HSalive=FF, X/Y and exact image hash
+`3AA8A1767BFA0C93ADE2419A267C229EDDC746BDC3FE53137DB071D5BD7BCC3D`.
+An independent complete DF0 cold replay passed the assertions with
+zero non-ROM exceptions; the active game image was reviewed. A
+short-lived savestate probe then jumped over another animated tile
+on the upper platform and remained alive at X=2380/Y=25 through
+Frame 19308, but this latter position has not yet had an independent
+full cold replay and is not counted as a durable passage. The next
+concrete step is to reproduce X=2380 cold, then inspect the Type-12
+bat and the tall solid column near X=2448 before attempting a live
+crossing. Stage 3 and the seven-point roadmap remain open.
+
+That X=2380/Y=25 upper-platform landing has now passed an independent
+complete DF0 cold replay as
+`Tools/a3000-celtic-heart-stage-three-farside-high-platform-crossing-route.json`:
+Frame 19308, HSalive=FF, exact image hash
+`33B125D4B7C689637437A63DDC5157B71ED09D27DEED426CF11B480AC0D6B789`,
+zero non-ROM exceptions, active game image reviewed. A further real
+Right+Up jump from X=2380 goes above the solid X=2448 column and
+lands on its far-side ground at X=2464/Y=185. The durable
+`Tools/a3000-celtic-heart-stage-three-second-farside-pillar-route.json`
+independently repeated the full DF0 cold sequence and asserted the
+stable living landing at Frame 19406, hash
+`04525C0CB871E05D754388852CFEE68696743C55B70039689378B80D5C667562`,
+with zero non-ROM exceptions; the active image shows the player on
+the floor just right of the column. Both passages are accepted. The
+earlier pending-X=2380 note above is superseded by these replays.
+
+The next ground Type-6 knight starts at X=2508/Y=185 and approaches
+the player at X=2464. A standing right-facing Fire from that safe
+position changes its Type from 6 to 0 at Frame 19434; after the
+death animation its flags are 40. Real Right input then leads to a
+stable living X=2536/Y=185 through Frame 19582. The durable
+`Tools/a3000-celtic-heart-stage-three-second-farside-knight-route.json`
+asserts position, HSalive=FF, knight Type0/flags40 and exact image
+hash `EB4F4B10C4E8FA6373876181C92B2C8EF72239E823F711A9C9E6CF2C44AFF4DB`.
+An independent full DF0 cold replay passed every assertion with zero
+non-ROM exceptions; its active ground-gameplay image was reviewed.
+This knight and the passage to X=2536 are accepted, not a level end.
+
+A bounded MOB snapshot at that point shows active Type-12 bats at
+X=2536/Y=137 and X=2499/Y=73, and a Type-7 ground enemy farther
+right. Direct Right from X=2536 dies at X=2590/Frame 19609; the
+HSalive write has the `$07FEC580` monster-collision return, and the
+Type-7 enemy was X=2608/Y=185 shortly before contact. A standing
+Fire started at X=2578/Frame 19603 is too late: the enemy remains
+Type7/flags80 and the hero dies. A short-lived genuine Right+Up
+jump started earlier, from X=2550/Y=185, passes over the enemy and
+lands alive at X=2648/Y=185 through Frame 19695. This last landing
+has now also passed an independent complete DF0 cold replay as
+`Tools/a3000-celtic-heart-stage-three-third-ground-enemy-jump-route.json`.
+The route asserts HSalive=FF, X/Y and image hash
+`FDBDD29D8D58E5450B913FE09CE8DCB28E44723ABA12EBC1F4B13BA8CCD72A43`;
+the replay has zero non-ROM exceptions and its active game image was
+reviewed. The Type-7 enemy remains alive behind the player, so this
+is a verified jump past it, not a kill. A further short-lived Right
+probe remained alive through X=2748/Y=185 and Frame 19779, near the
+next raised ice/stone boundary. The durable route
+`Tools/a3000-celtic-heart-stage-three-farside-ground-corridor-route.json`
+now independently repeats that farther living position from a full
+DF0 cold start: HSalive=FF at Frame 19779, exact image hash
+`B57A975F743B7FF53E67AFB8DD5F986C59B101EB1286217F440661BABC658F75`,
+zero non-ROM exceptions and reviewed active gameplay. The farther
+ground segment is passed. The next concrete test is to find the safe
+takeoff before the solid rise and animated GID 66 near X=2816,
+then prove a sustainable landing above or beyond it with another
+full cold replay. Stage 3 and the full roadmap remain open.
+All new diagnostic runs used the ignored repository `tmp` directory
+and `--no-final-checkpoint` except the explicitly named short-lived
+continuation checkpoints. A targeted recursive cleanup of a verified
+output directory inside `tmp` was rejected by the automatic command
+policy (`blocked by policy`); these regenerable outputs remain there.
+No ROM, ADF, installed HDF or normal save was changed or deleted.
+
+The far-side Stage-3 ascent has advanced through the animated BACK
+GID 66 near X=2816. From the stable X=2748 ground route, the hero
+walks to X=2768, jumps vertically, moves right for one interval, and
+releases Right at X=2782; the first solid step holds the living hero
+at X=2784/Y=153. A second Right+Up jump crosses the active tile and
+stops at X=2855/Y=121, which remains safe for ten neutral intervals.
+`Tools/a3000-celtic-heart-stage-three-animated-tile-far-landing-route.json`
+passed an independent complete DF0 cold replay at Frame 19976 with
+HSalive=FF and image hash
+`1627D506305E5FBF95837DD898B06793A574D3D5254FE3F09781BD4F6D5F73E7`;
+the active image was checked. Earlier direct jumps from ground at
+X=2748 or X=2768 died on the BACK collision, and a longer hold at
+X=2768 let a Type-7 enemy approach. These negative probes are not
+passes.
+
+The following water gap is also independently cold-replayed. A
+short approach to X=2877, one neutral 500,000-chip-cycle interval,
+and Right+Up catches the moving Type-13 platform near X=2976/Y=153.
+Twenty-four neutral intervals carry the hero to X=3005/Y=130;
+Right+Up then lands safely on the far fixed bank X=3103/Y=153.
+`Tools/a3000-celtic-heart-stage-three-moving-platform-water-gap-route.json`
+asserts Frame 20346, HSalive=FF and hash
+`C67FB2330F415C04A37632402B0EAA5800308D54DC22DD92307F9978B68044F5`.
+The full DF0 cold replay passed with zero non-ROM exceptions and a
+reviewed active image. The next animated GID 168 water stones require
+two neutral intervals before a Right+Up jump; a direct jump died
+in BACK collision. That timed jump landed alive at X=3232/Y=153,
+and a grounded right-facing Fire from X=3260 killed the approaching
+Type-6 knight (Type 0/flags 40). A separate complete DF0 cold replay
+of `Tools/a3000-celtic-heart-stage-three-far-knight-ground-route.json`
+asserted stable X=3360/Y=185 through Frame 20662, HSalive=FF,
+the knight death flags, hash
+`840775253F6FEA52B722B1A892FFBE4D0AC6D0CA06A5F4ECDEBFFBB4781E5014`,
+zero non-ROM exceptions and an active image. An alternative full cold
+route, `Tools/a3000-celtic-heart-stage-three-upper-platform-after-water-route.json`,
+times a jump while the higher Type-5 patrol moves away and lands
+stably on X=3416/Y=121 at Frame 20740, HSalive=FF, hash
+`86975D0B5BA43C2BE10DA5DEB466A3194EBF65A12E4F19F00CC2F6A84FD9B23C`;
+its independent replay and active image were checked. A first draft
+of the later upper-spider cold route used the earlier X=3232 base
+instead of this X=3416 base and failed its final hash assertion.
+The corrected `Tools/a3000-celtic-heart-stage-three-upper-spider-passage-route.json`
+independently passed a full DF0 cold replay: grounded Down+Fire defeats
+the Type-5 spider (Type 0/flags 40), and the hero remains alive at
+X=3500/Y=121 through Frame 20923. The exact image hash is
+`0A89C6EB0ABF6F57B008725897FD2CD8ED1E6562EDF9F2D80291EA7B21173287`;
+there were zero non-ROM exceptions and the active image was reviewed.
+
+The Stage-3 end is now independently reproduced from a complete
+A3000/Kickstart-3.1 DF0 cold start. After the far-side ground route,
+real Right+Up inputs land successively on the fixed steps at
+X=3616/Y=137, X=3660/Y=105 and X=3688/Y=73, then jump over the
+solid X=3744 wall and settle alive at X=3760/Y=185. A grounded
+Down+Fire strike at X=3760 defeats the first Type-8 ground spider;
+after walking right, another grounded Down+Fire at X=3984 defeats
+the second. Both MOBs become Type 0/flags 40. Continued real Right
+input brings up the visible `LEVEL COMPLETE — PRESS BUTTON` screen
+at Frame 21486, hash
+`014D8F2CA5B789953F5A1FDCE85130696B95D1B8CDF8D14E8FEE00A316984702`.
+The game's HSalive byte is 00 there because it has left active play;
+the reviewed completion screen and following stage transition, not
+that byte alone, establish success. Releasing Right and pressing Fire
+produces the visible `SNOW MOUNTAINS STAGE 4` title with code `4TFO`
+at Frame 21669, hash
+`B93F28C78C27611345E414C5F307980B77EFC24428E61C48833C5DEFE0CB4688`.
+`Tools/a3000-celtic-heart-stage-three-complete-stage-four-title-route.json`
+asserts both image hashes and all earlier checkpoints; its separate
+full DF0 cold replay passed with zero non-ROM exceptions, and its
+Stage-4 title image was reviewed. Celtic Heart Snow Mountains Stage 3
+is therefore complete by genuine gameplay and a reproduced visible
+level transition. Stage 4 and the broader roadmap remain open.
+
+After the Stage-4 title, the first Fire exposes the new castle level;
+a second Fire sets HSalive=FF. Real Right input moved the hero from
+X=16 to X=64/Y=185 and held him alive through Frame 22217 at a solid
+castle wall. `Tools/a3000-celtic-heart-stage-three-complete-stage-four-active-route.json`
+independently replayed the entire path from a DF0 cold start, asserted
+HSalive=FF, X/Y and exact image hash
+`E5534F15F9210CE28310E287CFD46B84C4D8A23D00DEB3FB7E49F20CC275D580`,
+and passed with zero non-ROM exceptions. The active Stage-4 image was
+reviewed. A short continuation with standing Up followed by Right
+reached X=104/Y=169 but died at Frame 22275 near the pink foreground
+hazard; this is not a passage. Next, determine the hazard's animation
+phase and test a timed lower-corridor or upper-wall route with real
+inputs, then independently cold-replay a stable living landing beyond
+the first wall. Stage 4 and the seven-point roadmap remain open.
+
+The first Stage-4 castle corridor is now passed with actual movement
+and a separate complete DF0 cold replay. Eight initial 500,000-chip-
+cycle phase offsets, and several backstep jumps, showed that immediate
+Up then Right from X=64 dies at the first foreground hazard near
+X=104/Y=169. A 50-interval neutral delay at safe X=64 changes the
+hazard phase: the same Up/Right input then advances under the roof to
+X=224/Y=169. Releasing both directions and holding ten more intervals
+leaves the hero alive at Frame 22844. The independently repeated
+`Tools/a3000-celtic-heart-stage-four-first-corridor-route.json`
+asserts HSalive=FF, X/Y and exact image hash
+`6426285104F4B8228D351644B96B5B0C6CEE73CED7C24D52CD1EB7786BFD8750`;
+it passed with zero non-ROM exceptions and the active image was
+reviewed. This is a corridor passage, not a Stage-4 completion.
+
+Short-lived continuation from that checkpoint also cleared the next
+raised wall with a rearmed Right+Up jump. A direct Right input stops
+at X=224; jumping reaches X=320/Y=137 alive, but holding there or
+walking to X=344 dies near a Type-15 ground patrol whose TMX start
+is X=288/Y=160. An immediate second Right+Up jump from X=320
+avoided that contact, landed on the lower floor, and stayed alive
+at X=460/Y=169 for ten neutral intervals. A further Right input
+reached X=544/Y=169, where another ten-interval hold remained alive
+through Frame 23231, short-run hash
+`7A24343A1A79E17651BACCD8FE2D0227CB38DAFF2F9919689E70698D528530DB`.
+The complete DF0 cold route
+`Tools/a3000-celtic-heart-stage-four-far-corridor-route.json`
+contains both jumps and the X=544 assertion. Its independent complete
+DF0 cold replay passed with zero non-ROM exceptions, HSalive=FF, the
+exact X/Y and image hash above; the active image was reviewed. Count
+this farther corridor and stable landing as passed.
+The next active obstacle is a Type-12 bat starting near X=560/Y=144:
+plain Right+Up from X=544 died at X=556-572, while several stationary
+Up+Fire timing probes kept the hero alive but did not yet establish a
+kill or crossing. Determine the bat strike/flight phase, then require
+a stable living crossing and another complete cold replay. Stage 4
+and the full roadmap remain open. All probes used ignored `tmp` and
+`--no-final-checkpoint`; no user media or normal saves were changed.
+
+The Stage-4 Type-12 actor was narrowed down with a bounded read-only
+Fast-RAM snapshot from the safe X=544 checkpoint. Its 80-byte record
+is at `$07FF7794`; X=553/Y=121, Type 12/flags `$80` at Frame 23231.
+The nearby Type-15 actor is at `$07FF77E4`, X=293/Y=137. A watched
+Up+Fire probe showed that the Type-12 bat stayed active while flying
+away and returning; deaths at X=556-572 were confirmed as monster
+collisions by HSalive write traces returning from `hero_coll`.
+A neutral delay of sixteen 500,000-chip-cycle intervals at X=544
+instead shifts the bat phase. A Right+Up jump reaches X=592/Y=137
+alive; releasing both directions there for one interval rearms Up,
+and a second Right+Up jump lands beyond the bat corridor at
+X=728/Y=169. Ten neutral intervals keep HSalive=FF through Frame
+23540, short-run hash
+`BE7FB4F51AE52FCA8EADCAF6FF445FB045F1343ABE608CF11553CC50824858E6`.
+`Tools/a3000-celtic-heart-stage-four-bat-double-jump-route.json`
+validated and independently passed the full DF0 cold path and exact
+assertions. Its replay has zero non-ROM exceptions and the active
+image was reviewed. Count X=728/Y=169 and the sustained bat bypass as
+passed. The bat remains alive behind the hero; this is timed avoidance,
+not a kill. A short-lived direct Right continuation from X=728 reached
+X=756 alive but died at X=770/Frame 23561. The HSalive write trace
+identifies `hero_coll` monster contact, not a wall collision. Jumping
+immediately at X=728 intersected an overhead actor at X=736/Y=113;
+trying Up only after Right reached X=756 was too late. These are
+negative controls, not a pass. Next locate the approaching Type-15
+patrol from the map's X=864 spawn and the overhead Type-12 bat at this
+phase; test an earlier/timed jump or valid strike and demand another
+stable living full cold replay before extending the route. Stage 4
+and the seven-point roadmap remain open.
+
+A bounded X=728 Fast-RAM snapshot identified the immediate ground
+patrol at `$07FF76F4`, Type 15/flags `$80`, X=803/Y=169, and the
+overhead bat at `$07FF7744`, Type 12/flags `$80`, X=717/Y=105.
+Twelve neutral 500,000-chip-cycle intervals measured the ground
+patrol advancing left by about seven pixels per interval and the bat
+turning near X=735 before moving left. Standing still dies when the
+ground patrol reaches X=739 around Frame 23604. Up+Right immediately
+from X=728 hits the bat; a three- or four-interval delay is also
+fatal. A five-interval neutral delay to Frame 23576 opens a window:
+Right+Up then clears both actors and lands the hero at X=848/Y=169.
+After releasing directions, ten neutral intervals retain HSalive=FF
+through Frame 23745; the ground actor is behind at X=744, bat behind
+at X=682, both still Type/flags 15/80 and 12/80. The short-run hash
+is `3A1679C0174970ABA48267ED748EB99C6E2CD13310A4BEEAF91BDFAED849ABB8`;
+the image shows active gameplay. The durable full-cold route
+`Tools/a3000-celtic-heart-stage-four-ground-patrol-bypass-route.json`
+passed an independent full DF0 cold-start replay through Frame 23745.
+It confirmed the exact image hash above, HSalive=FF, and zero non-ROM
+exceptions. The replay image was inspected: the hero stands at
+X=848/Y=169 in active castle gameplay. This is a timed bypass; neither
+the Type-15 ground actor nor the Type-12 bat was killed. The next step
+is to continue with real inputs toward the visible gold objects and
+the next fixed castle rise, measuring newly activated MOBs before
+claiming a further passage. Stage 4 and the seven-point roadmap remain
+open.
+
+From the independently established Stage-4 X=848/Y=169 landing,
+continued real Right input collected the three visible gold objects and
+reached a solid castle rise at X=960, HSalive=FF. Three short-lived
+Right+Up timings gave distinct outcomes: jumping from X=932 collided
+after X=962, jumping from X=960 died at X=980, but jumping from X=946
+passed the rise and reached X=1088/Y=185 alive. Waiting there died
+after a Type-15 ground patrol approached from X=1100; standing Fire
+from several measured positions did not deactivate it. Releasing Up
+during the first jump and re-pressing it on landing at X=1046 gave a
+second actual jump over that patrol. Releasing both directions near
+X=1188/Y=185 kept the hero alive for ten neutral 500,000-chip-cycle
+intervals through Frame 23998. The actor remains active behind the
+hero. Short-run image hash:
+`4DE8E33B76B1F5C5F3550FB324BD47D11B18998ED8927384F7ED22F3ABD03587`.
+The full replay image shows active gameplay beside a large green orb.
+`Tools/a3000-celtic-heart-stage-four-second-patrol-double-jump-route.json`
+validated and passed an independent complete DF0 cold-start replay to
+Frame 23998, with the exact hash above, HSalive=FF and zero non-ROM
+exceptions. The final active image was independently inspected. Count
+the solid castle rise and the second Type-15 patrol bypass to X=1188
+as passed, without claiming either patrol was killed. A direct Right
+or immediate Right+Up continuation from X=1188 dies at X=1196. A
+bounded RAM snapshot at the safe landing found active Type-14 actors
+at X=1216/Y=57 and X=1216/Y=169. A third jump launched earlier from
+X=1160 reached X=1246 alive, but a second Type-14 projectile spawned
+near X=1328/Y=169 moved left to X=1270 and killed the hero at X=1260
+on landing; an immediate fourth Up rearm was still too low to avoid
+that collision. These are negative controls, not a pass beyond the
+orb. Next measure the two projectile phases and test a timed hold or
+elevated-platform approach before extending the independently replayed
+route. Stage 4 and the seven-point roadmap remain open.
+
+The next Stage-4 projectile study measured the first Type-14 pair
+moving left 14 pixels per 500,000 chip cycles from X=1216 while the
+hero stood at X=1188; neutral waiting died by Frame 24012. Matching
+their speed with Left retreat survived until the solid ledge stopped
+the hero at X=1078, after which the pair caught him. A vertical jump
+from X=1144 let that pair pass beneath, but an immediate second approach
+met the next spawned pair; extra waiting allowed the following Type-15
+patrol to catch the hero. This rules out the tested ground-only timing,
+not every possible input sequence.
+
+An independent elevated alternative starts from the verified X=848
+checkpoint: Right to X=946, a first Up+Right jump past the solid rise,
+release Up in flight, then a second jump from X=1032. Stopping Right
+after the first interval lands stably on the one-tile solid step
+X=1048/Y=137; a further Up+Right jump lands on the fixed middle
+platform X=1132/Y=105. From there, a timed Up+Right jump lands on the
+upper platform at X=1216/Y=73. Releasing and re-pressing Up while
+continuing Right clears the active upper/lower Type-14 pair; stopping
+at X=1304/Y=185 yields a 15-interval living hold through Frame 24237.
+The short-run image hash is
+`0756CBCCBA51F44E1E5A788B3F577E7E8EE344AA7C2367EFAFA1430AC1FB4A81`.
+The active image shows the hero beyond the green orb and before the
+solid tall pillar at X=1344. `Tools/a3000-celtic-heart-stage-four-upper-orb-passage-route.json`
+validated and passed an independent complete DF0 cold-start replay to
+Frame 24237: exact image hash above, X=1304/Y=185, HSalive=FF,
+zero non-ROM exceptions. Its final active image was independently
+inspected. Count the elevated approach and Type-14 pair passage as
+passed, without claiming a kill or passage through the pillar. At X=1304, a
+vertical jump avoids a new projectile but the Type-15 pursuer from
+the left catches the descending hero at X=1304/Frame 24279. Several
+early left-facing crouched Fire attacks did not deactivate that pursuer.
+The next step is to analyze a legitimate route around the tall solid
+pillar and its two skull projectiles. `level04.tmx` places a solid
+column at X=1344 from Y=32 through ground level; ordinary jumps from
+the lower ground cannot clear it. Test a higher approach or a verified
+game mechanic before claiming the far side.
+Stage 4 and the overall roadmap remain open.
+
+Cleanup note: the independent replay wrote regenerable images under
+ignored `tmp/stage4-upper-orb-passage-full` (about 88 MB). After review,
+both a path-checked recursive removal and a narrower removal of only
+intermediate PNGs were rejected by the automatic command policy, so
+the output remains under `tmp` and no other files were touched.
+
+The Stage-4 pillar was a misleading continuation target. Inspection of
+`level04.tmx` and `w1types.tmx` found the actual TYPE-7 level-exit
+background tiles at X=1216/Y=176-207, **before** the solid X=1344
+column. From the independently established X=1132/Y=105 middle-platform
+checkpoint, two Right intervals leave its edge at X=1160; three neutral
+intervals land at X=1160/Y=185. Right then reaches X=1202, triggers
+`exitHero`, and shows `LEVEL COMPLETE`. HSalive changes to 00 on this
+path as part of the level transition, not as proof of a death: the
+bounded watch saw the nearby Type-15 pursuer still at X=1119 and both
+Type-14 projectiles at X=1290 when the transition began. After the
+complete-screen button, the visible `SNOW MOUNTAINS STAGE 5` title
+appears at Frame 24849. The full DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-four-complete-stage-five-title-route.json`
+passes with exact title hash
+`85E0FD5AD73CA636BBBA13F5BACE1B779E644BCF99739E008CF07C3EFF006573`
+and zero non-ROM exceptions; the independently repeated cold start in
+`Tools/a3000-celtic-heart-stage-five-active-movement-route.json` checks
+the same title hash before continuing. Both complete-screen and title
+captures were visually reviewed. **Snow Mountains Stage 4 is complete.**
+The earlier X=1304/Y=185 upper-orb passage remains valid gameplay, but
+the impassable column beyond it is not needed for the level exit.
+
+Stage 5 now reaches active play after the title button and a separate
+ready-button press. The independently cold-replayed active route above
+checks Right movement to X=76/Y=41 at Frame 25060, HSalive=FF, exact
+image hash
+`C0941CCD2E4941E17F8851E7B612D5F49F3E008E73229F0E6EEC040150177F22`,
+zero non-ROM exceptions and a reviewed live game image. The first gap
+has a phase-dependent GID-168 middle stone at X=208 and a fixed GID-164
+stone at X=272 (`level05.tmx`/`w1types.tmx`). Four more Right intervals
+reach X=134 on the starting platform; Right+Up for five intervals
+reaches X=204, three neutral intervals allow the middle-stone landing,
+then a rearmed Right+Up for five intervals reaches the fixed stone.
+`Tools/a3000-celtic-heart-stage-five-first-gap-stone-route.json` passed
+a complete DF0 cold start at Frame 25243 with stable living hero
+X=276/Y=41, HSalive=FF, exact image hash
+`4C22F8A11E1DAFB2753DF146979D4A9DEE15D0513BF72C11D7CD21DBF07BA1A8`,
+zero non-ROM exceptions and a reviewed active image. A separate full
+cold-start repeat independently reproduced the same Frame 25243,
+position, alive byte, image hash and active image. Count the passage
+to the fixed X=272 stone as passed. Direct Right fell at X=182; an overlong first
+jump reached X=260 airborne but died before landing. These are negative
+controls, not a gap passage. The next animated GID-168 stone at X=352
+still needs a live crossing: immediate
+Right+Up jumps from X=276 with four to six intervals died before a
+sustained landing. Stage 5 and the seven-point roadmap remain open.
+
+A bounded continuation from a short-lived checkpoint on the fixed
+X=276/Y=41 stone tested the next animated stone without changing guest
+RAM. Six neutral 500,000-chip-cycle intervals followed by five
+Right+Up intervals reached X=348/Y=41 alive through eight more neutral
+intervals (Frame 25377), but the next interval deactivated the hero;
+other tested phase offsets and jump lengths also died. This is a
+temporary animation window, **not** a sustainable passage. The next
+test had to launch a further jump before that eighth hold ended;
+the short probe alone was never counted as passage.
+
+That timed second jump now passes the second Stage-5 gap. From the
+independently verified fixed stone X=276/Y=41, six neutral intervals
+phase the GID-168 stone at X=352; five Right+Up intervals land on it
+near X=348/Y=41. After eight neutral intervals, a rearmed Right+Up
+for nine intervals reaches X=474/Y=119 alive, and releasing both
+directions lands on the fixed GID-97 one-tile step at X=464-479/Y=160.
+`Tools/a3000-celtic-heart-stage-five-second-gap-fixed-step-route.json`
+validated and passed **two independent complete DF0 cold starts** to
+Frame 25497, stable living hero X=476/Y=137, HSalive=FF, zero
+non-ROM exceptions and identical image hash
+`F68EDBFDA84B0840289F164CD34E9FD78F73CD2B49A5E812CF547840CB395D6F`.
+Both final active images were inspected. Count this fixed-step landing
+as passed. The preceding X=348 animation window is used only as a
+launch point; waiting one further interval there kills the hero.
+
+A bounded savestate continuation from the verified X=476 fixed step
+also identified a genuine Type-13 moving platform, record
+`$07FF80A4`: its X advances from 507 at Frame 25497 left to 433,
+then reverses. Holding Up for two 500,000-chip-cycle intervals on
+the fixed step and releasing it while the platform approaches catches
+the hero on top at Y=98; neutral riding carried him alive to X=700.
+After six more riding intervals, a three-interval Right+Up jump from
+the returning platform landed at X=740/Y=89 on the fixed GID-96
+tile at X=736/Y=112, and nine neutral intervals kept him alive.
+These are short-run savestate probes only, **not yet an independently
+replayed DF0 cold passage**. Next encode this exact input sequence
+after the X=476 route, check a sustained landing and active image,
+repeat the full DF0 cold start, then approach the next fixed platform
+at X=784-815. Stage 5 and the seven-point roadmap remain open.
+
+The moving-platform continuation is now a verified Stage-5 passage.
+`Tools/a3000-celtic-heart-stage-five-moving-platform-far-stone-route.json`
+appends the exact Type-13 ride and six-interval platform phase to the
+X=476 full-cold route, then a three-interval Right+Up jump and nine
+neutral landing intervals. **Two independent complete DF0 cold starts**
+matched at Frame 25968: hero X=740/Y=89 alive on fixed GID-96,
+HSalive=FF, zero non-ROM exceptions, and exact image hash
+`5BA553131589A663280CC8EDD54F2864D6121FBD76E13C173653DB33F0FAC1E4`.
+Both captured active game images were inspected. Count X=740 as passed.
+The next fixed platform at X=784-815 is also independently confirmed.
+From X=740/Y=89, a rearmed Right+Up jump of four 500,000-chip-cycle
+intervals, followed by eight neutral intervals, lands stably at
+X=796/Y=57 on GID-164. The durable
+`Tools/a3000-celtic-heart-stage-five-next-fixed-platform-route.json`
+passed **two separate complete DF0 cold starts** to Frame 26053,
+HSalive=FF, zero non-ROM exceptions and identical image hash
+`D6C13C5B505B9F845F179E2B570DA3450D6AB8D35E45604791A8AEBCAC824EAE`;
+both captured active images were inspected. Two jump intervals missed
+this tile, while six or more died beyond it. A further rearmed
+Right+Up jump of four intervals from X=796, followed by eight neutral
+intervals, lands stably at X=852/Y=25 on the next fixed GID-164 tile
+at X=848. `Tools/a3000-celtic-heart-stage-five-upper-fixed-stone-route.json`
+passed **two independent complete DF0 cold starts** to Frame 26137,
+HSalive=FF, zero non-ROM exceptions and matching image hash
+`305E42FC42C87196F2CC774B50DB3ECBA10F7950AE38E5426E2421AC22A21860`.
+Both final active images were inspected; count this upper tile as
+passed. The next concrete step is to analyze and time the animated
+GID-168 tiles at X=912-943/Y=48 and jump from there to the fixed
+GID-164 tile at X=1008, with sustained landing, active image and two
+full DF0 cold replays before claiming passage. Stage 5 and the seven
+roadmap points remain open.
+
+Stage-5 continuation after X=852: direct Right+Up attempts toward the
+animated X=912-943 upper tiles died near X=908-936 in all tested
+0-24-interval launch phases. A bounded RAM snapshot shortly before
+one death found an active Type-6 knight at X=945/Y=23 and a Type-12
+bat behind at X=860/Y=23; the HSalive write used the `hero_coll`
+path. The exact colliding sprite was not isolated, so this is not
+evidence of a renderer defect or a passed animated-tile landing.
+Regular Right without Up instead drops safely below that encounter
+onto the fixed lower bridge, with a stable living position at
+X=964/Y=137. A rearmed three-interval Right+Up jump from there lands
+on the fixed GID-100 step X=1008/Y=105; ten neutral intervals stay
+alive. `Tools/a3000-celtic-heart-stage-five-lower-bridge-passage-route.json`
+passed **two independent complete DF0 cold starts** to Frame 26355,
+HSalive=FF, zero non-ROM exceptions and exact image hash
+`34C987E240642C9FC7AE1F9D234B294E4CC576E046FF728657AB6BA095243196`.
+Both active images were inspected. Count the lower bridge and this
+fixed step as passed; the higher GID-164 tile at X=1008/Y=48 was
+not reached. A further rearmed Right+Up jump of four intervals reaches
+another fixed GID-99 step at X=1064/Y=89 and survives ten neutral
+intervals. `Tools/a3000-celtic-heart-stage-five-lower-bridge-second-step-route.json`
+passed **two independent complete DF0 cold starts** to Frame 26454,
+HSalive=FF, zero non-ROM exceptions and image hash
+`BFF31A908785DED37EBAD55AF5308BE9FBF6D47AB36BE9E2779C23B3E0EF8D21`.
+Both active images were inspected; count X=1064 as passed. Short
+savestate probes then use a five-interval jump to the lower castle
+ledge X=1136/Y=89 and a rearmed three-interval jump to X=1180/Y=41
+on the fixed upper GID-97/98 step, surviving twelve neutral intervals.
+`Tools/a3000-celtic-heart-stage-five-castle-upper-step-route.json`
+passed **two independent complete DF0 cold starts** to Frame 26665:
+X=1180/Y=41 alive on the upper fixed step, HSalive=FF, zero non-ROM
+exceptions and exact image hash
+`B6473DE8C727C6042B3CD4E8C963F46F5F5293C3766ADA6F68CF37619E4309AD`.
+Both active final images were inspected. Count this upper landing as
+passed; the Type-9 enemy below remains active. A short savestate
+continuation uses five Right+Up intervals to land at X=1252/Y=41 on
+the next fixed GID-100 upper step and survive ten neutral intervals.
+`Tools/a3000-celtic-heart-stage-five-castle-far-step-route.json`
+passed **two independent complete DF0 cold starts** to Frame 26771:
+stable living hero X=1252/Y=41, HSalive=FF, zero non-ROM exceptions,
+exact image hash
+`544AD29C752F788F5472551F5375250A4ABAC7E877B5E632D03390177DF5A294`,
+and both final active images inspected. Count this far upper tile as
+passed. A direct six-interval Right+Up jump then lands at X=1336/Y=41,
+but an active Type-6 knight at X=1348/Y=23 collides with the hero
+after six more neutral intervals. A bounded MOB snapshot and HSalive
+write trace establish the enemy and `hero_coll` path. In short
+savestate probes, one neutral interval after landing followed by a
+grounded right-facing Fire strike defeats the knight (Type 0,
+flags 40), and subsequent Right reaches X=1452/Y=73 alive atop the
+castle wall after ten neutral intervals.
+`Tools/a3000-celtic-heart-stage-five-castle-wall-landing-route.json`
+passed **two independent complete DF0 cold starts** to Frame 27066:
+the knight is Type 0/flags 40, the hero is alive at X=1452/Y=73
+on the massive wall, HSalive=FF, zero non-ROM exceptions, exact image
+hash `962084BE521CDF6D28BA53A7B25DC7113B0DF4940CE11F8356FC6BA695C21DA7`.
+Both active images were inspected. Count the knight defeat and wall
+landing as passed. Fifteen Right intervals from X=1452 drop to the
+lower ground and hold the hero alive at X=1664/Y=185 for ten further
+neutral intervals. `Tools/a3000-celtic-heart-stage-five-far-ground-landing-route.json`
+passed **two independent complete DF0 cold starts** to Frame 27242,
+HSalive=FF, zero non-ROM exceptions and exact image hash
+`2A8124872D22E52164DBA0B03161C151A3D2475202F239469A126B3D012A3E85`;
+both active images were inspected. Count this ground landing as passed.
+Two more Right intervals die at X=1682/Frame 27251 through the
+`hero_coll` path. A bounded Fast-RAM snapshot at Frame 27249 finds
+an active Type-7 ground enemy at X=1692/Y=185 (record `$07FF7BA4`),
+matching the collision. Short savestate probes from safe X=1664
+show a real Right+Up jump of eight 500,000-chip-cycle intervals
+reaching X=1776/Y=185 alive through ten neutral intervals.
+`Tools/a3000-celtic-heart-stage-five-ground-enemy-bypass-route.json`
+then passed **two independent complete DF0 cold starts** to Frame 27369,
+HSalive=FF, zero non-ROM exceptions, exact image hash
+`71E2B19D21EDF618C9C6D1B7F0F6B8F9789414B23E2537884CD7F6B5C63BC017`;
+both active images were inspected. Count this Type-7 bypass as passed.
+
+The next short savestate probes identify a Type-5 enemy at X=1904/Y=153
+and two more Type-5 patrols initially at X=2016 and X=2039/Y=121.
+The first dies to a grounded right-facing Fire strike from X=1876/Y=153;
+`Tools/a3000-celtic-heart-stage-five-raised-type-five-passage-route.json`
+confirms Frame 27629, living hero X=1984/Y=153, Type-5 Type 0/flags 40,
+zero non-ROM exceptions and hash
+`B0CB6435881F64CAE0FB36BEBA173A2295FEB198DB7D532D002C90F66C0B939C`
+in a complete DF0 cold start with an inspected active image. Waiting
+ten 500,000-cycle intervals there lets the two upper patrols move away.
+A Right+Up jump reaches X=2055/Y=121; a delayed grounded Fire strike
+kills the returning nearer patrol, and a second rearmed strike kills
+the other. `Tools/a3000-celtic-heart-stage-five-twin-raised-type-five-passage-route.json`
+passed **two independent complete DF0 cold starts** to Frame 28051,
+living hero X=2188/Y=169, both Type-5 patrols Type 0/flags 40, zero
+non-ROM exceptions and hash
+`9CE812DCF96DAD3470D2CCD83DEC257CBC9F8E68F9C6EEC100D6A9B9A23F06C8`;
+both active images were inspected. Count all three Type-5 defeats and
+the stable corridor landing as passed.
+
+The next foreground contact kills an immediate Right from X=2188:
+HSalive write at Frame 28055 returns through `$07FEBADE`, the known
+foreground-collision path. A short alternative stops Right at
+X=2126/Y=121, rearms Up, and jumps over the tile to X=2232/Y=169;
+it stays alive for six neutral intervals.
+`Tools/a3000-celtic-heart-stage-five-post-patrol-hazard-jump-route.json`
+passed **two independent complete DF0 cold starts** to Frame 28065,
+HSalive=FF, X=2232/Y=169, zero non-ROM exceptions and image hash
+`6AA2AEDE81B2A090ADDA214772C9CA1E73AEC22CF56B1DCAD0E20196AB59AA0B`;
+both active images were inspected. Count this foreground-tile passage
+as passed. Right from X=2232 reaches a solid wall at X=2288. Short
+controls found no jump from that low position. An upper alternative
+reaches X=2228/Y=121 and can wait there while a Type-15 patrol moves
+from X=2247 to X=2318; direct Right or a late jump dies when it turns
+back. Three timed standing Fire controls did not kill it (Type 15,
+flags `$80`), so the next concrete step is a live upper-route passage
+timed around that patrol and the solid wall at X=2304, then an
+independent full DF0 cold replay. Stage 5 and all seven roadmap
+points remain open.
+
+Further bounded Stage-5 probes (ignored `tmp/stage5-upper-walk-sweep.json`,
+`stage5-upper-leap-sweep.json`, `stage5-upper-cower-strike-sweep.json`,
+`stage5-upper-near-strike-sweep.json`, and
+`stage5-upper-near-cower-strike-sweep.json`) did **not** establish the
+next passage. From the live X=2228/Y=121 upper route, waiting four to
+six 500,000-cycle intervals and walking right reached at most X=2298
+alive before the returning Type-15 patrol collided; immediate and
+delayed jumps also failed. TMX tile inspection explains why a jump at
+X≈2270 blocks at X=2288 while airborne: BACK columns X=2304-2320
+contain solid tiles at Y=64-96 and Y=144-191, leaving only the narrow
+Y=112-143 corridor. Timed standing and crouching Fire from X=2228 or
+X=2256 did not change the Type-15 MOB's type `$0F`/active flag `$80`,
+and all such approaches eventually died. These are negative controls,
+not a gameplay pass. Next: inspect the Type-15 collision rectangle and
+strike activation against the exact return phase, then test a grounded
+attack or safe follow distance through the Y=112-143 opening; require
+a sustained living landing beyond X=2336 and two independent complete
+DF0 cold replays with inspected active images before promoting it.
+
+A narrower watched strike probe at hero X=2256 explains the failed
+timing more precisely: the right-facing HeroStrike became active at
+Frame 28122, base X=2272/Y=125. At Frame 28136 its live collision box
+was X=2278..2285/Y=129, while the returning Type-15 box was
+X=2277..2289/Y=137..143. Their X ranges overlapped, but their Y
+ranges did not. Standing and tested Down+Fire variants therefore left
+the enemy active and the hero died when it reached X≈2261. The original
+Celtic Heart source (`CelticHeart/mob.asm` in the preserved source
+archive) identifies type 15 as **magical fire**; `monster.asm` says it
+cannot be destroyed. The strike experiments are negative controls.
+
+The upper magical-fire passage is now a proven gameplay pass. From
+X=2228/Y=121, wait four 500,000-chip-cycle intervals, walk right three
+intervals to X=2272, release Right, and wait six intervals for the
+fire to return to X≈2304. Press Right+Up through the narrow corridor,
+release movement after the tenth jump interval, then wait fifteen
+neutral intervals for a stable landing at X=2376/Y=169. The complete
+DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-five-upper-fire-bypass-route.json`
+passed two independent runs at Frame 28291, HSalive=FF, zero non-ROM
+exceptions and exact image hash
+`D942C8CA4291648146807CCFF81BCD1F62913B7BE19EABBAB2D612BC465246D0`.
+Both active images were inspected. This proves passage through the
+wall at X=2304 without claiming the rest of Stage 5.
+
+The next complete DF0 route
+`Tools/a3000-celtic-heart-stage-five-high-ice-step-route.json`
+passed **two independent cold starts** to Frame 29284, X=2888/Y=57,
+HSalive=FF, zero non-ROM exceptions and exact image hash
+`BDA4726C700057056AFD170BE5B4C2CDC0F7CD17FC3CC14D7D1E106798EF2D15`.
+Both active final images were inspected; the route file validates.
+It contains a grounded crouching Fire at X=2460 that defeats the
+type-9 Dino, four neutral intervals to phase the animated FRONT
+GID387/407 tile, and a timed jump from X=2558 that avoids the type-8
+spider and lands on the small solid column at X=2644/Y=153. A type-13
+moving platform then carries the hero across water to the fixed tile
+at X=2816/Y=153; two rearmed jumps land on fixed steps X=2860/Y=105
+and X=2888/Y=57. Intermediate X=2644 and X=2816 image hashes also
+matched in both complete runs. Count these passages as passed.
+
+The second type-13 platform (`$07FF7F64`) oscillates approximately
+X=2897..3024 at Y=89. From the stable X=2888/Y=57 ice step, one
+Right+Up interval, release, and twenty neutral intervals board it
+and carry the hero to X=3007/Y=66. Three further Right+Up intervals
+followed by twenty neutral intervals land stably on the fixed pillar
+at X=3052/Y=57. The complete DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-five-second-air-platform-route.json`
+passed **two independent runs** through Frame 29594 with HSalive=FF,
+zero non-ROM exceptions and exact final image hash
+`8AEA24D2A54BA0100AF3779DF643C857140305655CF368C06C61DFB12751B700`.
+Both active images were inspected. Count this platform passage as
+passed, not the remainder of Stage 5.
+
+The BACK GID5 strip immediately east of the pillar has type 12 in
+`w1types.tmx`; the original `hero.asm` dispatches type 12 bottom
+contacts to `solid_anim`, so walking east triggers a single-tile
+animation and the hero falls to the lower fixed shelf. Short probes
+land at X=3056..3124/Y=137 or Y=185; a type-5 spider patrol at
+X≈3046..3083/Y=137 caused the first deaths. A bounded Fast-RAM
+snapshot identified its 80-byte MOB at `$07FF77E4`. From a short
+checkpoint X=3080/Y=137, a 100,000-cycle Left alignment followed by
+grounded Down+Fire defeats it (type 0/flags `$40`) while the hero stays
+alive. A subsequent short Right probe reaches X=3216/Y=185 and remains
+alive ten neutral intervals. These last two observations are still
+awaiting independent complete DF0 replays; do not promote them yet.
+Next: complete those replays, then handle the raised type-6 knight
+and the next ground contact. Stage 5 and the overall roadmap remain
+open.
+
+The grounded Type-5 spider and the far lower corridor are now independently
+replayed from complete DF0 cold boots. The route
+`Tools/a3000-celtic-heart-stage-five-long-ground-route.json` aligns left by
+100,000 chip cycles from the small crumble-strip landing, defeats the spider
+with a grounded crouching Fire strike, walks to X=3216/Y=185, and continues
+right to X=3568/Y=185. Two complete runs both reached Frame 30144 with
+HSalive=`FF`, zero non-ROM exceptions and exact image hash
+`342F5A652CB1AA7463423A18282AB578EE249B04C2C8B151CB44C0AFA3887830`.
+Both active images were inspected. This proves the spider kill and sustained
+ground passage; the remainder of Stage 5 remained open at this checkpoint.
+A further rightward ground walk encountered a left-moving Type-14 projectile,
+so the completed route uses fixed raised stones and avoids that contact.
+
+**Stage 5 is complete, with the Stage-6 title visibly reached and repeated.**
+`Tools/a3000-celtic-heart-stage-five-complete-stage-six-title-route.json`
+validates and passed two independent full DF0 cold starts. From the lower
+X=3216 shelf, genuine Right/Up inputs climbed fixed stones at X=3512/Y=137,
+X=3608/Y=89, X=3652/Y=57 and X=3736/Y=57. Grounded Down+Fire at
+X=3512 defeated the raised type-9 Dino; the further jump from X=3750
+cleared a lethal background hazard, and Right crossed the animated crumble
+strip to lower ground X=3904. The final Right+Up sequence visibly reached
+`LEVEL COMPLETE — PRESS BUTTON` at Frame 30932 with exact image hash
+`D2102663C597D3BA956A5B34DBF769883D876A33561F9A062622475B483B5EC4`.
+At the exit the hero is intentionally removed (HSalive=`00`), so this
+screen was assessed by its visible title and subsequent transition rather
+than by the in-level alive flag. A real Fire press then led to the visible
+`LAND OF THE DEAD` Stage-6 title at Frame 31080 with exact hash
+`E7A7E8DE4FF6E23C10DCAE486E2A2CE932D347AED8E34F37D2E76A7C85D1B4DC`.
+Both full runs matched both hashes with zero non-ROM exceptions; both pairs
+of output images were inspected. Stages 1–5 are completed gameplay passes.
+Stage 6 and the remaining roadmap work are open. Next: press through the
+Stage-6 title and any separate GET READY screen, verify active movement,
+then extend an independently repeated complete DF0 route through the first
+real obstacle.
+
+A subsequent complete DF0 cold-start probe
+(`tmp/stage6-active-full-probe.json`, ignored) tested the title input
+sequence. Fire at the first Stage-6 title frame was too early: the same
+title hash remained at Frame 31228. A later Fire changed the prompt,
+but Frame 31376 still visibly said `PRESS BUTTON`, and the attempted
+Right input through Frame 31453 returned to the title art with no active
+hero (HSalive=`00`, unchanged position). This is **not** Stage-6
+gameplay. Next: wait for the stable `PRESS BUTTON` state, release all
+inputs, press Fire again, and confirm an active moving hero with an
+independently repeated full cold route before claiming any Stage-6 pass.
+
+Stage 6's entry sequence has now been resolved. `LAND OF THE DEAD` is
+followed by a distinct `THE CAVE / STAGE 1 / CODE: 0ABS` card and then
+`GET READY — PRESS BUTTON`; each requires a released, fresh Fire edge.
+The third Fire must be pressed promptly after the ready screen appears:
+a 500,000-chip-cycle wait leaves the first Type-17 skeleton at X≈144,
+whereas a 6,000,000-cycle wait lets it reach X≈67 next to the spawn.
+The late-start controls died from a monster collision despite showing a
+brief live frame. With the short wait, a real Right+Up jump bypasses it
+and lands stably at X=188/Y=185. The complete DF0 cold-start route
+`Tools/a3000-celtic-heart-stage-six-first-skeleton-bypass-route.json`
+passed two independent runs to Frame 31588, HSalive=`FF`, zero non-ROM
+exceptions, exact image hash
+`FEC394AAD9A5451573BC51BCB3B544D092FE97A8E64B0A5B7EA762A2F2E30CDD`,
+and two inspected active cave images. This confirms active Stage-6 play
+and the first skeleton bypass; Stage 6 is not complete.
+
+The first cavern gap and three farther enemies are now passed. A timed
+jump from X=188 lands at X=264/Y=153. A standing right-facing Fire
+after four 500,000-cycle waits defeats both Type-17 skeletons on the
+far platform. The next jump lands X=364/Y=121, where an immediate
+standing Fire defeats the Type-20 green walker. The full DF0 route
+`Tools/a3000-celtic-heart-stage-six-first-gap-greenwalker-route.json`
+passed **two independent cold starts** to Frame 31961, X=364/Y=121,
+HSalive=`FF`, both skeletons Type 0/flags `$40`, green walker Type 0/
+flags `$40`, zero non-ROM exceptions and exact image hash
+`E0A5EBB9D14DC4058A5927187B20226ABE3FCEC3A56A6CB678CAA3DA4E307592`.
+Both active images were inspected; count the gap and these kills as passed.
+
+The lower-corridor continuation from X=364 is independently
+reproduced in `Tools/a3000-celtic-heart-stage-six-lower-corridor-route.json`.
+Both complete DF0 cold starts reached Frame 32144, X=588/Y=185 alive,
+HSalive=`FF`, zero non-ROM exceptions and exact image hash
+`ABA8EF93D81F89330CA685078B16787C64A4490D78144BB65EFDF5A97D359707`.
+Both active cave images were inspected; count this lower-corridor passage
+as passed. Direct Right from X=588 falls into the red lava and dies
+at X=606; a bounded HSalive write trace confirms the kill path. A
+four-interval wait at the safe edge phases a Type-21 bat, and a
+Right+Up jump reaches the opposite solid bank. The complete DF0 route
+`Tools/a3000-celtic-heart-stage-six-first-lava-crossing-route.json`
+passed two independent cold starts to Frame 32285, X=704/Y=185 alive,
+HSalive=`FF`, zero non-ROM exceptions, and exact image hash
+`6F97BD45CFACCD3214407C12A3641BFE30FAD23F6FF443BF975AD621CEB81B99`.
+Both active images show the hero grounded across the red lava. Count the
+first lava crossing as passed. A short Savestate continuation reached
+X=752/Y=185 alive at the next fixed wall; Right+Up there reached
+X=816/Y=153 alive on the raised ledge and remained stable for eight
+500,000-cycle intervals. The durable route
+`Tools/a3000-celtic-heart-stage-six-next-wall-ledge-route.json`
+passed two independent complete DF0 cold starts to Frame 32489,
+X=816/Y=153 alive, HSalive=`FF`, zero non-ROM exceptions, hash
+`174A4510D0C704AD082A4C080CFF61E97CE6133D1B4EB04A2BDE90E4CC663E76`,
+with an inspected active image in the first run and identical hash/RAM
+in the second. Count this ledge as passed. A further short jump from
+X=816 reaches X=840/Y=105, stable for ten intervals. Holding Right
+instead died at X=854/Y=105; a bounded HSalive write trace returned
+through `$07FEBADE`, the foreground-collision path. A second jump from
+X=840 reached X=1012/Y=105 stable in short probes, but a nearby
+Type-17 skeleton on that upper platform killed a standing Fire at
+X=1012 immediately. An airborne Fire from X=984 let the hero drop to
+X=984/Y=153 alive; moving Right from there met a separate monster
+collision at X=1002 (bounded return `$07FEC580`). These short probes
+do not count as a full cold passage. Next: time the upper skeleton or
+use the lower ledge to bypass it, then reproduce a sustained landing
+beyond X=1012 from a full DF0 cold start. Stage 6
+and the seven-point roadmap remain open.
+
+The upper skeleton can instead be bypassed along the lower ledge. From
+X=956/Y=153, two neutral intervals after the jump avoid a fatal landing;
+a brief Right+Up input, then standing Fire at X=984/Y=153, keeps the hero
+alive. Facing left and striking from X=969 defeats the returning Type-17
+skeleton (Type 0/flags `$40`). `Tools/a3000-celtic-heart-stage-six-twin-orb-passage-route.json`
+then reaches X=1084/Y=185, climbs through the raised Type-17 skeleton
+with a grounded Fire defeat at X=1352/Y=137, and reaches X=1440/Y=137.
+Two overlapping Type-20 green orbs beyond the ledge require an airborne
+Fire to phase their approach and a second Fire at X=1507/Y=89 to kill
+both. **Two independent complete DF0 cold starts** reached Frame 33918,
+X=1507/Y=89 alive, HSalive=`FF`, both orbs Type 0/flags `$40`, zero
+non-ROM exceptions and exact image hash
+`AC524C34CCA949F76C8856EFEC4C4DE2EE51DC9A86B2041B125F2E7DE430B326`.
+The active cave image was inspected. The same two runs checked exact
+intermediate hashes at X=1084 (`ED44FF632B11E24F27DFDD70930997EE94A7151611932BB35302C17D78FE8F07`)
+and X=1440 (`AFEBD48406D2ECC7C641ABE4C80FD76EA03A85CE6C95A977D8819505FF4170CD`).
+Count these skeleton and orb passages as passed; Stage 6 remains open.
+
+At the next lava edge X=1580/Y=89, a short checkpoint study identified
+the moving Type-22 platform at MOB `$07FF8004`. A six-interval wait,
+Right+Up for four intervals, then releasing Right catches it: the hero
+rides at Y=98 to X=1732 while alive at Frame 34206. This was the
+checkpoint-only precursor to the full cold route documented below.
+Jumping from the platform reaches the far bank near X=1848/Y=89 alive,
+but a Type-17 skeleton spawned at X=1856/Y=112 collides within three
+neutral intervals. A bounded RAM snapshot measured the active skeleton
+at X=1834/Y=89, Type `$11`/flags `$80`, at Frame 34283. Left-facing
+Fire from X=1848 is too late. Earlier aerial Fire from X=1832 or X=1846
+also leaves Type `$11` active, and the hero dies as the skeleton moves
+right. Longer platform waits and simple running jumps to X=1876-1960
+also failed; these remain useful negative controls for the subsequent
+continuous-jump solution.
+
+The second lava crossing is now reproducible from DF0 cold boot. The
+Type-22 platform is caught after six neutral 500,000-chip-cycle
+intervals at X=1580, four Right+Up intervals and a Right release; it
+carries the hero at Y=98 to X=1732. A continuous Right+Up jump stays
+ahead of the nearby Type-17 skeleton and lands on the small lower
+platform at X=1932/Y=153. Two further Right+Up jumps use its far edge
+and the narrow center stone, landing stably at X=1988/Y=153 and then
+X=2060/Y=153, before a longer jump lands at X=2188/Y=137. The durable
+`Tools/a3000-celtic-heart-stage-six-second-lava-passage-route.json`
+checks exact hashes at these intermediate positions and the final
+`26CFEB2203FDB953AF1A976771CD7B51E042D11C4EC565FAFAB8E0A76EB68F89`.
+Two independent complete DF0 cold starts (this route and its full
+continuation) reached Frame 34656, X=2188/Y=137 alive, HSalive=`FF`,
+zero non-ROM exceptions. The active far-bank image was inspected. Count
+the moving-platform and second-lava passage as passed.
+
+Short checkpoint tests beyond X=2188 have defeated the two Type-20
+green walkers on the next bank with two timed standing Fire inputs from
+X=2216/Y=137. Right movement then reached X=2356/Y=185. A timed
+standing Fire from X=2412/Y=185 defeated the approaching Type-17
+skeleton, and immediate Right movement kept the hero ahead of the
+other skeleton to X=2584/Y=185. Two independent complete DF0 cold
+starts of the durable
+`Tools/a3000-celtic-heart-stage-six-far-ground-passage-route.json`
+passed through Frame 35332 with HSalive=`FF`, both walkers
+and the right skeleton Type 0/flags `$40`, zero non-ROM exceptions and
+hash `22EC8322B2CB32A31A5C01A162C9708CA0B56C3A6868CA267B1062E1761D5FB6`;
+its active image was inspected. Count the X=2584 ground passage as
+passed.
+A shorter continuation jumps over the lower Type-17 skeleton and pink
+missile to X=2752/Y=185 alive. The durable
+`Tools/a3000-celtic-heart-stage-six-missile-bypass-route.json` passed
+two independent complete DF0 cold starts at Frame 35473 with
+HSalive=`FF`, zero non-ROM exceptions and identical hash
+`88F9819E34D28552F2504801770AB2BA33C9F9B4420010D750C34143840B76F9`;
+the active image was inspected. Count X=2752 as passed. The next
+Right+Up attempt dies at
+X=2784/Y=137; a bounded HSalive write trace returns through
+`$07FEC580`, identifying monster collision. A Type-17 skeleton on the
+raised wall moves from X=2824 toward X=2773 before turning, while a
+Type-20 orb patrols above. Seven checkpoint-only waits of 0-12
+intervals before the jump all died. A bounded position watch shows
+direct jump contact at Frame 35508, hero X=2784/Y=137 and skeleton
+X=2789; six 500,000-cycle waits move the skeleton left enough for an
+earlier death at X=2764, while twelve waits allow it to hit the
+stationary hero. An aerial Fire begun at X=2763/Y=135 after six waits
+survives through Frame 35621 as the skeleton retreats to X=2857, but
+a straight chase dies at X=2839 and a jump dies at X=2813. A refined
+checkpoint probe waits safely at X=2764/Y=137, advances to
+X=2807/Y=137, waits six 500,000-cycle intervals and lands a standing
+Fire strike. The raised Type-17 skeleton changes to Type 0 and then
+flags `$40`, while the hero remains alive. A second timed Fire lets
+the upper Type-20 MOB move left past the stationary hero, but Right
+still dies at X=2840/Y=137 around Frame 35895. A bounded HSalive
+write trace has stack `$07FEBC80/$07FEBA90/$07FEBA0C/$07FEC794`,
+the same BACK-tile collision stack observed at earlier fixed hazards,
+not the monster-collision return `$07FEC580`. The `level06.tmx`
+BACK layer places GID 173 at column 177/row 9 (X=2832-2847,
+Y=144-159), and `w2types.tmx` assigns it TYPE 16, the animated
+bear trap. A bounded MOB snapshot at X=2836 had no active monster
+overlap. Thus the obstacle after the skeleton is a separate BACK
+trap, and the previous monster attribution was incorrect.
+
+A checkpoint-only follow-up uses the same timed Fire defeat of the
+skeleton and lets the upper Type-20 pass left while the hero waits at
+X=2807/Y=137. A rearmed Right+Up jump then passes above GID 173 and
+lands stably at X=2936/Y=185, alive through Frame 36001; hash
+`38819B57AB2C6585FF5DFDC0297216A5B4CFF860A54E89A50D8049A33C088BAE`.
+The durable
+`Tools/a3000-celtic-heart-stage-six-raised-wall-trap-passage-route.json`
+passed two independent complete DF0 cold starts at Frame 36001 with
+X=2936/Y=185, HSalive=`FF`, raised skeleton Type 0/flags `$40`, zero
+non-ROM exceptions and identical hash
+`38819B57AB2C6585FF5DFDC0297216A5B4CFF860A54E89A50D8049A33C088BAE`.
+Its active image was inspected. Count the raised skeleton and separate
+animated bear trap as passed, but Stage 6 remains open.
+
+Short checkpoint-only probes beyond that landing reached the low
+wall at X=2992, then jumped to X=3056/Y=153. A second rearmed
+Right+Up jump reached X=3136/Y=126 before death with active Type-21
+enemies nearby; the precise contact is not traced. A standing Fire
+hold at X=3108/Y=105 kept the hero alive through Frame 36205 but did
+not kill the Type-21 patrol. Stopping instead at X=3152/Y=185 kept
+the hero alive to Frame 36331. A bounded HSalive trace then proved
+that direct Right died at X=3174 from a monster-collision call
+(`$07FEC580`); a 4096-byte Fast-RAM MOB snapshot placed a Type-20
+walker at X=3185/Y=185. A grounded right-facing Fire begun at Frame
+36303 defeated it by Frame 36345 (Type 0, later flags `$40`). The
+next Type-20 walker was defeated with a rearmed standing Fire begun
+at X=3194/Frame 36409, Type 0 by Frame 36451 and flags `$40` by
+Frame 36493. These are checkpoint-only kills.
+
+The following apparent death at X=3221 was a **level exit**, not a
+failed passage. Its HSalive stack `$07FEBE70/$07FEBC88/$07FEBACC`
+differs from monster contact. The `level06.tmx` BACK layer places
+GIDs 208/209/210 and 228/229/230 at X=3232-3279; `w2types.tmx`
+assigns them TYPE 7, and the published `hero.asm` handles type 7
+with `bg_exit`/`exitHero`. A checkpoint continuation showed the
+visible `LEVEL COMPLETE — PRESS BUTTON` at Frame 36873, hash
+`B9D9FA4F0CE31A4EDB3E266F2FABD942D0F40873BA27706620B2148D1E114961`.
+After a fresh Fire edge it showed `THE CAVE STAGE 2` at Frame 37014,
+hash
+`D8371FCA2ED37AB388063A754FC3D372FB2375BE5013DCB54F29336B948CA380`.
+The durable
+`Tools/a3000-celtic-heart-stage-six-complete-stage-seven-title-route.json`
+passed two independent complete DF0 cold starts through both exact
+images at Frames 36873 and 37014, with zero non-ROM exceptions. The
+full-run images were inspected: the first visibly says `LEVEL COMPLETE
+— PRESS BUTTON`, the second says `THE CAVE STAGE 2`. Count Stage 6 as
+**complete**. The combined full route passes its read-only validation;
+Stage 7 itself remains open.
+
+Further checkpoint-only Fire input brought Stage 7 to active cave
+gameplay, HSalive=`FF`, and real Right movement to X=118/Y=169 at
+Frame 37331. Two independent full DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-seven-active-movement-route.json`
+reached that same live RAM/position and image hash
+`2AFC5D302781EC192A02CF3690F5747C497188BAA726B7475A915251A60EE140`,
+with zero non-ROM exceptions. The captured image shows active cave
+gameplay. The saved-state continuation had a different image hash;
+the route guards against the independently repeated full-cold hash.
+
+Shorter Stage-7 probes find a solid first wall at X=144/Y=169. A
+Right+Up jump reaches X=168/Y=121 alive on the raised ledge but dies
+at X=188 without a strike. A crouching Fire from X=168/Frame 37401
+keeps the hero alive through Frame 37485; a bounded 8192-byte Fast-RAM
+snapshot then records the nearby Type-9 Dino at X=191/Y=121 as
+Type 0/flags `$40`. Right movement to X=250 stays alive, but X=262
+dies in the first lava. The HSalive write stack matches background
+collision; `level07.tmx` places GID 119 at that row and `w2types.tmx`
+assigns it deadly TYPE 1.
+
+A timed Type-22 moving-platform catch starts from
+the safe X=168 ledge, waits until the platform approaches, and jumps
+onto it at X=228/Y=130. A second Right+Up jump passes an active
+Type-23 enemy descending from X=352/Y=121; after riding the platform
+to X=364, a third jump reaches stable fixed far-bank ground at
+X=408/Y=121, alive through Frame 37901. Two independent complete
+DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-seven-first-lava-far-bank-route.json`
+confirmed HSalive=`FF`, the first Dino Type 0/flags `$40`, zero
+non-ROM exceptions and identical image hash
+`88C91C79D7BF74EF98E40E79BD1624C5855FDDF7B5C602246E1002B8740E7E7D`.
+The captured image shows the hero standing on solid ground across
+the first lava with active enemies and moving platforms. Count this
+first lava passage as passed, but Stage 7 remains open. Direct Right
+after X=408 falls toward the next lava; an immediate Right+Up probe
+dies around X=438/Y=65 near the upper fixed platform.
+
+Follow-up bounded HSalive tracing resolved the immediate X=438/Y=65
+death as a Type-20 green-walker collision, with `$07FF80F4` in A5 and
+the `hero_coll` return. Waiting six 500,000-chip-cycle intervals at
+safe X=408 before the Right+Up jump, then braking at X=443 and
+holding Fire, avoids its patrol. The first provisional continuation
+used a restored Stage-6 checkpoint and reached X=612/Y=89, then the
+animated GID-195 bridge at X=656, the far wall X=752/Y=89 and an
+active Type-21 bat bypass to X=952/Y=169. Two complete DF0 cold
+attempts initially died at Frame 38094: the animated GID-198 tile
+at X=528 was non-solid when the hero descended, whereas that older
+restored checkpoint run had a solid tile at the same frame. A new
+complete cold replay to the accepted X=408 far bank produced a fresh
+checkpoint that reproduced the cold failure. One additional neutral
+500,000-chip-cycle interval at the safe X=443 stand aligned GID-198;
+four intervals on the X=612 step then aligned GID-195. This is a
+measured route timing correction, not a change to guest memory or
+game code.
+
+`Tools/a3000-celtic-heart-stage-seven-animated-bridge-far-wall-route.json`
+now passes two independent guarded complete DF0 cold starts. At
+Frame 38453 the hero stands sustainably alive X=752/Y=89 on the
+solid far wall, HSalive=`FF`, zero non-ROM exceptions, identical hash
+`10DCD6CA35B454E35159088E00D3024DFBC63CED030A85CE44553A9B9E5B342B`
+and a checked active image. This independently establishes the
+X=612 step, animated bridge and far-wall landing as passed.
+`Tools/a3000-celtic-heart-stage-seven-type21-bypass-route.json`
+then passes two further complete DF0 cold starts: a timed Right+Up
+jump from the lower X=824 stand leaves the Type-21 bat behind and
+lands X=952/Y=169 alive for ten neutral intervals at Frame 38720,
+hash `A745B663513F888E395894FD5B8AA267F8C5B89E1BB61340D5A050F33F194E55`,
+zero non-ROM exceptions and a checked active image. The bat was
+bypassed, not killed. Stage 7 remains open.
+
+The next obstruction is layered: direct Right from X=952 dies at
+Frame 38715 from a newly active Type-23 missile (`A5=$07FF8234`),
+while an immediate vertical jump followed by Right dies at Frame
+38735 from an upper Type-19 zombie (`A5=$07FF7FB4`). Short-run
+timing probes can continue to X=1104/Y=169, where a solid wall
+blocks Right and a pursuing lower Type-19 zombie eventually collides;
+an Up+Right jump clears the wall but meets a Type-20 green-walker on
+the upper shelf around X=1198/Y=121. These later probes are **not**
+full-cold passes. Next find a sustainably live missile/zombie/green-
+walker passage with real inputs, then repeat two guarded complete
+DF0 cold starts and inspect an active image before extending the
+durable route.
+
+Stage 7 follow-up (2026-10-21): the layered missile/zombie/green-walker
+section is now passed by real inputs. A bounded HSalive write trace at
+Frame 38842 identified the previously unexplained death at X=1152 as
+Type-19 zombie `$07FF7E74` (X=1162/Y=121 just before contact), not the
+Type-20 green-walker. From the timed Type-21 bypass, a second jump clears
+the lower Type-19 pursuer and the wall. On the upper shelf a right-facing
+standing Fire started at Frame 38812 kills that Type-19 while the hero
+remains at X=1152/Y=121; Right then reaches X=1174. A second standing
+Fire there kills Type-20 `$07FF7EC4` (Type 0/flags 40 after its death
+animation). Subsequent Right inputs land the hero on the lower cave floor
+at X=1428/Y=185. The durable full DF0 cold route is
+`Tools/a3000-celtic-heart-stage-seven-missile-zombie-greenwalker-passage-route.json`.
+Two independent full cold starts reached Frame 39069 with HSalive=FF,
+identical image hash
+`C3BEF018B62270DD5C5FDF1D2788F51695C5A70D5F8B822F01792A9C2E2648A0`,
+zero non-ROM exceptions and the guarded X/Y bytes `$0594/$00B9`;
+the captured image shows active cave gameplay. This is a passed Stage-7
+section, **not** a level completion.
+
+The next ground skeleton is Type 17 `$07FF7DD4`: direct Right dies at
+X=1480/Frame 39100, as confirmed by HSalive write trace. A short
+checkpoint-only Fire probe from X=1446 sets it to Type 0 with its
+death animation still active (flags 80) and keeps the hero alive
+through Frame 39153, but this continuation has not
+yet been cold-replayed and does not extend the accepted route. Direct
+Right then stops alive at X=1503/Y=185 against the solid cave column
+starting X=1520. A ground jump peaks at Y=135 and also stops at the
+column; the decorative row at X=1456-1488/Y=176 is non-solid and does
+not provide the required step. The BACK map has a solid raised shelf at
+X=1280-1328/Y=96 and solid tiles at X=1520/Y=128-208. Next seek a
+legitimate higher approach from the earlier shelf, or another verified
+game movement, and cold-replay a sustained landing beyond X=1520. Do
+not treat the checkpoint-only skeleton kill or blocked jump as passes.
+
+Stage 7 upper-wall follow-up (2026-10-21): a new route branches before
+the accepted X=1428 ground descent. From X=1260/Y=121 it jumps to the
+fixed X=1316/Y=73 shelf, releases Up, and jumps again onto the high cave
+bridge at X=1376/Y=25. Two timed, grounded, right-facing Fire inputs
+defeat the two Type-19 zombies there. A bounded HSalive trace showed that
+walking right from X=1376 dies at the animated BACK-GID173 tile at
+X=1408, rather than from another monster. A Right+Up jump clears the
+tile; a controlled stop and landing reaches X=1504/Y=25, and subsequent
+Right crosses the previously blocking solid column X=1520. Stopping
+before the next lava and waiting ten intervals lands the hero stably on
+the far ledge at X=1588/Y=153. The durable
+`Tools/a3000-celtic-heart-stage-seven-far-wall-stable-landing-route.json`
+passed two independent guarded complete DF0 cold starts at Frame 39533,
+HSalive=`FF`, zero non-ROM exceptions and identical image hash
+`2D140DF40ACE623B9D7DB64B57A1010EAEB41C63DB2514F7E2EAFE786BD5A208`.
+The captured image was checked as active cave play. Count the upper
+bridge and X=1520 wall passage as passed; Stage 7 remains open.
+
+Short-lived checkpoint probes from that ledge have identified a
+timed second-lava route, but it is **not yet an accepted full-cold
+passage**. The Type-22 platform travels between approximately X=1616
+and X=1759/Y=185. Waiting 39 neutral 500,000-chip-cycle intervals
+before jumping catches it; releasing Right after the seventh jump
+interval rides it east to X=1760/Y=162. A Type-23 missile crosses the
+same platform: an earlier catch dies on it near X=1668, confirmed by
+HSalive trace with A5=`$07FF81E4`. A jump from the platform at X=1760
+lands briefly on the animated far bridge X=1856/Y=153. A second jump
+must start after one neutral landing interval, before that bridge turns
+non-solid; the short probe then lands X=1968/Y=185 and survives eight
+intervals. The candidate full DF0 cold route is
+`Tools/a3000-celtic-heart-stage-seven-second-lava-far-bank-route.json`;
+repeat it twice and inspect an active image before counting this lava
+crossing. Then continue from its far bank with real inputs, timed
+enemy checks and the same full-cold validation standard.
+
+The second-lava candidate has now passed two independent guarded full
+DF0 cold starts. `Tools/a3000-celtic-heart-stage-seven-second-lava-far-bank-route.json`
+reaches Frame 40096 with the hero sustainably alive on fixed far-bank
+ground X=1968/Y=185, HSalive=`FF`, zero non-ROM exceptions and identical
+image hash
+`A3F663352A78F1FDBBAE2CBCC728CA010F7B3D25B9F08B6B07671DF053FC23DE`.
+The captured frame shows the active cave level, the hero on the far
+bank and the lava behind him. Count the second lava as passed. Stage 7
+is still open.
+
+Checkpoint-only exploration after that landing found two successive
+ground enemies, but **neither is a full-cold accepted passage yet**.
+Direct Right dies at X=2108 from Type-20 green-walker `$07FF7C44`;
+a grounded right-facing Fire from X=2067 kills it (Type 0/flags 40)
+while the hero remains alive. Direct Right after that dies at X=2129
+from Type-21 `$07FF7C94`; a grounded right-facing Fire from X=2096
+also kills this enemy, followed by live Right movement to X=2240/Y=185.
+The candidate full route
+`Tools/a3000-celtic-heart-stage-seven-twin-ground-mobs-route.json`
+has been started and must pass two independent full DF0 cold runs with
+an active image before this sequence is counted. Short probes beyond
+X=2240 encounter a raised Type-20 green-walker on the next wall.
+After waiting for its rightward patrol, a timed Right+Up jump followed
+by Fire from X=2295/Y=137 kills it and remains live; unguarded Right
+then dies near X=2443 from a map-tile collision (A5=`$001318` in a
+bounded HSalive trace). These remain checkpoint-only observations.
+Next validate the twin-ground-enemy route, then isolate that raised
+wall/tile sequence and repeat a full cold route before claiming it.
+
+The first complete DF0 cold run of the twin-ground-MOB candidate has
+passed its X=2240/Y=185 guard at Frame 40575 with HSalive=`FF`, zero
+non-ROM exceptions and hash
+`C390991107C9995398BFD5DC7E1E5601AC7A298F90EC38AF5A7A5651D882F75A`.
+A second independent full cold run with a single final active-image
+capture is underway. Do not count these two kills as accepted until
+that run and image inspection pass.
+
+The independent second DF0 cold run of the twin-ground-MOB route has
+now matched the first exactly: Frame 40575, X=2240/Y=185,
+HSalive=`FF`, zero non-ROM exceptions and hash
+`C390991107C9995398BFD5DC7E1E5601AC7A298F90EC38AF5A7A5651D882F75A`.
+Its captured frame shows active cave gameplay with the hero at the
+next wall. The same genuine grounded Fire sequence killed Type 20
+and Type 21 before the stable landing. Count this two-enemy ground
+passage as passed; Stage 7 remains open. The next raised Type-20
+and the map-tile hazard past X=2435 still require full-cold proof.
+
+Further checkpoint-only inputs found a safe raised route from the
+accepted X=2240 stand. First hold position with an early right-facing
+Fire while the Type-20 patrol moves away. Release Fire and Up, then
+jump Right+Up; stop at X=2295/Y=137 and Fire as Type 20 returns. The
+MOB becomes Type 0/flags 40 with the hero alive. A direct Right run
+dies around X=2443 because the FRONT-GID373/393 trap at X=2432/Y=176
+animates into its active phase. Braking at X=2408 is safe, but a new
+jump from there starts too close and dies as the trap opens. A Right+Up
+jump started earlier from X=2379 clears it, lands X=2552/Y=185 and
+survives ten neutral intervals. The candidate
+`Tools/a3000-celtic-heart-stage-seven-raised-walker-trap-passage-route.json`
+is running in two independent guarded full DF0 cold starts; the raised
+kill and hazard crossing are **not accepted** until both, plus the
+active image, pass. Direct Right after X=2552 dies at X=2588 from a
+Type-21 ground enemy `$07FF78D4`. An immediate grounded right-facing
+Fire at X=2552 defeats it in a checkpoint-only probe, then Right
+reaches the next solid wall X=2672 and stops live at X=2656/Y=185.
+After confirming the raised route, repeat the Type-21 continuation
+cold and analyze the wall before claiming further progress.
+
+The raised Stage-7 walker and FRONT-trap candidate has now passed two
+independent complete DF0 cold starts. Both runs of
+`Tools/a3000-celtic-heart-stage-seven-raised-walker-trap-passage-route.json`
+match at Frame 41053: hero X=2552/Y=185, HSalive=`FF`, raised Type-20
+MOB Type 0/flags 40, zero non-ROM exceptions, and exact frame hash
+`7A574E60AD933C9BA7C6DEC4EFF2A608E5399E3188B97DA8444547F4157D4D43`.
+The captured image shows active cave gameplay on the far side of the
+animated FRONT-GID373/393 hazard. Count this kill and trap crossing as
+passed; Stage 7 remains open. Direct Right from there still dies at
+X=2588 from Type 21 `$07FF78D4`. Checkpoint-only inputs found an
+immediate grounded right-facing Fire from X=2552 that defeats it, then
+Right reaches X=2656/Y=185 alive before solid wall X=2672. The new
+`Tools/a3000-celtic-heart-stage-seven-post-trap-type21-route.json`
+encodes that continuation with hero/MOB guards and exact frame hash
+`6D425AB8BC3200DE7C60788CB8C05B2C23E23C177F1B11F2A07F8FD2511B77D2`;
+two full DF0 cold runs have been launched but must pass and have their
+active image reviewed before accepting this next passage. Next analyze
+the solid wall tiles around X=2672 and use genuine movement/jump/Fire
+inputs to find a stable landing beyond them. No Stage-7 level-complete
+screen has been seen.
+
+A bounded Stage-7 wall probe identified why a simple Right+Up jump
+from X=2656 fails: a Type-17 skeleton MOB `$07FF8194` moves left at
+Y=121, from X=2784 at Frame 41370 to X=2716 at Frame 41405. An
+HSalive write at Frame 41417 from the monster-collision path confirms
+its contact while the hero waits at X=2680/Y=137. Earlier and later
+standing Fire starts at this lower ledge missed; a late jump also
+collided with the animated foreground. A genuine two-jump sequence
+instead reaches X=2800/Y=137 and remains alive through Frame 41546:
+from X=2656 start Right+Up, stop Right at X=2680/Y=137, release Up,
+wait one 500,000-chip-cycle interval, then press Right+Up again. This
+passes above the approaching skeleton and the animated tile. The
+checkpoint-only probe hash is
+`E147EFAC55B57B0ABEA721FBEC33E9BCACC96EE0DB557B9A915E22684FCD0D22`.
+`Tools/a3000-celtic-heart-stage-seven-double-wall-jump-route.json`
+encodes the full DF0 cold sequence with a live-hero and exact-image
+guard; two independent full cold runs have been launched. Do not count
+X=2800 as passed until both match and an active frame is inspected.
+The next solid wall at X=2816 and subsequent MOBs remain to be tested.
+
+The Type-21 continuation is now accepted. Both independent full DF0
+cold runs of
+`Tools/a3000-celtic-heart-stage-seven-post-trap-type21-route.json`
+matched at Frame 41342, hero X=2656/Y=185 alive, defeated Type-21
+MOB Type 0/flags 40, exact hash
+`6D425AB8BC3200DE7C60788CB8C05B2C23E23C177F1B11F2A07F8FD2511B77D2`,
+zero non-ROM exceptions. The captured frame shows active cave gameplay
+at the wall; the real Fire input and subsequent Right movement are
+therefore reproducible. Stage 7 remains open. The two independently
+running full cold starts of the double-wall-jump route must still be
+checked before accepting its X=2800 landing.
+
+Subsequent checkpoint-only exploration found that a Right+Up jump from
+X=2800/Y=137, followed by a stop at X=2824/Y=89, ten neutral
+500,000-cycle intervals, and Right, reaches X=2880/Y=89 alive behind
+the next wall. A second jump from a later X=2880 phase dies near
+X=2906/Y=41; an earlier jump can pass overhead to X=3046 but falls
+into the long Type-1 lava strip (BACK GID119/120, X=2992-3232).
+Braking during that high jump lands stably at X=2976/Y=41 on the
+solid upper lip. A new leap from this lip reaches only X=3128 before
+lava contact, while a one-interval-farther stop X=2992 falls off the
+lip. These are short checkpoint probes, not cold-verified passages.
+Next determine the legitimate intermediate support or launch timing
+for the X=2992-3232 lava, while protecting the independently verified
+X=2656 position and reviewing the two X=2800 cold runs.
+
+The double-wall-jump continuation is now accepted. Both independent
+full DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-seven-double-wall-jump-route.json`
+matched at Frame 41546: hero X=2800/Y=137, HSalive=`FF`, exact hash
+`E147EFAC55B57B0ABEA721FBEC33E9BCACC96EE0DB557B9A915E22684FCD0D22`,
+and zero non-ROM exceptions. The final image shows the hero alive on
+the raised cave ledge with active enemies and scenery. This proves the
+timed double-jump past the moving Type-17 skeleton; Stage 7 remains
+open. A checkpoint-only third jump, timed stop at X=2824/Y=89, ten
+neutral 500,000-cycle waits, and Right movement reaches X=2880/Y=89
+alive and remains stable. The guarded full-cold candidate
+`Tools/a3000-celtic-heart-stage-seven-second-wall-stable-route.json`
+is running twice independently; do not count X=2880 as passed until
+both results and its active image are checked.
+
+A bounded 8192-byte Fast-RAM snapshot at the high fixed lip
+X=2976/Y=41 identified an active Type-22 moving platform
+`$07FF8284` over the next long lava strip. A checkpoint probe
+launched from this lip as soon as it was safely grounded, held
+Right+Up for six 500,000-cycle intervals, then released Right. It
+landed on the platform at X=3065/Y=130 and rode alive to
+X=3122/Y=130 at Frame 41912, then toward the turning point near
+X=3150. The platform has not yet been validated in a full cold run.
+A subsequent jump from X=3150/Y=130 reached the far fixed bank near
+X=3249/Y=121 but died by a Type-19 zombie (`$07FF7834`) moving left
+from X=3275; bounded HSalive trace shows the monster-collision return
+at Frame 41995. Early, late and crouching Fire from the landing area
+missed. The next step is to find the zombie's genuine strike or
+evasion window, obtain a stable live far-bank landing, then encode
+and independently repeat the full DF0 cold route. No Stage-7 level
+transition is yet visible.
+
+A further Stage-7 checkpoint-only route now crosses the third lava
+(X=2992-3232) and lands alive on the fixed far bank X=3352/Y=121
+through Frame 42380. From stable high lip X=2976/Y=41, jump Right+Up
+six 500,000-cycle intervals, release Right to catch the active Type-22
+platform `$07FF8284` around X=3065/Y=130, then make a 250,000-cycle
+Right adjustment while riding; this keeps a safe six-pixel offset near
+its right edge. Ride to about X=3145 and jump to the single solid
+GID211 midstone X=3168/Y=144, releasing Right early enough to land
+at X=3168/Y=121. Wait until the far zombies reverse, then jump
+Right+Up toward X=3266/Y=121. Stop and begin a standing right-facing
+Fire at Frame 42084: Type-19 MOB `$07FF77E4` dies at Frame 42112.
+Release Fire, wait four 500,000-cycle intervals, and Fire again at
+Frame 42183: Type-19 MOB `$07FF7834` dies at Frame 42211. Both finish
+Type 0/flags 40; genuine Right movement reaches X=3352/Y=121 and
+survives ten neutral intervals. The short-probe frame hash is
+`41E62B106C7171A5546E248B02BC20739B6D207572DF406EACABBC396EF994E2`.
+This is not yet an accepted passage: the durable full DF0 route
+`Tools/a3000-celtic-heart-stage-seven-third-lava-far-bank-route.json`
+has just been launched in two independent cold runs and its active
+image, guards and hash must be reviewed. The intervening
+`Tools/a3000-celtic-heart-stage-seven-second-wall-stable-route.json`
+to X=2880 likewise still has two cold runs pending. Stage 7 remains
+open and requires a visible reproduced exit before completion.
+
+The second-wall landing is now independently confirmed. Both full DF0
+cold runs of
+`Tools/a3000-celtic-heart-stage-seven-second-wall-stable-route.json`
+matched at Frame 41743 with hero X=2880/Y=89 alive, HSalive=`FF`, exact
+frame hash
+`2547E1C5649D11D2896278201C1760FAFFC34EE50E1B55AEDB381FA8FF2A96D9`,
+and zero non-ROM exceptions. The captured image shows active cave play
+on the fixed ledge above the next lava. Treat this landing as passed.
+The third-lava far-bank route remains under two independent full-cold
+checks and is not yet counted.
+
+Subsequent checkpoint-only exploration from the verified X=2552 route
+found a further live segment after the third lava: Right reaches
+X=3492/Y=169, a Right+Up jump avoids the Type-16 ground enemy, and a
+standing right Fire from X=3576/Y=121 defeats Type-20 MOB `$07FF76F4`.
+After releasing Fire and waiting thirteen 500,000-chip-cycle intervals,
+a second standing Fire defeats Type-20 MOB `$07FF7604`; both finish
+Type 0/flags 40. Release Fire and Up, wait one interval to rearm the
+jump, then twelve Right+Up intervals clear the BACK-GID173 bear trap
+near X=3616. The short probe holds the hero alive at X=3744/Y=169
+through Frame 42915, hash
+`C3AA895E80BF9DC4B16A26F27BBA8CCD7D57CC8F9F2DC2BFD81B7504C685E861`.
+This is not a passed full-cold segment yet: the guarded
+`Tools/a3000-celtic-heart-stage-seven-post-twin-walker-trap-route.json`
+is running in two independent full DF0 cold starts. Next check both
+runs, inspect the active final image, and then continue real inputs
+from X=3744. Stage 7 and the seven-point roadmap remain open.
+
+The third-lava crossing is now accepted. Two independent full DF0 cold
+runs of
+`Tools/a3000-celtic-heart-stage-seven-third-lava-far-bank-route.json`
+matched at Frame 42380, hero X=3352/Y=121 and HSalive=`FF`, both
+Type-19 zombies Type 0/flags 40, exact hash
+`41E62B106C7171A5546E248B02BC20739B6D207572DF406EACABBC396EF994E2`,
+and zero non-ROM exceptions. The inspected final image shows active
+cave play on the fixed far bank, with the traversed lava and moving
+platform in view. This confirms the Type-22 platform ride, solid
+GID211 midstone landing, and two real Fire kills. The later Type-16,
+twin Type-20, and BACK-GID173 segment to X=3744 still needs both full
+cold results and an image check; do not count it yet. Stage 7 remains
+open, with no reproduced level transition.
+
+The post-lava Type-16/twin-Type-20/trap segment is now accepted. Both
+independent full DF0 cold runs of
+`Tools/a3000-celtic-heart-stage-seven-post-twin-walker-trap-route.json`
+matched at Frame 42915 with hero X=3744/Y=169 and HSalive=`FF`, both
+Type-20 MOBs Type 0/flags 40, exact hash
+`C3AA895E80BF9DC4B16A26F27BBA8CCD7D57CC8F9F2DC2BFD81B7504C685E861`,
+and zero non-ROM exceptions. The inspected frame shows active cave
+gameplay after the BACK-GID173 trap. This proves the real-input passage
+through the Type-16 jump, two timed Fire kills, and the trap jump.
+
+Exploration beyond the verified X=3744 point is checkpoint-only so
+far. Direct Right dies at X=3778 from Type-19 MOB `$07FF7564`; a
+standing right Fire started at X=3744 defeats it by Frame 42957.
+After releasing Fire and waiting two 500,000-cycle intervals, a
+second Fire at Frame 43020 defeats Type-16 MOB `$07FF7794` by Frame
+43055. Release Fire after that kill, wait four intervals, then Fire
+again at Frame 43083 to defeat Type-16 MOB `$07FF7744` by Frame
+43119. Right movement to X=3828/Y=169, followed by a standing Fire,
+defeats Type-19 MOB `$07FF75B4` by Frame 43252; the hero remains
+alive at Frame 43295. These four kills have not been incorporated into
+two independent full DF0 cold routes and are not counted as passed.
+Direct Right thereafter changes HSalive to `00` at X=3954/Frame
+43358. A Right+Up jump from X=3912 similarly changes HSalive after
+X=3954/Y=119. The next paragraph identifies this transition. The
+four Fire kills remain checkpoint-only pending full cold repetition.
+
+Correction to the preceding interpretation: the HSalive write at
+X=3954/Frame 43358 is the **level-exit path**, not a failed map-tile
+passage. Its stack starts `$07FEBE70/$07FEBC88/$07FEBACC`, matching
+the independently identified `exitHero` path from Stage 6. The
+`level07.tmx` BACK layer places GIDs 208/209/210 and 228/229/230
+at X=3968-4015, which the published cave tile definitions mark
+TYPE 7. A checkpoint continuation of the four real-input kills
+reaches a visible `LEVEL COMPLETE — PRESS BUTTON` display at Frame
+43717, exact hash
+`964999C9E3C6282FCB2D1F79AF4F002699A273825D34FD6EA9242508032B654F`.
+After a fresh Fire edge, it shows `THE CAVE STAGE 3`, CODE `K18G`,
+at Frame 43886, hash
+`542265D08249F448BEB391819A0041F58A370EE549B8093984DEDA2B429A2039`.
+Both screen captures were visually inspected. Two independent full
+DF0 cold runs of each guarded route,
+`Tools/a3000-celtic-heart-stage-seven-complete-level-screen-route.json`
+and
+`Tools/a3000-celtic-heart-stage-seven-complete-stage-eight-title-route.json`,
+have been started; do not count Stage 7 complete until these full
+results, zero non-ROM exceptions, exact hashes, and active-to-exit
+transition are verified. Stage 8 gameplay has not yet been entered.
+
+A checkpoint-only Stage-8 continuation confirms why one Fire was
+insufficient: after the `THE CAVE STAGE 3` title a first fresh Fire
+shows `GET READY — PRESS BUTTON` at Frame 43956. Release Fire, wait
+1,000,000 chip cycles, and press Fire again; HSalive becomes `FF` and
+real Right input moves the hero from X=64 to X=134/Y=185 by Frame
+44026. The active cave frame and RAM movement were inspected; short
+probe hash
+`13633150FE5854AAB4A232A0D0AA350E2765E368A00E94CD44AD3C9E24EB0BB0`.
+This is not yet a full-cold Stage-8 gameplay pass. Continuing Right
+dies at X=272 from Type-17 skeleton `$07FF80F4`; a bounded HSalive
+write trace confirms monster contact. At Frame 44083 the skeleton is
+X=306/Y=185, Type17/flags80 while the hero is X=248/Y=185. Standing
+Fire begun at X=248 or X=234 did not defeat it and the hero died;
+the exact strike or jump phase remains open. First independently
+confirm the full Stage-7 exit and title routes, then encode and
+repeat the three-Fire Stage-8 active movement route before extending
+the first corridor.
+
+The first pair of full DF0 cold candidates for the Stage-7 exit and
+Stage-8 title failed their exact-frame hash guards. Composition had
+appended a suffix beginning at X=2552 to the already complete
+X=3744 route, repeating the same movement segment. This was a route
+construction error, not a guest-emulation failure. Both durable JSON
+files have been corrected to append that suffix directly to the
+verified X=2552 raised-walker route. A consolidated guarded route,
+`Tools/a3000-celtic-heart-stage-seven-complete-stage-eight-active-route.json`,
+now checks the visible Level Complete hash, Stage-8 title hash, and
+active Stage-8 movement hash/HSalive in one full DF0 cold start;
+two independent runs are underway. The checkpoint-only active
+continuation confirms a rearmed Right+Up jump from X=220/Y=185
+avoids the first Type-17 skeleton and reaches X=368/Y=185 alive
+through Frame 44153. From there direct rearmed Right+Up hits the
+solid wall at X=384; `level08.tmx` shows solid BACK tiles through
+the lower rows. A short Left+Up backjump to X=340/Y=137 lands on a
+fixed upper step but a subsequent jump remains blocked at X=368/Y=89.
+These are checkpoint probes, not full-cold Stage-8 passes. Continue
+only after the corrected full-route guards and active images pass.
+
+The corrected Stage-7 completion prefix has now passed in **two independent
+full DF0 cold starts**: both satisfy the exact `LEVEL COMPLETE — PRESS BUTTON`
+frame hash `964999C9E3C6282FCB2D1F79AF4F002699A273825D34FD6EA9242508032B654F`
+and the subsequent `THE CAVE STAGE 3`/`CODE: K18G` title hash
+`542265D08249F448BEB391819A0041F58A370EE549B8093984DEDA2B429A2039`.
+Both screenshots were inspected and the non-ROM exception count stayed zero.
+Together with the independently replayed active Stage-7 route, this confirms
+**Stage 7 complete**; the following Stage-8 title alone is not active gameplay.
+The two runs then failed only the later *checkpoint-derived* Stage-8 active
+frame hash: both had the same full-cold hash
+`1DF7D0D52F7746A14142E059003ACDFBE891F2ADB49300CB7792BF4310C2D6F2`
+at Frame 44026, hero RAM X=134/Y=185 and HSalive=FF, but the full-cold
+image lacked the visible hero present in the checkpoint image. The active
+Stage-8 picture therefore remains under investigation; do not count that
+hash mismatch as a completed gameplay pass. The first pair of standalone
+completion JSON routes was also repaired after the earlier route-composition
+error and still needs its own rerun.
+At the same Frame 44026, both runs have CPU PC `$07FEA7C8` and
+`BPLCON0=$5201`, but the full-cold image has BPL1/BPL2 pointers
+`$00013D2A/$00013D58` while the checkpoint continuation has
+`$00024E80/$00024EAE`; only the latter displays the hero. The
+full-cold image also has colored edge pixels absent from the checkpoint
+image. This is a reproducible rendering/guest-state discrepancy, so RAM
+position and HSalive alone cannot clear Stage-8 gameplay verification.
+A bounded full-cold continuation with the *full-cold* Frame-44026 hash
+accepted ran successfully to Frame 44173. It exposed an additional
+limitation: the preceding `joystick-down Right` remained held during
+`wait` actions, so the ten intervals below were **not neutral**. Frame 44097
+shows a visible hero and scene but HSalive is already `00` and X has
+advanced to 272; after ten Right intervals, Frame 44173 shows the hero
+back at X=64, still with HSalive `00`, consistent with the death/respawn
+transition. The captured active-looking frame is therefore not a
+surviving Stage-8 passage. Inspect shorter full-cold slices around the
+initial movement and isolate the first kill before extending the route.
+A new full-cold probe explicitly releases Right at X=134 before waiting;
+its result now **passes**: after ten 500,000-chip-cycle neutral intervals,
+Frame 44097 shows the hero visibly standing at X=136/Y=185, HSalive=FF,
+zero non-ROM exceptions and hash
+`FE6281B285639EE99346862FD837F60172B3D6EA7429185EE1827EA0DEC4BDA2`.
+This resolves the apparent persistent image loss: the earlier Frame-44026
+render was transient, and the later reported death came from leaving Right
+held during what had been called neutral waits. The first fully cold
+active image was inspected. The durable route
+`Tools/a3000-celtic-heart-stage-eight-active-movement-route.json`
+contains the exact full-cold guards; its second independent DF0 replay
+has now passed with the same Frame-44097 image hash and RAM/liveness
+guards. **Stage 8 active movement to X=136/Y=185 is accepted** after
+two full cold starts and the checked active image. Do not infer
+spontaneous movement or a persistent graphics
+failure from the earlier held-input continuation.
+
+Checkpoint-only Stage-8 exploration found a regular upper route: from
+X=134/Y=185, successive rearmed jumps and stable landings reach X=164/Y=137,
+X=136/Y=89, X=92/Y=41, the single fixed step X=204/Y=89, the next fixed
+step X=260/Y=41, and the high fixed platform X=344/Y=41. The latter appears
+in `tmp/stage8-high-far-platform-probe.json` with HSalive=FF, but has **not**
+passed a full DF0 cold start. Right then reaches X=428/Y=57 at the first
+Stage-8 lava. Right+Up jumps from X=428, X=436 and X=442 all die near
+X=572-576 before the far bank X=592; X=448 is too late to jump. The next
+step is to resolve the full-cold Stage-8 hero-image discrepancy, then replay
+the upper route twice from DF0 and inspect any moving platform or alternative
+timing for the first lava. No Stage-8 passage or overall roadmap completion
+is claimed from these short probes.
+
+The first-lava mid-gap object is now identified, not guessed: Stage-8
+`level08.tmx` places MONSTER GID668 at X=512/Y=192, and a bounded live
+Fast-RAM snapshot at Frame 44596 finds its active Type-22 platform MOB
+`$07FF8054` at X=472/Y=169, moving left one pixel per frame.
+`tmp/stage8-first-lava-platform-phase.json` measures its left turn at
+X=451 around Frame 44618, then travel to X=508 by Frame 44681 while
+the hero remains safe on the fixed X=428/Y=57 ledge. In a checkpoint
+continuation, a rearmed Right+Up jump from that ledge at Frame 44618,
+Right released after four 500,000-chip-cycle intervals, lands on the
+moving platform at hero X=485/Y=146 by Frame 44653. Eight further
+intervals carry the **living** hero to X=534/Y=146 at Frame 44702;
+`tmp/stage8-first-lava-platform-intercept.json` records platform X=529
+and HSalive=FF. This is an actual moving-platform contact under genuine
+inputs, but only checkpoint verified. A subsequent five-interval ride
+to X=569/Y=146 survives, then an immediate Right+Up launch sets
+HSalive=00 at Frame 44742, hero X≈580. The bounded write trace calls
+the common `killHero` path through `hero_coll`; the exact collider still
+needs isolation. The candidate far-bank probe is **not** a passage.
+Resolve the launch collision and require stable landing beyond X=592,
+then repeat the full DF0 cold route independently before promoting it.
+Map inspection narrows the hazard: BACK GID113 at X=592-623/Y=144
+has TYPE=1, while FRONT GID343 at X=624/Y=128,
+X=640/Y=112 and X=656/Y=128 also has TYPE=1 in `w2types.tmx`.
+An earlier jump from platform X=541 reaches X=612/Y=114 alive,
+then dies at Frame 44747/X≈618 with the map-collision stack; a
+Right brake at X=598 also dies on descent. The first GID113 tile
+and the raised GID343 sequence therefore constrain the landing;
+the exact first touched tile still needs a live map probe. A screenshot
+at X=534/Y=146 visibly confirms the hero standing on the moving
+platform, and another at X=612/Y=114 shows the airborne approach
+to the spiked far bank. None of these checkpoint observations
+establishes the far-bank passage.
+
+A bounded four-case platform-launch phase sweep then found a genuine
+**checkpoint-only far-bank route**. Departing the Type-22 platform after
+two 500,000-chip-cycle ride intervals (hero X=548/Y=146), a continuous
+Right+Up jump passes the raised hazards; the hero remains alive at
+X=689/Y=158 by Frame 44786. Releasing both controls and waiting ten
+intervals yields a stable X=692/Y=185 on solid far-bank ground at
+Frame 44857, HSalive=FF and image hash
+`7020845D9A65BE2253127CEA379DF466A2C4E78D60182CB86295C37C6FC28DFC`.
+The active image visibly shows the hero on the ground past the lava.
+Ride counts three and four also passed the hazard in short probes;
+ride one died at X=618 and ride five died near X=580.
+`tmp/stage8-first-lava-far-bank-full-candidate.json` composes this
+suffix after the full DF0-cold Stage-7/Stage-8 prefix and guards final
+RAM position/liveness. Its first full cold replay **failed** its final
+RAM guard: the hero had died and returned to X=64. Comparing
+checkpoint and full-cold steps locates the first divergence immediately
+after `active-move-4`: the checkpoint jump had X=148/Y=156 at
+Frame 44033, but the full-cold run had X=148/Y=185. Up had not been
+rearmed in the cold state, so the checkpoint suffix cannot be grafted
+onto the full-cold active prefix unchanged. This is a route/input-state
+composition difference, not evidence that the moving-platform passage
+itself fails on the cold emulator. An explicit full-cold active route
+has since confirmed visible movement and stable X=136/Y=185 after
+releasing Right. The first Stage-8 lava still requires two matching
+independent cold replays before it is counted as passed.
+Action-by-action input-state comparison identifies the exact omission:
+the checkpoint prefix contains `joystick-up Up` labeled
+`stage8-up-release` between `active-fire-release` and `active-right`,
+whereas the assembled full-cold prefix does not. Up remains held
+through the Stage-7/Stage-8 transition in the latter, suppressing the
+next jump edge. A first alignment probe mistakenly inserted that
+release at an earlier identically named Stage-7 action. Its Frame-44026
+image **still** had the full-cold
+hash `1DF7D0D5...`, rather than the checkpoint hash `13633150...`,
+at the same X=134/Y=185/HSalive=FF: releasing Up alone does not
+explain the transient presentation difference. Both aligned
+far-bank candidates had therefore stopped on the *wrong* checkpoint
+hash guard before any Stage-8 jump. A second full-cold probe used the
+observed full-cold hash and guarded the first jump's RAM
+X=148/Y=156/HSalive=FF at Frame 44033; it failed at X=148/Y=185
+because Up was still held. Its action trace exposed the misplaced
+release. A repaired full-cold route now adds `joystick-up Up` directly
+after Stage-8 `active-fire-release` and before Stage-8 `active-right`.
+The repaired full-cold route completed once: Frame 44857, hero
+X=692/Y=185/HSalive=FF, exact image hash
+`7020845D9A65BE2253127CEA379DF466A2C4E78D60182CB86295C37C6FC28DFC`,
+zero non-ROM exceptions, and an inspected image visibly shows the hero
+on firm ground beyond the first lava. The first full run matches the
+checkpoint result exactly. The durable
+`Tools/a3000-celtic-heart-stage-eight-first-lava-far-bank-route.json`
+guards those RAM bytes and that image hash. Its second independent
+DF0-cold replay also completed with the exact same Frame 44857,
+X=692/Y=185/HSalive=FF, hash and zero non-ROM exceptions. The first
+full-cold active image was inspected. **The first Stage-8 lava and
+stable far-bank landing are accepted.** The initial wrong-hash and
+missing-Up probes remain useful negative controls, not competing
+claims against the completed crossing.
+
+Checkpoint exploration has progressed a little beyond that bank without
+promoting it to a full-cold pass. A direct Right walk from X=692 hits
+an animated FRONT-GID373/393 ground trap at X≈746, Frame 44884.
+A Right+Up jump from X=692 clears that trap and reaches X=804/Y=185
+alive at Frame 44913, but a Type-19 zombie MOB `$07FF7F64`
+(X=846/Y=185, vx=-1) returns and kills the stationary hero at
+Frame 44947. A standing right-facing Fire beginning at X=804/
+Frame 44913 defeats it by Frame 44941; it subsequently reaches
+Type0/flags40. Real Right input then carries the hero to a stable
+X=876/Y=185 through Frame 45068, HSalive=FF, with a visually checked
+active scene (`tmp/stage8-first-zombie-passage-probe.json`). The exact
+trap-jump and Fire suffix has now completed **one** full DF0 cold
+replay: `Tools/a3000-celtic-heart-stage-eight-first-zombie-passage-route.json`
+reaches Frame 45068, X=876/Y=185/HSalive=FF, zombie MOB
+Type0/flags40, zero non-ROM exceptions, and image hash
+`28AC9612C424C08F682F78CDB202D4085DD3039F066FDF60DE81EF181C4252E6`.
+The inspected full-cold image visibly shows the living hero on the
+far-side ground. A second independent full DF0 cold replay also
+completed at the identical Frame 45068, X=876/Y=185/HSalive=FF,
+zombie Type0/flags40, image hash and zero non-ROM exceptions. **The
+animated-trap jump and first Stage-8 Type-19 zombie defeat are
+accepted.** The next concrete gameplay step is to identify the green
+enemy and terrain ahead of X=876, measure its active phase, and extend
+the route only after a stable live landing in two full DF0 cold runs.
+
+Stage-8 follow-up (2026-10-22): bounded checkpoint continuation from
+the accepted X=876 route identifies the approaching green floor MOB as
+Type19 (`MOtype=$13`) `$07FF7EC4`, X=919/Y=185/vx=-1 at Frame 45068. Direct Right
+dies at X=890; standing right-facing Fire at X=876 turns it Type0 by
+Frame 45096 and later flags40 while the hero remains alive. Real Right
+then reaches the solid raised wall at X=992/Y=185. The elevated green
+Type20 (`MOtype=$14`) MOB `$07FF7E74` patrols about X=1008-1070/Y=137 and killed
+an unbraked jump at Frame 45254 (HSalive write A5 points to that MOB).
+The short-route solution uses two actual jumps: Right+Up from X=992,
+brake at X=1002/Y=135 and land safely X=1004/Y=137, then Right+Up
+again while the Type20 turns, passing above it. Braking at X=1060/
+Y=90 lets the hero land on the fixed wall at Y=137. A third Right+Up
+jump from there, with Right released above the first green lava stone,
+lands X=1132/Y=121 alive and remains alive through twelve neutral
+500,000-chip-cycle intervals, Frame 45441. An inspected image shows
+the hero on the green stone over the second lava; the checkpoint hash
+is `ECE0A340F28F709152720A729BA40CE6135C35F4DD31AC28B21766E48E1738D9`.
+`tmp/stage8-second-lava-first-stone-full-candidate.json` completed its
+first full DF0 cold replay: Frame 45441, X=1132/Y=121/HSalive=FF,
+zero non-ROM exceptions and visibly active hero on the first green
+lava stone. The full-cold hash is
+`FDC71B210A4E15FF9B591AB7357139336FA7D65581E77A963014AC4BF3922083`,
+different from the checkpoint image hash at the same hero RAM and
+frame because the animated bridge tiles have a different visible
+phase. A composed full-cold continuation through the second stone and
+far-bank enemy bypass later passed twice independently, as recorded
+below; these intermediate landings are part of the accepted passage.
+
+Further checkpoint-only probing found a timed continuation across the
+same lava. BACK GID191 is solid at X=1120 and X=1216/Y=144;
+BACK GID195 and the surrounding GID119/120 lava tiles are fatal, and
+FRONT GID343 adds a high hazard at X=1168. From X=1132/Y=121,
+Right+Up reaches X=1230/Y=121 at Frame 45490. The Type15 MOB
+`$07FF7E24` patrols X≈1234-1250/Y=153 and killed nine immediate or
+delayed neutral landings in bounded probes. Releasing Right+Up and
+holding standing Fire at X≈1231/Y=121 keeps the hero alive on the
+second stone through Frame 45546, though the MOB remains Type15.
+After releasing Fire, another Right+Up jump reaches the solid far
+bank at X=1331/Y=137. A Type11 MOB `$07FF7DD4` then approaches from
+the right: neutral wait or early standing Fire died, but releasing
+Up+Right at X=1331, waiting one interval to rearm, then jumping
+Right+Up clears that MOB and lands stably X=1460/Y=153 alive through
+Frame 45729. The checkpoint-only image shows active ground gameplay
+past the second lava; hash
+`2E8C15F8A87D742B4F22CC9D1844F1C572E12FE0E12BCD3A66E421DF9F2786EE`.
+The composed full DF0-cold route completed **twice independently** at Frame 45729,
+X=1460/Y=153/HSalive=FF, zero non-ROM exceptions and the exact same
+hash `2E8C15F8A87D742B4F22CC9D1844F1C572E12FE0E12BCD3A66E421DF9F2786EE`.
+The inspected first full-cold image visibly shows the hero alive on the far bank. The
+durable `Tools/a3000-celtic-heart-stage-eight-second-lava-far-bank-route.json`
+guards final RAM and image hash; the independent replay matched them.
+**The upper Type20 bypass, both green lava stones, the second lava and
+Type15/Type11 bypass are accepted.** This does not complete Stage 8.
+
+The next checkpoint-only probes identify two further ground enemies
+beyond X=1460. Direct Right reaches X=1532/Y=185 alive at Frame 45765
+but dies X=1542 on the Type18 (`MOtype=$12`) MOB `$07FF7D84` (HSalive write A5 matches
+the MOB). Standing right-facing Fire at X=1532 through Frame 45835
+keeps the hero alive while that MOB walks right from X=1546 to X=1616;
+it does not defeat it. A subsequent Right+Up jump is killed at
+X=1612/Y=168 by a distinct Type20 (`MOtype=$14`) MOB `$07FF7CE4`: a bounded watch
+shows it moving left from X=1660/Frame 45835 to X=1618/Frame 45877,
+and the death write A5 points to `$07FF7CE4`. An immediate jump and
+five shorter Fire-wait variations also died; none is a passage. These
+negative controls motivated the later phase and strike measurements.
+The initial probe labels mistakenly read
+hexadecimal `MOtype` bytes `$12`/`$14` as decimal Type12/Type14; the
+published monster numbering is decimal Type18/Type20.
+
+Further bounded checkpoint probing found a real-input solution to
+both: from the accepted X=1460 far bank, Right to X=1532, then Fire
+through Frame 45835, release for ten neutral intervals and rearm
+standing Fire at Frame 45905. The returning Type20 turns Type0 at
+Frame 45941 and flags40 by Frame 45983 while the hero stays alive.
+Release Fire at Frame 45997 and jump Left+Up four intervals back onto
+the raised ledge X=1476/Y=153. After a brief right-facing alignment
+to X=1484, crouched Down+Fire at Frame 46099 defeats the Type18 by
+Frame 46134; flags40 follows by Frame 46176. Release Fire/Down, move
+Right ten intervals to X=1624/Y=185, then Right+Up eight intervals
+over the FRONT-GID343 trap at X=1696. The short checkpoint route
+`tmp/stage8-post-second-lava-twin-kill-trap-jump-probe.json` holds
+X=1712/Y=185/HSalive=FF through Frame 46416 after twelve neutral
+intervals. The composed full DF0-cold route has passed **twice independently** at Frame
+46416, X=1712/Y=185/HSalive=FF, both enemies Type0/flags40, zero
+non-ROM exceptions and exact hash
+`CA6A6BB15AD19E88D840AEEA38E74C1B5683D596C699C303C1D71E6370505D44`.
+Its selected image visibly shows active gameplay with the living hero
+beyond the trap. The second cold replay matched the frame, hero RAM,
+both defeated MOBs, zero non-ROM exceptions, and exact hash. The durable
+`Tools/a3000-celtic-heart-stage-eight-twin-ground-enemies-trap-passage-route.json`
+guards these final RAM bytes and hash. **Both Stage-8 ground enemies
+and the animated trap are accepted.** A short checkpoint-only probe
+also jumps from X=1712 to the next fixed raised tile X=1760/Y=153
+and holds alive through Frame 46542. Its farther Right is blocked by
+the next step; a further jump encounters two active Type19
+(`MOtype=$13`) zombies `$07FF7BF4` and `$07FF7BA4` patrolling Y=137
+and is not a passage. A phase-aligned one-interval edge jump from
+X=1760 reaches the raised lip X=1768/Y=137 alive; standing Fire
+begun at Frame 46810 defeats the first zombie by Frame 46845 while
+the second approaches. An early rearmed Fire failed and the hero
+died at Frame 46908, so this is still checkpoint-only. The next
+concrete step is to shift the second strike or use another short jump
+to bypass the second zombie, then extend the full cold route only
+after an independently repeated stable live landing.
+
+A separate checkpoint-only continuation now bypasses that second
+upper Type19 zombie by actual movement: from X=1760/Y=153, wait 32
+neutral intervals for the two staggered patrols, then Right+Up for
+one interval and brake onto the fixed lip X=1768/Y=137. Standing Fire
+at Frame 46810 defeats the first Type19 by Frame 46845. Release Fire
+at Frame 46880 and immediately jump Right+Up for eight intervals;
+the hero crosses above the second active Type19, lands X=1880/Y=185
+and remains alive for ten neutral intervals through Frame 47007.
+This is a bypass, not a second kill. Two independent full DF0-cold
+replays now confirm Frame 47007, X=1880/Y=185/HSalive=FF, first
+Type19 Type0/flags40, second Type19 still `$13`/flags80, zero non-ROM
+exceptions, and identical image hash
+`55DB0C3267713EAAC87D08B422D062E465F5CAB7525CBF59CB85E9753280BBFE`.
+The selected full-cold image visibly shows the living hero on the
+far-side ground. The durable
+`Tools/a3000-celtic-heart-stage-eight-upper-zombie-bypass-route.json`
+guards those RAM bytes and hash. **This timed raised-lip landing,
+first upper-zombie defeat, and second upper-zombie bypass are
+accepted.** Direct Right+Up from X=1880 hits the
+next FRONT-GID343 hazard at X=1888. A short checkpoint probe can
+instead brake at X=1852/Y=137, rearm Up, and jump over that hazard to
+X=1968/Y=185 alive, but a further Type18 (`MOtype=$12`) ground MOB
+`$07FF7C94` reaches the stationary hero at Frame 47024; a grounded
+Fire started at landing was too late. These latter probes are not
+proof of a sustained passage beyond the second trap. Stage 8 remains
+open. The next concrete step is to brake and rearm the second jump
+before X=1888, neutralize or dodge Type18 `$07FF7C94` at X≈1984,
+then demand a stable live landing and two independent full DF0 cold
+replays with an inspected active image.
+
+The second Stage-8 FRONT-GID343 hazard and its following Type18
+ground patrol are now bypassed with actual inputs. The hero brakes
+the preceding jump at X=1852/Y=137, releases Up, then immediately
+rearms Right+Up over the trap. At Frame 47000 he lands at X=1964/Y=185;
+Up is released for 250,000 chip cycles and pressed again while Right
+remains held. This second jump rises over the approaching Type18
+`$07FF7C94` and lands on solid ground at X=2112/Y=185. The patrol
+remains active (`MOtype=$12`/flags80) behind the hero; this is a bypass,
+not a kill. Two independent full DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-second-trap-type18-rejump-route.json`
+confirm Frame 47116, X=2112/Y=185/HSalive=FF, zero non-ROM exceptions,
+and identical image hash
+`6AF3B311D06CC0AE4C1E09097653306B0BD0399E40BAB7EEFD6507CFF4793E4B`.
+The captured image visibly shows the active living hero at the next
+wall. **The second trap and Type18 bypass are accepted.**
+
+The next wall begins at X=2128/Y=160. Direct Right remains at X=2112.
+A direct Right+Up jump from there reaches X=2204/Y=151 but dies when
+active Type16 `$07FF7B04` crosses its collision box (bounded HSalive
+write trace A5=`$07FF7B04`). A ten-interval delay lets Type16 turn
+right; the same jump then avoids it but overshoots the small ledge and
+falls into the lava. Short checkpoint-only probes identify a legitimate
+three-step route: after the delay, brake at X=2164/Y=137 on the fixed
+wall lip; rearm Up and jump to the fixed GID36 tile X=2320/Y=137;
+then jump to X=2408/Y=169 on the next GID36 tile. The stable X=2320
+landing is now accepted: two independent full DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-second-tiny-stone-route.json`
+confirm Frame 47404, X=2320/Y=137/HSalive=FF, zero non-ROM
+exceptions, and identical hash
+`A05413EE1E4527BA9D64108176E4A7BB8EF5D1351F0E9415EBF6CBF9B1AD956B`.
+The captured image visibly shows the hero on that tiny fixed stone
+above the lava.
+
+A direct far-shore jump from X=2408 reached X=2508/Y=185 alive before
+the Type19 `$07FF7A14` caught the hero at Frame 47576 (bounded
+HSalive write trace A5=`$07FF7A14`, MOtype=`$13`). Waiting six
+intervals on the stone yields a far-shore landing X=2508/Y=185 through
+Frame 47679; ten intervals die on the patrol's return. Standing
+right-facing Fire starts at Frame 47693 after the six-interval wait.
+The Type19 becomes Type0 at Frame 47735 while HSalive stays FF, then
+flags40 by Frame 47777; the hero remains alive at X=2508/Y=185 through
+Frame 47791. Two independent full DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-far-lava-type19-passage-route.json`
+confirm those RAM bytes, zero non-ROM exceptions, and identical hash
+`EF72A3D79D4DE2AF53C43F601E9634B535FE83165744659A06EB6ACDD1249826`.
+The captured image visibly shows the active hero on the far bank.
+**The GID36 stone sequence, far-bank landing, and Type19 kill are
+accepted.** Stage 8 remains open.
+
+Direct Right after that reaches X=2610 alive but falls into the next
+lava at X=2622. The map has a solid upper bridge at X=2592-2784/Y=64,
+reached through intermediate solid ledges at X=2512-2560/Y=160 and
+X=2528-2544/Y=112. A premature Right+Up jump toward the lower ledge
+collides with active Type20 `$07FF7A64` at X≈2561/Y=137 (bounded
+HSalive trace A5=`$07FF7A64`); tested four- and eight-interval delays
+and stationary Fire did not produce a living passage. These are
+checkpoint-only negative controls. The next concrete step is to time
+an earlier strike or a delayed vertical ascent around that Type20,
+then land stably on the upper bridge and validate it with two full
+DF0 cold replays and an inspected active image. The overall roadmap
+remains open.
+
+The Stage-8 Type20 at `$07FF7A64` is now bypassed without a kill.
+From the proven X=2508/Y=185 far-bank state, a stationary Up jump
+reaches the lower fixed ledge; release Up for 250,000 chip cycles and
+rearm Right+Up for two 500,000-cycle intervals, then brake at
+X=2552/Y=89 on the fixed upper step. Eight neutral intervals keep the
+hero alive while Type20 remains active below (`MOtype=$14`, flags80).
+`Tools/a3000-celtic-heart-stage-eight-type20-upper-fixed-step-route.json`
+reproduces Frame 47893, X=2552/Y=89/HSalive=FF and exact image hash
+`5F47D0DB3EF055DF503BF9F3B11B1D1C68B78450C414C43BB49655F1CCBD2126`
+in two independent full DF0 cold starts, both with zero non-ROM
+exceptions. The selected full-cold image visibly shows the live hero
+standing on the narrow upper step and the green Type20 patrol below.
+**The upper fixed-step landing and Type20 bypass are accepted; Stage 8
+is still open.**
+
+Bounded checkpoint probes then identified two Type17 skeletons on
+the upper bridge: `$07FF78D4` moves left from X=2639/Y=41 at Frame
+47879, and `$07FF7924` approaches from farther right. Immediate
+Right+Up from the upper step collides with the first at X=2604; three
+early Fire timings did not kill it. A two-stage airborne dodge reached
+X=2780/Y=41 alive and held ten neutral intervals through Frame 48097
+without killing either skeleton. Two independent full DF0 cold starts
+of `Tools/a3000-celtic-heart-stage-eight-upper-skeleton-bridge-route.json`
+confirmed X=2780/Y=41/HSalive=FF, zero non-ROM exceptions and the
+identical image hash
+`909FB4B3878E6170A299B8411EFC10DDBA231FE0341B0F5B1601DE4B80B9E8B3`.
+The selected cold image visibly shows the living hero on the fixed
+upper bridge, with the first skeleton behind him. **This upper bridge
+landing is accepted.**
+
+The far bridge ends around X=2784. Four direct timed jumps toward
+X=2840-2892 fell through the next animated span into lava. A bounded
+checkpoint-only follow-up instead turned left at X=2768/Y=41 and
+used grounded Fire to defeat the first Type17 (`$07FF78D4`, Type0 by
+Frame 48073, flags40 by Frame 48115); the second Type17 remained
+active but behind. Six neutral intervals after that strike align the
+animated GID198 bridge at X=2848: a Right+Up jump briefly lands at
+X=2847/Y=41, then an immediate rearmed Right+Up jump reaches the
+far fixed bridge X=2948/Y=41 and stays alive for ten intervals through
+Frame 48368. The checkpoint hash is
+`70D884A4CEC98462EFC100E6ACCF158CB6971AA155D8885B01F9F903C649043F`.
+`Tools/a3000-celtic-heart-stage-eight-far-animated-bridge-route.json`
+encodes this candidate. Its complete cold-start results and the corrected
+full-cold image reference are recorded below.
+
+**Stage-8 far animated bridge and restore control (2026-10-22):** The
+checkpoint-only hash above was not a valid full-cold reference: two
+independent DF0 cold runs reached the same living X=2948/Y=41 at Frame
+48368, but both produced a different image hash and the original guard
+correctly rejected it. The checkpoint image omitted the visible hero and
+much of the green bridge, whereas the full-cold image visibly shows
+active gameplay. The display BPL1/BPL2 pointers also differed despite
+matching hero RAM, so checkpoint-only pictures and hashes are not
+accepted as visual evidence for this continuation. After replacing the
+guard with the cold reference, two further independent complete DF0
+runs of `Tools/a3000-celtic-heart-stage-eight-far-animated-bridge-route.json`
+passed: Frame 48368, X=2948/Y=41, HSalive=FF, first Type-17 skeleton
+Type0/flags40, second Type-17 still active, zero non-ROM exceptions,
+identical exact image hash
+`26198E183583035BAEB05B827D92C1E0BAE87CBC37DCC1BBA1086B82D4E9C031`.
+The first full-cold image was inspected. **The first skeleton defeat and
+far fixed-bridge landing are accepted; Stage 8 remains open.**
+
+Bounded checkpoint probes then found a legitimate path off this bridge:
+Right+Up for nine 500,000-chip-cycle intervals from X=2948, release both
+and wait ten intervals to stand alive at X=3076/Y=169 on the single
+solid GID36 tile (X=3072/Y=192). Another Right+Up for six intervals
+lands alive at X=3160/Y=185 and stays alive for twelve neutral
+intervals. Direct Right from there stops at X=3184 and dies on the
+FRONT-GID373/393 trap (HSalive write Frame 48684, map A5=$0018F8).
+A first Right+Up over that trap reaches the raised platform X=3208/Y=137;
+the active Type-19 zombie `$07FF7884` patrols X=3200..3233/Y=137.
+Air-started Fire at X=3194 and X=3208 did not kill it. Releasing Up on
+the raised platform and rearming Right+Up jumps over that zombie, but
+continued Right dies at X=3314/Y=168 against a separate ground Type-16
+MOB `$07FF7834` (HSalive write Frame 48713, monster A5). Braking the
+second jump at X=3278 instead lands stably X=3280/Y=185 through Frame
+48780; the Type-16 remains active and turns near X=3373. These are
+checkpoint-only findings before cold verification. Two independent full
+DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-raised-zombie-bypass-route.json`
+subsequently confirmed the sustained X=3280/Y=185 landing at Frame
+48780, HSalive=FF, both Type-19 and Type-16 still active, zero non-ROM
+exceptions, and identical exact image hash
+`43C1E6FD2D4C5FF6FAE0D64DA8378378954FCAE95D7069B0FFE3582DE4404AF2`.
+The selected cold image visibly shows the active hero on fixed ground
+beyond the raised zombie. **The tiny-tile jump, FRONT-trap overjump and
+raised Type-19 bypass through X=3280 are accepted.**
+
+Checkpoint-only continuations from X=3280 then established a precise
+Type-16 strike window: wait two, three or four neutral 500,000-chip-cycle
+intervals, then standing right-facing Fire. With two intervals the MOB
+`$07FF7834` becomes Type0 by Frame 48836, flags40 by Frame 48879,
+while the hero remains alive. Right then reaches X=3376/Y=185, where
+the next solid wall blocks direct movement. Right+Up from there reaches
+the higher platform X=3415/Y=137 alive; moving farther right dies at
+X=3456/Y=158 to Type-18 MOB `$07FF77E4`. Holding Fire on the platform
+keeps the hero safe but leaves that Type-18 active as it moves right.
+A timed jump from that platform lands alive X=3544/Y=185 through Frame
+49195, while two Type-18 patrols remain active at different heights;
+an early or late re-jump from X=3544 hits the upper Type-18
+`$07FF7794`. These later probes are **not full-cold passes**. The
+complete-DF0 candidate `tmp/stage8-type16-wall-approach-full-candidate.json`
+encodes the grounded Type-16 kill and living X=3376 wall approach.
+Its subsequent cold verification is recorded below.
+
+**Stage-8 grounded Type-16 defeat and next wall (2026-10-22):**
+`Tools/a3000-celtic-heart-stage-eight-type16-wall-approach-route.json`
+encodes two neutral 500,000-chip-cycle intervals from the accepted
+X=3280/Y=185 landing, a standing right-facing Fire strike, and real
+Right movement to the next wall. Two independent complete A3000/Kickstart
+3.1 DF0 cold starts ended at Frame 48963 with the hero alive at
+X=3376/Y=185, Type-16 `$07FF7834` Type0/flags40, zero non-ROM
+exceptions, and identical exact framebuffer hash
+`1C9A7A8C8C226B64FD661AC0A912F1AFC4A6600261FAD3247FC7A3834871FB1D`.
+The selected cold image shows active gameplay and the living hero on the
+fixed ground before the wall. **The Type-16 kill and living wall approach
+are accepted; Stage 8 remains open.**
+
+Bounded checkpoint-only follow-ups at the later X=3544/Y=185 landing
+isolated the next lower Type-18 `$07FF77E4` as the immediate threat:
+it approached from X=3567 at Frame 49195 and wrote HSalive=00 from
+`hero_coll` at Frame 49209-49238 in direct standing Fire, crouched Fire,
+and one-/two-interval backstep Fire probes. The upper Type-18
+`$07FF7794` was behind at X=3486/Y=153 at Frame 49195. None of these
+attacks defeated the lower MOB, so they are negative controls, not a
+passage. The next concrete step is to change the earlier elevated-jump
+phase or landing position, then demonstrate a sustained living passage
+beyond both Type-18 patrols in two complete DF0 cold starts with a
+visually checked active image. Do not use the older checkpoint-only
+framebuffer as a visual reference: its missing hero/bridge graphics and
+different BPL pointers disagree with the corresponding cold run.
+
+**Stage-8 twin Type-18 avoidance and elevated approach (2026-10-22):**
+From the verified X=3376 wall approach, real Right+Up reaches the fixed
+X=3415/Y=137 ledge. After the documented wait and first jump to
+X=3544/Y=185, the safe window is to continue Right for one
+500,000-chip-cycle interval and immediately rearm Up while still moving
+right. The hero rises before the lower Type-18 returns and lands at
+X=3616/Y=185; both Type-18s remain active behind him. Two independent
+complete DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-twin-type18-bypass-route.json`
+confirmed Frame 49273, HSalive=FF, zero non-ROM exceptions, identical
+framebuffer hash
+`96BF58F50FF5529E2B75B3578D312D72505E85190770E21B0A745A38CEFE87D7`.
+The selected cold image visibly shows the living hero on the fixed
+ground beyond both patrols. **This timed bypass is accepted.**
+
+A subsequent Right+Up jump from X=3616 reaches the fixed elevated step
+X=3656/Y=137. A second jump, braked after three full intervals and a
+150,000-chip-cycle alignment, reaches X=3716/Y=105. Holding Fire there
+keeps the hero alive for fourteen further 500,000-chip-cycle intervals,
+while Type-20 `$07FF76F4` remains active ahead at X=3772/Y=105.
+Two independent complete DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-prewalker-upper-step-route.json`
+confirmed Frame 49507, X=3716/Y=105, HSalive=FF, zero non-ROM
+exceptions, identical framebuffer hash
+`4C3E6F5119ED6E749C9C1D1057685389D756F0DB4D4613D67F74DC31DE84060B`;
+the cold image visibly shows the living hero on the raised fixed path.
+**The elevated approach is accepted, but the Type-20 is not defeated.**
+
+Checkpoint-only continuation jumps over that Type-20 and lands stably
+X=3828/Y=185. Two independent complete DF0 cold starts of
+`Tools/a3000-celtic-heart-stage-eight-type20-overjump-route.json`
+now confirm Frame 49648, X=3828/Y=185, HSalive=FF, zero non-ROM
+exceptions and identical exact framebuffer hash
+`7AB0015E4D609ADF2A94536DEBE8F3F68786E0C131DCF86E9CEEEEB95681C387`.
+The selected cold image shows the visible living hero on the fixed cave
+floor, with Type-20 still active behind. **The Type-20 overjump and
+sustained far-side landing are accepted; it was not a kill.** Another
+checkpoint-only direct Right from X=3828 clears HSalive at X=3940
+through the map-collision path, while later Right+Up variants also
+clear it near X=3940 at higher Y. This was initially interpreted as
+death, but the source analysis below changes that interpretation.
+Stage 8 and the overall seven-point roadmap remain open until a visible
+transition is reproduced.
+
+The static `level08.tmx`/`w2types.tmx` inspection now identifies the
+upcoming collision more precisely: BACK GIDs 208–210 at
+X=3952–3999/Y=160, 228–230 at Y=176, and 248–250 at Y=192 all have
+`TYPE=7` and `SOLID=0`. Crucially, `hero.asm` dispatches background
+Type 7 to `bg_exit`, and `exitHero` sets `GS_COMPLETE_MSG` and then
+deactivates the hero, deliberately clearing HSalive. Thus X=3940 is
+likely the Stage-8 exit, **not a lethal hazard**. The short checkpoint
+probes stopped before a completion screen could appear. Continue the
+genuine Right input into this tile, release it, wait for the visible
+`LEVEL COMPLETE` and next-stage title, and only then reproduce in two
+independent full DF0 cold starts before accepting Stage 8 completion.
+A checkpoint-only continuation with 201 neutral 500,000-chip-cycle
+intervals after the X=3940 contact did not display the completion
+screen; its image still showed the cave without the hero. Since this
+checkpoint family already has a documented visual/state discrepancy,
+the two independent **full DF0 cold-start** exit probes in
+`tmp/stage8-exit-full-a` and `tmp/stage8-exit-full-b` are running to
+settle the transition before interpreting this as a gameplay defect.
+
+Those two full cold starts both reproduced Frame 51119 at X=3940 with
+the hero deactivated and an unchanged cave scene after 201 wait
+intervals; simply waiting does not reveal a completion overlay.
+A bounded checkpoint-only follow-up then pressed Fire, released it,
+and waited twice for 20,000,000 chip cycles. Its image visibly showed
+the next title, `THE CAVE STAGE 4 / CODE: LG6D`. The correct exit
+sequence therefore appears to require this extra button press, like
+earlier stage transitions. The title is **not yet a full-cold pass**:
+two complete DF0 cold starts using
+`tmp/stage8-complete-stage9-title-full-candidate.json` are running in
+`tmp/stage8-complete-stage9-title-full-a` and `-b`. Confirm matching
+framebuffer hashes and inspect the selected cold image before marking
+Stage 8 complete.
+
+Both of those complete cold runs ended identically at Frame 51682 with
+zero non-ROM exceptions and hash
+`3BDA79798F2207835133201400288923BC09AF215C9BEC7542C44837323E5C28`,
+but the selected image is a plain blue transition frame, **not yet a
+visible Stage-9 title**. The checkpoint-only title appeared later at
+Frame 51738. Two fresh complete cold starts in
+`tmp/stage8-complete-stage9-title-delayed-full-a` and `-b` add another
+20,000,000-chip-cycle neutral wait, to test the settled title image.
+Do not mark Stage 8 complete until this image is inspected.
+
+The delayed full-cold continuations in
+`tmp/stage8-complete-stage9-title-delayed-full-a` and `-b` now both reach
+Frame 51963 with identical hash
+`3BDA79798F2207835133201400288923BC09AF215C9BEC7542C44837323E5C28`,
+zero non-ROM exceptions, and the reviewed visible title **THE CAVE STAGE 4 /
+CODE: LG6D**. The durable replay is
+`Tools/a3000-celtic-heart-stage-eight-complete-stage-nine-title-route.json`
+with an exact final hash assertion. Stage 8 is therefore complete through
+real DF0-only inputs and two independent cold starts. Stage 9 is not yet
+accepted as active gameplay: release Fire after the title, enter the
+separate ready prompt, press it again, and require visible movement, live
+hero RAM, zero non-ROM exceptions and a second cold replay before accepting
+an active Stage-9 route.
+
+A subsequent complete DF0 cold start of
+`tmp/stage9-activation-full-probe.json` reached Frame 52244 after the
+first Stage-9 title Fire/release. Its selected image visibly shows
+`GET READY — PRESS BUTTON` over the cave scene, hash
+`712B138B4D8B186B50D3FCDE229A1C9DA849017236D1E73E34C7D508C697DD68`,
+with zero non-ROM exceptions. This is the ready prompt, not active play.
+The next cold-start candidate `tmp/stage9-active-movement-full-candidate.json`
+presses Fire again, releases it, records a temporary active-start checkpoint,
+and applies five real Right intervals. Require visible hero motion and a
+second independent full cold start before accepting Stage 9 as active.
+
+Follow-up 2026-10-22: that candidate's second Fire was still premature.
+Although its cave image changed during Right, the actual hero status stayed
+`HSalive=00` and X stayed `$0010` through Frame 52301, so it is **not**
+accepted as active gameplay. From its exact full-cold checkpoint, a bounded
+probe released all buttons, waited 3,000,000 chip cycles, pressed Fire a third
+time for 1,500,000 cycles, released it, waited another 1,500,000 cycles,
+then held Right for 1,000,000 cycles. The real `HSalive` byte changed to
+`FF` by Frame 52329; the hero's X moved from `$0010` to `$002C` by Frame
+52364 while Y stayed `$0089`. The selected image visibly shows the active
+cave scene and player. Thus Stage 9 needs a distinct third Fire after its
+title and ready sequence. The full DF0 cold-start candidate is
+`tmp/stage9-live-full-candidate.json`; require two independently completed
+full cold starts with matching live RAM, exact hashes, zero non-ROM
+exceptions and reviewed active images before promoting a durable route.
+
+The first complete DF0 cold start of that candidate has now finished at
+Frame 52364 with hero X=`$002C`/Y=`$0089`, `HSalive=FF`, zero non-ROM
+exceptions and exact image hash
+`EBBCDE35FCB76056D1B002ACFC6898CACD10053F8F1BE1CB2C7F550A6FF2E03A`.
+Its selected cave gameplay image was reviewed. The second independent full
+DF0 cold start in `tmp/stage9-live-full-b` has also finished with the **same**
+Frame 52364, X=`$002C`/Y=`$0089`, `HSalive=FF`, hash
+`EBBCDE35FCB76056D1B002ACFC6898CACD10053F8F1BE1CB2C7F550A6FF2E03A`,
+zero non-ROM exceptions and an independently reviewed active cave image.
+The durable exact-hash replay is
+`Tools/a3000-celtic-heart-stage-nine-active-movement-route.json`
+(`--validate`: one valid scenario). **Stage 9 active gameplay and movement
+are accepted; Stage 9 itself is still open.**
+
+Checkpoint-only exploration after that accepted start shows real Right
+movement to X=128/Y=185 alive; holding Right without jumping is killed at
+X=180. Right+Up from X=128 crosses the initial hazard and reaches
+X=240/Y=185 alive, then sustained Right reaches X=326/Y=185 still alive
+at Frame 52505. The longer Right control dies at Frame 52509 with a
+monster-collision return address (`$07FEC580`, MOB pointer `$07FF81E4`).
+These are short restore probes, **not** a full-cold passage. Next: isolate
+that MOB's type/phase, find a sustainable real-input route, and promote it
+only after two independent complete DF0 cold starts and image review.
+
+The first Stage-9 ground MOB is a Type-17 skeleton at `$07FF81E4`,
+X=348/Y=185 at Frame 52505 (`MOflags=80`). Fire begun only at hero
+X=326 is too late and the skeleton collides. From the landed X=240,
+hold Right for 2,000,000 chip cycles to X=298, release Right and use a
+standing right-facing Fire strike: the skeleton changes to Type 0 while
+the hero remains alive. After its death animation, real Right reaches
+X=351 and a neutral 5,000,000-cycle hold remains alive at X=352/Y=185.
+`Tools/a3000-celtic-heart-stage-nine-first-skeleton-passage-route.json`
+has now passed **two independent complete DF0 cold starts** at Frame
+52688 with identical hash
+`11FD221EAAD5748866861A7ADFABDAB5E0CE046000BFC09B3004F3799C70956A`,
+hero `HSalive=FF`, skeleton Type0/flags40, zero non-ROM exceptions and
+both independently reviewed active images. The first hazard and skeleton
+are accepted; Stage 9 is not complete.
+
+Checkpoint-only continuation from X=352: direct Right is blocked by the
+first stone rise; Right+Up lands on the next fixed lower platform at
+X=432/Y=137, sustaining ten neutral intervals. The next Right+Up jump
+is unsafe against two upper Y=89 patrols: Type18 at `$07FF8234` and
+Type19 at `$07FF80A4`. A short-delay jump collides with Type18; a later
+jump after it moves left collides with Type19. Air Fire at several bounded
+timings has not killed either. These are negative checkpoint controls,
+not a full-cold upper-platform pass. Next: find a timed strike or route
+between the two upper patrols, confirm stable live landing, then extend
+the durable DF0 route and repeat it twice from a fresh cold start.
+
+The upper route is now confirmed in two independent complete DF0 cold
+starts. Starting at the accepted X=352 skeleton passage, Right+Up reaches
+the fixed lower X=432/Y=137 platform. A timed 10,000,000-chip-cycle wait
+lets the Type18/Type19 patrols clear the jump. A short Right+Up pulse,
+horizontal brake and sustained neutral landing put the hero alive at
+X=436/Y=89. A small right-facing grounded step to X=448 and real standing
+Fire kills Type19 `$07FF80A4`; the remaining Right input reaches stable
+X=496/Y=89. `Tools/a3000-celtic-heart-stage-nine-upper-zombie-passage-route.json`
+has matching Frame 53240 and exact hash
+`7A80182BF822B9E49EF4FBBF6C9CB5644289D3D5297F0A80330DD4803988708C`
+in both cold runs, `HSalive=FF`, Type19 Type0/flags40, zero non-ROM
+exceptions and two reviewed active images. Its exact-hash scenario
+validates. **The upper landing and Type19 kill are accepted; Stage 9
+remains open.** The game source confirms that an effective HeroStrike
+requires a grounded hero, explaining the negative airborne Fire probes.
+
+Short restore probes continue beyond this accepted point. A braked
+Right+Up jump reaches the narrow fixed X=548/Y=41 column. From there,
+Right+Up with a 2,000,000-cycle horizontal pulse lands on a first green
+stone at X=604/Y=41 and survives a further 10,000,000 cycles. Right to
+X=636, a second timed Right+Up jump, and a brake reach a second fixed
+green stone X=748/Y=121. A bounded Type16 patrol watch measures
+`$07FF8054` moving left from X=864 at Frame 53824 to X=640 at Frame
+54049, then turning right. Waiting 9,000,000 cycles on the safe second
+stone, jumping Right+Up for 2,500,000 cycles and braking lands the hero
+at X=820/Y=73, alive through Frame 54070. Earlier jumps collided with
+that Type16 or overshot the next stone and fell into lava. The permanent
+`Tools/a3000-celtic-heart-stage-nine-first-lava-green-stones-route.json`
+repeats this exact route in two independent full DF0 cold starts. Both end
+at Frame 54070 with X=820/Y=73, `HSalive=FF`, zero non-ROM exceptions,
+and the identical frame hash
+`552427C8F202EDA1F003364683C828EC2D85720B2ECCD8C64D7D29194C47FB70`.
+Both final images show the living hero on the third green stone, and the
+exact-hash scenario validates. **The upper column and three stone landings
+are accepted, but the first lava crossing and Stage 9 remain open.**
+The extracted `level09.tmx` and `w2types.tmx` identify GID198 at
+X=880/Y=96 as SOLID=1/TYPE=8 and GID195 at X=976/Y=48 as
+SOLID=0/TYPE=1; visual similarity alone does not prove a tile is
+currently load-bearing. From X=820, short Right+Up probes braking
+between X=884 and X=900 fall into the lava; a bounded 0–11M-cycle
+delay sweep at X=884 also found no lasting landing. A bounded live map
+watch identified `BgMap` at `$07C08FEA`: the X=880/Y=96 word at
+`$07C096D6` alternates between solid `$C98A` (Frames 54091–54126)
+and nonsolid `$098C/$098E` (Frames 54133–54175), repeating roughly every
+92 frames. The X=816 fixed green tile remains solid `$C97C` through the
+same samples. This proves a timed bridge rather than a permanently solid
+step. A new checkpoint continuation lands on the bridge at X=884/Y=73
+by Frame 54116 and remains grounded until Frame 54123. The bridge loses
+solidity at Frame 54130, so releasing and pressing Up again at Frame
+54123 is essential: a second Right+Up jump lands on fixed GID191 at
+X=948/Y=73 and remains alive through Frame 54260.
+`Tools/a3000-celtic-heart-stage-nine-blue-bridge-far-stone-route.json`
+confirms the landing in two independent full DF0 cold starts: both report
+`HSalive=FF`, zero non-ROM exceptions and identical hash
+`6B2DEDFF4072D7CA0350236C92B35948D38172509A43D6D274D42EF20778FDF1`.
+Both active images were reviewed. **The timed blue bridge and X=948 fixed
+stone are accepted.**
+
+From that checkpoint, walking right dies at X=960/Frame 54196 from the
+approaching Type16 MOB `$07FF7FB4` (X=968/Y=89 at Frame 54197;
+`hero_coll` return `$07FEC580`). Early and late grounded Fire, including
+crouched variants, did not kill it. A direct overjump survives this MOB
+but falls short of the next high fixed stone. The map instead offers a
+second timed bridge at X=976/Y=48. A short Right+Up jump from X=948
+brakes at X=980/Y=25 while its live map word is solid `$C97C`–`$C982`;
+the tile becomes hazardous/nonsolid at Frame 54217 and kills a waiting
+hero. Releasing Up and jumping again at Frame 54211 reaches the next
+fixed GID191 at X=1064/Y=41, alive through Frame 54358.
+`Tools/a3000-celtic-heart-stage-nine-first-lava-far-fixed-stone-route.json`
+confirms this in two independent full DF0 cold starts. Both end with
+`HSalive=FF`, zero non-ROM exceptions and identical hash
+`A3C708F3BE50FCFD08AF4E7E585D6F005856CC9CEECDA567CDDA4742A7D486B2`;
+both active images show the hero on the distant fixed green bridge.
+**The second timed bridge and X=1064 landing are accepted; the first lava
+crossing and Stage 9 remain open.** Right beyond X=1092 falls into a
+second Type16 `$07FF8004` at X≈1140/Y≈121 during descent. A bounded
+hero-alive write trace confirms its `hero_coll` return `$07FEC580` at
+Frame 54326. Next, find its safe timing or strike and a sustainable
+far-bank landing with two full cold starts and active images.
+
+**Stage-9 third timed bridge and far-wall landing (2026-10-23):**
+The X=1152/Y=96 tile is a third phase-switched GID198 bridge. From the
+accepted X=1064/Y=41 stone, a quick Right walk reaches its safe edge
+X=1092/Y=41. Waiting until Frame 54309 aligns a real Right+Up jump:
+the hero brakes X=1148, lands X=1148/Y=73 at Frame 54365 while the
+live tile word is solid `$C98A`, and remains alive through Frame 54394.
+At Frame 54401 the word becomes nonsolid `$098C`, so Right+Up must be
+rearmed sooner. A jump at Frame 54373 brakes at X=1216 in the air,
+lands on the permanent far wall at X=1220/Y=73, and remains alive
+through Frame 54443. The Type16 `$07FF7F64` then approaches from the
+right at X=1229/Y=57 and kills a stationary hero; a grounded Fire
+control failed. A genuine Right+Up jump from X=1220 at Frame 54422
+passes over that enemy. Braking at X=1282 produces a sustained live
+landing at X=1284/Y=73 through Frame 54559. The durable route
+`Tools/a3000-celtic-heart-stage-nine-first-lava-far-wall-route.json`
+replayed twice from full DF0 cold starts with identical final hash
+`87AFD15F2066FA6EBAE26C87B4FC1189CA8D0DAF66D4C6DB0E1BBE0E29AC2ED1`,
+`HSalive=FF`, zero non-ROM exceptions and two visually checked active
+images. The hero is stably on the permanent far wall. This passes the
+first lava crossing; Stage 9 remains open. Next inspect the map and
+active MOB phases to the right of X=1284, then require another sustained
+living landing, two full cold replays and active images before extending
+the route.
+
+**Stage-9 post-wall MOB bypass (2026-10-23):**
+From the accepted X=1284/Y=73 wall, real Right descends to the lower
+floor. A direct run reaches X=1438/Y=185 alive at Frame 54636, then
+dies at X=1440. The bounded `HSalive` write trace has `A5=$07FF7F14`
+and the `hero_coll` return `$07FEC580`; a MOB watch identifies a live
+MOB with `MOtype=$17` (decimal 23) at X=1449/Y=169, flags `$80`, approaching from the
+right. Standing Fire from X=1418, including 0.5–1.5-million-cycle
+delays, did not kill it and ended in contact. A timed Right+Up jump
+from X≈1410–1418 passes over it. In a restore-only probe, braking at
+X=1544/Y=185 after the jump and holding neutral for eight 500,000-cycle
+intervals kept the hero alive through Frame 54745. The durable route
+`Tools/a3000-celtic-heart-stage-nine-postwall-skeleton-bypass-route.json`
+passed two independent full DF0 cold starts with identical final hash
+`60E7A1E69E18BF0DAC73460A1885849EF4B664948FD61B5654AFB35C17264DF2`,
+`HSalive=FF`, zero non-ROM exceptions and two checked active images.
+This confirms a sustained bypass, not a kill; the `$17` MOB remains
+active. Stage 9 remains open. Next inspect the nearby FRONT trap and
+terrain beyond X=1544 with real inputs before extending the route.
+
+**Stage-9 next FRONT trap and MOB bypass (2026-10-23):**
+Direct Right from X=1544/Y=185 dies at X=1586/Frame 54766. The
+`HSalive` write trace has `A5=$000C98` and the map-collision return,
+consistent with the animated FRONT hazard at X=1600, rather than a
+MOB. Immediate Right+Up passes it. Releasing Right at X=1688 then
+dies from the `MOtype=$17` (decimal 23) MOB `$07FF7E74` after it resets from X≈1807 to
+its X=1664 spawn and walks toward the stationary hero. Holding Right
+for twelve additional 250,000-cycle intervals instead reaches
+X=1770; braking yields X=1772/Y=185, alive through Frame 54914 after
+eight neutral 500,000-cycle intervals. The MOB remains `MOtype=$17`/flags80
+and follows at X=1723; this is a timed bypass, not a kill.
+`Tools/a3000-celtic-heart-stage-nine-posttrap-skeleton-outrun-route.json`
+passed two independent full DF0 cold starts to Frame 54914 with
+`HSalive=FF`, zero non-ROM exceptions, identical hash
+`971D9FBDC6AC6D5A578CBCFF1E2940A35B9EDDECD02EE9197D4D6AF435FCF68A`
+and two checked active images. The X=1600 trap and passage to
+X=1772/Y=185 are accepted; Stage 9 remains open. Continue with real
+inputs ahead of the pursuing MOB and inspect the next fixed
+wall, raised MOBs and traps before extending the route.
+
+**Stage-9 raised-floor and walker checkpoint probes (2026-10-23):**
+At X=1772/Y=185, immediate Right+Up collides with the nearby ground
+MOB `$07FF7D34`, `MOtype=$13` (decimal 19), X=1781/Y=185. A delayed
+vertical jump from Frame 54900 lets it pass beneath the hero, but
+the following `$17` MOB catches a stationary landing. A second
+Right+Up jump as the hero reaches the ground lands X=1848/Y=137 on
+the raised fixed floor. Holding Right collides with upper MOB
+`$07FF7BF4`, `MOtype=$14` (decimal 20), at X≈1884. A standing
+right-facing Fire strike begun at X=1848/Frame 54988 changes this
+MOB to Type 0; by Frame 55066 its flags become `$40`. The short
+restore probe remains alive through Frame 55101 with active cave
+gameplay. Another `$14` MOB `$07FF7C44` remains active. The durable
+route `Tools/a3000-celtic-heart-stage-nine-upper-greenwalker-kill-route.json`
+passed two independent full DF0 cold starts to Frame 55101 with the
+hero at X=1848/Y=137, `HSalive=FF`, the targeted MOB Type0/flags40,
+zero non-ROM exceptions and identical frame hash
+`C25C83182119A852C58C7D31B84A6407F3A1BEB6B1188B56ABFB8361F614AD41`.
+Both active images were checked. The raised landing and one walker
+kill are accepted; Stage 9 remains open. Next handle the other active
+`$14` MOB and the GID173 hazard near X1936.
+The `MOtype` watch values here are hexadecimal: `$13/$14/$17` mean
+decimal 19/20/23, respectively.
+
+**Stage-9 next GID173 trap checkpoint probes (2026-10-23):**
+From the accepted X=1848/Y=137 raised landing, direct Right reaches
+X=1938 alive and dies at X=1940/Frame 55147. The bounded `HSalive`
+write trace has `A5=$000F32` and the map-collision return; the map
+places a `TYPE=16`, non-solid BACK GID173 hazard at X=1936/Y=144.
+Right+Up begun near X=1896 clears the tile and the still-active
+`MOtype=$14` (decimal 20) walker `$07FF7C44` without a kill.
+The short restore probe lands at X=2040/Y=137, alive through eight
+neutral 500,000-cycle intervals to Frame 55252; the walker remains
+Type20/flags80 behind the hero. The durable route
+`Tools/a3000-celtic-heart-stage-nine-173-trap-overjump-route.json`
+passed two independent complete DF0 cold starts in
+`tmp/stage9-173-trap-overjump-full-a` and `-b`: Frame 55252,
+X=2040/Y=137, `HSalive=FF`, zero non-ROM exceptions and identical
+frame hash `D0F56427E8A1303A34FAB68AD53D42424204D82A49B1FAF183844734524648E3`.
+Both images show the active hero on the raised floor. The GID173
+trap and remaining Type20 walker are passed, while Stage 9 remains
+open. At the drop beyond X≈2040, direct Right dies at X=2076/Y=183;
+the nearby FRONT-GID343 tiles are at X2064–2095/Y176. Right+Up
+from X2040 clears them in a short restore probe and lands X2166/Y185.
+After releasing Up for one 250,000-cycle interval, a second Right+Up
+jump reaches X2256/Y185 alive through Frame 55396. Two release
+intervals instead die at X2190/Y164 from `hero_coll` against active
+MOB `$07FF7A64`, `MOtype=$17` (decimal 23), X≈2200/Y169. The durable
+`Tools/a3000-celtic-heart-stage-nine-double-front-jump-route.json`
+passed two independent full DF0 cold starts in
+`tmp/stage9-post173-double-front-jump-full-a` and `-b`, with identical
+frame hash `1D9D7BBC470BBF508305F18124113BE55CBE1A784399C297FA227573179A3178`,
+`HSalive=FF`, zero non-ROM exceptions and two reviewed active images.
+The FRONT traps and Type23 MOB are passed without a kill; Stage 9
+remains open. Next probe the wall at X≈2272, the upper fixed platform
+and nearby MOBs with real inputs before extending the full-cold route.
+
+**Stage-9 high wall and next lava passage (2026-10-23):** The wall
+at X2272 has solid sides through Y208 and a solid top at Y80; the
+lower X2256/Y185 landing cannot jump directly onto it. A separate
+real-input route branches from the accepted raised X1848/Y137
+position. Right+Up with braking lands on the upper fixed bridge
+X1928/Y89. Releasing Up, walking to X1984, then rearming Right+Up
+and braking in the air lands stably on the high fixed stone
+X2048/Y41. The durable
+`Tools/a3000-celtic-heart-stage-nine-high-stone-route.json`
+passed two independent complete DF0 cold starts in
+`tmp/stage9-high-stone-full-a` and `-b`: Frame 55305,
+`HSalive=FF`, zero non-ROM exceptions, identical hash
+`DCCB507394695AD088EB0467E22B3B2344E9F0645CCBB0941864DECACB4A6D3C`.
+Both active images show the hero on that stone.
+
+From X2048, immediate Right+Up collides with MOB `$07FF7B54`,
+`MOtype=$11` (decimal 17), on the farther platform. Eight neutral
+500,000-cycle intervals, releasing Up and one 250,000-cycle Right
+interval time a jump onto X2160/Y41; releasing Up briefly and
+rearming Right+Up clears this Type17 patrol and crosses the wall
+top and BACK-GID173 at X2304/Y64. Direct movement then dies at
+X2358/Y46 against MOB `$07FF7B04`, `MOtype=$10` (decimal 16),
+as the bounded `HSalive` trace shows. Airborne Fire begun near
+X2320 delays the hero while that MOB moves right, allowing a live
+pass. Brake at X2366/Y57 before the wall edge, release Up and Fire,
+wait one neutral 500,000-cycle interval, then rearm Right+Up over
+the next lava to the fixed GID191 stone X2540/Y121. Eight further
+neutral intervals remain alive through Frame 55692. The durable
+`Tools/a3000-celtic-heart-stage-nine-high-wall-lava-stone-route.json`
+passed two independent complete DF0 cold starts in
+`tmp/stage9-high-wall-lava-solid-full-a` and `-b`, with matching
+hero RAM X2540/Y121, `HSalive=FF`, zero non-ROM exceptions and
+identical hash `D52C401AACB024C06D7B5E142A2A1CD0C33585522D1336BF2AA4283E63B14D8C`.
+Both active images show the hero on the green stone over lava. The
+wall and this first stone are accepted, but the second lava and
+Stage 9 remain open. Braking at X2552 falls between solid tiles;
+waiting too long on the wall lets MOB `$07FF79C4` return. Next
+analyze the animated/fixed stones to the right and reach a stable
+far-bank landing with real inputs and two independent full-cold
+visual replays.
+
+Checkpoint-only probes from the accepted X2540/Y121 stone narrow the
+next jump. Immediate Right+Up reaches X2638/Y121 alive, then loses
+`HSalive` at X2640/Y123 (Frame 55746); the bounded write trace points
+to map collision, not a MOB. Eight extra neutral 500,000-cycle
+intervals before jumping still die at X2640. A 100,000-cycle Right
+offset likewise dies there; 150,000- and 200,000-cycle Right offsets
+step off the narrow departure stone and die earlier at X2566. These
+restore-based probes establish neither a far landing nor a visual
+pass. Next inspect the live collision tile and jump timing at X2640,
+then verify any successful crossing through two full DF0 cold starts
+and active images.
+
+**Stage-9 second-lava intermediate and far stones (2026-10-23):**
+The X2640 death above is caused by the static deadly BACK-GID37 tile
+at X2640-2671/Y144. A fixed GID17 step at X2608-2639/Y144 allows
+a legitimate two-jump route. From X2540, Right+Up reaches X2616/Y99;
+releasing Right and Up there lands and remains at X2616/Y121.
+Rearming Right+Up from that step reaches the fixed GID191 stone
+X2688/Y89; releasing both controls there and waiting ten 500,000-cycle
+intervals remains alive. The durable
+`Tools/a3000-celtic-heart-stage-nine-second-lava-far-stone-route.json`
+passed two independent complete DF0 cold starts in
+`tmp/stage9-second-lava-far-stone-full-a` and `-b`: Frame 55889,
+`HSalive=FF`, zero non-ROM exceptions, identical hash
+`A618893DB84CA366E3055E8141781F9619E30ABBBCDCF6DB6985B900085BC60B`.
+Both active images show the hero on the fixed stone. This stone is
+accepted; the rest of the second lava and Stage 9 remain open.
+A further real Right+Up jump from X2688 lands sustainably at
+X2772/Y57 on the next fixed GID191 platform. The durable
+`Tools/a3000-celtic-heart-stage-nine-second-lava-upper-stone-route.json`
+passed two independent complete DF0 cold starts in
+`tmp/stage9-second-lava-upper-stone-full-a` and `-b`: Frame 56002,
+`HSalive=FF`, zero non-ROM exceptions, identical hash
+`6B63CCCF7FB8691F5A6FDA09965DBD4ED5581D50089429FC42CCEC25C634ED0B`.
+Both active images show the hero on the raised fixed stone. This
+landing is accepted; the second lava and Stage 9 remain open. Direct
+Right from X2772 falls into lava, while immediate Right+Up reaches
+X2852/Y40 and dies on the BACK-GID37 patch at X2832-2863/Y64.
+Test a brake before the patch and the lower fixed step X2816/Y160.
+The independently confirmed lower route brakes the
+next jump earlier at X2806/Y8, releases Right and Up, and falls to
+X2808/Y137 on the fixed X2816/Y160 step. Two short Right intervals
+reach X2822/Y137; Right+Up travels below the deadly X2832-2863/Y64
+patch and brakes stably on fixed GID191 X2928/Y121 through Frame
+56234. The durable
+`Tools/a3000-celtic-heart-stage-nine-second-lava-undertrap-stone-route.json`
+passed two independent complete DF0 cold starts in
+`tmp/stage9-second-lava-undertrap-stone-full-a` and `-b`:
+`HSalive=FF`, zero non-ROM exceptions, identical hash
+`9C70F57ECA2DB4DDE02893B3E07C42186A4C1BD7B60A80D824E560EDA83B1E58`.
+Both active images show the hero on the fixed stone. This landing is
+accepted, but the far bank and Stage 9 remain open. A direct
+jump from X2928 dies in `hero_coll` against active MOB `$07FF7924`
+(`MOtype=$13`, decimal 19) around X3004/Frame 56272; delaying the
+jump changes the collision to another active MOB `$07FF7974` at
+X3016/Frame 56362. Resolve those patrols with real input before
+extending the full-cold route.
+
+Checkpoint-only continuation now finds a grounded strike window for
+the second Type19. Wait six neutral 500,000-cycle intervals on
+X2928, jump Right+Up to the solid far wall and brake at X3020/Y121
+on Frame 56322. Right-facing Fire while grounded changes MOB
+`$07FF7974` from `MOtype=$13` to 0 at Frame 56350; it reaches
+flags `$40` by Frame 56392. Release Fire and immediately jump
+Right+Up over the still-active `$07FF7924`. Braking at X3098/Y103
+lands sustainably on the solid far bank X3100/Y121 through Frame
+56501. A longer Right hold dies against another MOB `$07FF78D4`
+near X3144. The durable
+`Tools/a3000-celtic-heart-stage-nine-second-lava-far-bank-route.json`
+repeated the complete DF0 cold start independently in
+`tmp/stage9-second-lava-far-bank-full-a` and `-b`. Both reached Frame
+56501 at X3100/Y121 alive (`HSalive=FF`), with the struck Type19
+`MOtype=00`/`MOflags=40`, zero non-ROM exceptions and the same hash
+`8353DDDB4D978945697F2B629CEB2190B5DC679291A742A5194F7DED37132575`.
+Both captured images visibly show active gameplay with the hero on
+the fixed far bank. The second lava is accepted as crossed; Stage 9
+is still open.
+
+Further checkpoint-only work from X3100 identifies the next pair as
+active `MOtype=$12` (decimal 18) at `$07FF78D4` and `$07FF7884`,
+both at Y169. The first patrol moves right from X3198/Frame 56501;
+the second returns left from X3288/Frame 56575. Right+Up reaches
+X3248/Y185 alive, but an early or three-interval-delayed standing
+Fire from there still dies on Frame 56605 with `hero_coll` pointing
+to `$07FF7884` at X3256. An immediate rearmed jump dies still
+earlier near X3266. Braking the first jump at X3142/Y71 instead
+lands on a fixed intermediate ledge X3144/Y153 and stays alive
+through Frame 56596. The durable
+`Tools/a3000-celtic-heart-stage-nine-far-bank-upper-step-route.json`
+passed two independent complete DF0 cold starts with `HSalive=FF`,
+zero non-ROM exceptions, the identical hash
+`06B0CD52670E689021022E42AE3447245F7469126595E694C2922603553DF7B0`,
+and two inspected active images. This ledge landing is accepted.
+A second jump from that ledge also meets
+`$07FF7884`. A grounded Fire there starts the strike animation, but
+the observed strike at X3160/Y157 did not kill the ghost near
+X3160/Y169: the active strike's vertical collision line is Y161,
+while the ghost's top collision line is Y169. Ground-level Fire at
+Y185 may be marginal at the ghost's lower line; prior timing checks
+did not kill it. A better landing or attack alignment is needed.
+None of these checkpoint probes is a
+passage beyond the ghost pair.
+
+A later checkpoint-only timing probe found an avoidance route without
+an attack: from X3144/Y153, briefly move right off the ledge; jump
+Right+Up after X3166/Y171, release Up in the air at X3250/Y163,
+retrigger Up immediately on landing X3260/Y185, and continue right.
+A one-interval horizontal air brake before the first landing shifts
+the second jump four pixels left and avoids the first Type18's
+collision box. `Tools/a3000-celtic-heart-stage-nine-twin-ghost-bypass-route.json`
+reaches X3344/Y185 alive and holds twelve neutral 500,000-cycle
+intervals through Frame 56832, with both ghosts still active behind him.
+Two independent complete DF0 cold starts in
+`tmp/stage9-twin-ghost-bypass-full-a` and `-b` agree on HSalive=FF,
+zero non-ROM exceptions and image hash
+`3818C4392F6AAABFA36B02756AF80E2EAA0B2B9945BC0C40B4CB8A64B2529EE0`;
+both active images were checked and their PNG SHA-256 values match.
+This bypass to the next wall is accepted, but neither ghost was killed.
+At X3344 the wall blocks direct Right, and waiting much longer than
+the candidate route lets `$07FF7884` return and kill the hero at
+Frame 56893. Right+Up from the lower floor reaches X3392/Y137 but
+dies on a FRONT-map collision at Frame 56910. Retriggering Up from
+the temporary higher X3338/Y153 landing reaches X3392/Y107 and
+also hits the FRONT hazard. Delaying that last jump by 2-7 short
+intervals did not pass the tile. Next isolate its live animation
+phase or find a higher legitimate takeoff; do not treat the still
+airborne figure as a passage.
+
+Further checkpoint-only input probes found a higher, timed continuation
+from the accepted X3144 ledge. Brake the third jump at X3372/Y103,
+land on the fixed X3372/Y137 step, and wait until the decimal Type19
+zombie `$07FF7834` turns right. Right+Up then reaches X3412/Y89;
+release both controls for one 250,000-cycle interval and immediately
+rearm Right+Up. This clears the FRONT tiles at X3392 and the zombie.
+Release Up while falling, land X3554/Y185, and start the next jump
+with three vertical Up intervals before pressing Right. That timing
+passes two decimal Type18 ground ghosts. The durable route
+`Tools/a3000-celtic-heart-stage-nine-twin-ghost-trap-crossing-route.json`
+confirms X3772/Y185 alive through Frame 57173. Two independent full
+DF0 cold starts in `tmp/stage9-twin-ghost-trap-crossing-full-a` and
+`-b` agree on HSalive=FF, zero non-ROM exceptions, image hash
+`4C55C4F9287B5BA6360CE7325BE3EB88F96B3D0E25C2999128327A73A522CBE4`
+and identical PNG SHA-256; both active images were inspected. Count
+the higher crossing as passed, with both ghosts bypassed and active.
+
+The same checkpoint branch then jumps onto the X3808/Y137 wall step.
+Standing right-facing Fire started at Frame 57272 kills the returning
+decimal Type19 `$07FF7654` at Frame 57304; Type becomes 00 and flags
+later 40. A Right+Up jump clears BACK-GID173 and the FRONT hazard at
+X3840, landing X3872/Y137. A second jump reaches X3904/Y89; a
+quickly rearmed third jump crosses the fleeing decimal Type20
+`$07FF7604` but descends into a map collision at X3988/Y43. Static
+level09.tmx/w2types.tmx places TYPE7 exit tiles at X4000–4047/Y64–111.
+The map collision appears to be that exit, not a death. A checkpoint-only
+continuation from the accepted earlier state waited, pressed Fire, and
+visibly displayed the next title, `THE FOREST`, at Frame 59348; its
+selected image hash was
+`B0123BA71428F2EB9D23FD1F94FD16F65FB437D9A05352F60D38CD38FCD9D453`.
+The durable complete route is
+`Tools/a3000-celtic-heart-stage-nine-complete-stage-ten-title-route.json`.
+Two independent complete DF0 cold starts in
+`tmp/stage9-complete-stage10-title-full-a` and `-b` agree at Frame
+59348 on image hash
+`B0123BA71428F2EB9D23FD1F94FD16F65FB437D9A05352F60D38CD38FCD9D453`,
+zero non-ROM exceptions and identical PNG SHA-256. Both cold images
+were checked and visibly read `THE FOREST`. The hero's HSalive=00 at
+the transition is intentional `exitHero` deactivation. **Stage 9 is
+complete** on the reproduced next title. Stage 10 needs separate
+gameplay activation, documented below.
+
+The next title reads `THE FOREST / STAGE 1`. Its next PRESS BUTTON,
+stage-title PRESS BUTTON and separate GET READY require three distinct
+Fire presses across the transition. The durable route
+`Tools/a3000-celtic-heart-stage-ten-active-movement-route.json` presses
+all three, then moves the visible hero with real Right input from X16
+to X44/Y185. Two independent complete DF0 cold starts in
+`tmp/stage10-active-movement-full-a` and `-b` agree at Frame 60727 on
+HSalive=FF, zero non-ROM exceptions and exact image hash
+`55A83AB7998F391F10418C2FE4F8FB1E9A0853DF7F3D042EBE7B7E1379D02CA5`.
+Both cold images were inspected and show active forest gameplay. Count
+Stage 10 activation and movement as passed; Stage 10 itself remains open.
+An additional checkpoint-only opening probe moves Right to X332/Y185
+alive, then dies at X346 through `hero_coll` with MOB `$07FF80A4`.
+Its MOtype byte `$1F` is decimal Type31 at Y185, moving left from
+X379. Braking at X318 and pressing standing right-facing Fire kills
+that MOB by Frame 60896; MOtype becomes 00 and flags later 40.
+Holding the same Fire continuously is insufficient: a second decimal
+Type31 at `$07FF8054` walks left from X400 and kills the stationary
+hero at Frame 60967. Releasing Fire after the first kill and pressing
+it again at Frame 60924 kills this second MOB by Frame 60959; both are
+Type0/flags40 and the hero remains X319/Y185 alive through Frame
+61044 after ten neutral 500,000-cycle intervals in
+`tmp/stage10-double-type31-kill-stable.json`. This is a useful
+prospective Stage 10 route, not a full-cold enemy-kill pass.
+Continuing Right after those kills reaches X399/Y185 and is blocked
+by a low wall; pressing Up there rises only briefly under the edge.
+A Right+Up jump started earlier from X347 reaches the elevated
+X417–459/Y137 step. MOB `$07FF8004` is another decimal Type31 at
+Y137 and collides with direct Right at X461/Frame 61115. Braking on
+the step at X426/Y137 and striking right kills it by Frame 61142;
+ten neutral intervals hold the hero alive to Frame 61255 with all
+three Type31 MOBs Type0/flags40. The durable route
+`Tools/a3000-celtic-heart-stage-ten-opening-three-mobs-route.json`
+passed two independent full DF0 cold starts in
+`tmp/stage10-opening-three-mobs-full-a` and `-b`: X426/Y137,
+HSalive=FF, all three Type0/flags40, zero non-ROM exceptions, exact
+image hash
+`58027EB5B75FA7B9F5D141EF0464013ECCCCFAB45EDA4005F334172EFB30D4C7`.
+Both cold images show the active raised forest terrain and hero. Count
+these three grounded Fire kills and the raised landing as passed.
+Direct Right from the X426 ledge then dies almost immediately at
+Frame 61257 against another decimal Type31 `$07FF7FB4`, which was
+already at X439/Y137. The third Fire must be released early; after
+five 500,000-cycle neutral intervals, a new standing right-facing
+Fire at Frame 61220 kills this fourth MOB by Frame 61265. The
+checkpoint-only `tmp/stage10-fourth-type31-kill-stable.json` holds
+X426/Y137 alive through Frame 61360 with the fourth Type0/flags40.
+The durable `Tools/a3000-celtic-heart-stage-ten-opening-four-mobs-route.json`
+now passes two independent complete DF0 cold starts in
+`tmp/stage10-opening-four-mobs-full-a` and `-b`: Frame 61360,
+X426/Y137, HSalive=FF, all four Type31 MOBs Type0/flags40, zero
+non-ROM exceptions and identical image hash
+`9B90DD953C3A8C229ACECA48F7A89EFEEB6668BA51A97DFE18C349E943FF7F70`.
+Both active cold images were inspected. Count this fourth grounded
+Fire kill as passed; the remaining Stage 10 route is still open.
+Right from that checkpoint crosses the raised step to X610/Y137 alive,
+then descends toward a new active MOB `$07FF7EC4`: MOtype byte `$19`
+is decimal Type25, moving left at Y185 from X704/Frame 61434 to
+X664/Frame 61477. Direct Right dies X664/Frame 61479 via
+`hero_coll`. An early jump from the raised step is the next concrete
+Stage 10 input test; this is not a passed segment.
+The short checkpoint-only jump from X610/Y137 clears this Type25 but
+meets a second decimal Type25 `$07FF7E74` at X748/Y185. Releasing Up
+before the first landing at X722/Y185 and immediately jumping again
+passes both, reaching X842/Y185 alive at Frame 61568. Continued Right
+dies X844/Frame 61569 against a further MOB `$07FF8324`. Identify
+that MOB and a stable stopping/attack window before extending a full
+route; no Type25 passage has yet been cold-replayed.
+The next MOB `$07FF8324` is MOtype byte `$20`, decimal Type32, at
+Y185 and moves left about two pixels per frame. Stationary Fire from
+X814/Y185 does not stop it and the hero dies by Frame 61587. A
+rearmed Right+Up jump from X814 passes over it alive to X948/Y185,
+but continuing Right falls beyond the next ledge and dies around
+X974/Y202. Checkpoint-only `tmp/stage10-edge-rejump-probe.json` now
+rearms Up at X948 and reaches X1088/Y185 alive; another immediate
+Right+Up from there reaches X1178/Y185. Beyond that, a decimal Type31
+`$07FF7DD4` at X1232/Y185 kills direct Right at X1220. A third jump
+from X1178 avoids it and reaches the raised X1244/Y137; standing
+right-facing Fire kills the next decimal Type31 `$07FF7D84` by Frame
+61818, and the hero holds X1244/Y137 alive through Frame 61881 with
+that MOB Type0/flags40. These are checkpoint-only experiments, not
+full-cold or visual passes. Right then stops at X1312/Y137 beneath a
+higher step. A Right+Up jump reaches X1350/Y89 but meets decimal
+Type25 `$07FF7C94` approaching from the right. Standing Fire there
+did not kill it. A second jump from the stable X1404/Y41 upper ledge
+passes over that Type25. The live Stage-10 `BgMap` pointer is
+`$07C084C2` (map header `$07C084AA`, 256 columns x 16 rows). The
+column-major words confirm solid tiles through X1472/Y112, then open
+columns X1488–1631 above deadly `$48E4/$48EC` water; attempting to
+continue the jump at X1553/Y152 dies by map contact. A separate
+Type25 `$07FF7C44` patrols the upper ledge at Y41 and kills stationary
+or right-moving approaches. Checkpoint images remain diagnostic only.
+
+Braking the second jump at X1480/Y19 gives a sustainably alive landing
+on the final fixed step X1480/Y89 (ten neutral intervals, Frame 62096).
+Right+Up from there reaches X1570/Y98, where a moving platform catches
+the hero; releasing Right carries him to X1615/Y98 at Frame 62184.
+A rearmed Right+Up lands on the far bank X1668/Y89. Standing
+right-facing Fire begun at Frame 62233 kills its approaching decimal
+Type31 `$07FF7BF4` at Frame 62261. The durable
+`Tools/a3000-celtic-heart-stage-ten-first-moving-platform-far-bank-route.json`
+replays these real inputs from DF0 cold boot. Two independent complete
+cold starts (`tmp/stage10-first-moving-platform-far-bank-full-a` and
+`-b`) both reach Frame 62332, X1668/Y89, HSalive=FF, with the far-bank
+MOB Type0/flags40, zero non-ROM exceptions and identical image hash
+`F83648082326531618D3A6271FAE67CB13D71F7BFDD4FF9674B0EDB2C07E0D53`.
+Both cold images show the hero on active forest terrain above the
+far-bank Type31 corpse. The full route JSON validates. Count the two
+Type25 and Type32 bypasses, the additional upper Type31 Fire kill,
+the moving-platform crossing and the far-bank Type31 Fire kill as
+passed. Stage 10 remains open. From X1668, Right reaches X1860/Y185;
+ten neutral intervals keep the hero alive through Frame 62508. The
+durable `Tools/a3000-celtic-heart-stage-ten-postbank-ground-route.json`
+passes two independent complete DF0 cold starts in
+`tmp/stage10-postbank-ground-full-a` and `-b`: X1860/Y185,
+HSalive=FF, zero non-ROM exceptions, identical image hash
+`A6A8C09C09406232F1F84D821A8A1D67FFCC5645B5ADF513B085E06CE9F8387B`.
+Both active cold images show the living hero on the lower forest ground.
+Count this descent and ground landing as passed. The next decimal
+Type31 `$07FF7B04` patrols the lower ground and kills direct Right
+at X2020; a Right+Up jump from X1992 clears that enemy but meets
+another decimal Type31 `$07FF7A14` at X2126. A checkpoint-only
+rearmed second Right+Up jump from X2084 clears both lower Type31
+patrols, but its descent meets a third active MOB `$07FF7AB4` at
+X2168/Y164. These exploratory jump controls did not pass the patrols.
+
+A separate checkpoint-only timing probe at grounded X1992/Y185 resolves
+the three-patrol collision without altering guest memory. The rightward
+Type31 `$07FF7A64` turns back; initiating standing right-facing Fire at
+Frame 62940 kills it by Frame 62986. Releasing and rearming Fire at
+Frame 63000 kills the following `$07FF7AB4` by Frame 63032; another
+release/rearm at Frame 63063 kills `$07FF7B04` by Frame 63092. The hero
+remains X1992/Y185 with HSalive=FF and all three MOBs Type0/flags40
+through Frame 63211 after ten neutral intervals in a checkpoint probe.
+A direct two-jump timing control
+cleared the first two patrols but collided with `$07FF7AB4` at
+X2168/Frame 62662, while a late rearm cleared it and collided with
+`$07FF7A64` at X2208/Frame 62683. These failures explain the need for
+the grounded return-phase Fire sequence.
+
+The checkpoint continuation advances right after those three kills.
+Direct Right dies at X2120/Frame 63275 against decimal Type31
+`$07FF7A14`; braking at X2084/Frame 63257 and starting grounded
+right-facing Fire kills that MOB by Frame 63296. Continuing then
+collides at X2196/Frame 63436 with decimal Type31 `$07FF79C4`.
+Braking at X2140/Frame 63408, waiting eleven 250,000-chip-cycle
+intervals for its return, and firing right kills it by Frame 63482.
+The hero remains X2140/Y185 alive through Frame 63641 after ten
+neutral intervals, with all five ground Type31 MOBs
+`$07FF7A64/$07FF7AB4/$07FF7B04/$07FF7A14/$07FF79C4` Type0/flags40.
+The durable
+`Tools/a3000-celtic-heart-stage-ten-five-ground-type31-kills-route.json`
+passes two independent complete DF0 cold starts in
+`tmp/stage10-five-ground-type31-full-a` and `-b`: Frame 63641,
+X2140/Y185, HSalive=FF, all five Type0/flags40, zero non-ROM
+exceptions and identical image hash
+`CFB3B7DA6F7601D76CEBC90F2ACC9DE1C1E092C030056A836FEEC755E40E7963`.
+Both active cold images show the hero on forest ground beside the
+tree and a defeated patrol. The route JSON validates. Count these
+five grounded Fire defeats and the sustained passage to X2140 as
+passed. Stage 10 remains open; continue from this living position.
+
+Checkpoint-only continuation from X2140: Right reaches a low solid
+wall and stops at X2272/Y185. The upper decimal Type25
+`$07FF7974` patrols X2287–2352/Y153; immediate Right+Up dies
+X2318/Frame 63745 through `hero_coll`. Waiting sixteen neutral
+500,000-chip-cycle intervals, then jumping Right+Up, leaves that
+patrol behind. A rearmed second jump climbs the next solid step;
+braking at X2426 and releasing Right/Up lands stably X2428/Y121
+through Frame 63996. Direct Right from that landing dies at X2436
+via a map collision, while a newly pressed Right+Up crosses it.
+Groundward travel to X2620/Y185 is alive only with a timely brake:
+continued Right meets decimal Type31 `$07FF7834` at X2670, whereas
+braking after 26 jump intervals keeps X2620 on fixed ground. A
+grounded right-facing Fire begun at Frame 64119 defeats it by Frame
+64154. Releasing and rearming Fire at Frame 64200 defeats the next
+decimal Type31 `$07FF77E4` by Frame 64239. The hero remains alive
+X2620/Y185 after ten neutral intervals through Frame 64334; both
+new MOBs are Type0/flags40. These initial observations were
+checkpoint-only; the full cold evidence follows.
+
+Full-cold follow-up: `Tools/a3000-celtic-heart-stage-ten-upper-wall-landing-route.json`
+now confirms X2428/Y121 at Frame 63996, HSalive=FF, zero non-ROM
+exceptions and identical hash
+`EC1FAF3DBF1B68DA3566499694EDA59C582992BA5C93C538F8E2CFEF1D05DD88`
+in two independent full DF0 cold starts. Both active images show the
+hero on the raised forest wall. The extended
+`Tools/a3000-celtic-heart-stage-ten-upper-trap-twin-ground-route.json`
+confirms a real Right+Up trap crossing and two more grounded Fire
+defeats: decimal Type31 `$07FF7834` and `$07FF77E4` are both
+Type0/flags40, while the hero remains alive X2620/Y185 at Frame
+64334. Both independent full cold starts have zero non-ROM exceptions,
+identical hash
+`FC0F1D4C2E87714DA2BA62B40ACC373B9631303D6EEE0DDCCF0B85495AE1DC8C`
+and reviewed active forest images. Both permanent route JSONs validate.
+Count the raised wall, trap crossing and twin Fire kills as passed;
+Stage 10 remains open.
+
+Further checkpoint-only inputs from X2620/Y185 locate a map trap at
+X2838: plain Right clears the hero's HSalive at Frame 64443 with a map
+collision (`A5=$001658`). A Right+Up started at X2766 passes its active
+phase. Continuing to X2854/Y185, releasing Up for 250,000 chip cycles,
+then rearming Right+Up clears the active decimal Type32
+`$07FF8284` on the lower ground. Braking at X3008/Y185 keeps the hero
+alive for ten neutral 500,000-cycle intervals through Frame 64671;
+the Type32 remains active. `tmp/stage10-far-type32-full-candidate.json`
+validates. Two independent full DF0 cold starts in
+`tmp/stage10-far-type32-full-a` and `-b` confirm Frame 64671,
+X3008/Y185, HSalive=FF, zero non-ROM exceptions, identical hash
+`505039100E2147345C41BD6A58EB8396F4D9A4CA3D3BF913C070D1A5A8860B2B`
+and both reviewed active forest images. The permanent
+`Tools/a3000-celtic-heart-stage-ten-far-type32-bypass-route.json`
+validates with that end hash. Count the trap and Type32 bypass as
+passed; the Type32 remains active and Stage 10 remains open. Next:
+find a real-input passage over the low wall near X3008, then independently
+repeat full DF0 cold starts and inspect active images before extending
+the durable route.
+
+### Optional Zorro III RAM bring-up — 2026-10-22
+
+A development-only single Zorro III memory board can now be attached to a
+32-bit desktop model through `AmigaModel.WithDevelopmentZorroIIIRam` or the
+GameRunner scenario field `zorroIIIRamMiB` (8, 16 or 32). It presents native
+Autoconfig at `$FF000000`, accepts the guest's 32-bit base assignment and
+maps a distinct, cacheable RAM array there. Reset returns the card to
+Autoconfig, power cycle clears its RAM, and a version-18 system savestate
+checks the installed card size and restores its configuration and contents.
+The previous model selector remains unchanged. The nibble/register layout
+follows the [Commodore A4000/A3000 Hardware Developer Notes v1.11](https://amiga.net.au/files/Tech_Amiga/Commodore_A4000-A3000_Hardware_Developer_Notes_v1.11_ocr.pdf).
+
+Unit tests cover 8/16/32 MiB native configuration, 32-bit non-aliased
+read/write boundaries, cacheability, reset, shut-up, restore and rejection
+on a 24-bit A500. A real A3000/Kickstart 3.1 cold boot with an 8 MiB board
+reached the normal visible disk-insert screen at frame 422, hash
+`4D01745C0CFA0218661EAA0C88D915FBDD3C7BC5943102362DC327D56E5B3FF7`,
+with the guest assigning `$40000000`, 814 board reads, 62 writes and zero
+non-ROM exceptions. An independent A4000/030/Kickstart 3.1 cold boot also
+assigned `$40000000`, performed 794 board reads and 62 writes, reached its
+normal visible disk-insert screen at frame 422, hash
+`9192DD4A048E00810E72F976C7B658AA50B8051C10439AAB5283DF9DD1BD0733`,
+with zero non-ROM exceptions. Brief 16/32 MiB A3000 boots also assigned
+the same 32-bit base and accessed the card, but are not long-run or OS
+acceptance. These are native guest Autoconfig checks, not installed-OS
+memory enumeration or multi-card/IRQ/DMA/timing conformance. The earlier
+compatible `$E80000` experiment produced a red expansion diagnostic and
+was discarded; only the native path is retained.
+
+The requested optional 68881/68882, independent A4000/040 CPU/MMU/FPU,
+and A1000 profile are still absent. The unmodified A1000 needs its own
+bootstrap ROM and writable control store rather than an A500 identity;
+neither is implemented or falsely offered as a selectable profile. The
+local ROM directory has Kickstart 1.x images but no separate A1000 bootstrap
+image, so a native cold-boot acceptance test cannot yet be claimed. The
+[Commodore A1000 component-level repair manual](https://amiga.net.au/files/Tech_Amiga/Commodore_Amiga_Computer_Model_1000_Assembly_and_Component_Level_Repair.pdf)
+documents the physical bootstrap ROM and WCS hardware. Next:
+exercise the opt-in card with installed AmigaOS on a disposable private HDF
+copy and verify guest memory enumeration, then implement multi-card Zorro III
+arbitration. Independently implement and test the A1000 bootstrap/WCS path,
+external FPU instruction state/exceptions, and a distinct 68040 core before
+making those models available.

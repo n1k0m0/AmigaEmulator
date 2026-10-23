@@ -33,7 +33,8 @@ namespace AmigaEmulator.Core.Memory
         {
             AmigaAddressRegion region = GetRegion(physicalAddress);
             return (region == AmigaAddressRegion.ChipRam || region == AmigaAddressRegion.SlowRam ||
-                region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.KickstartRom) &&
+                region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.ZorroIIIRam ||
+                region == AmigaAddressRegion.KickstartRom) &&
                 GetRegion(unchecked(physicalAddress + 3)) == region;
         }
         public bool IsDataCacheable(uint physicalAddress)
@@ -41,11 +42,13 @@ namespace AmigaEmulator.Core.Memory
             // Chip/Slow RAM is DMA-visible and data-cache inhibited on the
             // Amiga boards. Instruction fetches remain independently cachable.
             AmigaAddressRegion region = GetRegion(physicalAddress);
-            return (region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.KickstartRom) &&
+            return (region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.ZorroIIIRam ||
+                region == AmigaAddressRegion.KickstartRom) &&
                 GetRegion(unchecked(physicalAddress + 3)) == region;
         }
         public GayleIdeController HardDisk { get; }
         public ZorroRamAutoConfig AutoConfig { get; }
+        public ZorroIIIRamAutoConfig ZorroIII { get; }
         public Msm6242Clock BatteryClock { get; }
         public Rp5c01Clock RicohClock { get; }
         public GaylePcmciaController Pcmcia { get; }
@@ -64,7 +67,7 @@ namespace AmigaEmulator.Core.Memory
         private readonly bool _hasBatteryClock;
         public void BeginInstructionPlanning() { HardDisk.BeginPlanning(); if (_hasBatteryClock) BatteryClock.BeginPlanning(); if (_hasMotherboardRam) RicohClock.BeginPlanning(); }
         public void EndInstructionPlanning() { HardDisk.EndPlanning(); if (_hasBatteryClock) BatteryClock.EndPlanning(); if (_hasMotherboardRam) RicohClock.EndPlanning(); }
-        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); if (_hasPcmcia) Pcmcia.ResetMotherboard(); }
+        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); ZorroIII.Reset(); if (_hasPcmcia) Pcmcia.ResetMotherboard(); }
         public void SaveExpansionState(BinaryWriter writer) { HardDisk.SaveState(writer); AutoConfig.SaveState(writer); }
         public void LoadExpansionState(BinaryReader reader) { HardDisk.LoadState(reader); AutoConfig.LoadState(reader); }
         /// <summary>
@@ -171,6 +174,7 @@ namespace AmigaEmulator.Core.Memory
                 _scsiDmaWrite = (a, v) => { if (a < (uint)model.ChipRamBytes) _chipRam.Write(a, v); else _fastRam.Write(a - _motherboardRamStart, v); };
             }
             AutoConfig = new ZorroRamAutoConfig(_hasMotherboardRam ? 0 : model.FastRamBytes);
+            ZorroIII = new ZorroIIIRamAutoConfig(model.ZorroIIIRamBytes);
             _chipRamEnd = model.ChipRamBytes > 0
                 ? (uint)model.ChipRamBytes - 1u
                 : MemoryMap.ChipRamEnd;
@@ -270,6 +274,7 @@ namespace AmigaEmulator.Core.Memory
             _chipRam.Clear();
             _slowRam.Clear();
             _fastRam.Clear();
+            ZorroIII.ClearRam();
             _customRegisters.Reset();
         }
 
@@ -348,6 +353,9 @@ namespace AmigaEmulator.Core.Memory
             {
                 return AmigaAddressRegion.FastRam;
             }
+
+            if (ZorroIII.MapsRam(address)) return AmigaAddressRegion.ZorroIIIRam;
+            if (ZorroIII.MapsConfig(address)) return AmigaAddressRegion.ZorroIIIConfig;
 
             if (address >= MemoryMap.CustomStart && address <= MemoryMap.CustomEnd)
             {
@@ -440,6 +448,12 @@ namespace AmigaEmulator.Core.Memory
                 case AmigaAddressRegion.FastRam:
                     value = _fastRam.Read(address - FastRamStart);
                     break;
+                case AmigaAddressRegion.ZorroIIIRam:
+                    value = ZorroIII.ReadRam(address);
+                    break;
+                case AmigaAddressRegion.ZorroIIIConfig:
+                    value = ZorroIII.ReadConfig(address);
+                    break;
                 case AmigaAddressRegion.MotherboardResources:
                     value = DesktopResources.ReadByte(address);
                     break;
@@ -519,6 +533,10 @@ namespace AmigaEmulator.Core.Memory
                     return _slowRam.Read(address - MemoryMap.SlowRamStart);
                 case AmigaAddressRegion.FastRam:
                     return _fastRam.Read(address - FastRamStart);
+                case AmigaAddressRegion.ZorroIIIRam:
+                    return ZorroIII.PeekRam(address);
+                case AmigaAddressRegion.ZorroIIIConfig:
+                    return ZorroIII.PeekConfig(address);
                 case AmigaAddressRegion.MotherboardResources:
                     return DesktopResources.ReadByte(address);
                 case AmigaAddressRegion.GayleIde:
@@ -716,6 +734,12 @@ namespace AmigaEmulator.Core.Memory
                 case AmigaAddressRegion.FastRam:
                     _fastRam.Write(address - FastRamStart, value);
                     break;
+                case AmigaAddressRegion.ZorroIIIRam:
+                    ZorroIII.WriteRam(address, value);
+                    break;
+                case AmigaAddressRegion.ZorroIIIConfig:
+                    ZorroIII.WriteConfigByte(address, value);
+                    break;
                 case AmigaAddressRegion.MotherboardResources:
                     DesktopResources.WriteByte(address, value);
                     break;
@@ -768,6 +792,12 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void WriteWord(uint address, ushort value)
         {
+            if (ZorroIII.MapsConfig(Normalize(address)))
+            {
+                ZorroIII.WriteConfigWord(Normalize(address), value);
+                NotifyWriteObserved(Normalize(address), 2, value, AmigaAddressRegion.ZorroIIIConfig);
+                return;
+            }
             if (HardDisk.Maps(Normalize(address)) && HardDisk.IsDataPort(Normalize(address)))
             {
                 HardDisk.WriteData(value);

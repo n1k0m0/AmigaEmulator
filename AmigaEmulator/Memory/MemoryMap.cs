@@ -56,7 +56,9 @@ namespace AmigaEmulator.Core.Memory
         AutoConfig,
         BatteryClock,
         Pcmcia,
-        MotherboardResources
+        MotherboardResources,
+        ZorroIIIConfig,
+        ZorroIIIRam
     }
 
     /// <summary>

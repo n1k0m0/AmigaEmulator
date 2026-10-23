@@ -100,6 +100,16 @@ class PreflightTests(unittest.TestCase):
                                     [0, 0x1FFFFF, 0x200000], "actions": [{"type": "wait"}]}])
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_zorro_iii_development_ram_requires_a_supported_desktop_board(self):
+        for model, size in (("A500", 8), ("A1200", 8), ("A3000", 7)):
+            with self.subTest(model=model, size=size):
+                self.assert_invalid([{"name": "invalid-z3", "model": model,
+                                     "zorroIIIRamMiB": size, "actions": [{"type": "wait"}]}])
+        result = self.run_scenario([{"name": "valid-z3", "model": "A3000",
+                                    "ram": "Chip2MbFast4Mb", "zorroIIIRamMiB": 8,
+                                    "actions": [{"type": "wait"}]}])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
     def test_write_protection_requires_an_explicit_tab_and_valid_drive(self):
         for action in ({"type": "write-protect"},
                        {"type": "write-protect", "drive": -1, "writeProtected": False},
@@ -175,9 +185,9 @@ class PreflightTests(unittest.TestCase):
         good = self.run_scenario(case, extra_args=("--no-final-checkpoint",))
         self.assertEqual(0, good.returncode, good.stdout + good.stderr)
         self.assertIn("VALID 1", good.stdout)
-        selected = self.run_scenario(case, extra_args=("--image-label=review-frame",))
+        selected = self.run_scenario(case, extra_args=("--image-label=loaded",))
         self.assertEqual(0, selected.returncode, selected.stdout + selected.stderr)
-        raw = self.run_scenario(case, extra_args=("--image-label=review-frame", "--raw-frame"))
+        raw = self.run_scenario(case, extra_args=("--image-label=loaded", "--raw-frame"))
         self.assertEqual(0, raw.returncode, raw.stdout + raw.stderr)
         for extras in (("--no-final-checkpont",), ("compact", "another"),
                        ("--image-label=",), ("--image-label=one", "--image-label=two"),
@@ -186,7 +196,8 @@ class PreflightTests(unittest.TestCase):
             with self.subTest(extras=extras):
                 bad = self.run_scenario(case, validate=False, extra_args=extras)
                 self.assertEqual(2, bad.returncode, bad.stdout + bad.stderr)
-                self.assertIn("INVALID command line", bad.stderr)
+                expected = "INVALID image label(s)" if extras == ("--image-label=one", "--image-label=two") else "INVALID command line"
+                self.assertIn(expected, bad.stderr)
 
     def test_exception_vector_guard_rejects_invalid_or_unobserved_vectors(self):
         for fields in ({"allowedNonRomExceptionVectors": [4, 5, 9]},

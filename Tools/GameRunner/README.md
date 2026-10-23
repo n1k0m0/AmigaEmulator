@@ -1,5 +1,11 @@
 # Scripted gameplay review
 
+For isolated 32-bit expansion experiments, an A3000 or A4000/030 scenario
+may set `"zorroIIIRamMiB": 8`, `16`, or `32`. This attaches one development
+Zorro III RAM board through native Autoconfig; it is a cold-boot option and
+is not an installed-OS or general Zorro III conformance claim. The step JSON
+reports its assigned address and observed RAM accesses.
+
 Mega lo Mania's source now covers the intro, Scarlet selection, seven allocated
 men, a valid first island sector, live play, P and cold restore. The A4000 variant
 targets another buildable sector in its first island. The original A500/A2000
@@ -73,11 +79,13 @@ For a replay whose screenshots were already visually reviewed, add
 hashes, presence guards, CPU/input diagnostics and `steps.jsonl`. Image path
 fields are null in that mode. It can be combined with `--no-final-checkpoint`;
 do not use it for first-time visual acceptance of a scene.
-For a targeted first visual review, use `--image-label=LABEL` instead: only the
-action with that exact label writes its logical and available native/interlaced
-PNGs. Every action still records hashes and guards. This option cannot be
-combined with `--no-images` and helps avoid large diagnostic image trees.
-For a single scene's full Denise raster before monitor cropping, combine
+For a targeted first visual review, use one or more `--image-label=LABEL`
+options instead: only actions with those exact labels write logical and
+available native/interlaced PNGs. Every action still records hashes and
+guards. Unknown labels fail before any run or output directory is created;
+`loaded` selects the initial capture. This option cannot be combined with `--no-images` and helps avoid
+large diagnostic image trees or repeated full guest replays.
+For selected scenes' full Denise raster before monitor cropping, combine
 `--image-label=LABEL --raw-frame`. It adds `-raw.png`, `-raw-sprites.png`
 and `-raw-playfield.png` beside the selected presented image, including
 pixels outside the 704x288 viewport. Use them to locate whether a missing
@@ -95,6 +103,16 @@ fails if that frame has no native SuperHires output. The ordinary screenshot
 and `expectedFrameHash` remain the established logical-resolution checks.
 Use `GameRunner <scenario.json> --validate [case-name]` for a read-only
 preflight of model/RAM layouts, referenced disks, keys and button names.
+For a narrowly scoped guest RAM write diagnosis, set
+`traceMemoryWriteAddresses` to 1–8 RAM byte addresses. The runner writes
+`memory-writes.jsonl` with the frame, current CPU PC, A5/A7, four stack
+longwords, write size/value and resulting watched byte. Add a
+`trace-memory-start` action immediately before
+the suspect interval and `trace-memory-stop` afterward to avoid a long trace.
+This records bus writes; the PC is the emulator's current PC when the bus
+observer runs, and may need disassembly context to identify the instruction.
+Guest code may change A5 before the watched write; do not assume it still
+points at the object that initiated an earlier collision.
 Invalid selections return 1 before any cases start; a missing case returns 2.
 Normal runs perform the same preflight before creating output directories.
 Unknown JSON fields, missing raw `key` values and duplicate case names are
@@ -201,6 +219,15 @@ Workbench and dialog plus the restored non-laced desktop. The source HDF is
 never mounted by the scenario; remove the private copy and captures after
 review. Only the user's own ROM and OS files can run this scenario.
 
+`Tools/amigaos314-a4000-laced-clock.json` continues the same read-only
+PAL High Res Laced Workbench route through `Run SYS:Utilities/Clock`, closes
+the covering CLI Output Window, observes the analog clock twice, then closes
+Clock and returns to Workbench. Run it with `--no-final-checkpoint` and
+`--image-label=clock-after-output-gadget --image-label=clock-late
+--image-label=workbench-after-clock`. The script checks the interlaced mode,
+zero non-ROM exceptions and zero HDF writes; visually review the captures
+because the live clock face changes and has no fixed image hash.
+
 The same private HDF and ROM can exercise Workbench's PAL Super-High Res
 Laced mode through the native 1408x576 capture path:
 
@@ -247,6 +274,8 @@ must be complete hexadecimal SHA-256 values; invalid values fail preflight
 before outputs or disk creation. This catches reviewed exact loss/menu frames
 without claiming that all other frames are playable. Prefer
 `expectedFrameHash` when a scene has a stable exact gameplay reference.
+Malformed expected hashes are rejected during preflight before any guest run
+or output directory is created.
 Disk images are mounted read-only by default. Use a fresh private copy for any
 scenario that disables write protection. A replacement exposes a two-second emulated
 empty-drive interval before the new medium becomes readable, including when
@@ -316,11 +345,26 @@ Actions:
   (the guest-visible JOY1DAT register); `expectedJoy1` accepts four hex digits
   to assert the actual direction held at a sampled edge or wait.
 - `memoryWatchAddresses`: optional scenario-level list of up to 32 distinct
-  RAM byte addresses below `$A00000` (decimal JSON integers). Every step logs
+  RAM byte addresses below `$A00000` or in a desktop model's motherboard Fast
+  RAM (decimal JSON integers). Every step logs
   their six-digit addresses and two-digit values in `memoryWatch`. These
   read-only peeks help correlate guest life, damage and animation state with
   reviewed frames without creating large memory dumps; the caller must still
   establish what each guest address means.
+- `expectedMemoryBytes`: optional per-action object mapping decimal RAM byte
+  addresses to two-digit hex values, for example
+  `"expectedMemoryBytes": { "134182154": "FF" }`. It accepts up to 32
+  inspectable addresses using the same RAM bounds as `memoryWatchAddresses`
+  and fails the scenario when the guest byte differs. Use it to guard a
+  reviewed live-gameplay checkpoint against a visually similar death frame;
+  guest addresses remain specific to the loaded program and its state.
+- `memory-snapshot`: explicit read-only RAM capture after optional `cycles`.
+  Set decimal `memoryStart` and `memoryLength` (1..65536); only inspectable
+  low RAM or the configured desktop motherboard Fast RAM is accepted. The
+  action writes one named `.bin` beside `steps.jsonl`, allowing a bounded
+  before/after comparison without dumping memory at every step. Store these
+  diagnostic files under the ignored `tmp` directory and remove them after
+  analysis where permitted.
 - `disk`: `disk` ADF filename and optional `drive` index (default DF0).
 - `write-protect`: explicit `writeProtected: true`/`false`, optional `drive`
   (default DF0), and `cycles` (zero by default). Changes the existing medium's

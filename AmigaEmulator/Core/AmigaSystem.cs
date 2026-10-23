@@ -476,13 +476,14 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(17); // Nested MMU state includes fixed ATC slots and history bits.
+                writer.Write(18); // Optional Zorro III board and RAM state.
                 writer.Write((int)_model.Machine);
                 writer.Write(_model.ChipRamBytes); writer.Write(_model.SlowRamBytes); writer.Write(_model.FastRamBytes);
                 writer.Write((int)_model.Cpu); writer.Write(_model.CpuClockHz); writer.Write(_cpuClockPhase);
                 writer.Write((int)_model.Chipset);
                 writer.Write((int)_model.IdeModel);
                 writer.Write(_model.HasDesktopResources);
+                writer.Write(_model.ZorroIIIRamBytes);
                 _bus.SaveState(writer);
                 _cpu.SaveState(writer);
                 _agnus.SaveState(writer);
@@ -507,6 +508,7 @@ namespace AmigaEmulator.Core
                 if (_model.Chipset == AmigaChipset.Aga) _agnus.CustomRegisters.AgaColors.SaveState(writer);
                 if (_model.HasDesktopResources) _bus.DesktopResources.SaveState(writer);
                 if (_model.HasRicohClock) _bus.RicohClock.SaveState(writer);
+                if (_model.ZorroIIIRamBytes != 0) _bus.ZorroIII.SaveState(writer);
             }
         }
 
@@ -523,7 +525,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version < 1 || version > 17)
+                if (version < 1 || version > 18)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
@@ -548,6 +550,9 @@ namespace AmigaEmulator.Core
                 if (savedIde != _model.IdeModel) throw new InvalidDataException("Savestate IDE wiring does not match the current machine.");
                 bool savedDesktop = version >= 12 && reader.ReadBoolean();
                 if (savedDesktop != _model.HasDesktopResources) throw new InvalidDataException("Savestate motherboard resources do not match the current machine.");
+                int savedZorroIII = version >= 18 ? reader.ReadInt32() : 0;
+                if (savedZorroIII != _model.ZorroIIIRamBytes)
+                    throw new InvalidDataException("Savestate Zorro III RAM layout does not match the current machine.");
                 _cpuClockPhase = savedPhase;
                 _bus.LoadState(reader);
                 _cpu.LoadState(reader);
@@ -586,6 +591,7 @@ namespace AmigaEmulator.Core
                 if (version >= 10 && _model.Chipset == AmigaChipset.Aga) _agnus.CustomRegisters.AgaColors.LoadState(reader);
                 if (version >= 12 && _model.HasDesktopResources) _bus.DesktopResources.LoadState(reader);
                 if (version >= 13 && _model.HasRicohClock) _bus.RicohClock.LoadState(reader);
+                if (version >= 18 && _model.ZorroIIIRamBytes != 0) _bus.ZorroIII.LoadState(reader);
                 if (_mainsTodPhase < 0 || _mainsTodPhase >= _model.ChipMasterClockHz)
                     throw new InvalidDataException("Invalid mains TOD clock phase.");
                 _agnus.Bitplanes.RefreshFromRegisters();

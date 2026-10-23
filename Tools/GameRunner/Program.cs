@@ -15,13 +15,12 @@ using AmigaEmulator.Core.SaveStates;
 // Deterministic input/disk scenarios. A screenshot is evidence for review, never an automatic gameplay pass.
 if (args.Length < 2)
 {
-    Console.Error.WriteLine("GameRunner <scenario.json> <output-directory|--validate> [case-name] [--no-final-checkpoint] [--no-images|--image-label=LABEL [--raw-frame]]");
+    Console.Error.WriteLine("GameRunner <scenario.json> <output-directory|--validate> [case-name] [--no-final-checkpoint] [--no-images|--image-label=LABEL ... [--raw-frame]]");
     return 2;
 }
 string[] extraArgs = args.Skip(2).ToArray();
 if (extraArgs.Any(arg => arg.StartsWith("--", StringComparison.Ordinal) &&
     arg is not ("--no-final-checkpoint" or "--no-images" or "--raw-frame") && !arg.StartsWith("--image-label=", StringComparison.Ordinal)) ||
-    extraArgs.Count(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal)) > 1 ||
     (extraArgs.Contains("--no-images", StringComparer.Ordinal) &&
      extraArgs.Any(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal))) ||
     (extraArgs.Contains("--raw-frame", StringComparer.Ordinal) &&
@@ -31,13 +30,14 @@ if (extraArgs.Any(arg => arg.StartsWith("--", StringComparison.Ordinal) &&
          arg["--image-label=".Length..].IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)) ||
     extraArgs.Count(arg => !arg.StartsWith("--", StringComparison.Ordinal)) > 1)
 {
-    Console.Error.WriteLine("INVALID command line: expected at most one case name, --no-final-checkpoint, --no-images or --image-label=LABEL, with optional --raw-frame only for a selected image label.");
+    Console.Error.WriteLine("INVALID command line: expected at most one case name, --no-final-checkpoint, --no-images or one or more --image-label=LABEL values, with optional --raw-frame only for selected image labels.");
     return 2;
 }
 bool writeFinalCheckpoint = !extraArgs.Contains("--no-final-checkpoint", StringComparer.Ordinal);
 bool writeImages = !extraArgs.Contains("--no-images", StringComparer.Ordinal);
 bool writeRawFrame = extraArgs.Contains("--raw-frame", StringComparer.Ordinal);
-string imageLabel = extraArgs.FirstOrDefault(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal))?["--image-label=".Length..];
+string[] imageLabels = extraArgs.Where(arg => arg.StartsWith("--image-label=", StringComparison.Ordinal))
+    .Select(arg => arg["--image-label=".Length..]).ToArray();
 string selectedCase = extraArgs.FirstOrDefault(arg => !arg.StartsWith("--", StringComparison.Ordinal));
 List<Scenario> scenarios;
 try
@@ -62,6 +62,18 @@ foreach (var scenario in selected)
     try { Validate(scenario); }
     catch (Exception ex) { Console.Error.WriteLine($"INVALID {scenario.Name}: {ex.Message}"); return 1; }
 }
+if (imageLabels.Length != 0)
+{
+    var availableLabels = selected.SelectMany(s => (s.Actions ?? []).Select(a => a.Label ?? a.Type))
+        .Append("loaded").ToHashSet(StringComparer.Ordinal);
+    var missingLabels = imageLabels.Distinct(StringComparer.Ordinal)
+        .Where(label => !availableLabels.Contains(label)).ToArray();
+    if (missingLabels.Length != 0)
+    {
+        Console.Error.WriteLine("INVALID image label(s): " + string.Join(", ", missingLabels));
+        return 2;
+    }
+}
 if (validateOnly) { Console.WriteLine($"VALID {selected.Count} scenarios."); return 0; }
 Directory.CreateDirectory(args[1]);
 int failures = 0;
@@ -69,7 +81,7 @@ foreach (var scenario in selected)
 {
     try
     {
-        string actualModel = Run(scenario, args[1], writeFinalCheckpoint, writeImages, imageLabel, writeRawFrame);
+        string actualModel = Run(scenario, args[1], writeFinalCheckpoint, writeImages, imageLabels, writeRawFrame);
         WriteResult(scenario, "executed-unreviewed", null, actualModel);
     }
     catch (Exception ex)
@@ -95,14 +107,27 @@ static void Validate(Scenario scenario)
         (!scenario.TraceExceptions || allowed.Any(vector => vector < 2 || vector >= 24) ||
          allowed.Distinct().Count() != allowed.Count))
         throw new ArgumentException("allowedNonRomExceptionVectors requires traceExceptions and distinct observed vectors 2..23.");
-    if (scenario.MemoryWatchAddresses is { } watched &&
-        (watched.Count > 32 || watched.Any(address => address >= 0xA00000) ||
-         watched.Distinct().Count() != watched.Count))
-        throw new ArgumentException("memoryWatchAddresses requires at most 32 distinct RAM addresses below $A00000.");
     var metadata = scenario.Save == null ? null : SaveStateFile.ReadMetadata(Environment.ExpandEnvironmentVariables(scenario.Save));
     var machine = metadata?.MachineModel ?? Enum.Parse<AmigaMachineModel>(scenario.Model ?? "A500");
     var ram = metadata?.RamProfile ?? (scenario.Ram == null ? AmigaModel.GetDefaultRamProfile(machine) : Enum.Parse<AmigaRamProfile>(scenario.Ram));
-    _ = AmigaModel.Create(machine, ram); // Reject unsupported board/RAM pairs rather than normalize them silently.
+    var model = AmigaModel.Create(machine, ram); // Reject unsupported board/RAM pairs rather than normalize them silently.
+    if (scenario.ZorroIIIRamMiB != 0)
+    {
+        if (metadata != null) throw new ArgumentException("Zorro III development RAM requires a cold boot, not a saved checkpoint.");
+        model = model.WithDevelopmentZorroIIIRam(checked(scenario.ZorroIIIRamMiB * 1024 * 1024));
+    }
+    bool InspectableRam(uint start, int length) =>
+        (start < 0xA00000 && (ulong)start + (uint)length <= 0xA00000) ||
+        (model.HasDesktopResources && model.FastRamBytes > 0 &&
+         start >= model.MotherboardFastRamStart && (ulong)start + (uint)length <= 0x08000000);
+    if (scenario.MemoryWatchAddresses is { } watched &&
+        (watched.Count > 32 || watched.Any(address => !InspectableRam(address, 1)) ||
+         watched.Distinct().Count() != watched.Count))
+        throw new ArgumentException("memoryWatchAddresses requires at most 32 distinct inspectable RAM addresses.");
+    if (scenario.TraceMemoryWriteAddresses is { } traced &&
+        (traced.Count is < 1 or > 8 || traced.Any(address => !InspectableRam(address, 1)) ||
+         traced.Distinct().Count() != traced.Count))
+        throw new ArgumentException("traceMemoryWriteAddresses requires 1..8 distinct inspectable RAM addresses.");
     string mediaRoot = Environment.ExpandEnvironmentVariables(scenario.MediaRoot ?? "%USERPROFILE%/Documents/AmigaEmulator");
     void Disk(string filename, int drive)
     {
@@ -122,6 +147,9 @@ static void Validate(Scenario scenario)
         if (action.MinimumNonBlackPixels < 0 || action.MinimumNonBlackPixels >
             AmigaSystem.PresentationViewportWidth * AmigaSystem.PresentationViewportHeight)
             throw new ArgumentOutOfRangeException(nameof(action.MinimumNonBlackPixels));
+        if (action.ExpectedFrameHash is { } frameHash &&
+            (frameHash.Length != 64 || !frameHash.All(Uri.IsHexDigit)))
+            throw new ArgumentException("expectedFrameHash requires a 64-character SHA-256 hex value.");
         if (action.ForbiddenFrameHashes?.Any(hash => hash is null || hash.Length != 64 ||
             !hash.All(Uri.IsHexDigit)) == true)
             throw new ArgumentException("forbiddenFrameHashes requires 64-character SHA-256 hex values.");
@@ -143,16 +171,32 @@ static void Validate(Scenario scenario)
             throw new ArgumentException("Expected input registers require two-digit CIA-A and four-digit POTINP hex values.");
         if (action.ExpectedJoy1 is { } joy1 && (joy1.Length != 4 || !joy1.All(Uri.IsHexDigit)))
             throw new ArgumentException("expectedJoy1 requires a four-digit JOY1DAT hex value.");
+        if (action.ExpectedMemoryBytes is { } expectedMemory &&
+            (expectedMemory.Count > 32 || expectedMemory.Any(entry =>
+                !InspectableRam(entry.Key, 1) || entry.Value is null ||
+                entry.Value.Length != 2 || !entry.Value.All(Uri.IsHexDigit))))
+            throw new ArgumentException("expectedMemoryBytes requires at most 32 inspectable RAM addresses with two-digit hex byte values.");
         if (action.ExpectedBplcon0 is { } bplcon0 &&
             (bplcon0.Length != 4 || !bplcon0.All(Uri.IsHexDigit)))
             throw new ArgumentException("expectedBplcon0 requires a four-digit hexadecimal register value.");
+        if (action.Type != "memory-snapshot" && (action.MemoryStart.HasValue || action.MemoryLength != 0))
+            throw new ArgumentException("memoryStart/memoryLength require a memory-snapshot action.");
         if (action.Label != null) Name(action.Label);
         switch (action.Type)
         {
             case "wait": case "mouse": case "reset": case "restore": break;
+            case "memory-snapshot":
+                if (!action.MemoryStart.HasValue || action.MemoryLength is < 1 or > 65536 ||
+                    !InspectableRam(action.MemoryStart.Value, action.MemoryLength))
+                    throw new ArgumentException("memory-snapshot requires an inspectable RAM range of 1..65536 bytes.");
+                break;
             case "trace-display-start": case "trace-display-stop":
                 if (!scenario.TraceDisplayControl)
                     throw new ArgumentException("Display trace actions require traceDisplayControl.");
+                break;
+            case "trace-memory-start": case "trace-memory-stop":
+                if (scenario.TraceMemoryWriteAddresses is not { Count: > 0 })
+                    throw new ArgumentException("Memory trace actions require traceMemoryWriteAddresses.");
                 break;
             case "key": case "key-down": case "key-up":
                 if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || (action.Modifiers ?? []).Any(key => key < 0 || key > 0x7F))
@@ -212,7 +256,7 @@ static byte[] StateHash(Action<BinaryWriter> save)
     return SHA256.HashData(bytes.GetBuffer().AsSpan(0, checked((int)bytes.Length)));
 }
 
-static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, bool writeImages, string imageLabel,
+static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, bool writeImages, string[] imageLabels,
     bool writeRawFrame)
 {
     if (string.IsNullOrWhiteSpace(scenario.Name) || scenario.Name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || scenario.Name is "." or "..")
@@ -226,6 +270,8 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
     var ram = saveMetadata != null ? saveMetadata.RamProfile : scenario.Ram != null
         ? Enum.Parse<AmigaRamProfile>(scenario.Ram) : AmigaModel.GetDefaultRamProfile(machine);
     var model = AmigaModel.Create(machine, ram);
+    if (scenario.ZorroIIIRamMiB != 0)
+        model = model.WithDevelopmentZorroIIIRam(checked(scenario.ZorroIIIRamMiB * 1024 * 1024));
     var accuracy = (scenario.Strict ? AmigaAccuracyOptions.Compatible : AmigaAccuracyOptions.Fast).Clone();
     using var system = new AmigaSystem(model, accuracy);
     using var exceptionTrace = scenario.TraceExceptions
@@ -267,6 +313,32 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
         copperTrace.WriteLine(JsonSerializer.Serialize(entry));
     using var displayTrace = scenario.TraceDisplayControl
         ? new StreamWriter(Path.Combine(directory, "display-control.jsonl")) : null;
+    using var memoryWriteTrace = scenario.TraceMemoryWriteAddresses is { Count: > 0 }
+        ? new StreamWriter(Path.Combine(directory, "memory-writes.jsonl")) : null;
+    bool memoryWriteTraceEnabled = memoryWriteTrace != null &&
+        !(scenario.Actions?.Any(action => action.Type == "trace-memory-start") ?? false);
+    if (memoryWriteTrace != null)
+    {
+        var traceAddresses = scenario.TraceMemoryWriteAddresses.ToHashSet();
+        system.Bus.WriteObserved += (address, size, value, region) =>
+        {
+            if (!memoryWriteTraceEnabled || size < 1) return;
+            foreach (uint watchedAddress in traceAddresses)
+            {
+                if ((ulong)watchedAddress < address || (ulong)watchedAddress >= (ulong)address + (uint)size) continue;
+                memoryWriteTrace.WriteLine(JsonSerializer.Serialize(new {
+                    frame = system.FrameCounter, pc = system.Cpu.PC.ToString("X6"),
+                    a5 = system.Cpu.Snapshot.A[5].ToString("X6"),
+                    a7 = system.Cpu.A7.ToString("X6"),
+                    stack = Enumerable.Range(0, 4).Select(index =>
+                        system.Bus.PeekLong(system.Cpu.A7 + (uint)(index * 4)).ToString("X8")),
+                    address = address.ToString("X6"), size, value = value.ToString("X8"),
+                    watchedAddress = watchedAddress.ToString("X6"),
+                    watchedByte = system.Bus.PeekByte(watchedAddress).ToString("X2"), region = region.ToString()
+                }));
+            }
+        };
+    }
     bool displayTraceEnabled = scenario.TraceDisplayControl &&
         !(scenario.Actions?.Any(action => action.Type == "trace-display-start") ?? false);
     if (displayTrace != null)
@@ -347,8 +419,18 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
         switch (action.Type)
         {
             case "wait": system.RunChipCycles(action.Cycles); break;
+            case "memory-snapshot":
+                system.RunChipCycles(action.Cycles);
+                var memory = new byte[action.MemoryLength];
+                for (int i = 0; i < memory.Length; i++)
+                    memory[i] = system.Bus.PeekByte(action.MemoryStart.Value + (uint)i);
+                File.WriteAllBytes(Path.Combine(directory,
+                    $"{step:00}-{action.Label ?? action.Type}-ram-{action.MemoryStart.Value:X8}-{action.MemoryLength}.bin"), memory);
+                break;
             case "trace-display-start": displayTraceEnabled = true; break;
             case "trace-display-stop": displayTraceEnabled = false; break;
+            case "trace-memory-start": memoryWriteTraceEnabled = true; break;
+            case "trace-memory-stop": memoryWriteTraceEnabled = false; break;
             case "key":
                 var modifiers = action.Modifiers ?? [];
                 if (!action.Key.HasValue || action.Key < 0 || action.Key > 0x7F || modifiers.Any(key => key < 0 || key > 0x7F))
@@ -481,6 +563,13 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
         if (action.ExpectedJoy1 != null && !string.Equals(action.ExpectedJoy1,
             system.Input.ReadJoyDat(AmigaControlPort.Port1).ToString("X4"), StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"JOY1DAT differs from the expected value after {action.Label ?? action.Type}.");
+        if (action.ExpectedMemoryBytes is { } expectedMemoryBytes)
+            foreach (var (address, expected) in expectedMemoryBytes)
+            {
+                byte actual = system.Bus.PeekByte(address);
+                if (!string.Equals(expected, actual.ToString("X2"), StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"RAM byte ${address:X6} differs after {action.Label ?? action.Type}: expected ${expected}, actual ${actual:X2}.");
+            }
         if (system.Bus.HardDisk.ReadSectors < action.MinimumHardDiskReads)
             throw new InvalidOperationException($"Expected at least {action.MinimumHardDiskReads} HDF sector reads after {action.Label ?? action.Type}.");
         if (action.MinimumNonBlackPixels > 0 && nonBlackPixels < action.MinimumNonBlackPixels)
@@ -512,7 +601,7 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
     {
         var frame = system.PresentedFrameBuffer;
         int captureIndex = step++;
-        bool captureImage = writeImages && (imageLabel == null || string.Equals(imageLabel, label, StringComparison.Ordinal));
+        bool captureImage = writeImages && (imageLabels.Length == 0 || imageLabels.Contains(label, StringComparer.Ordinal));
         string imagePath = captureImage ? Path.Combine(directory, $"{captureIndex:00}-{label}.png") : null;
         if (captureImage) SaveArgbPng(imagePath, frame.Pixels, frame.Width, frame.Height);
         if (captureImage && writeRawFrame)
@@ -588,6 +677,19 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
                 address => address.ToString("X6"), address => system.Bus.PeekByte(address).ToString("X2")),
             fastRam = new { configured = model.HasDesktopResources ? model.FastRamBytes != 0 : system.Bus.AutoConfig.Configured,
                 address = model.HasDesktopResources ? model.MotherboardFastRamStart : system.Bus.AutoConfig.BaseAddress },
+            zorroIII = new { size = system.Bus.ZorroIII.Size, configured = system.Bus.ZorroIII.Configured,
+                address = system.Bus.ZorroIII.BaseAddress, ramReads = system.Bus.ZorroIII.RamReads,
+                ramWrites = system.Bus.ZorroIII.RamWrites,
+                lastRamRead = system.Bus.ZorroIII.LastRamReadAddress,
+                lastRamWrite = system.Bus.ZorroIII.LastRamWriteAddress,
+                configReads = system.Bus.ZorroIII.ConfigReads,
+                configWrites = system.Bus.ZorroIII.ConfigWrites,
+                assignments = system.Bus.ZorroIII.Assignments,
+                shutups = system.Bus.ZorroIII.Shutups,
+                lastConfigWriteOffset = system.Bus.ZorroIII.LastConfigWriteOffset,
+                lastConfigWriteValue = system.Bus.ZorroIII.LastConfigWriteValue,
+                highWriteValue = system.Bus.ZorroIII.HighWriteValue,
+                lowWriteValue = system.Bus.ZorroIII.LowWriteValue },
             pcmcia = new { size = system.Bus.Pcmcia.Size, status = system.Bus.PeekByte(0xDA8000), changes = system.Bus.PeekByte(0xDA9000),
                 guestMemory = scenario.ExpectPcmciaRam ? GuestMemory() : null }, accuracy = accuracy.Name,
             imagePath, nativeImagePath, nativeHash, interlacedImagePath, interlacedHash,
@@ -639,6 +741,7 @@ class Scenario
     public string Save { get; set; }
     public string Ram { get; set; }
     public string Model { get; set; }
+    public int ZorroIIIRamMiB { get; set; }
     public bool Strict { get; set; }
     public string KickstartRom { get; set; }
     public string HardDisk { get; set; }
@@ -652,6 +755,7 @@ class Scenario
     public int? MaximumNonRomExceptions { get; set; }
     public List<int> AllowedNonRomExceptionVectors { get; set; }
     public List<uint> MemoryWatchAddresses { get; set; }
+    public List<uint> TraceMemoryWriteAddresses { get; set; }
     public bool TraceCopper { get; set; }
     public bool TraceDisplayControl { get; set; }
     public bool TraceCopperBuild { get; set; }
@@ -683,7 +787,10 @@ class ScenarioAction
     public string ExpectedCiaAPortA { get; set; }
     public string ExpectedPotInp { get; set; }
     public string ExpectedJoy1 { get; set; }
+    public Dictionary<uint, string> ExpectedMemoryBytes { get; set; }
     public string ExpectedBplcon0 { get; set; }
+    public uint? MemoryStart { get; set; }
+    public int MemoryLength { get; set; }
     // A reviewed loss/menu frame may contain many nonblack pixels; reject it explicitly.
     public List<string> ForbiddenFrameHashes { get; set; }
     public long MinimumHardDiskReads { get; set; }
