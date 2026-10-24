@@ -1202,6 +1202,17 @@ namespace AmigaEmulator.Core.Cpu
                         return resetPrivilegeMnemonic;
                     }
 
+                    if (_bus is IM68kResetSignalSink { CpuResetSignalConnected: true } resetSink)
+                    {
+                        // Size zero is a signal, ordered after the opcode fetch.
+                        // It uses the existing serializable operation shape.
+                        if (_deferBusSideEffects)
+                        {
+                            _pendingBusOperations.Enqueue(new PendingBusOperation { AccessType = M68kTraceAccessType.Internal, Size = 0 });
+                            _currentInstructionBusMicroOps++; // Its retirement consumes an internal tick, not extra RESET clocks.
+                        }
+                        else resetSink.AssertCpuReset();
+                    }
                     return "RESET";
                 case 0x4E71:
                     return "NOP";
@@ -3481,6 +3492,11 @@ namespace AmigaEmulator.Core.Cpu
             }
 
             PendingBusOperation operation = _pendingBusOperations.Dequeue();
+            if (operation.Size == 0)
+            {
+                (_bus as IM68kResetSignalSink)?.AssertCpuReset();
+                return;
+            }
             if (_has020) UsedChipBusInLastTick = _busArbitration == null || _busArbitration.RequiresChipBus(operation.Address, operation.Size);
             if (!operation.Write)
             {
@@ -3522,6 +3538,7 @@ namespace AmigaEmulator.Core.Cpu
             }
 
             PendingBusOperation operation = _pendingBusOperations.Peek();
+            if (operation.Size == 0) return true;
             if (_busArbitration == null || !_busArbitration.RequiresChipBus(operation.Address, operation.Size))
             {
                 return true;

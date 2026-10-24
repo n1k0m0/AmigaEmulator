@@ -118,6 +118,7 @@ namespace AmigaEmulator.Tests
             tests.AddRange(IntegrationTests.Build());
             tests.AddRange(SaveStateTests.Build());
             tests.AddRange(StorageExpansionTests.Build());
+            tests.AddRange(A1000ControlStoreTests.Build());
             tests.AddRange(FloppyPersistenceTests.Build());
             tests.AddRange(FloppyIdentificationTests.Build());
             tests.AddRange(FloppyRotationTests.Build());

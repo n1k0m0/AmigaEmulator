@@ -291,12 +291,12 @@ broader application and all-model storage coverage remain open.
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
 | 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection retains media/partial writes; separate Pinball writer repair persists all eleven score sectors on the correct track on both native desktops; late Cannon sprite no longer collapses the host presentation to its final 80–88 source rows (2026-10-12) | Current Siedler border report remains open; raw/custom-track preservation remains incomplete; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
-| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and score-sector writes on all four tables with an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands; Cannon Fodder's first mission on all eight native boards with data drives; Celtic Heart Snow Mountains Stages 1 and 2 completed on A3000 through real inputs, followed by independently replayed active Stage-3 movement, stable passage of its first gap, defeat of the first far-side type-9 enemy, a timed Fire kill of the type-12 bat, and two grounded Fire kills followed by live movement through the raised knight corridor to X=780 and independently replayed timed passage across three water stones, castle landing, Type-6 knight defeat and sustained upper-platform landing beyond the Type-5 enemy and two defeated lower-castle knights, first castle-wall ledge, near Type-12 bat, higher castle step, sustained roof landing, timed passage to the right-side platform at X=1492/Y=73, and independently replayed Fire defeats of both far bats and the lower Type-9 enemy, followed by timed passage beneath the far castle wall to X=1680/Y=185 and a raised Type-5 defeat with stable live movement to X=1836/Y=137, a higher-platform landing at X=1738/Y=89, a safe jump over deadly GID 66 to X=1696/Y=89, a tiny high-step landing at X=1668/Y=41, a grounded Fire defeat of the high Type-6 knight at X=1752/Y=9, an independently replayed living landing past the X=1888 pillar at X=1924/Y=89, the grounded Fire defeat of the next Type-6 knight, and timed far-side jumps with stable landings at X=2180/Y=121 and X=2324/Y=25, a jump over the animated upper tile to X=2380/Y=25, a living landing past the second tall column at X=2464/Y=185, a grounded Fire defeat of its Type-6 knight, and a jump over the Type-7 ground enemy, followed by the animated-tile and two-water-gap passages, far-side Type-6 and Type-8 kills, three fixed steps and a wall overjump, and independently cold-replayed visible Stage-3 and Stage-4 completions, followed by active Stage-5 passages through the Type-7 ground enemy, three Type-5 patrols and a timed foreground-tile jump to X=2232 and an independently repeated Type-15 magical-fire bypass through the X=2304 wall, a Type-9 Dino defeat, animated hazard and Type-8 spider bypass, moving-platform water crossing and two fixed-step landings to X=2888/Y=57 and a second independently replayed moving-platform passage to X=3052/Y=57, then a defeated lower Type-5 spider and genuine raised-stone gameplay through the visibly complete Stage 5 and Stage-6 title, then active cave movement, first skeleton bypass, first cavern gap, two further Type-17 defeats and a Type-20 green-walker defeat at X=364/Y=121 (2026-10-21). Later detailed full-cold routes below document visible completions through Stage 9 and active Stage 10. | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned Pinball highscore entry and broader reload/model coverage, Desert land objectives, Cannon single-drive requests and longer campaigns, Celtic Heart Stage 10 and later stages, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
+| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and score-sector writes on all four tables with an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands; Cannon Fodder's first mission on all eight native boards with data drives; Celtic Heart Snow Mountains Stages 1 and 2 completed on A3000 through real inputs, followed by independently replayed active Stage-3 movement, stable passage of its first gap, defeat of the first far-side type-9 enemy, a timed Fire kill of the type-12 bat, and two grounded Fire kills followed by live movement through the raised knight corridor to X=780 and independently replayed timed passage across three water stones, castle landing, Type-6 knight defeat and sustained upper-platform landing beyond the Type-5 enemy and two defeated lower-castle knights, first castle-wall ledge, near Type-12 bat, higher castle step, sustained roof landing, timed passage to the right-side platform at X=1492/Y=73, and independently replayed Fire defeats of both far bats and the lower Type-9 enemy, followed by timed passage beneath the far castle wall to X=1680/Y=185 and a raised Type-5 defeat with stable live movement to X=1836/Y=137, a higher-platform landing at X=1738/Y=89, a safe jump over deadly GID 66 to X=1696/Y=89, a tiny high-step landing at X=1668/Y=41, a grounded Fire defeat of the high Type-6 knight at X=1752/Y=9, an independently replayed living landing past the X=1888 pillar at X=1924/Y=89, the grounded Fire defeat of the next Type-6 knight, and timed far-side jumps with stable landings at X=2180/Y=121 and X=2324/Y=25, a jump over the animated upper tile to X=2380/Y=25, a living landing past the second tall column at X=2464/Y=185, a grounded Fire defeat of its Type-6 knight, and a jump over the Type-7 ground enemy, followed by the animated-tile and two-water-gap passages, far-side Type-6 and Type-8 kills, three fixed steps and a wall overjump, and independently cold-replayed visible Stage-3 and Stage-4 completions, followed by active Stage-5 passages through the Type-7 ground enemy, three Type-5 patrols and a timed foreground-tile jump to X=2232 and an independently repeated Type-15 magical-fire bypass through the X=2304 wall, a Type-9 Dino defeat, animated hazard and Type-8 spider bypass, moving-platform water crossing and two fixed-step landings to X=2888/Y=57 and a second independently replayed moving-platform passage to X=3052/Y=57, then a defeated lower Type-5 spider and genuine raised-stone gameplay through the visibly complete Stage 5 and Stage-6 title, then active cave movement, first skeleton bypass, first cavern gap, two further Type-17 defeats and a Type-20 green-walker defeat at X=364/Y=121 (2026-10-21). Later detailed full-cold routes below document visible completions through Stage 10; Stage 11 activation is under full-cold validation. | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned Pinball highscore entry and broader reload/model coverage, Desert land objectives, Cannon single-drive requests and longer campaigns, Celtic Heart Stage 11 and later stages, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
 | 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; profile-driven floppy selection/index/tick optimization with paired identical CPU/frame states (2026-10-12); timing lookup and duplicate bus-classification candidates rejected | Continue profiling remaining allocations and repeat paired measurements after further changes |
 | 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; all eight boards have matching 46.143 desktop/application evidence; A1200 IDE/A3000 SCSI Shell/Clock/ShowConfig and independently verified file persistence/reset/restore repeated on the current core (2026-10-12) | Broader applications and complete controller coverage; A1200 native 3.1 comparison remains unresolved; optional hardware remains gated |
 | 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented; LOF/VPOSW field selection and 312/313-line PAL field timing corrected; native 1408-pixel SuperHires and 576-line field-pair presentation exercised through real 3.1.4 Workbench mode changes, window dragging and restore on bounded ECS/AGA configurations (2026-10-15) | Compare against independent hardware/reference output; mixed-resolution and mid-field Copper changes, programmable timing, scan doubling and broader application transitions remain open |
 | 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested; overlapping TT windows combine cache inhibit correctly; fixed-slot ATC history replacement and legacy restore checked; bounded 030 MOVE.B/W postincrement retry, split-long source read, prechecked register-source split-long write, MOVEM read/write transfer probes including odd byte/word page crossings, and MOVEP word/long byte-transfer probes after MMU faults (2026-10-13) | Complete timing and full restartable format A/B faults, including real partial-transfer continuation, device reads after successful translation, indexed-EA side effects and multi-transfer writes |
-| 7. Further hardware | Opt-in native Zorro III RAM board (8/16/32 MiB) is under core/guest validation; unsupported models stay unavailable | Installed-OS Zorro III enumeration and multi-card/IRQ/DMA coverage; optional 68881/68882; distinct 68040 CPU/MMU/FPU; A1000 bootstrap/WCS and full boot |
+| 7. Further hardware | Opt-in native Zorro III RAM board (8/16/32 MiB) is under core/guest validation; A1000 WCS decoder, CPU/bus handoff, RESET and guarded restore pass synthetic guest regressions; unsupported models stay unavailable | Installed-OS Zorro III enumeration and multi-card/IRQ/DMA coverage; optional 68881/68882; distinct 68040 CPU/MMU/FPU; A1000 bootstrap/WCS and full boot |
 
 ### Gameplay evidence
 
@@ -10941,6 +10941,82 @@ find a real-input passage over the low wall near X3008, then independently
 repeat full DF0 cold starts and inspect active images before extending
 the durable route.
 
+Checkpoint continuation after X3008 — 2026-10-24: immediate Right+Up
+meets decimal Type31 `$07FF7744` at X3048/Frame 64699. A neutral
+phase watch shows it turning at X3024/Frame 64735 and then walking
+right; the lower Type32 moves away to the left. Twenty-five neutral
+500,000-chip-cycle intervals, followed by a Right+Up climb, reach
+X3176/Y153. A standing Fire at Frame 64939 defeats returning Type31
+`$07FF76F4`, and releasing/rearming Fire at Frame 64988 defeats
+`$07FF76A4`. Another Type31 `$07FF7794` arrives before a third
+stationary strike can finish. A short Right+Up, braked after four
+250,000-cycle intervals, passes that active patrol and lands X3204/Y153.
+Waiting for grounded control before Fire at Frame 65083 defeats
+the returning first Type31 `$07FF7744`. The hero stays alive through
+Frame 65241 and ten neutral intervals; all three defeated patrols are
+Type0/flags40, while `$07FF7794` remains active. Pressing Fire in
+flight and landing farther right were negative controls. These are
+initially checkpoint-only findings. Two independent full DF0 cold
+replays in `tmp/stage10-upper-three-type31-full-a` and `-b` now
+confirm Frame 65241, X3204/Y153, HSalive=FF, all three defeated
+Type31s Type0/flags40, and zero non-ROM exceptions. Both reviewed
+active forest images have the identical hash
+`BDD9609F41DB5105FCC080900A814BDCB0925B062DFF9F0573A39A91BAD8C82F`.
+`Tools/a3000-celtic-heart-stage-ten-upper-three-type31-passage-route.json`
+validates with that hash and the explicit live-memory guard. Count
+this wall climb, three Fire defeats and fourth-patrol bypass as passed;
+Stage 10 remains open pending the full completion route below.
+
+Further checkpoint-only inputs from X3204: Right stops at X3312/Y153.
+A Right+Up climbs to a sustained X3396/Y121, and another Right+Up
+clears deadly FRONT-GID647 at X3440/Y112. Decimal Type28 `$07FF8144`
+then follows the hero; waiting on X3564 or at the X3584 obstacle ends
+in `hero_coll`. Releasing Up briefly and jumping again reaches
+X3628/Y121 on the near bank. The existing source archive's
+`level10.tmx`, `w3types.tmx` and `w3monster.tmx` identify the next
+gap's moving platform as decimal Type24 `$07FF81E4` and its far-bank
+projectile as decimal Type32 `$07FF8194`.
+
+A braked Right+Up catches the Type24 platform at Y130. Jumping from
+X3695/Frame 65783 clears the approaching Type32 and reaches the far
+bank X3810/Y121/Frame 65840; waiting one more 500,000-cycle interval
+before that jump instead collides with the projectile during ascent.
+Do not stop at its far-bank spawn: waiting at X3812 dies at Frame
+65877. Continuing Right, releasing/rearming Up near X3910, and
+jumping toward BACK-TYPE7 at X4016–4063 enters the exit at
+X4002/Y135/Frame 65936. The HSalive write comes from the map exit,
+and the checkpoint image after 20 million neutral chip cycles visibly
+shows LEVEL COMPLETE. A real Fire and another 20 million chip cycles
+then show THE FOREST STAGE 2 / CODE MTTT at Frame 66529.
+
+Full cold confirmation — 2026-10-24: both complete independent DF0
+replays in `tmp/stage10-complete-stage11-title-full-a` and `-b` finish
+successfully. Both reviewed completion images visibly show LEVEL COMPLETE
+at Frame 66241, identical hash
+`25914A75A97289C2C03803847C4ADC9CC33E02B344490304CE5723ACA4888C36`.
+Both reviewed following title images show THE FOREST STAGE 2 / CODE MTTT
+at Frame 66529, identical hash
+`841464E315189298B09B54BB03C6AC7587908A472F657857C89D62BDCEFBF0C4`.
+Neither full run observes a non-ROM exception. Count Stage 10 complete;
+Stages 1–10 are now accepted. The permanent
+`Tools/a3000-celtic-heart-stage-ten-complete-stage-eleven-title-route.json`
+validates and includes both image guards plus the earlier living three-kill
+RAM/image guard. This title is completion evidence, not a Stage-11 gameplay pass.
+
+A short checkpoint continuation waits 40 million chip cycles on that title,
+releases Fire, holds it for 500,000 cycles and releases it again. After
+20 million cycles the reviewed image shows GET READY. A second Fire
+activates play; an additional release/rearm and a brief Right move reach
+X44/Y185, HSalive=FF at Frame 67778 in that checkpoint probe, with a visible
+hero. Its hash is not accepted as a full-cold reference. The validated
+`tmp/stage11-active-movement-full-candidate.json` appends those actual input
+edges to the accepted full route and checks the living final RAM. Two new
+independent full DF0 cold replays run with the current A1000-bus development
+core in `tmp/stage11-active-movement-full-a` and `-b` (sessions 98076/94707),
+capturing GET READY and final movement once each. Next: inspect both final
+RAM states, matching hashes, zero non-ROM exceptions and both active images
+before promoting a Stage-11 gameplay route. Stage 11 remains open.
+
 ### Optional Zorro III RAM bring-up — 2026-10-22
 
 A development-only single Zorro III memory board can now be attached to a
@@ -10972,8 +11048,9 @@ was discarded; only the native path is retained.
 
 The requested optional 68881/68882, independent A4000/040 CPU/MMU/FPU,
 and A1000 profile are still absent. The unmodified A1000 needs its own
-bootstrap ROM and writable control store rather than an A500 identity;
-neither is implemented or falsely offered as a selectable profile. The
+bootstrap ROM and writable control store rather than an A500 identity.
+The decoder described below now has explicit CPU/bus development wiring,
+but is not a complete motherboard or selectable profile. The
 local ROM directory has Kickstart 1.x images but no separate A1000 bootstrap
 image, so a native cold-boot acceptance test cannot yet be claimed. The
 [Commodore A1000 component-level repair manual](https://amiga.net.au/files/Tech_Amiga/Commodore_Amiga_Computer_Model_1000_Assembly_and_Component_Level_Repair.pdf)
@@ -10983,3 +11060,82 @@ copy and verify guest memory enumeration, then implement multi-card Zorro III
 arbitration. Independently implement and test the A1000 bootstrap/WCS path,
 external FPU instruction state/exceptions, and a distinct 68040 core before
 making those models available.
+
+### A1000 bootstrap/WCS decoder component — 2026-10-24
+
+`A1000ControlStore` now models the separate upper-memory decoder:
+an explicitly supplied 8 KiB logical or 64 KiB physical bootstrap image
+is visible in `$F80000–$FBFFFF`, while the independent 256 KiB WCS
+can be filled at `$FC0000–$FFFFFF`. A write anywhere in the bootstrap
+aperture hides it and locks the WCS; the lower range then reads the
+WCS mirror. The triggering write does not overwrite that mirror.
+RESET reopens the decoder while retaining WCS contents; power cycle
+also clears the volatile WCS. This behavior was cross-checked against
+the original [MAME A1000 decoder and reset implementation](https://github.com/mamedev/mame/blob/master/src/mame/amiga/amiga.cpp)
+and [WinUAE A1000 WCS handlers](https://github.com/tonioni/WinUAE/blob/master/memory.cpp).
+No emulator source code or proprietary ROM bytes were copied.
+
+Three focused regressions pass: complete WCS load/mirror/protection
+boundaries and bootstrap ownership; reset versus power-loss behavior;
+and locked/writable state restore, truncated payload rejection, invalid
+latch rejection and bootstrap-identity mismatch without changing live
+memory. Only synthetic bootstrap bytes are used. The project builds;
+the NuGet vulnerability service was unavailable in this environment,
+producing NU1900 warnings without build errors.
+
+The subsequent CPU/bus integration below supersedes the initial standalone
+limit. A native disk-loaded Kickstart boot and complete profile remain open;
+the separate bootstrap image is still missing locally. No A1000 entry was
+added to the normal machine selector.
+
+### A1000 decoder CPU/bus integration — 2026-10-24
+
+`AmigaSystem.LoadDevelopmentA1000Bootstrap` explicitly attaches the decoder
+to an unexpanded 256/512 KiB OCS/68000 test board. It replaces the ordinary
+ROM decoder for high-window reads, reset vectors, byte/word/long reads and
+side-effect-free CPU planning peeks. CIA-A still controls the independent
+low-memory overlay. WCS writes reach its separate RAM only while unlocked;
+the high-window bootstrap write closes the latch. Loading an ordinary
+Kickstart detaches the development decoder. Incompatible ECS/AGA/expanded
+boards reject attachment before changing ROM state.
+
+A synthetic 68000 guest now loads WCS vectors and executable code through
+real `MOVE` instructions, releases the CIA overlay, writes a Chip RAM
+trampoline, closes the WCS latch from that trampoline and jumps into the
+loaded code. That code writes decimal 42 into physical Chip RAM and stops.
+Both direct instruction stepping and the normal chip-cycle/deferred-bus
+path pass on 256 and 512 KiB test boards. Warm reset exposes the bootstrap
+again while retaining WCS; power cycle clears it.
+
+The development board also receives the privileged CPU `RESET` output,
+ordered after the opcode fetch and outside instruction planning. It resets
+external board devices and reopens WCS without resetting CPU registers or
+fetching CPU vectors. A stalled opcode fetch and a suspended savestate retain
+that ordering. A user-mode `RESET` takes privilege vector 8 and leaves the
+decoder untouched. Existing normal boards retain their previous RESET path.
+The external reset behavior was checked against the primary
+[MAME Amiga reset implementation](https://github.com/mamedev/mame/blob/master/src/mame/amiga/amiga_m.cpp).
+
+Development decoder machine states use version 19 and include the bootstrap
+SHA-256, latch and WCS before bus RAM. Missing/different decoder or bootstrap
+identity is rejected before changing live CPU/RAM. Ordinary boards continue
+writing version 18, preserving their released state layout. This remains an
+explicit development API on the existing OCS test board, not a public A1000
+machine identity or UI selection.
+
+All six focused WCS/guest/reset/restore regressions pass. The full .NET
+suite passes **375/375**, and the current GameRunner preflight suite passes
+**28/28**. Builds succeed with the existing NU1900 warning because the NuGet
+vulnerability endpoint is unavailable. Current-core real cold boots also
+reach their reviewed normal disk-insert screens with zero non-ROM exceptions:
+A500/Kickstart 1.3 at frame 422, hash
+`6928024658CAE55B754ADBA5C62BCCB1952F98114BF398227A575C01BCD4A8C8`,
+and A3000/Kickstart 3.1 with the opt-in 8 MiB Zorro III board at frame 422,
+unchanged reference hash
+`4D01745C0CFA0218661EAA0C88D915FBDD3C7BC5943102362DC327D56E5B3FF7`.
+These are existing-board boot regressions, not an A1000 boot claim.
+Compact evidence is in `tmp/a1000-bus-full-regression-final.log` and
+`tmp/a1000-bus-native-boot-regression-output`; neither test used an installed
+HDF. Next: finish native A1000 board identity and PAL decoding, then boot
+an actual user-supplied bootstrap and disk-loaded Kickstart before offering
+that model. Optional FPU and distinct 68040 remain unimplemented.

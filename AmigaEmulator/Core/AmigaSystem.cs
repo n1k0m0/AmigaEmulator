@@ -225,6 +225,7 @@ namespace AmigaEmulator.Core
             _agnus.Blitter.AttachInterruptRequester(_agnus.CustomRegisters.RequestInterrupt);
             _bus.AttachBlitter(_agnus.Blitter);
             _cpu = new M68kCpu(_bus, _model.Cpu);
+            _bus.DevelopmentA1000CpuReset += () => ResetBoardDevices(false);
             _cpu.TraceEnabled = _accuracyOptions.EnableCpuTrace;
             _ciaA.OverlayChanged += delegate(bool enabled)
             {
@@ -426,6 +427,16 @@ namespace AmigaEmulator.Core
             }
         }
 
+        /// <summary>Explicit A1000 decoder experiment, separate from the normal model/ROM selector.</summary>
+        public void LoadDevelopmentA1000Bootstrap(byte[] bootstrap)
+        {
+            lock (_syncRoot)
+            {
+                _bus.LoadDevelopmentA1000Bootstrap(bootstrap);
+                Reset(true);
+            }
+        }
+
         /// <summary>
         /// Resets the value state.
         /// </summary>
@@ -438,30 +449,37 @@ namespace AmigaEmulator.Core
                     _bus.ClearWritableMemory();
                 }
 
-                _bus.RomOverlayAtZero = true;
-                _bus.ResetExpansionDevices();
-                _bus.DesktopResources.Reset(powerCycle);
-                _agnus.Reset();
-                _denise.Reset();
-                _presentedFrameBuffer.Clear(0xFF0C1020);
-                _interlacedFrameBuffer?.Invalidate();
-                _nativeInterlacedFrameBuffer?.Invalidate();
-                _paula.Reset();
-                _ciaA.Reset();
-                _ciaB.Reset();
-                _input.Reset();
-                _ciaClockDivider = 0;
-                _mainsTodPhase = 0;
+                ResetBoardDevices(powerCycle);
                 _cpuClockPhase = 0;
-                _ciaAIrqLast = false;
-                _ciaBIrqLast = false;
-                _cpuVisibleInterruptLevel = 0;
-                _cpuPendingInterruptLevel = 0;
-                _cpuInterruptDelayCycles = 0;
                 _suppressNextPresentationAfterLoad = false;
                 _cpu.Reset();
                 _lastTraceSample = CreateTraceSample(null);
             }
+        }
+
+        private void ResetBoardDevices(bool powerCycle)
+        {
+            _bus.RomOverlayAtZero = true;
+            _bus.ResetBootDecoder();
+            _bus.ResetExpansionDevices();
+            _bus.DesktopResources.Reset(powerCycle);
+            _agnus.Reset();
+            _denise.Reset();
+            _presentedFrameBuffer.Clear(0xFF0C1020);
+            _interlacedFrameBuffer?.Invalidate();
+            _nativeInterlacedFrameBuffer?.Invalidate();
+            _paula.Reset();
+            _ciaA.Reset();
+            _ciaB.Reset();
+            _input.Reset();
+            _ciaClockDivider = 0;
+            _mainsTodPhase = 0;
+            _ciaAIrqLast = false;
+            _ciaBIrqLast = false;
+            _cpuVisibleInterruptLevel = 0;
+            _cpuPendingInterruptLevel = 0;
+            _cpuInterruptDelayCycles = 0;
+            _cpu.SetInterruptLevel(0);
         }
 
         /// <summary>
@@ -476,7 +494,8 @@ namespace AmigaEmulator.Core
 
             lock (_syncRoot)
             {
-                writer.Write(18); // Optional Zorro III board and RAM state.
+                bool a1000Decoder = _bus.DevelopmentA1000ControlStore != null;
+                writer.Write(a1000Decoder ? 19 : 18); // Development decoder states cannot load on an ordinary board.
                 writer.Write((int)_model.Machine);
                 writer.Write(_model.ChipRamBytes); writer.Write(_model.SlowRamBytes); writer.Write(_model.FastRamBytes);
                 writer.Write((int)_model.Cpu); writer.Write(_model.CpuClockHz); writer.Write(_cpuClockPhase);
@@ -484,7 +503,7 @@ namespace AmigaEmulator.Core
                 writer.Write((int)_model.IdeModel);
                 writer.Write(_model.HasDesktopResources);
                 writer.Write(_model.ZorroIIIRamBytes);
-                _bus.SaveState(writer);
+                _bus.SaveState(writer, a1000Decoder);
                 _cpu.SaveState(writer);
                 _agnus.SaveState(writer);
                 _paula.SaveState(writer);
@@ -525,7 +544,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version < 1 || version > 18)
+                if (version < 1 || version > 19)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
@@ -553,8 +572,8 @@ namespace AmigaEmulator.Core
                 int savedZorroIII = version >= 18 ? reader.ReadInt32() : 0;
                 if (savedZorroIII != _model.ZorroIIIRamBytes)
                     throw new InvalidDataException("Savestate Zorro III RAM layout does not match the current machine.");
+                _bus.LoadState(reader, version >= 19);
                 _cpuClockPhase = savedPhase;
-                _bus.LoadState(reader);
                 _cpu.LoadState(reader);
                 _agnus.LoadState(reader);
                 _paula.LoadState(reader);

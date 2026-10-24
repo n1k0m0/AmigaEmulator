@@ -27,7 +27,7 @@ namespace AmigaEmulator.Core.Memory
     /// <summary>
     /// Routes 68000 memory accesses between Chip RAM, Slow RAM, CIA chips, custom registers, and Kickstart ROM.
     /// </summary>
-    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider, IM68kPlanningBus, IM68kCacheBus
+    public sealed class AmigaBus : IM68kDeferredCiaBus, IM68kBusArbitration, IM68kResetVectorProvider, IM68kPlanningBus, IM68kCacheBus, IM68kResetSignalSink
     {
         public bool IsInstructionCacheable(uint physicalAddress)
         {
@@ -115,6 +115,10 @@ namespace AmigaEmulator.Core.Memory
         /// Stores kickstart.
         /// </summary>
         private KickstartRom _kickstart;
+        private readonly bool _canDevelopA1000;
+        public A1000ControlStore DevelopmentA1000ControlStore { get; private set; }
+        public bool CpuResetSignalConnected => DevelopmentA1000ControlStore != null;
+        public event Action DevelopmentA1000CpuReset;
         /// <summary>
         /// Stores last Bus Value.
         /// </summary>
@@ -149,6 +153,9 @@ namespace AmigaEmulator.Core.Memory
             }
 
             HardDisk = new GayleIdeController(model.IdeModel) { Enabled = model.HasBuiltInHardDiskController };
+            _canDevelopA1000 = model.Machine == AmigaMachineModel.A500 && model.Cpu == AmigaCpuModel.M68000 &&
+                model.Chipset == AmigaChipset.Ocs && model.SlowRamBytes == 0 && model.FastRamBytes == 0 &&
+                (model.ChipRamBytes == 256 * 1024 || model.ChipRamBytes == 512 * 1024);
             _addressMask = model.Cpu == AmigaCpuModel.M68000 || model.Cpu == AmigaCpuModel.M68EC020
                 ? 0x00FFFFFFu : uint.MaxValue;
             _unmappedReadValue = model.UnmappedReadValue;
@@ -264,7 +271,31 @@ namespace AmigaEmulator.Core.Memory
         public void LoadKickstart(byte[] romBytes)
         {
             _kickstart = new KickstartRom(romBytes);
+            DevelopmentA1000ControlStore = null;
         }
+
+        /// <summary>Opt-in decoder bring-up on an unexpanded OCS/68000 test board; not a native A1000 profile.</summary>
+        public void LoadDevelopmentA1000Bootstrap(byte[] bootstrap)
+        {
+            if (!_canDevelopA1000) throw new InvalidOperationException("A1000 decoder bring-up requires an unexpanded 256/512 KiB OCS/68000 board.");
+            var store = new A1000ControlStore(bootstrap);
+            _kickstart = new KickstartRom();
+            DevelopmentA1000ControlStore = store;
+        }
+
+        public void AssertCpuReset()
+        {
+            // Other motherboard RESET wiring is outside this development path.
+            if (DevelopmentA1000ControlStore == null) return;
+            DevelopmentA1000ControlStore.Reset();
+            DevelopmentA1000CpuReset?.Invoke();
+        }
+
+        public void ResetBootDecoder() => DevelopmentA1000ControlStore?.Reset();
+
+        private byte ReadBootByte(uint offset) => DevelopmentA1000ControlStore != null
+            ? DevelopmentA1000ControlStore.ReadByte(A1000ControlStore.WindowStart + offset)
+            : _kickstart.Read(offset);
 
         /// <summary>
         /// Runs Clear Writable Memory.
@@ -275,14 +306,20 @@ namespace AmigaEmulator.Core.Memory
             _slowRam.Clear();
             _fastRam.Clear();
             ZorroIII.ClearRam();
+            DevelopmentA1000ControlStore?.PowerCycle();
             _customRegisters.Reset();
         }
 
         /// <summary>
         /// Writes bus-owned memory, floppy, ROM overlay, and open-bus state to a savestate.
         /// </summary>
-        public void SaveState(BinaryWriter writer)
+        public void SaveState(BinaryWriter writer) => SaveState(writer, false);
+
+        internal void SaveState(BinaryWriter writer, bool includeA1000ControlStore)
         {
+            if (includeA1000ControlStore != (DevelopmentA1000ControlStore != null))
+                throw new InvalidDataException("A1000 decoder state requires the matching machine-state header.");
+            if (includeA1000ControlStore) DevelopmentA1000ControlStore.SaveState(writer);
             writer.Write(RomOverlayAtZero);
             writer.Write(_lastBusValue);
             StateSerializer.WriteObjectFields(writer, _chipRam);
@@ -295,8 +332,13 @@ namespace AmigaEmulator.Core.Memory
         /// <summary>
         /// Restores bus-owned memory, floppy, ROM overlay, and open-bus state from a savestate.
         /// </summary>
-        public void LoadState(BinaryReader reader)
+        public void LoadState(BinaryReader reader) => LoadState(reader, false);
+
+        internal void LoadState(BinaryReader reader, bool includeA1000ControlStore)
         {
+            if (includeA1000ControlStore != (DevelopmentA1000ControlStore != null))
+                throw new InvalidDataException("Savestate A1000 decoder configuration does not match this machine.");
+            var restoredStore = includeA1000ControlStore ? DevelopmentA1000ControlStore.ReadStateCopy(reader) : null;
             RomOverlayAtZero = reader.ReadBoolean();
             _lastBusValue = reader.ReadByte();
             StateSerializer.ReadObjectFields(reader, _chipRam);
@@ -304,6 +346,7 @@ namespace AmigaEmulator.Core.Memory
             StateSerializer.ReadObjectFields(reader, _fastRam);
             StateSerializer.ReadObjectFields(reader, _kickstart);
             StateSerializer.ReadObjectFields(reader, _floppyController);
+            DevelopmentA1000ControlStore = restoredStore;
             // CIA control lines still belong to the previous machine state here.
             // AmigaSystem refreshes them after both CIAs have been restored;
             // applying them now would clock a spurious drive-select motor latch.
@@ -409,7 +452,7 @@ namespace AmigaEmulator.Core.Memory
             initialStackPointer = ReadLong(0);
             initialProgramCounter = ReadLong(4);
             ushort wordAtTwo = ReadWord(2);
-            if (RomOverlayAtZero &&
+            if (DevelopmentA1000ControlStore == null && RomOverlayAtZero &&
                 wordAtTwo == 0x4EF9 &&
                 initialProgramCounter >= MemoryMap.KickstartStart &&
                 initialProgramCounter <= MemoryMap.KickstartEnd)
@@ -430,7 +473,7 @@ namespace AmigaEmulator.Core.Memory
 
             if (IsKickstartOverlayRead(address))
             {
-                value = _kickstart.Read(address);
+                value = ReadBootByte(address);
                 _lastBusValue = value;
                 NotifyReadObserved(address, 1, value, AmigaAddressRegion.KickstartRom);
                 return value;
@@ -501,7 +544,7 @@ namespace AmigaEmulator.Core.Memory
                         : (byte)0xFF;
                     break;
                 case AmigaAddressRegion.KickstartRom:
-                    value = _kickstart.Read(address - MemoryMap.KickstartStart);
+                    value = ReadBootByte(address - MemoryMap.KickstartStart);
                     break;
                 default:
                     value = _unmappedReadValue;
@@ -521,7 +564,7 @@ namespace AmigaEmulator.Core.Memory
             address = Normalize(address);
             if (IsKickstartOverlayRead(address))
             {
-                return _kickstart.Read(address);
+                return ReadBootByte(address);
             }
 
             AmigaAddressRegion region = GetRegion(address);
@@ -567,7 +610,7 @@ namespace AmigaEmulator.Core.Memory
                         ? _ciaB.PeekByte(address)
                         : (byte)0xFF;
                 case AmigaAddressRegion.KickstartRom:
-                    return _kickstart.Read(address - MemoryMap.KickstartStart);
+                    return ReadBootByte(address - MemoryMap.KickstartStart);
                 default:
                     return _unmappedReadValue;
             }
@@ -635,14 +678,14 @@ namespace AmigaEmulator.Core.Memory
             {
                 bool overlay = IsKickstartOverlayRead(address);
                 if (overlay != IsKickstartOverlayRead(address + 1)) return false;
-                value = overlay ? (ushort)((_kickstart.Read(address) << 8) | _kickstart.Read(address + 1))
+                value = overlay ? (ushort)((ReadBootByte(address) << 8) | ReadBootByte(address + 1))
                     : (ushort)((_chipRam.Read(address) << 8) | _chipRam.Read(address + 1));
                 return true;
             }
             if (address >= MemoryMap.KickstartStart && address < MemoryMap.KickstartEnd)
             {
                 uint offset = address - MemoryMap.KickstartStart;
-                value = (ushort)((_kickstart.Read(offset) << 8) | _kickstart.Read(offset + 1)); return true;
+                value = (ushort)((ReadBootByte(offset) << 8) | ReadBootByte(offset + 1)); return true;
             }
             if (_slowRam.Enabled && address >= MemoryMap.SlowRamStart && address < MemoryMap.SlowRamStart + (uint)_slowRam.Size - 1)
             {
@@ -727,6 +770,9 @@ namespace AmigaEmulator.Core.Memory
             {
                 case AmigaAddressRegion.ChipRam:
                     _chipRam.Write(address, value);
+                    break;
+                case AmigaAddressRegion.KickstartRom:
+                    DevelopmentA1000ControlStore?.WriteByte(address, value);
                     break;
                 case AmigaAddressRegion.SlowRam:
                     _slowRam.Write(address - MemoryMap.SlowRamStart, value);
@@ -896,7 +942,8 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         private bool IsKickstartOverlayRead(uint address)
         {
-            return RomOverlayAtZero && _kickstart.IsPresent && address < (uint)_kickstart.OverlaySize && address <= MemoryMap.ChipRamEnd;
+            return RomOverlayAtZero && (DevelopmentA1000ControlStore != null ? address < 512 * 1024u :
+                _kickstart.IsPresent && address < (uint)_kickstart.OverlaySize) && address <= MemoryMap.ChipRamEnd;
         }
 
         /// <summary>

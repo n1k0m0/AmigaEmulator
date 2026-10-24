@@ -15,6 +15,13 @@
 */
 namespace AmigaEmulator.Core.Cpu
 {
+    /// <summary>Receives the external RESET signal without resetting CPU registers or fetching vectors.</summary>
+    public interface IM68kResetSignalSink
+    {
+        bool CpuResetSignalConnected { get; }
+        void AssertCpuReset();
+    }
+
     /// <summary>Board cache-inhibit input for an aligned instruction longword fill.</summary>
     public interface IM68kCacheBus
     {
