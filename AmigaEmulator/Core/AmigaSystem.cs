@@ -117,6 +117,9 @@ namespace AmigaEmulator.Core
         /// Stores CPU.
         /// </summary>
         private readonly M68kCpu _cpu;
+        private A1000KeyboardReset _a1000KeyboardReset;
+        private A1000KeyboardHardReset _a1000KeyboardHardReset;
+        private bool _a1000ExternalKeyboardClockHigh = true;
         /// <summary>
         /// Stores last Trace Sample.
         /// </summary>
@@ -201,6 +204,12 @@ namespace AmigaEmulator.Core
             _ciaA = new Cia8520("CIA-A");
             _ciaB = new Cia8520("CIA-B");
             _input = new AmigaInputDevice();
+            if (_model.Machine == AmigaMachineModel.A1000)
+            {
+                _a1000KeyboardReset = new A1000KeyboardReset(_model.ChipMasterClockHz / 10);
+                _a1000KeyboardHardReset = new A1000KeyboardHardReset(_model.ChipMasterClockHz / 10);
+                _input.AttachDevelopmentResetKeys((key, down) => _a1000KeyboardHardReset.KeyChanged(key, down));
+            }
             _agnus = new Agnus(_model);
             _bus = new AmigaBus(_model, _agnus.CustomRegisters, _paula, _ciaA, _ciaB);
             _bus.WriteObserved += NotifyBusWriteSideEffects;
@@ -437,6 +446,20 @@ namespace AmigaEmulator.Core
             }
         }
 
+        /// <summary>Pin-level bring-up input; ordinary models and the frontend cannot use this gate.</summary>
+        public void DriveDevelopmentA1000KeyboardClock(bool high)
+        {
+            lock (_syncRoot)
+            {
+                if (_a1000KeyboardReset == null)
+                    throw new InvalidOperationException("A1000 keyboard clock requires the development motherboard.");
+                _a1000ExternalKeyboardClockHigh = high;
+                _a1000KeyboardReset.DriveClock(high && !_a1000KeyboardHardReset.ClockLow);
+            }
+        }
+
+        public bool DevelopmentA1000KeyboardResetAsserted => _a1000KeyboardReset?.Asserted ?? false;
+
         /// <summary>
         /// Resets the value state.
         /// </summary>
@@ -446,13 +469,18 @@ namespace AmigaEmulator.Core
             {
                 if (powerCycle)
                 {
+                    _a1000KeyboardReset?.PowerCycle();
+                    _a1000KeyboardHardReset?.PowerCycle();
+                    _a1000ExternalKeyboardClockHigh = true;
                     _bus.ClearWritableMemory();
                 }
 
                 ResetBoardDevices(powerCycle);
                 _cpuClockPhase = 0;
                 _suppressNextPresentationAfterLoad = false;
-                _cpu.Reset();
+                // A host warm-reset request cannot override the externally held
+                // reset pin. Its eventual release performs the vector fetch.
+                if (!DevelopmentA1000KeyboardResetAsserted) _cpu.Reset();
                 _lastTraceSample = CreateTraceSample(null);
             }
         }
@@ -471,7 +499,7 @@ namespace AmigaEmulator.Core
             _paula.Reset();
             _ciaA.Reset();
             _ciaB.Reset();
-            _input.Reset();
+            _input.Reset(preserveKeyboard: _a1000KeyboardReset != null && !powerCycle);
             _ciaClockDivider = 0;
             _mainsTodPhase = 0;
             _ciaAIrqLast = false;
@@ -495,7 +523,10 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 bool a1000Decoder = _bus.DevelopmentA1000ControlStore != null;
-                writer.Write(a1000Decoder ? 19 : 18); // Development decoder states cannot load on an ordinary board.
+                if (_model.Machine == AmigaMachineModel.A1000 && !a1000Decoder)
+                    throw new InvalidOperationException("Load the A1000 bootstrap before saving its development state.");
+                bool multiZorroIII = _model.ZorroIIIRamBoardBytes.Count > 1;
+                writer.Write(_a1000KeyboardReset != null ? 22 : multiZorroIII ? 20 : a1000Decoder ? 19 : 18); // Development decoder states cannot load on an ordinary board.
                 writer.Write((int)_model.Machine);
                 writer.Write(_model.ChipRamBytes); writer.Write(_model.SlowRamBytes); writer.Write(_model.FastRamBytes);
                 writer.Write((int)_model.Cpu); writer.Write(_model.CpuClockHz); writer.Write(_cpuClockPhase);
@@ -503,6 +534,18 @@ namespace AmigaEmulator.Core
                 writer.Write((int)_model.IdeModel);
                 writer.Write(_model.HasDesktopResources);
                 writer.Write(_model.ZorroIIIRamBytes);
+                if (_a1000KeyboardReset != null)
+                {
+                    _a1000KeyboardReset.SaveState(writer);
+                    _a1000KeyboardHardReset.SaveState(writer);
+                    writer.Write(_a1000ExternalKeyboardClockHigh);
+                }
+                else if (multiZorroIII)
+                {
+                    writer.Write(a1000Decoder);
+                    writer.Write(_model.ZorroIIIRamBoardBytes.Count);
+                    foreach (int size in _model.ZorroIIIRamBoardBytes) writer.Write(size);
+                }
                 _bus.SaveState(writer, a1000Decoder);
                 _cpu.SaveState(writer);
                 _agnus.SaveState(writer);
@@ -527,7 +570,7 @@ namespace AmigaEmulator.Core
                 if (_model.Chipset == AmigaChipset.Aga) _agnus.CustomRegisters.AgaColors.SaveState(writer);
                 if (_model.HasDesktopResources) _bus.DesktopResources.SaveState(writer);
                 if (_model.HasRicohClock) _bus.RicohClock.SaveState(writer);
-                if (_model.ZorroIIIRamBytes != 0) _bus.ZorroIII.SaveState(writer);
+                if (_model.ZorroIIIRamBytes != 0) _bus.ZorroIIIExpansion.SaveState(writer);
             }
         }
 
@@ -544,7 +587,7 @@ namespace AmigaEmulator.Core
             lock (_syncRoot)
             {
                 int version = reader.ReadInt32();
-                if (version < 1 || version > 19)
+                if (version < 1 || version > 22)
                 {
                     throw new InvalidDataException("Unsupported Amiga system savestate version.");
                 }
@@ -572,7 +615,45 @@ namespace AmigaEmulator.Core
                 int savedZorroIII = version >= 18 ? reader.ReadInt32() : 0;
                 if (savedZorroIII != _model.ZorroIIIRamBytes)
                     throw new InvalidDataException("Savestate Zorro III RAM layout does not match the current machine.");
-                _bus.LoadState(reader, version >= 19);
+                bool savedDecoder = version == 19 || version == 21 || version == 22;
+                A1000KeyboardReset restoredKeyboardReset = null;
+                A1000KeyboardHardReset restoredHardReset = null;
+                bool restoredExternalClock = true;
+                if (version == 21 || version == 22)
+                {
+                    if (_a1000KeyboardReset == null)
+                        throw new InvalidDataException("Savestate requires the A1000 keyboard reset circuit.");
+                    // Validate this small payload before restoring guest RAM or CPU.
+                    restoredKeyboardReset = _a1000KeyboardReset.ReadStateCopy(reader);
+                }
+                else if (_a1000KeyboardReset != null)
+                    restoredKeyboardReset = new A1000KeyboardReset(_model.ChipMasterClockHz / 10);
+                if (_a1000KeyboardHardReset != null)
+                {
+                    restoredHardReset = version == 22 ? _a1000KeyboardHardReset.ReadStateCopy(reader) :
+                        new A1000KeyboardHardReset(_model.ChipMasterClockHz / 10);
+                    if (version == 22)
+                    {
+                        byte externalClock = reader.ReadByte();
+                        if (externalClock > 1 || restoredKeyboardReset.ClockHigh != (externalClock != 0 && !restoredHardReset.ClockLow))
+                            throw new InvalidDataException("Inconsistent A1000 keyboard clock drivers.");
+                        restoredExternalClock = externalClock != 0;
+                    }
+                    else restoredExternalClock = restoredKeyboardReset.ClockHigh;
+                }
+                if (version == 20)
+                {
+                    savedDecoder = reader.ReadBoolean();
+                    int count = reader.ReadInt32();
+                    if (count < 1 || count > 4 || count != _model.ZorroIIIRamBoardBytes.Count)
+                        throw new InvalidDataException("Savestate Zorro III slot layout does not match the current machine.");
+                    for (int i = 0; i < count; i++)
+                        if (reader.ReadInt32() != _model.ZorroIIIRamBoardBytes[i])
+                            throw new InvalidDataException("Savestate Zorro III slot size does not match the current machine.");
+                }
+                else if (_model.ZorroIIIRamBoardBytes.Count > 1)
+                    throw new InvalidDataException("Legacy savestate has no multi-card Zorro III layout.");
+                _bus.LoadState(reader, savedDecoder);
                 _cpuClockPhase = savedPhase;
                 _cpu.LoadState(reader);
                 _agnus.LoadState(reader);
@@ -610,7 +691,7 @@ namespace AmigaEmulator.Core
                 if (version >= 10 && _model.Chipset == AmigaChipset.Aga) _agnus.CustomRegisters.AgaColors.LoadState(reader);
                 if (version >= 12 && _model.HasDesktopResources) _bus.DesktopResources.LoadState(reader);
                 if (version >= 13 && _model.HasRicohClock) _bus.RicohClock.LoadState(reader);
-                if (version >= 18 && _model.ZorroIIIRamBytes != 0) _bus.ZorroIII.LoadState(reader);
+                if (version >= 18 && _model.ZorroIIIRamBytes != 0) _bus.ZorroIIIExpansion.LoadState(reader);
                 if (_mainsTodPhase < 0 || _mainsTodPhase >= _model.ChipMasterClockHz)
                     throw new InvalidDataException("Invalid mains TOD clock phase.");
                 _agnus.Bitplanes.RefreshFromRegisters();
@@ -621,6 +702,14 @@ namespace AmigaEmulator.Core
                 _suppressNextPresentationAfterLoad = true;
                 _interlacedFrameBuffer?.Invalidate();
                 _nativeInterlacedFrameBuffer?.Invalidate();
+                if (_a1000KeyboardReset != null)
+                {
+                    _a1000KeyboardReset = restoredKeyboardReset;
+                    _a1000KeyboardHardReset = restoredHardReset;
+                    _a1000ExternalKeyboardClockHigh = restoredExternalClock;
+                    if (version < 22) _a1000KeyboardHardReset.ImportHeldKeys(
+                        _input.IsRawKeyDown(0x63), _input.IsRawKeyDown(0x66), _input.IsRawKeyDown(0x67));
+                }
                 _lastTraceSample = CreateTraceSample(null);
             }
         }
@@ -698,7 +787,8 @@ namespace AmigaEmulator.Core
 
                     bool cpuMayUseChipBus = !_accuracyOptions.StrictChipBusArbitration || slot.CpuCanUseChipBus;
                     if (_hasBuiltInScsi && _bus.TickStorageDma(slot.CpuCanUseChipBus)) cpuMayUseChipBus = false;
-                    M68kTraceEntry cpuTrace = _hasExtendedCpu ? TickCpuForChipCycle(cpuMayUseChipBus) : _cpu.Tick(cpuMayUseChipBus);
+                    M68kTraceEntry cpuTrace = _hasExtendedCpu ? TickCpuForChipCycle(cpuMayUseChipBus) :
+                        DevelopmentA1000KeyboardResetAsserted ? null : _cpu.Tick(cpuMayUseChipBus);
                     ApplyPendingInterrupts();
                     long afterCpu = Stopwatch.GetTimestamp();
 
@@ -841,7 +931,8 @@ namespace AmigaEmulator.Core
 
             bool cpuMayUseChipBus = !_accuracyOptions.StrictChipBusArbitration || slot.CpuCanUseChipBus;
             if (_hasBuiltInScsi && _bus.TickStorageDma(slot.CpuCanUseChipBus)) cpuMayUseChipBus = false;
-            M68kTraceEntry cpuTrace = _hasExtendedCpu ? TickCpuForChipCycle(cpuMayUseChipBus) : _cpu.Tick(cpuMayUseChipBus);
+            M68kTraceEntry cpuTrace = _hasExtendedCpu ? TickCpuForChipCycle(cpuMayUseChipBus) :
+                        DevelopmentA1000KeyboardResetAsserted ? null : _cpu.Tick(cpuMayUseChipBus);
             ApplyPendingInterrupts();
             if (slot.SlotIndex == 0 && slot.BeamY == 0)
             {
@@ -1456,6 +1547,25 @@ namespace AmigaEmulator.Core
             }
 
             _ciaClockDivider = 0;
+            if (_a1000KeyboardReset != null)
+            {
+                bool held = _a1000KeyboardReset.Asserted;
+                if (_a1000KeyboardHardReset.TickEClock(_ciaA.IsSerialInputPending))
+                    _input.RestartKeyboardAfterExternalReset();
+                _a1000KeyboardReset.DriveClock(_a1000ExternalKeyboardClockHigh && !_a1000KeyboardHardReset.ClockLow);
+                _a1000KeyboardReset.TickEClock();
+                if (held != _a1000KeyboardReset.Asserted)
+                {
+                    // The keyboard remains an external device: motherboard reset
+                    // must not clear the detector or release a still-low KCLK.
+                    ResetBoardDevices(false);
+                    _cpuClockPhase = 0;
+                    _suppressNextPresentationAfterLoad = false;
+                    if (!_a1000KeyboardReset.Asserted) _cpu.Reset();
+                    _lastTraceSample = CreateTraceSample(null);
+                }
+                if (_a1000KeyboardReset.Asserted) return;
+            }
             if (_mainsTodIncrement != 0)
             {
                 // A2000/A3000 default CIA-A TOD comes from the PAL PSU's 50 Hz signal.
@@ -1469,7 +1579,7 @@ namespace AmigaEmulator.Core
             }
             _ciaA.Tick();
             _ciaB.Tick();
-            _input.TickEClock();
+            if (_a1000KeyboardHardReset == null || !_a1000KeyboardHardReset.ClockLow) _input.TickEClock();
         }
     }
 

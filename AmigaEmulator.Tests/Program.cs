@@ -96,6 +96,12 @@ namespace AmigaEmulator.Tests
             tests.AddRange(CpuTimingTests.Build());
             tests.AddRange(M68kOpcodeMatrixTests.Build());
             tests.AddRange(M68k020Tests.Build());
+            tests.AddRange(M68881ExtendedTests.Build());
+            tests.AddRange(M68881BinaryRoundingTests.Build());
+            tests.AddRange(M68881OutputConversionTests.Build());
+            tests.AddRange(M68881ExceptionStatusTests.Build());
+            tests.AddRange(M68881DevelopmentRegistersTests.Build());
+            tests.AddRange(M68881InstructionExceptionDecisionTests.Build());
             tests.AddRange(M68030MmuTests.Build());
             tests.AddRange(InstructionCacheTests.Build());
             tests.AddRange(DataCacheTests.Build());

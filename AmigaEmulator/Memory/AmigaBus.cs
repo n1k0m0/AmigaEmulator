@@ -48,7 +48,8 @@ namespace AmigaEmulator.Core.Memory
         }
         public GayleIdeController HardDisk { get; }
         public ZorroRamAutoConfig AutoConfig { get; }
-        public ZorroIIIRamAutoConfig ZorroIII { get; }
+        public ZorroIIIRamExpansion ZorroIIIExpansion { get; }
+        public ZorroIIIRamAutoConfig ZorroIII => ZorroIIIExpansion.First;
         public Msm6242Clock BatteryClock { get; }
         public Rp5c01Clock RicohClock { get; }
         public GaylePcmciaController Pcmcia { get; }
@@ -67,7 +68,7 @@ namespace AmigaEmulator.Core.Memory
         private readonly bool _hasBatteryClock;
         public void BeginInstructionPlanning() { HardDisk.BeginPlanning(); if (_hasBatteryClock) BatteryClock.BeginPlanning(); if (_hasMotherboardRam) RicohClock.BeginPlanning(); }
         public void EndInstructionPlanning() { HardDisk.EndPlanning(); if (_hasBatteryClock) BatteryClock.EndPlanning(); if (_hasMotherboardRam) RicohClock.EndPlanning(); }
-        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); ZorroIII.Reset(); if (_hasPcmcia) Pcmcia.ResetMotherboard(); }
+        public void ResetExpansionDevices() { HardDisk.Reset(); AutoConfig.Reset(); ZorroIIIExpansion.Reset(); if (_hasPcmcia) Pcmcia.ResetMotherboard(); }
         public void SaveExpansionState(BinaryWriter writer) { HardDisk.SaveState(writer); AutoConfig.SaveState(writer); }
         public void LoadExpansionState(BinaryReader reader) { HardDisk.LoadState(reader); AutoConfig.LoadState(reader); }
         /// <summary>
@@ -116,6 +117,7 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         private KickstartRom _kickstart;
         private readonly bool _canDevelopA1000;
+        private readonly bool _hasA1000Pal;
         public A1000ControlStore DevelopmentA1000ControlStore { get; private set; }
         public bool CpuResetSignalConnected => DevelopmentA1000ControlStore != null;
         public event Action DevelopmentA1000CpuReset;
@@ -153,7 +155,8 @@ namespace AmigaEmulator.Core.Memory
             }
 
             HardDisk = new GayleIdeController(model.IdeModel) { Enabled = model.HasBuiltInHardDiskController };
-            _canDevelopA1000 = model.Machine == AmigaMachineModel.A500 && model.Cpu == AmigaCpuModel.M68000 &&
+            _hasA1000Pal = model.Machine == AmigaMachineModel.A1000;
+            _canDevelopA1000 = (model.Machine == AmigaMachineModel.A500 || _hasA1000Pal) && model.Cpu == AmigaCpuModel.M68000 &&
                 model.Chipset == AmigaChipset.Ocs && model.SlowRamBytes == 0 && model.FastRamBytes == 0 &&
                 (model.ChipRamBytes == 256 * 1024 || model.ChipRamBytes == 512 * 1024);
             _addressMask = model.Cpu == AmigaCpuModel.M68000 || model.Cpu == AmigaCpuModel.M68EC020
@@ -181,7 +184,7 @@ namespace AmigaEmulator.Core.Memory
                 _scsiDmaWrite = (a, v) => { if (a < (uint)model.ChipRamBytes) _chipRam.Write(a, v); else _fastRam.Write(a - _motherboardRamStart, v); };
             }
             AutoConfig = new ZorroRamAutoConfig(_hasMotherboardRam ? 0 : model.FastRamBytes);
-            ZorroIII = new ZorroIIIRamAutoConfig(model.ZorroIIIRamBytes);
+            ZorroIIIExpansion = new ZorroIIIRamExpansion(model.ZorroIIIRamBoardBytes);
             _chipRamEnd = model.ChipRamBytes > 0
                 ? (uint)model.ChipRamBytes - 1u
                 : MemoryMap.ChipRamEnd;
@@ -270,11 +273,12 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void LoadKickstart(byte[] romBytes)
         {
+            if (_hasA1000Pal) throw new InvalidOperationException("The A1000 requires a separate bootstrap and guest-loaded WCS; a direct Kickstart ROM bypass is unavailable.");
             _kickstart = new KickstartRom(romBytes);
             DevelopmentA1000ControlStore = null;
         }
 
-        /// <summary>Opt-in decoder bring-up on an unexpanded OCS/68000 test board; not a native A1000 profile.</summary>
+        /// <summary>Opt-in decoder bring-up on the A1000 development board or an unexpanded OCS/68000 test board.</summary>
         public void LoadDevelopmentA1000Bootstrap(byte[] bootstrap)
         {
             if (!_canDevelopA1000) throw new InvalidOperationException("A1000 decoder bring-up requires an unexpanded 256/512 KiB OCS/68000 board.");
@@ -305,7 +309,7 @@ namespace AmigaEmulator.Core.Memory
             _chipRam.Clear();
             _slowRam.Clear();
             _fastRam.Clear();
-            ZorroIII.ClearRam();
+            ZorroIIIExpansion.ClearRam();
             DevelopmentA1000ControlStore?.PowerCycle();
             _customRegisters.Reset();
         }
@@ -372,6 +376,19 @@ namespace AmigaEmulator.Core.Memory
                 return AmigaAddressRegion.ChipRam;
             }
 
+            if (_hasA1000Pal)
+            {
+                // The original PAL does not decode the later Gary-sized apertures.
+                // CIA selects are independent: a word can access both chips on their own lanes.
+                if (address >= 0xA00000 && address <= 0xBFFFFF)
+                {
+                    if ((address & 0x1001u) == 1) return AmigaAddressRegion.CiaA;
+                    if ((address & 0x2001u) == 0) return AmigaAddressRegion.CiaB;
+                    return AmigaAddressRegion.Unmapped;
+                }
+                if (address >= 0xC00000 && address <= 0xDFFFFF) return AmigaAddressRegion.CustomRegisters;
+            }
+
             if (address >= MemoryMap.CiaBStart && address <= MemoryMap.CiaBEnd)
             {
                 return AmigaAddressRegion.CiaB;
@@ -397,8 +414,13 @@ namespace AmigaEmulator.Core.Memory
                 return AmigaAddressRegion.FastRam;
             }
 
-            if (ZorroIII.MapsRam(address)) return AmigaAddressRegion.ZorroIIIRam;
-            if (ZorroIII.MapsConfig(address)) return AmigaAddressRegion.ZorroIIIConfig;
+            // Native Z3 RAM is assigned at or above $10000000; its config window is $FF000000.
+            // Low motherboard/ROM/custom accesses cannot select these cards.
+            if (address >= 0x10000000u)
+            {
+                if (ZorroIIIExpansion.MapsRam(address)) return AmigaAddressRegion.ZorroIIIRam;
+                if (ZorroIIIExpansion.MapsConfig(address)) return AmigaAddressRegion.ZorroIIIConfig;
+            }
 
             if (address >= MemoryMap.CustomStart && address <= MemoryMap.CustomEnd)
             {
@@ -492,10 +514,10 @@ namespace AmigaEmulator.Core.Memory
                     value = _fastRam.Read(address - FastRamStart);
                     break;
                 case AmigaAddressRegion.ZorroIIIRam:
-                    value = ZorroIII.ReadRam(address);
+                    value = ZorroIIIExpansion.ReadRam(address);
                     break;
                 case AmigaAddressRegion.ZorroIIIConfig:
-                    value = ZorroIII.ReadConfig(address);
+                    value = ZorroIIIExpansion.ReadConfig(address);
                     break;
                 case AmigaAddressRegion.MotherboardResources:
                     value = DesktopResources.ReadByte(address);
@@ -577,9 +599,9 @@ namespace AmigaEmulator.Core.Memory
                 case AmigaAddressRegion.FastRam:
                     return _fastRam.Read(address - FastRamStart);
                 case AmigaAddressRegion.ZorroIIIRam:
-                    return ZorroIII.PeekRam(address);
+                    return ZorroIIIExpansion.PeekRam(address);
                 case AmigaAddressRegion.ZorroIIIConfig:
-                    return ZorroIII.PeekConfig(address);
+                    return ZorroIIIExpansion.PeekConfig(address);
                 case AmigaAddressRegion.MotherboardResources:
                     return DesktopResources.ReadByte(address);
                 case AmigaAddressRegion.GayleIde:
@@ -751,6 +773,23 @@ namespace AmigaEmulator.Core.Memory
             return false;
         }
 
+        public bool IsCiaIcrRead(uint address, int size)
+        {
+            address = Normalize(address);
+            uint first = _hasA1000Pal ? 0xA00000u : MemoryMap.CiaBStart;
+            uint last = _hasA1000Pal ? 0xBFFFFFu : MemoryMap.CiaAEnd;
+            if (address + (uint)Math.Max(0, size - 1) < first || address > last) return false;
+            for (int offset = 0; offset < size; offset++)
+            {
+                uint current = Normalize(address + (uint)offset);
+                if (((current >> 8) & 0xFu) != 13) continue;
+                var region = GetRegion(current);
+                if ((region == AmigaAddressRegion.CiaA && IsCiaAByteLane(current)) ||
+                    (region == AmigaAddressRegion.CiaB && IsCiaBByteLane(current))) return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Writes one byte to the normalized Amiga address map and dispatches device side effects.
         /// </summary>
@@ -781,10 +820,10 @@ namespace AmigaEmulator.Core.Memory
                     _fastRam.Write(address - FastRamStart, value);
                     break;
                 case AmigaAddressRegion.ZorroIIIRam:
-                    ZorroIII.WriteRam(address, value);
+                    ZorroIIIExpansion.WriteRam(address, value);
                     break;
                 case AmigaAddressRegion.ZorroIIIConfig:
-                    ZorroIII.WriteConfigByte(address, value);
+                    ZorroIIIExpansion.WriteConfigByte(address, value);
                     break;
                 case AmigaAddressRegion.MotherboardResources:
                     DesktopResources.WriteByte(address, value);
@@ -838,9 +877,9 @@ namespace AmigaEmulator.Core.Memory
         /// </summary>
         public void WriteWord(uint address, ushort value)
         {
-            if (ZorroIII.MapsConfig(Normalize(address)))
+            if (ZorroIIIExpansion.MapsConfig(Normalize(address)))
             {
-                ZorroIII.WriteConfigWord(Normalize(address), value);
+                ZorroIIIExpansion.WriteConfigWord(Normalize(address), value);
                 NotifyWriteObserved(Normalize(address), 2, value, AmigaAddressRegion.ZorroIIIConfig);
                 return;
             }

@@ -1748,7 +1748,7 @@ namespace AmigaEmulator
         {
             switch (_machineSelection)
             {
-                case 0: ApplyMachineModel(CycleEnum(_machineModel, direction)); break;
+                case 0: ApplyMachineModel(AmigaModel.CycleSelectableMachine(_machineModel, direction)); break;
                 case 1: ApplyAccuracyProfile(CycleEnum(_accuracyProfile, direction)); break;
                 case 2: ToggleTurboMode(); break;
                 case 3: ApplyFloppySpeedMode(CycleEnum(_floppySpeedMode, direction)); break;

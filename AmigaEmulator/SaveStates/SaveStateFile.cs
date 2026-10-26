@@ -92,6 +92,8 @@ namespace AmigaEmulator.Core.SaveStates
                 (screenshotWidth == 0) != (screenshotHeight == 0))
                 throw new ArgumentException("Screenshot dimensions must match the supplied pixel array.");
 
+            if (!AmigaModel.IsSelectableMachine(system.Model.Machine) || system.Bus.DevelopmentA1000ControlStore != null)
+                throw new InvalidOperationException("Development boot states require the diagnostic core-state API.");
             var declaredModel = AmigaModel.Create(system.Model.Machine, AmigaModel.GetDefaultRamProfile(system.Model.Machine));
             if (system.Model.Cpu != declaredModel.Cpu || system.Model.CpuClockHz != declaredModel.CpuClockHz ||
                 system.Model.Chipset != declaredModel.Chipset || system.Model.IdeModel != declaredModel.IdeModel ||
@@ -179,7 +181,7 @@ namespace AmigaEmulator.Core.SaveStates
                     Enum.IsDefined(typeof(AmigaKickstart), kickstart) &&
                     Enum.IsDefined(typeof(AmigaRamProfile), ramProfile) &&
                     Enum.IsDefined(typeof(AmigaAccuracyProfile), accuracyProfile) &&
-                    Enum.IsDefined(machineModel) && AmigaModel.NormalizeRamProfile(machineModel, ramProfile) == ramProfile;
+                    AmigaModel.IsSelectableMachine(machineModel) && AmigaModel.NormalizeRamProfile(machineModel, ramProfile) == ramProfile;
 
                 return new SaveStateSlotMetadata
                 {
@@ -229,7 +231,7 @@ namespace AmigaEmulator.Core.SaveStates
                 var accuracy = (AmigaAccuracyProfile)reader.ReadInt32();
                 var machine = fileVersion >= 2 ? (AmigaMachineModel)reader.ReadInt32() : AmigaMachineModel.A500;
                 if (machine != system.Model.Machine) throw new InvalidDataException("Savestate machine model does not match the current machine.");
-                if (!Enum.IsDefined(kickstart) || !Enum.IsDefined(ram) || !Enum.IsDefined(accuracy) || !Enum.IsDefined(machine))
+                if (!Enum.IsDefined(kickstart) || !Enum.IsDefined(ram) || !Enum.IsDefined(accuracy) || !AmigaModel.IsSelectableMachine(machine))
                     throw new InvalidDataException("Savestate contains unsupported machine settings.");
                 AmigaModel required = AmigaModel.Create(machine, ram);
                 if (required.ChipRamBytes != system.Model.ChipRamBytes || required.SlowRamBytes != system.Model.SlowRamBytes || required.FastRamBytes != system.Model.FastRamBytes)

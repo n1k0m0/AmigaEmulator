@@ -1,6 +1,6 @@
 # Machine models: implementation and validation
 
-Status: 2026-10-22 (roadmap ongoing). Select a machine through **F10 -> SETTINGS -> HARDWARE**.
+Status: 2026-10-26 (roadmap ongoing). Select a machine through **F10 -> SETTINGS -> HARDWARE**.
 Changing the model restarts the guest. Every model except A500 is currently
 marked **PREVIEW**. Preview means incomplete hardware/software coverage.
 
@@ -30,9 +30,11 @@ through the existing emulated Zorro II-style expansion; this is not an exact
 trapdoor accelerator board implementation. A3000/A4000/030 Fast RAM uses 32-bit
 motherboard addresses ending at $08000000, without advertising a Zorro II card.
 The selectable 2 MiB Fast configuration is a synthetic reduced RAM layout;
-physical Ramsey SIMM bank geometry is not fully modeled. An opt-in single
-Zorro III RAM development card is available for A3000/A4000/030 core tests;
-it is not a selectable or generally validated expansion subsystem.
+physical Ramsey SIMM bank geometry is not fully modeled. An opt-in chain of one to four 8/16/32 MiB Zorro III RAM development cards
+is available for A3000/A4000/030 core tests. Native Kickstart/Exec discovery,
+reset/restore and a bounded DF0-loaded guest allocation/read-write/free
+diagnostic are verified below; it is not a selectable or generally validated
+expansion subsystem.
 A2000 OCS supports 512 KiB Chip RAM and optional 512 KiB Slow RAM; ECS models
 use 1/2 MiB Chip RAM. Legacy enum and RAM-profile IDs retain their values.
 
@@ -291,12 +293,12 @@ broader application and all-model storage coverage remain open.
 | Stage | Evidence and current status | Remaining acceptance work |
 | --- | --- | --- |
 | 1. Known defects | A2000 OCS CLI clipping fixed; cold/warm/restore reference assertions; Siedler wood/menu/pointer test passes; requested Intro Disk 1 -> Disk 2 crash fixed by physical media-removal timing; a separately repaired Siedler Disk 1 fixes the Kickstart-1.3 handoff; lost keyboard acknowledgement recovers; menu write protection retains media/partial writes; separate Pinball writer repair persists all eleven score sectors on the correct track on both native desktops; late Cannon sprite no longer collapses the host presentation to its final 80–88 source rows (2026-10-12) | Current Siedler border report remains open; raw/custom-track preservation remains incomplete; fix defects discovered by the broader matrix; retain broader disk-validator/hardware coverage |
-| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and score-sector writes on all four tables with an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands; Cannon Fodder's first mission on all eight native boards with data drives; Celtic Heart Snow Mountains Stages 1 and 2 completed on A3000 through real inputs, followed by independently replayed active Stage-3 movement, stable passage of its first gap, defeat of the first far-side type-9 enemy, a timed Fire kill of the type-12 bat, and two grounded Fire kills followed by live movement through the raised knight corridor to X=780 and independently replayed timed passage across three water stones, castle landing, Type-6 knight defeat and sustained upper-platform landing beyond the Type-5 enemy and two defeated lower-castle knights, first castle-wall ledge, near Type-12 bat, higher castle step, sustained roof landing, timed passage to the right-side platform at X=1492/Y=73, and independently replayed Fire defeats of both far bats and the lower Type-9 enemy, followed by timed passage beneath the far castle wall to X=1680/Y=185 and a raised Type-5 defeat with stable live movement to X=1836/Y=137, a higher-platform landing at X=1738/Y=89, a safe jump over deadly GID 66 to X=1696/Y=89, a tiny high-step landing at X=1668/Y=41, a grounded Fire defeat of the high Type-6 knight at X=1752/Y=9, an independently replayed living landing past the X=1888 pillar at X=1924/Y=89, the grounded Fire defeat of the next Type-6 knight, and timed far-side jumps with stable landings at X=2180/Y=121 and X=2324/Y=25, a jump over the animated upper tile to X=2380/Y=25, a living landing past the second tall column at X=2464/Y=185, a grounded Fire defeat of its Type-6 knight, and a jump over the Type-7 ground enemy, followed by the animated-tile and two-water-gap passages, far-side Type-6 and Type-8 kills, three fixed steps and a wall overjump, and independently cold-replayed visible Stage-3 and Stage-4 completions, followed by active Stage-5 passages through the Type-7 ground enemy, three Type-5 patrols and a timed foreground-tile jump to X=2232 and an independently repeated Type-15 magical-fire bypass through the X=2304 wall, a Type-9 Dino defeat, animated hazard and Type-8 spider bypass, moving-platform water crossing and two fixed-step landings to X=2888/Y=57 and a second independently replayed moving-platform passage to X=3052/Y=57, then a defeated lower Type-5 spider and genuine raised-stone gameplay through the visibly complete Stage 5 and Stage-6 title, then active cave movement, first skeleton bypass, first cavern gap, two further Type-17 defeats and a Type-20 green-walker defeat at X=364/Y=121 (2026-10-21). Later detailed full-cold routes below document visible completions through Stage 10; Stage 11 activation is under full-cold validation. | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned Pinball highscore entry and broader reload/model coverage, Desert land objectives, Cannon single-drive requests and longer campaigns, Celtic Heart Stage 11 and later stages, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
-| 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; profile-driven floppy selection/index/tick optimization with paired identical CPU/frame states (2026-10-12); timing lookup and duplicate bus-classification candidates rejected | Continue profiling remaining allocations and repeat paired measurements after further changes |
+| 2. Native gameplay | Full local ADF sweep; Boxx 4 ECS window fix with failing-before test; Tinyus bounded movement/fire on all eight boards; verified live Pinball ball/flippers/pause/quit and score-sector writes on all four tables with an explicit repaired Disk 1 on native A3000/A4000; Desert Strike lift-off/flight/fire/map/EXIT/reset/restore on all eight models; Mega lo Mania live islands; Cannon Fodder's first mission on all eight native boards with data drives; native A500/Kick1.3 now additionally has a complete genuine mouse-input objective route through all three enemy defeats and visible MISSION COMPLETE, reproduced by two independent whole DF0 cold boots with both squad members retained (2026-10-25), followed by two independent whole DF0 cold boots through actual Mission1 victory/promotions and the next army to visibly active Mission2 Phase1of2 with JOOLS/JOPS/STOO retained; all17 original Mission2 Phase1 enemies and visibly confirmed PHASE COMPLETE now pass two independent whole DF0 cold boots, with all3 soldiers retained by native Type0/coordinate/write evidence through F46145; Mission2 Phase2 TRASH ENEMY HQ activation and its first original enemy defeat now also pass two independent whole DF0 cold boots with all12 actual new pictures reviewed and all3 soldiers retained; four further original Phase2 defeats/north-bank route now pass two independent whole DF0 boots with all22 actual images reviewed through F51056; the following five-original-enemy west/river/right-bank route now also passes both whole DF0 cold starts, all30 actual pictures reviewed through F54052,81 actual cold guards; the lower-river continuation and one further original14 removal now also pass both independent whole DF0 cold starts through F55223, all10 actual pictures reviewed and86 actual cold guards; three further original13/12/22 defeats and west-bank movement now pass both independent whole DF0 starts through F56893, all20 actual pictures reviewed and96 actual cold guards; the lower west/bottom path and original11 defeat now pass both independent whole DF0 cold boots through F58843, all16 actual pictures individually reviewed,104 actual cold guards; subsequent immediate-fire east route defeats remaining original10 plus three NEW spawned enemies in both whole DF0 boots, all18actual images reviewed throughF60455,113actual cold guards; subsequent lower-corner route and actual0->4 ammo pickup now pass both whole DF0 boots with all26actual images reviewed throughF62076,126actual cold guards; actual remote weapon4->3 consumption and required-building destruction now also pass both whole boots with ALL28new actual images reviewed throughF62899,140actual cold guards; post-building NEWreplacement29 removal now also passes both whole DF0 boots throughF63144 with ALL8actual images reviewed,144actual cold guards; both final current enemies and the native objective now pass both whole DF0 cold boots through F63830 with ALL26actual images individually reviewed, all3 soldiers healthy, genuine MISSION COMPLETE and157actual cold guards; both phases and all of Mission2 are cold-complete. Subsequent actual Mission2 victory/promotions, nextArmy and Mission3Phase1of1 four-soldier active snow gameplay now also pass two independent whole DF0 boots through73317, ALL20actual new pictures reviewed,167actual cold guards; the first original Mission3enemy16 defeat now also passes both whole DF0 boots through73582, ALL8actual new pictures reviewed,171actual cold guards; the following current upper27 removal and NEW27 reallocation now also pass both whole DF0 boots through73866, ALL8actual new pictures reviewed,175actual cold guards; the next upper-bank land movement and current23 removal now also pass both whole DF0 boots through74478, ALL8actual new pictures reviewed,179actual cold guards; the following upper-east mask-bend and initial Mission3entry4 removal now also pass both whole DF0 boots through75206, ALL12actual new pictures reviewed,185actual cold guards; the subsequent east native-goal route and five distinct Type5instance removals in four slots now also pass both whole DF0 boots through76135, ALL16actual new pictures individually reviewed,193actual cold guards; the subsequent genuine Mission3 ammo0->4 pickup now also passes both whole DF0 boots through76378, ALL12actual new pictures individually reviewed,199actual cold guards; the following defence/current16-current25-replacement25 and actual bounded detour now also pass both whole DF0 boots through77554, ALL18actual new pictures individually reviewed,208actual cold guards; the first Mission3 required building19 now also passes both whole DF0 boots through78411, ALL38actual new pictures reviewed,227actual cold guards; the second required building21 and actual upper-west route now also pass both whole DF0 boots through79138, ALL38actual new pictures reviewed,246actual cold guards and all4soldiers healthy; the third required20 building and actual western approach now also pass both whole DF0 boots through79887, ALL34actual new pictures individually reviewed,263actual cold guards and all4soldiers healthy; the following east-lake seven leader waypoints and three distinct Type5 instances now also pass both whole DF0 boots through80937, ALL18actual new pictures individually reviewed,272actual cold guards and all4soldiers healthy; one required building22, current enemies and the Mission3 objective, later visible single-drive requester and longer campaign remain open; Celtic Heart Snow Mountains Stages 1 and 2 completed on A3000 through real inputs, followed by independently replayed active Stage-3 movement, stable passage of its first gap, defeat of the first far-side type-9 enemy, a timed Fire kill of the type-12 bat, and two grounded Fire kills followed by live movement through the raised knight corridor to X=780 and independently replayed timed passage across three water stones, castle landing, Type-6 knight defeat and sustained upper-platform landing beyond the Type-5 enemy and two defeated lower-castle knights, first castle-wall ledge, near Type-12 bat, higher castle step, sustained roof landing, timed passage to the right-side platform at X=1492/Y=73, and independently replayed Fire defeats of both far bats and the lower Type-9 enemy, followed by timed passage beneath the far castle wall to X=1680/Y=185 and a raised Type-5 defeat with stable live movement to X=1836/Y=137, a higher-platform landing at X=1738/Y=89, a safe jump over deadly GID 66 to X=1696/Y=89, a tiny high-step landing at X=1668/Y=41, a grounded Fire defeat of the high Type-6 knight at X=1752/Y=9, an independently replayed living landing past the X=1888 pillar at X=1924/Y=89, the grounded Fire defeat of the next Type-6 knight, and timed far-side jumps with stable landings at X=2180/Y=121 and X=2324/Y=25, a jump over the animated upper tile to X=2380/Y=25, a living landing past the second tall column at X=2464/Y=185, a grounded Fire defeat of its Type-6 knight, and a jump over the Type-7 ground enemy, followed by the animated-tile and two-water-gap passages, far-side Type-6 and Type-8 kills, three fixed steps and a wall overjump, and independently cold-replayed visible Stage-3 and Stage-4 completions, followed by active Stage-5 passages through the Type-7 ground enemy, three Type-5 patrols and a timed foreground-tile jump to X=2232 and an independently repeated Type-15 magical-fire bypass through the X=2304 wall, a Type-9 Dino defeat, animated hazard and Type-8 spider bypass, moving-platform water crossing and two fixed-step landings to X=2888/Y=57 and a second independently replayed moving-platform passage to X=3052/Y=57, then a defeated lower Type-5 spider and genuine raised-stone gameplay through the visibly complete Stage 5 and Stage-6 title, then active cave movement, first skeleton bypass, first cavern gap, two further Type-17 defeats and a Type-20 green-walker defeat at X=364/Y=121 (2026-10-21). Latest detailed full-cold routes below document visible completions through Stage12 and the THE FOREST STAGE4 title, including genuine lower-worm and far twin-knight defeats, lower moving-platform crossing and living exit-hazard overjump; Stage13 is visibly active and its first lower Type30 defeat/platform ride/upper-eagle bypass/fixed upper-step route reaches X220/Y25/F86095, followed by the phase-timed solid bridge/barn Type31 defeat, second platform to X708/Y57 and upper Type25-spider bypass/two Type29 defeats to X976/Y185/F87589 and further Viking/twin-barrel route to X1180/Y153/F87893, then third-barrel/spider/eagle bypass and another Viking defeat to the fixed raised step X1612/Y153/F88667 and the FRONT667 bypass/two Viking and knight defeats to X1768/Y121/F89254, then BACK97 bypass, a lower Type31 defeat, four fixed water steps and far-shore landing to X2452/Y153/F90261, followed by actual Type32 overjump, two raised Type31 defeats and high fixed/animated bridge landings to X3004/Y57/F91084, then another actual moving-platform crossing, BACK97 bypass, two Type25-spider/two Type27-Viking/two Type29-hound defeats and FRONT667 overjump to X3684/Y185/F92633, followed by the final Type30 defeat, animated-floor-trap/eagle bypass, actual TYPE7 exit, visible CONGRATULATIONS at F93361 and illustrated final story at F93959: the complete thirteen-stage game is now passed on A3000/Kickstart3.1 after two complete independent DF0 cold starts; every accepted transition has two independent complete DF0 cold boots and reviewed images. | Complete the 268-case visual/control review and title-specific disk/menu continuations; naturally earned Pinball highscore entry and broader reload/model coverage, Desert land objectives, Cannon single-drive requests and longer campaigns, Celtic Heart on other native models and independent graphics references, Mega later islands, Sqrxz text/reference checks, native AGA software and longer sessions remain open |
+| 3. Performance | Display/opcode caches and allocation reductions; vectorized framebuffer clear measured with identical complete CPU/frame states; profile-driven floppy selection/index/tick optimization with paired identical CPU/frame states (2026-10-12); timing lookup and duplicate bus-classification candidates rejected; Zorro III low-address slot scans removed after paired state/throughput checks (2026-10-24) | Continue profiling remaining allocations and repeat paired measurements after further changes |
 | 4. Installed OS | A4000/030 and separate A3000/SCSI 3.1.4 installations; both caches exercised; all eight boards have matching 46.143 desktop/application evidence; A1200 IDE/A3000 SCSI Shell/Clock/ShowConfig and independently verified file persistence/reset/restore repeated on the current core (2026-10-12) | Broader applications and complete controller coverage; A1200 native 3.1 comparison remains unresolved; optional hardware remains gated |
 | 5. ECS/AGA modes | Extended AGA lores/hires scrolling and fractional compositor phases implemented; LOF/VPOSW field selection and 312/313-line PAL field timing corrected; native 1408-pixel SuperHires and 576-line field-pair presentation exercised through real 3.1.4 Workbench mode changes, window dragging and restore on bounded ECS/AGA configurations (2026-10-15) | Compare against independent hardware/reference output; mixed-resolution and mid-field Copper changes, programmable timing, scan doubling and broader application transitions remain open |
-| 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested; overlapping TT windows combine cache inhibit correctly; fixed-slot ATC history replacement and legacy restore checked; bounded 030 MOVE.B/W postincrement retry, split-long source read, prechecked register-source split-long write, MOVEM read/write transfer probes including odd byte/word page crossings, and MOVEP word/long byte-transfer probes after MMU faults (2026-10-13) | Complete timing and full restartable format A/B faults, including real partial-transfer continuation, device reads after successful translation, indexed-EA side effects and multi-transfer writes |
-| 7. Further hardware | Opt-in native Zorro III RAM board (8/16/32 MiB) is under core/guest validation; A1000 WCS decoder, CPU/bus handoff, RESET and guarded restore pass synthetic guest regressions; unsupported models stay unavailable | Installed-OS Zorro III enumeration and multi-card/IRQ/DMA coverage; optional 68881/68882; distinct 68040 CPU/MMU/FPU; A1000 bootstrap/WCS and full boot |
+| 6. 020/030 correctness | Integer/MMU and repair fixtures; locked-read protection and PTEST B/I fixes; actual 020/030 instruction caches and separate 030 data cache implemented and boot/application tested; overlapping TT windows combine cache inhibit correctly; fixed-slot ATC history replacement and legacy restore checked; bounded 030 MOVE.B/W postincrement retry, split-long source read, prechecked register-source split-long write, MOVEM read/write transfer probes including odd byte/word page crossings, MOVEP word/long byte-transfer probes, and bounded simple memory-to-memory MOVE source/destination translation preflight after MMU faults (2026-10-24) | Complete timing and full restartable format A/B faults, including real partial-transfer continuation, device reads after successful translation, indexed-EA side effects and multi-transfer writes |
+| 7. Further hardware | Opt-in chain of one to four native Zorro III RAM boards (8/16/32 MiB each) passes unit, Kickstart/Exec pool, native warmboot and v20-restore checks; native DF0 Exec allocation/pattern/free/reuse and aperture-hole controls pass; A1000 WCS decoder, CPU/bus handoff, RESET, gated KCLK detector/external hard-reset keyboard personality and guarded v22 restore pass synthetic guest regressions; isolated exact 68881/68882 extended-operand import/transport, binary/integer/NaN output conversions and explicit caller-supplied exception-status transitions and isolated development-register storage/reset/FPCR decoding and pure instruction-exception vector decisions pass independent tests (433/433 Debug and Release), without FPU instruction execution; unsupported models stay unavailable | Installed-OS Zorro III applications and broader multi-card/IRQ/DMA/timing coverage; optional 68881/68882; distinct 68040 CPU/MMU/FPU; A1000 keyboard MCU/power-on reset, original PAL details and real bootstrap/DF0 Kickstart boot |
 
 ### Gameplay evidence
 
@@ -2273,6 +2275,61 @@ the existing graphics/timing/MMU/FPU/040/Zorro III gates. The
 roadmap remains active.
 
 ### Execution of the seven requested points — 2026-10-12
+
+Latest 2026-10-26 update: native A500/Kick1.3 Cannon Mission2 BOTH phases
+now pass two independent whole DF0 cold boots through63830, all26actual
+new images individually reviewed, all3 soldiers healthy,157actual cold guards.
+The following victory/nextArmy/Mission3 four-soldier activation now also
+passes both whole boots with ALL20actual images reviewed and167cold guards;
+the first Mission3enemy16 now also passes both whole boots with171cold guards;
+the current27 removal/replacement now also passes both whole boots with175actualcold guards;
+the upper-bank movement/current23-removal now also passes both whole boots with179actualcold guards;
+the upper-east bend/initial Mission3entry4-removal now also passes both whole boots with185actualcold guards;
+the next east native-goal route and five distinct instances in four slots also pass both whole DF0 boots through76135, ALL16actual pictures reviewed and193actual cold guards; the subsequent genuine Mission3ammo0->4 pickup now also passes both whole DF0 boots through76378, ALL12actual pictures reviewed,199actual cold guards; the next three distinct current instances and actual healthy bounded detour now also pass both whole DF0 boots through77554, ALL18actual images reviewed and208actual cold guards; the first required19 building now also passes both whole DF0 boots through78411, ALL38actual pictures reviewed and227actual cold guards; the second required21 building and upper-west route now also pass both whole DF0 boots through79138, ALL38actual pictures reviewed and246actual cold guards; the third required20 building and actual western approach now also pass both whole DF0 boots through79887, ALL34actual pictures individually reviewed and263actual cold guards; the following east-lake seven leader waypoints and three distinct Type5 instances now also pass both whole DF0 boots through80937, ALL18actual pictures individually reviewed and272actual cold guards; all4soldiers remain natively healthy, one required22 building and current enemies remain; no wholecandidate/recorder remains pending, private95 not created; isolated FPU pure exception-vector decisions add six tests (433/433 Debug and Release), no executing FPU/backend; later visible requester and
+longer campaign plus the whole seven-point/A1000 roadmap remain OPEN.
+
+Current 2026-10-25 acceptance is detailed in the latest sections below: Celtic
+Heart Stages1-12 are visibly complete after two independent full DF0 cold runs
+per accepted transition. The new Stage12 end route kills the lower Type26,
+catches/rides the lower Type24, lands both far-bank steps, kills two last Type31
+with crouched Fire and jumps the exit hazard. LEVEL COMPLETE at F83494 and
+THE FOREST STAGE4 / CODE 9KZL at F84064 are reproduced in both whole cold runs;
+all SIXTEEN actual end-route pictures were individually reviewed. Stage13 title
+and active Right movement are now independently cold-accepted: X32/Y185/F85303,
+all FOUR actual GET READY/active images reviewed. The first Type30 defeat,
+platform ride/re-landing above the upper eagle and fixed left steps to X220/Y25
+F86095 now also pass both full cold starts and all TWELVE actual pictures.
+The phase-timed solid bridge, barn edge and Type31 defeat to X372/Y57/F86500
+also pass two complete cold starts and all SIX actual pictures.
+The second-platform landing to X708 and high-bridge/spider/two-hound route to
+X976/Y185/F87589 now pass both whole cold runs, with all EIGHTEEN actual new
+pictures individually reviewed across these two accepted routes. The following
+Viking defeat/twin-barrel route to X1180/Y153/F87893 also passes both complete
+cold runs and all SIX actual pictures. The longer third-barrel/spider/eagle
+route to X1612/Y153/F88667 also passes both whole cold starts and all FOURTEEN
+actual pictures individually reviewed. The raised-trap/two-Viking/knight route
+to X1768/Y121/F89254 also passes two whole cold starts and all EIGHT actual
+pictures individually reviewed. The BACK97/lower-knight/four-fixed-water-step
+route to X2452/Y153/F90261 now also passes both whole cold starts and all
+FOURTEEN actual pictures individually reviewed. The projectile/two-raised-knight/
+high-bridges route to X3004/Y57/F91084 also passes both complete independent
+cold starts and all SIXTEEN actual pictures individually reviewed. The next
+moving-platform/BACK97/two-spider/two-Viking/two-hound/FRONT667 route to
+X3684/Y185/F92633 also passes both whole cold boots and all TWENTY-TWO actual
+pictures individually reviewed. Stage13 and the full thirteen-stage game now
+also pass: final Type30 defeat, genuine TYPE7 exit at F93016, visible
+CONGRATULATIONS at F93361 and final illustrated story at F93959 in two complete
+independent DF0 cold starts; ALL SIXTEEN actual new pictures individually
+reviewed. This completes this A3000/Kickstart3.1 game route, not the seven-point
+roadmap or cross-model/hardware/reference acceptance.
+The gated A1000 KCLK detector now has a bounded external hard-reset keyboard
+personality and v22 restore. Current suites pass416/416 in Debug and Release after
+the isolated exact FPU operand-format, binary rounding and integer/NaN output
+foundations; no helper executes guest FPU instructions. No native A1000 boot or
+availability is claimed. Zorro III multi-card RAM additionally passes a synthetic DF0-loaded
+native Exec allocation/pattern/free/reuse diagnostic with a failing corruption
+control. These bounded results do not complete the seven points or enable
+optional hardware in the normal selector.
 
 This execution follows the seven-point chat list: game defects, broader gameplay,
 graphics, CPU/MMU, performance, OS/additional hardware, then release/relay.
@@ -11008,14 +11065,140 @@ releases Fire, holds it for 500,000 cycles and releases it again. After
 20 million cycles the reviewed image shows GET READY. A second Fire
 activates play; an additional release/rearm and a brief Right move reach
 X44/Y185, HSalive=FF at Frame 67778 in that checkpoint probe, with a visible
-hero. Its hash is not accepted as a full-cold reference. The validated
-`tmp/stage11-active-movement-full-candidate.json` appends those actual input
-edges to the accepted full route and checks the living final RAM. Two new
-independent full DF0 cold replays run with the current A1000-bus development
-core in `tmp/stage11-active-movement-full-a` and `-b` (sessions 98076/94707),
-capturing GET READY and final movement once each. Next: inspect both final
-RAM states, matching hashes, zero non-ROM exceptions and both active images
-before promoting a Stage-11 gameplay route. Stage 11 remains open.
+hero. The initial checkpoint hash was not used as a full-cold reference.
+Both independent complete DF0 cold replays now confirm the same visible
+GET READY at Frame 67384, hash
+`069F5A2784E342CCA3D4B9DFDCB71A597AC6387FD8730BFA9543DAAC5F54D05A`,
+and active movement to X44/Y185, HSalive=FF at Frame 67778, hash
+`01AD58C247A452EDE1C99206C9FD346055251F2AAACAEBAB791F45A745001581`.
+All four captured images were reviewed; neither full run observes a non-ROM
+exception. `Tools/a3000-celtic-heart-stage-eleven-active-movement-route.json`
+validates with those two full-cold image guards and the live final RAM.
+Count Stage-11 activation and movement as passed, not its first enemies or
+completion. Compact `verified-summary.json` records and the four images
+remain in `tmp/stage11-active-movement-full-a` and `-b`; their two reviewed,
+regenerable raw step logs were removed successfully, reclaiming about
+62 MB without touching media, checkpoints or previously blocked cleanup.
+
+Checkpoint-only opening controls from X44: direct Right and immediate
+Right+Up both collide at X50/Frame 67781 with decimal Type31 `$07FF82D4`
+(`MOtype=$1F`). HSalive write traces identify that MOB at `A5` and
+`hero_coll/killHero`. Standing Fire at X44 instead dies at Frame 67788,
+before its strike can activate. A neutral-movement jump solves the short
+reaction window: press Up alone for two 250,000-chip-cycle intervals,
+then hold Right in the air for sixteen intervals. Release Right/Up and
+wait ten neutral 500,000-cycle intervals. The checkpoint hero lands
+X160/Y185 and stays alive through Frame 67912. Both opening decimal Type31s
+`$07FF82D4/$07FF8284` remain Type31/flags80; neither is killed.
+
+Full cold confirmation: both independent complete DF0 replays in
+`tmp/stage11-opening-twin-type31-bypass-full-a` and `-b` finish successfully
+on the PAL-development core. Each confirms Frame 67912, X160/Y185,
+HSalive=FF, both Type31s still Type31/flags80, zero non-ROM exceptions and
+identical hash
+`4BE8FDFC7C02D35CA325CDAA0BC1F0A3CB9C2F4474B3237DCE946A4F0366818B`.
+Both active images have been reviewed and show the living hero past the
+first two ground patrols. The permanent
+`Tools/a3000-celtic-heart-stage-eleven-opening-twin-type31-bypass-route.json`
+retains the live/enemy RAM guard and this full-cold image guard. Count the
+sustained opening bypass as passed, without claiming either enemy killed.
+Compact verified summaries and both images retain the reviewed evidence.
+The two newly reviewed regenerable raw step logs were removed successfully
+(59,291,815 bytes); no media or previously blocked cleanup tree was touched.
+Stage 11 remains open. Checkpoint-only continuation now reaches the next
+fixed forest wall X320 (hero X304/Y185). The active decimal Type32 missile
+`$07FF8194` passes overhead at Y153; an early braked Right+Up lands
+X316/Y153, then successive real Right+Up inputs climb the animated solid
+steps to X372/Y105 and X416/Y73. Directly jumping toward the high wall
+collides at X484/Y37, Frame 68235, with decimal Type31 `$07FF8144`;
+the bounded HSalive write trace identifies that MOB in `A5`. Waiting eight
+500,000-cycle intervals before this enemy activates only delays its same
+relative approach; the braked hero X476 still dies at Frame 68291.
+
+A later checkpoint probe provides a sustainable high-wall sequence: walk
+to X436 on the upper step, release, Right+Up to X528/Y57, then press Up
+alone for two 250,000-cycle intervals before moving Left in the air for
+six intervals. Braking lands X484/Y57 while the patrol moves away. Face
+Right for 70,000 cycles and use grounded Fire; it kills the returning
+Type31 by Frame 68346. The hero stays X487/Y57, HSalive=FF, with the MOB
+Type0/flags40 through Frame 68487 after twelve neutral 500,000-cycle
+intervals. Immediate Left+Up instead collides before gaining height;
+standing left-facing Fire at X526 also starts too late. These are bounded
+checkpoint controls, not new visual passes or full-cold acceptance.
+
+Both independent complete DF0 cold runs now confirm this sequence through
+Frame 68487: X487/Y57, HSalive=FF, grounded, upper Type31 Type0/flags40,
+zero non-ROM exceptions and identical hash
+`CBCA41A468ABB10B426858AB0E5CE33EC337E75B372B3493BFB74691BAD06B96`.
+Both active ending images were reviewed: the hero is visible on the high
+forest wall and the patrol is gone. The permanent
+`Tools/a3000-celtic-heart-stage-eleven-high-wall-upper-type31-kill-route.json`
+retains the full-cold hash and live/enemy RAM guard. Count the wall ascent,
+animated steps, timed reverse jump and grounded Type31 kill as passed.
+The full runs in `tmp/stage11-high-wall-upper-type31-kill-full-a` and `-b`
+retain compact verified summaries and images. Their two newly reviewed raw
+step logs were removed successfully (64,050,834 bytes); the retained evidence
+and previously blocked cleanup trees were preserved. Stage 11 remains open.
+Checkpoint-only continuation: Right to the safe edge X544, then Right+Up
+for eight 250,000-cycle intervals and release Right/Up. The hero catches
+decimal Type24 platform `$07FF8414` at Y162 and rides it left to X563,
+then right to X687/Y162 after 29 neutral 500,000-cycle intervals. A real
+Right+Up jump of eight short intervals lands X748/Y153 on the far bank.
+Waiting there is not sustainable: decimal Type29 `$07FF80A4` (`MOtype=$1D`)
+arrives from X896/Y153 and kills the hero at Frame 68861. Early grounded
+Fire is ineffective; it is not a Type31 and no kill is claimed.
+
+Instead, after two 500,000-cycle landing intervals, Right+Up for seven
+250,000-cycle intervals and release jumps to the higher fixed GID37 step
+X796/Y105. Twelve neutral 500,000-cycle intervals remain alive through
+Frame 68902; Type29 stays active below. This is still checkpoint-only.
+Both independent complete DF0 cold runs now confirm Frame 68902,
+X796/Y105/HSalive=FF, grounded, Type29 still active below, zero non-ROM
+exceptions and identical hash
+`51CB35B270E8FC83E3221E96EC2439F483DEFEC895F72E87DBA0803448A24836`.
+Both active cold images were reviewed and show the living hero on the
+raised far-bank step. The permanent
+`Tools/a3000-celtic-heart-stage-eleven-first-platform-far-bank-upper-step-route.json`
+retains the live/enemy RAM and full-cold image guard. Count the Type24
+moving-platform crossing, stable bank landing and Type29 upper bypass as
+passed, without claiming that enemy killed. Verified summaries and both
+images remain in the two full-run outputs. Their two newly reviewed raw
+step logs were removed after compact verification (64,605,755 bytes).
+Stage 11 remains open.
+
+Verified full-cold tree continuation: immediate Right+Up from X796 is a
+negative checkpoint control: it hits the solid TYPE12 GID13 canopy and
+later collides with Type29. Three 250,000-cycle Right intervals to X816,
+release and one settling interval clear the ceiling. Two rearmed jumps
+land X868/Y73, then X912/Y25. The permanent route
+`Tools/a3000-celtic-heart-stage-eleven-tree-upper-branch-route.json` holds
+there through Frame 69088 with HSalive FF and the Type26 still active.
+Two independent complete DF0 cold runs have identical image hash
+`10B112C8067D1757290D8788EC05B0BB8982F7A521A955B2B196FC889A0C55C1`;
+both active images show the hero on the upper branch.
+
+After eight further neutral 500,000-cycle intervals, a timed Right+Up
+passes above Type26 and brakes onto X1040/Y121. Continuing Right instead
+dies at X1080 (bounded hero_coll/killHero trace matching Type31 in A5).
+Two real grounded Fire inputs, separated by release, defeat decimal
+Type31s `$07FF7FB4/$07FF8004`. The permanent route
+`Tools/a3000-celtic-heart-stage-eleven-postworm-twin-knight-route.json`
+holds X1040/Y121 through Frame 69461, HSalive FF, both knights Type0/flags40.
+Two independent full DF0 cold runs have identical final hash
+`A0DC86B0C116AB5B0817FBAB502076606B5AC7F8D839EF9A7C76D67B74D5A6FC`.
+Both final images show active gameplay and the living hero. All 9,829 rows
+of each run have zero non-ROM exceptions. Type26 and the lower Type29
+remain active; their bypasses are not kills.
+
+Evidence: `tmp/stage11-postworm-twin-knight-full-a/verified-summary.json`
+and `-b/verified-summary.json`, retaining both reviewed captures per run.
+The two reviewed regenerable `steps.jsonl` files were removed after the
+compact summaries and all four images were retained (about 66 MB). Their
+intentional absence is not a failed replay.
+The upper branches and two grounded kills pass; Stage 11 remains open.
+Next continue with real inputs toward the animated trap near X1120,
+requiring a sustained live landing and two independently reviewed full
+cold routes for any further acceptance.
 
 ### Optional Zorro III RAM bring-up — 2026-10-22
 
@@ -11047,7 +11230,7 @@ compatible `$E80000` experiment produced a red expansion diagnostic and
 was discarded; only the native path is retained.
 
 The requested optional 68881/68882, independent A4000/040 CPU/MMU/FPU,
-and A1000 profile are still absent. The unmodified A1000 needs its own
+and public A1000 profile are still absent. The unmodified A1000 needs its own
 bootstrap ROM and writable control store rather than an A500 identity.
 The decoder described below now has explicit CPU/bus development wiring,
 but is not a complete motherboard or selectable profile. The
@@ -11136,6 +11319,8834 @@ unchanged reference hash
 These are existing-board boot regressions, not an A1000 boot claim.
 Compact evidence is in `tmp/a1000-bus-full-regression-final.log` and
 `tmp/a1000-bus-native-boot-regression-output`; neither test used an installed
-HDF. Next: finish native A1000 board identity and PAL decoding, then boot
-an actual user-supplied bootstrap and disk-loaded Kickstart before offering
-that model. Optional FPU and distinct 68040 remain unimplemented.
+HDF. The next section adds the distinct A1000 identity and initial PAL
+device decoding. A real user-supplied bootstrap and disk-loaded Kickstart
+must still boot before offering that model. Optional FPU and distinct
+68040 remain unimplemented.
+
+### A1000 development identity and PAL device mirrors — 2026-10-24
+
+After the requested commit/push, `4f5ad34d7a205fe72962a543d3b2376dc21ec6af`
+is confirmed on both local `main` and `origin/main`. It contains the previous
+WCS integration, six tests and Stage-10 completion routes. The subsequent
+work below is local development; no new tag or release was created.
+
+`AmigaModel.CreateDevelopmentA1000Pal` now gives the diagnostic board its
+own appended A1000 machine identity, preserving all eight existing enum
+values. It has a 68000, PAL OCS timing, 256 or 512 KiB Chip RAM and no
+invented trapdoor RAM, built-in IDE/SCSI, RTC or PCMCIA. The existing
+bootstrap guest/handoff/reset/restore tests now run on this identity.
+An A500 carrying the earlier diagnostic WCS decoder cannot load an A1000
+core state; older A500/WCS states still restore on their matching board.
+Direct Kickstart loading on the A1000 is rejected rather than bypassing
+its separate bootstrap/WCS sequence.
+
+The native development decoder recognizes independent CIA byte-lane selects
+through `$A00000–$BFFFFF` and custom-register mirrors through
+`$C00000–$DFFFFF`. A word can address both CIAs simultaneously when both
+selects are asserted. Unselected writes leave both chips untouched; mirrored
+CIA-A writes control the overlay, and mirrored custom-register transfers
+still request the chip bus. The earlier A500 decoder remains unchanged.
+This decode was checked against the primary
+[MAME Amiga address maps](https://github.com/mamedev/mame/blob/master/src/mame/amiga/amiga.cpp)
+and [CIA select handling](https://github.com/mamedev/mame/blob/master/src/mame/amiga/amiga_m.cpp).
+CPU deferred ICR reads now ask the board to classify their address, so
+mirrors preserve IRQ bits arriving after the original sample. Regressions
+cover a stalled real `MOVE.B` and independent simultaneous CIA-A/B ICR
+retirement with later requests retained.
+
+Frontend cycling, startup settings, public state-file writing/loading and
+GameRunner's normal model factory keep A1000 gated. A failed public write
+is tested against an existing sentinel save and preserves every byte.
+The frontend still cycles through exactly the eight previously available
+boards. Nine focused A1000 cases and the complete **378/378** .NET suite
+pass; the GameRunner preflight suite passes **29/29**. Builds and the source
+header audit pass, with the existing NU1900 service warning. Current-core
+A500/Kickstart 1.3, A3000/Kickstart 3.1 plus 8 MiB Zorro III, and
+A4000/030/Kickstart 3.1 plus 8 MiB Zorro III cold boots all reach their
+reviewed disk-insert screens at frame 422 with zero non-ROM exceptions and
+the prior exact hashes. Evidence: `tmp/a1000-pal-full-regression.log` and
+`tmp/a1000-pal-native-boot-regression-output`; no HDF was used.
+
+This is development-board identity and initial device decode, not complete
+A1000 conformance. Remaining work includes the original overlay/ROM mirror
+PAL details, keyboard reset circuitry and a real bootstrap/DF0-loaded
+Kickstart boot. The separate bootstrap image is still unavailable locally.
+Keep the profile out of normal selection until those acceptance checks pass.
+
+### Zorro III RAM slot chain and guest size correction — 2026-10-24
+
+The development API `WithDevelopmentZorroIIIRamBoards` now attaches one to
+four independent 8/16/32 MiB RAM boards. The bus exposes only the first
+unconfigured card at `$FF000000`; assignment or shut-up enables the next
+slot. Already assigned cards retain distinct RAM decodes. Reset restarts
+the chain while retaining RAM; power loss clears every card. The single-card
+API remains available and its version-18 state payload is unchanged. A cold
+boot is required for the corrected guest memory list: restoring an older
+development state retains that state's original Exec pool rather than rewriting
+guest memory behind the OS.
+Multi-card states use version 20, record the ordered slot sizes, reject a
+different layout before changing machine RAM, and restore partially written
+assignment latches. Expansion payloads are parsed fully before replacing
+any card, so truncation in a later card preserves the live expansion.
+No Zorro bus-master DMA, IRQ arbitration or new frontend selection is added.
+
+The chain and sub-size interpretation follow sections 8.1/8.2 of the primary
+[Commodore A4000/A3000 Hardware Developer Notes v1.11](https://amiga.net.au/files/Tech_Amiga/Commodore_A4000-A3000_Hardware_Developer_Notes_v1.11_ocr.pdf).
+Real guest memory-list inspection found an existing single-card defect:
+the 8 MiB board's old flags `$90` made Kickstart link a 16 MiB aperture as
+usable RAM. With two cards, Exec included the physically unmapped gap
+`$40800000–$40FFFFFF` in its free pool despite a normal insert screen.
+The 8 MiB card now declares explicit sub-size 10 (`flags=$9A`); 16/32 MiB
+retain full-size encoding. The independent low-nibble test fails before
+the change (expected `$5F`, actual `$FF`) and passes after it.
+
+`GameRunner` accepts the optional `zorroIIIRamBoardsMiB` list, rejects an
+ambiguous scalar-plus-list configuration, and records per-slot assignment
+and RAM access counters. Its existing read-only Exec MemList inspection now
+permits headers in real mapped 32-bit RAM, without following MMIO pointers.
+`Tools/verify_zorro_iii_boot.py` checks that every reported Zorro pool range
+is physically backed and every assigned card is usable. It fails on the
+old actual ROM output (`$40000020–$41FFFFFF` linked across a hole) and passes
+the corrected native cases; this is not inferred from the screen alone.
+
+Current complete suite: **380/380** .NET cases and **30/30** Runner preflight
+cases. Builds and source-header audit pass; the existing NU1900 service
+warning remains. Real corrected Kickstart 3.1 cold boots at frame 422 pass:
+
+| Board | Cards and guest-assigned bases | Exec Zorro pool ranges (upper exclusive) |
+| --- | --- | --- |
+| A3000 | 8 MiB at `$40000000` | `$40000020–$40800000` |
+| A3000 | 8/16 MiB at `$40000000/$41000000` | `$40000020–$40800000`, `$41000020–$42000000` |
+| A4000/030 | 8/16 MiB at `$40000000/$41000000` | same separate 8/16 MiB ranges |
+| A3000 | 8/16/32/8 MiB at `$40000000/$41000000/$42000000/$44000000` | `$40000020–$40800000`, `$41000020–$44800000` |
+
+The 32-byte prefix belongs to each Exec memory header. Contiguous later
+cards may share a pool header; the 8 MiB aperture holes are now excluded.
+All four boots have zero non-ROM exceptions and reviewed insert-screen
+images. A3000 retains hash
+`4D01745C0CFA0218661EAA0C88D915FBDD3C7BC5943102362DC327D56E5B3FF7`;
+A4000/030 retains
+`9192DD4A048E00810E72F976C7B658AA50B8051C10439AAB5283DF9DD1BD0733`.
+The unchanged A500/Kick13 and native single-card desktop boot controls
+also retain their prior frame/hash references. No HDF was mounted.
+
+Reproduce with `Tools/zorro-iii-multicard-boot-scenarios.json`, then run
+`python Tools/verify_zorro_iii_boot.py <output-directory>` and review images.
+Evidence is compactly retained in
+`tmp/zorroiii-multicard-subsize-fixed-output/verified-summary.json`, its four
+images and short raw logs; before/after pool-check and full-test logs remain
+in ignored `tmp`. This establishes native Kickstart/Exec RAM enumeration,
+not installed Workbench application/load/restore acceptance. Installed-OS
+coverage still awaits an allowed fresh private HDF test; do not bypass the
+previously blocked HDF copy by making another one. Keep the expansion opt-in.
+FPU, distinct 68040 and complete native A1000 boot remain open; the separate
+A1000 bootstrap and relay SSH destination remain unavailable locally.
+
+### Zorro III decoder throughput check — 2026-10-24
+
+Paired measurements compare immutable private pre-chain and current core
+binaries using the existing `Tools/BenchmarkRunner`. Each process restores
+the same A3000 Stage-11 diagnostic state, warms 100 frames, then measures
+five samples of 100 frames; order is baseline/current/current/baseline.
+The workload has no Zorro III cards attached. It is a throughput/control
+comparison, not an additional cold gameplay or visual acceptance claim.
+An initial series overlapped a short probe and was excluded from conclusions.
+
+The first quiet series measured pooled median throughput 113.24 FPS before
+the chain versus 105.48 FPS with unconditionally consulted slot decoders.
+The bus now avoids that work for addresses below `$10000000`, where this
+RAM expansion cannot be assigned and its native config aperture cannot
+appear. The card's assignment range already enforces this lower bound.
+High RAM and `$FF000000` configuration accesses still use the full chain.
+No guest wait state, instruction timing or returned data is altered.
+
+A separate paired series with the range guard measured 105.68 FPS on its
+baseline and 110.32 FPS with the guard. Host variability is material: run
+medians range 94.77–110.98 FPS in that series, so these results do not
+establish a general percentage speedup or a real-time guarantee. All
+corresponding complete serialized CPU states and presented-frame hashes
+match across both comparison series. Timed allocation on the emulator
+thread is zero in every sample. The range guard is retained to exclude
+physically impossible low-address expansion selects; broader workloads,
+models and longer stable-host measurements remain open.
+
+Durable measurement details (binary and checkpoint SHA256, run order,
+raw sample metrics and equality results) are compactly stored in
+`tmp/zorroiii-performance-verified-summary.json`,
+`tmp/zorroiii-performance-gated-verified-summary.json` and their short
+`zorroiii-perf-quiet-*` / `zorroiii-perf-gated-*` JSONL files. Both binaries
+were used without moving .git, checking out or altering the source history.
+The three newly generated benchmark-only build directories were removed
+after preserving binary hashes and the compact measurements; the current
+GameRunner and required game checkpoint remain available.
+The current diagnostic checkpoint restores the accepted X796/Y105 cold
+frame hash exactly; this does not promote the later checkpoint-only inputs.
+
+After the guard, the full **380/380** .NET suite passes again. The four
+native Zorro boot cases also retain frame 422, prior exact image hashes,
+correct physically backed Exec pools and zero non-ROM exceptions. All four
+new images were reviewed. Evidence: `tmp/zorroiii-gated-full-regression.log`
+and `tmp/zorroiii-gated-native-boots-output`; no HDF was mounted. The
+current runner is `tmp/zorroiii-gated-runner/GameRunner.dll`. This does not
+complete the performance roadmap or the remaining hardware work.
+
+### Bounded 68030 memory-to-memory MOVE retry - 2026-10-24
+
+An independent regression fails on the previous CPU: a readable device source
+is physically read before the destination translation faults (expected zero,
+actual one). Whole-instruction RTE retry would read that source again. The
+existing byte/word address-register rewind did not prevent that bus side effect.
+Evidence: `tmp/mmu-move-device-source-before.log`.
+
+The retry path now preflights both source and destination for extension-free
+indirect, postincrement and predecrement memory EAs. Source translation keeps
+fault priority; probes do not change An or mark an unretired store modified.
+Aliased source/destination addresses include the source stride, and byte A7
+keeps its two-byte stride. Long memory-to-memory moves in this bounded subset
+now use the same guarded retry. After mapping repair, device data is read once
+and the original effective-address order retires once.
+
+Two fixtures cover 54 combinations of byte/word/long, the three source and
+three destination modes, and immediate/deferred execution; eight additional
+controls cover source fault priority, aliased increment/decrement and byte A7.
+The complete suite passes **382/382**; runner preflight passes **30/30** and
+the separate Release runner builds with zero warnings/errors. Evidence:
+`tmp/mmu-simple-move-full-regression.log`, `tmp/mmu-simple-move-preflight.log`
+and `tmp/mmu-simple-move-runner-build.log`.
+
+Four genuine A3000/A4000-030 Kickstart cold boots on this CPU retain Frame422,
+the previous exact frame hashes, zero non-ROM exceptions, correct physical
+Exec pools for one/two/four Zorro cards and the reviewed disk-insert screens.
+The three A3000 PNG files are byte-identical; A4000 has its separate expected
+image. Evidence: `tmp/mmu-simple-move-native-boots-output/verified-summary.json`;
+`Tools/verify_zorro_iii_boot.py` passes all four cases. No HDF was mounted.
+These are boot regressions, not new installed-OS/MMU application acceptance.
+
+A bounded before/after continuation of the accepted Stage11 X1040 checkpoint
+also matches frame hashes, general CPU register snapshots, cache control,
+display registers and watched RAM through Frame69496 (seven logged states).
+`tmp/stage11-mmu-control-verified-summary.json` retains the comparison.
+This checkpoint control is not a new visual cold-start gameplay pass.
+
+This follows the existing conservative translation-preflight approach, not
+hardware-complete format-A/B continuation. A real 68030 preserves suspended
+bus-cycle state; this implementation still defers a source access instead of
+retaining a previously completed source value. Indexed/pointer EAs, physical
+bus errors after translation, handler-edited input buffers and general partial
+multi-transfer continuation remain open. Source: [MC68030 User's Manual,
+8.2.1-8.2.3](https://www.nxp.com/docs/en/reference-manual/MC68030UM-P2.pdf).
+Next implement persistent per-instruction transfer continuation with matching
+RTE/frame semantics before claiming general device-access restart fidelity.
+
+Checkpoint-only Stage-11 continuation after the accepted X1040/Y121:
+direct Right dies at X1126 (HSalive write at Frame69504, hero_coll/killHero,
+A5=$0008D0, matching the animated BACK-GID97 trap at X1120/Y128).
+Seven 250,000-cycle Right intervals, Right+Up for twelve short intervals,
+release and three short landing intervals stop at X1176/Y121. A rearmed
+Right+Up for eighteen short intervals, release and twelve neutral
+500,000-cycle intervals land X1304/Y185 alive through Frame69686. Both
+nearby MOtype bytes are $19 (decimal Type25), still active; no kills.
+A single longer first jump instead lands into the first Type25 and dies.
+
+The permanent route
+`Tools/a3000-celtic-heart-stage-eleven-animated-trap-twin-type25-bypass-route.json`
+now passes two independent complete DF0 cold starts on the immutable prior
+`tmp/zorroiii-gated-runner` CPU: Frame69686, X1304/Y185, HSalive FF,
+both decimal Type25 records still active, zero non-ROM exceptions across
+9,886 rows per run and identical final frame hash
+`C1E20E6F3CDEFF3BEB67E3AD1F686C469A953B2374973BE678B87C99D85D6003`.
+Both reviewed active captures show the living hero beyond the trap and
+spiders; their PNG files are byte-identical. Evidence:
+`tmp/stage11-animated-trap-twin25-full-a/verified-summary.json` and `-b`.
+The two reviewed regenerable raw logs were removed after retaining their
+compact summaries and both images (about 67 MB); missing raw logs are not
+a failed replay.
+The same short input continuation from the accepted checkpoint also reaches
+that exact hash on `tmp/mmu-simple-move-runner`, retaining one private
+current diagnostic checkpoint. This bounded current-CPU check does not
+replace the two recorded full-cold runs. Count the trap and both Type25
+bypasses as passed, not kills or Stage11 completion.
+
+Next investigate the fixed barn approach and the two animated foreground
+traps at X1408/X1600, with actual timed inputs and sustained live landings.
+Require independently repeated full cold routes and active image review
+before accepting any further barn passage. Stage11 remains open.
+
+### Stage11 barn timing and current reset/restore controls - 2026-10-24
+
+The barn passage now has two verified full-cold replays. Its timing was
+isolated with checkpoint probes as follows. From accepted X1304/Y185,
+immediate Right+Up for twelve 250,000-cycle intervals, release and eight
+neutral 500,000-cycle intervals reach X1392/Y153 through Frame69785.
+Direct Right instead stops at X1344 and dies when an enemy returns.
+
+The barn has fixed roof GIDs171/173/179 at Y96, a fixed GID54 step at
+X1408/Y160 and animated foreground GID663 at X1408/Y144. The tile data
+marks GIDs663/664 TYPE9 deadly; GIDs665/666 and its long empty phase
+are TYPE0. Immediate horizontal or initially vertical jumps hit the trap;
+walking without jumping remains blocked at the fixed step. Four additional
+neutral 500,000-cycle intervals align its harmless phase, then Right+Up
+for eight short intervals lands X1440/Y153 at Frame69841.
+
+A5=$07FF7EC4 in the following bounded HSalive trace identifies MOtype=$1C,
+**decimal Type28**, the burning barrel. The source rollBurningBarrel marks
+it invulnerable. Standing and crouching Fire controls fail. Releasing Up
+for an actual 250,000-cycle interval, then twelve short Right+Up intervals
+passes the barrel to X1524/Y153. A zero-cycle release/repress did not rearm
+jumping and dies; the real release interval matters.
+
+Continuing toward the second GID663 trap, an out-of-range Fire control is
+retained in the successful timing script. A new jump crosses the second
+trap to X1632/Y153. Four neutral 500,000-cycle intervals followed by twelve
+short grounded Fire intervals defeat decimal Type31 $07FF7E74 by Frame70095.
+Twelve neutral long intervals hold through Frame70193: HSalive FF, Type31
+Type0/flags40 and Type28 still active. This is a bypass of the barrel, not
+a kill. Two independent complete DF0 cold runs on the current
+`tmp/mmu-simple-move-runner` now pass all 10,010 rows each with zero non-ROM
+exceptions. All four intermediate/end images were reviewed and show the
+living hero in active forest gameplay. Each image pair is byte-identical.
+
+Permanent `Tools/a3000-celtic-heart-stage-eleven-barn-first-ledge-route.json`
+confirms X1392/Y153 at Frame69785, exact hash
+`A8BDD3F0959918BD1B7DCC0D8C9D583C61D2046C8F4A8C43BBBDE1B985757EA9`.
+Permanent `Tools/a3000-celtic-heart-stage-eleven-barn-traps-barrel-knight-route.json`
+confirms the full X1632/Y153 landing at Frame70193, exact hash
+`46807AD25CAE9EC229E6E35F39EB95B817E240D85946B131A67608DFD3DE0A8C`.
+Both include living RAM guards and reviewed hash guards. Evidence:
+`tmp/stage11-barn-traps-barrel-knight-full-a/verified-summary.json` and `-b`,
+retaining all four images and Runner/Core binary SHA256. The two reviewed
+regenerable raw step logs were then removed (about 68 MB); intentional absence
+of those logs is not a replay failure. This also replays the accepted earlier prefix
+and its hash guards from DF0 on the current CPU. Count the barn entry,
+both timed foreground traps, Type28 bypass and Type31 kill as passed,
+not Stage11 completion.
+
+Further checkpoint-only probes from X1632 identify three ground MOtype=$1D,
+**decimal Type29 hellhounds**, not Type32 missiles. Earlier temporary probe
+names containing `missile` were guesses; live types take precedence. Direct
+Right and the first early jump both die X1804 at Frame70279 to $07FF7C94.
+Nineteen short Right intervals, thirteen short Right+Up intervals, release
+Up for exactly one short interval while retaining Right, then eighteen
+short Right+Up intervals bypass all three and reach X1984/Y185. Four neutral
+long intervals align the next Type31; a four-short-interval Right+Up ascent,
+six neutral short intervals and fourteen short grounded Fire intervals
+kill $07FF7BA4. Twelve neutral long intervals remain alive X1996/Y153 through
+Frame70570, knight Type0/flags40; all three Type29s remain active below.
+
+After the barn pair was accepted, two independent full DF0 cold runs of
+`tmp/stage11-postbarn-three-hounds-wall-knight-full-candidate.json` were started
+on the current runner in `tmp/stage11-postbarn-three-hounds-wall-knight-full-a`
+and `-b` (sessions19826/52106), no final checkpoints. They include the now
+reviewed barn prefix hashes and use the unique final capture
+`postbarn-hound-wall-knight-hold-11`. Require final X1996/Y153/live RAM,
+Type31 Type0/flags40, matching hashes, zero non-ROM exceptions and both
+reviewed images before treating the hounds or wall knight as passed. No new checkpoint image
+is a visual full-cold gameplay pass. Next terrain beyond X1996 includes
+the higher step at X2080 and another raised barn/Type31 section.
+
+All 46 own current barn/post-barn probes, their exact input scenarios,
+first/last alive/dead states and bounded HSalive writes are consolidated in
+`tmp/stage11-barn-probe-verified-summary.json` (about 723 KB). Their 34 temporary
+per-probe manifests/output trees were removed after verification; the two
+full candidates, canonical short continuations, needed private checkpoints,
+reviewed images and running full-cold outputs remain. No old blocked tree,
+ROM, game, normal save or HDF was touched.
+
+Separate current-core controls start at the already cold-verified living
+X1304 state. Both a warm-reset/restore and a cold-reset/restore pass the
+runner's complete serialized CPU/bus, saved beam and framebuffer assertions.
+Both restored captures have the accepted hash
+`C1E20E6F3CDEFF3BEB67E3AD1F686C469A953B2374973BE678B87C99D85D6003`.
+Real post-restore input reaches X1392/Y153 Frame69785 with identical CPU,
+cache control, watched RAM, display registers and image hash to the no-reset
+control (`A8BDD3F0959918BD1B7DCC0D8C9D583C61D2046C8F4A8C43BBBDE1B985757EA9`).
+Evidence: `tmp/stage11-reset-restore-controls-output/verified-summary.json` and
+two retained restored images. These are functional reset/restore controls
+on accepted gameplay, not a new independent full-cold barn pass.
+
+### Native Zorro III multi-card warmboot and v20 restore - 2026-10-24
+
+`Tools/zorro-iii-native-reset-restore-scenarios.json` adds actual A3000/Kick31
+four-card (8/16/32/8 MiB) and A4000-030/Kick31 two-card (8/16 MiB) sequences.
+Each genuinely cold-boots, restores its live state after a warm reset and
+after a cold reset, then independently performs a native warm reboot.
+The restore action asserts exact complete serialized CPU and bus state,
+saved beam and presented framebuffer; each card's real guest RAM and mapping
+are included. Eight configured snapshots across the two models retain the
+same card layouts and exact Exec pool ranges. All advertised usable Zorro
+RAM is physically covered and every card remains in Exec, with no phantom
+aperture bytes. No HDF was mounted.
+
+Both final warmboots reach Frame422 with zero non-ROM exceptions and the
+previous reviewed native disk-insert hashes (A3000 `4D01745C...`, A4000
+`9192DD4A...`; full hashes in the scenario and summary). Both final images
+were reviewed; each model's three saved restored/warmboot PNGs are byte-identical.
+The read-only assignment diagnostic resets to zero when fresh card objects
+restore their payload, as intended for unserialized diagnostic counters;
+it is not guest mapping loss. After the actual warm reboot, each card has
+been independently assigned exactly once. `Tools/verify_zorro_iii_boot.py`
+passes both final native boots, and all four configured phases per model
+were separately checked for identical physical Exec coverage.
+
+Evidence: `tmp/zorro-iii-native-reset-restore-output/verified-summary.json`
+and six retained captures. This adds native multi-card reset/restore coverage,
+not installed Workbench/application acceptance or IRQ/DMA/bus-timing conformance.
+The expansion remains opt-in; FPU, distinct 68040 and full A1000 bootstrap
+acceptance remain open. No hardware/menu availability gate was changed.
+
+Next Zorro-specific acceptance step: run bounded genuine guest Exec allocation,
+RAM read/write and free checks in the assigned regions before broader installed
+applications. Keep the documented private-HDF block in force; do not manufacture
+a replacement installation to bypass it. No FPU/040/A1000 selection is enabled
+by these native boot and restore checks.
+
+
+### Stage11 post-barn Type29 bypass and raised knight - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-eleven-postbarn-three-hounds-wall-knight-route.json`
+now passes two independent complete DF0 cold boots on the unchanged current
+`tmp/mmu-simple-move-runner` core. Each checks all 10,110 rows with zero
+non-ROM exceptions and retains all accepted earlier prefix hash guards.
+Both end at Frame70570, X1996/Y153, HSalive FF, exact framebuffer hash
+`6E77EE3DCDD2F5B0CF4C18C0C0208E7308EDDAE8AB569D738C14BA91363B37A4`.
+Both active images were reviewed and show the living hero on the raised edge.
+The Type31 at $07FF7BA4 is Type0/flags40; the three MOtype=$1D/decimal29
+hellhounds remain active below. This is their bypass, not their defeat.
+
+Evidence: `tmp/stage11-postbarn-three-hounds-wall-knight-full-a/verified-summary.json`
+and `-b`, both retained images, scenario and Runner/Core SHA256. Only their
+newly reviewed regenerable raw logs were removed after the compact summaries;
+missing raw logs are intentional. One own current diagnostic checkpoint at
+X1996 was reproduced with the accepted hash for short input probes.
+Stage11 and the overall roadmap remain open.
+
+Checkpoint-only next-barn probes: ten short Right intervals reach the X2080
+step at X2064/Y153. Eight short Right+Up intervals, release Right/Up, then
+sixteen short stationary Fire intervals defeat the next decimal Type31
+$07FF7B54. Twelve neutral long intervals hold X2104/Y105 through Frame70774,
+Type0/flags40. An earlier brake at X2096 stays alive below but does not defeat
+it; a later Fire at X2118 dies. These are bounded probes, not cold-start
+acceptance. Two independent complete DF0 cold runs of
+`tmp/stage11-second-barn-raised-knight-full-candidate.json` are running in
+`tmp/stage11-second-barn-raised-knight-full-a` and `-b` (sessions85508/52521),
+no final checkpoints, unique capture `second-barn-knight-hold-11`.
+Require final living X2104/Y105, Type31 Type0/flags40, matching hashes,
+zero non-ROM exceptions and both reviewed active images before promotion.
+The canonical short continuation is `tmp/stage11-second-barn-raised-knight-current.json`.
+
+Further short controls identify the next floor enemy at $07FF7B04 as byte$19,
+decimal Type25, not a guessed Viking. Direct Right dies X2254/Y121 at Frame70851.
+Early Right+Up attempts under the barn roof have the same outcome. Walking
+nineteen short intervals from X2104 before triggering Up gives a higher jump
+from X2236 and passes Type25, but continuing twenty short intervals falls at
+X2374/Y178 near the next gap. That is not a sustainable landing or a pass.
+Read-only Type24 platform phase probes are still being investigated. Use
+actual live coordinates/types; checkpoint images are not full-cold visual proof.
+
+### Zorro III native DF0 Exec allocation, pattern comparison and reuse - 2026-10-24
+
+`Tools/zorro_iii_guest_memory_probe.py` generates checksum-valid synthetic
+880-KiB ADFs inside a newly named private output directory. Native Kickstart
+loads the bootblock through DF0 and enters it in the boot task with ExecBase
+in A6, following the Commodore RKM bootblock ABI. No CPU-register hook,
+host RAM patch, HDF, installed filesystem or normal user disk is used.
+The test remains separate from the gameplay manifests and hardware selector.
+
+The 68000-compatible diagnostic calls genuine Exec AllocAbs (D0/A1, LVO -204),
+FreeMem (A1/D0, -210) and AvailMem (D1, -216). It checks every returned pointer
+before use. It reserves two separate aligned 4-KiB regions per assigned
+card simultaneously, one near its beginning and one near its end, writes
+address-dependent longword patterns to every region, then reads and compares
+all regions only after all writes. Distinct simultaneous patterns catch a
+simple bank alias. It frees all regions, requires the original total Fast
+memory to return exactly, reallocates all the same addresses simultaneously,
+repeats with a changed pattern and frees again. It additionally calls AllocAbs in the unbacked upper aperture half of each
+8-MiB card; both A3000 requests and the A4000 request return NULL as required.
+The guest records completed
+write/compare counts and FreeMem calls in its own bootblock buffer. The host
+only reads that report and the already existing native card/Exec diagnostics.
+
+Actual A3000/Kick31 four-card 8/16/32/8-MiB and A4000-030/Kick31 two-card
+8/16-MiB boots both pass at Frame844 with zero non-ROM exceptions. Eight/four
+simultaneous regions each complete both pattern cycles; all 16/8 FreeMem calls
+complete and every region is reusable. AvailMem(MEMF_FAST) before/after is
+71,249,360/71,249,360 bytes for A3000 and 29,305,768/29,305,768 for A4000-030.
+Every card independently records over 16,384 physical guest read bytes and
+over 16,384 physical guest write bytes. The independent native-boot verifier
+also confirms assigned sizes, correct Exec pool coverage and no aperture holes.
+
+An actual native A3000 negative-control disk deliberately overwrites one test
+longword after the write phase. The guest reports BAD00002 at its comparison
+failure and the host verifier rejects it. This failed diagnostic is an expected
+control, not an emulator/gameplay failure and never a RAM pass. Initial bugs
+in this new test's marker length and comparison against scratch register A1
+were corrected before acceptance; Exec may change A1. No emulator core change
+was required for this new acceptance work.
+
+Reproduction, no installed media required:
+
+```
+python Tools/zorro_iii_guest_memory_probe.py generate tmp/zorro-iii-exec-check
+dotnet tmp/mmu-simple-move-runner/GameRunner.dll tmp/zorro-iii-exec-check/scenarios.json tmp/zorro-iii-exec-check-output --no-final-checkpoint --no-images
+python Tools/zorro_iii_guest_memory_probe.py verify tmp/zorro-iii-exec-check tmp/zorro-iii-exec-check-output
+```
+
+Evidence: `tmp/zorro-iii-exec-guest-probe-v4-output/verified-summary.json`,
+`guest-memory-summary.json`, two retained report-bearing 64-KiB snapshots,
+short step logs and synthetic ADF/layout manifests in
+`tmp/zorro-iii-exec-guest-probe-v4`. The separate negative-control manifest,
+ADF and report chunk remain in `tmp/zorro-iii-exec-negative-control-v4` and its
+output. All positive ADF, tool, Runner/Core and guest-report SHA256 are recorded.
+Only own regenerable non-report RAM scan chunks were removed; their paths,
+sizes and SHA256 are recorded in `tmp/zorro-iii-exec-scan-raw-cleanup-summary.json`.
+Together with the two reviewed game logs this removed 99,476,056 bytes without
+removing accepted images, needed checkpoints, user media or old blocked trees.
+The verifier still passes from the retained compact evidence after cleanup.
+
+This proves bounded native boot-task allocation, physical RAM data comparison,
+free and reuse on the tested card layouts. It is not full-address memory
+qualification, installed Workbench/application acceptance, asynchronous DMA/IRQ
+or electrical/bus-timing conformance. No FPU, distinct 68040 or complete A1000
+bootstrap is implemented or enabled by this tool. Independent in-memory checks of all 120 legal card-size/order layouts, with
+and without deliberate corruption (240 variants), fit the 1024-byte bootblock
+(maximum 606-byte payload) and pass the end-around-carry boot checksum.
+The negative mode is reproducible with `generate --corrupt-after-write`;
+the verifier must reject that diagnostic. The core remains the prior
+382/382-suite and 30/30-preflight version; only diagnostic Python/data/docs
+changed in this turn. Next expand genuine guest application/OS coverage when
+the existing private-HDF block is resolved, and continue independent hardware
+reference/timing work. Do not replace that blocked HDF with a fresh copy.
+
+
+Checkpoint-only continuation update: the second Type24 $07FF83C4 is genuinely
+caught by braking after sixteen short intervals of the late barn jump. The
+hero rides at Y146; keeping Right four intervals longer runs off it and dies.
+Sixteen neutral 500,000-cycle intervals ride to X2421/Y146 at Frame71009.
+An immediate far-bank jump meets the actual active Type32 $07FF8324 (byte$20)
+at X2482/Y103. Four more neutral long intervals on the platform, then ten
+short Right+Up intervals and twelve neutral long intervals instead land
+sustainably X2492/Y121 through Frame71157. The Type32 and both Type25s remain
+active; none is killed. Waiting eight/twelve/sixteen extra intervals gives
+negative controls (projectile or missed landing). Candidate
+`tmp/stage11-second-platform-far-bank-full-candidate.json` and canonical short
+`tmp/stage11-second-platform-far-bank-current.json` are prepared and must be
+fully cold-replayed twice with reviewed active pictures before a pass.
+The prior second-barn full-cold pair is still running. No Stage11 completion
+or second-platform pass is claimed from these checkpoint-only findings.
+
+
+The immediate second-platform negative control is now confirmed by a bounded
+HSalive write trace: Frame71041, hero_coll/killHero PC$07FEBE60, A5=$07FF8324,
+MOtype=$20/decimal32. It is the moving ground projectile, not the nearby
+upper Type25 or a guessed tile collision. The separate negative diagnostic
+is `tmp/stage11-second-platform-immediate-jump-collision-control.json` and
+its output. Exact input scenarios plus first/last live/dead states, bounded
+MOB snapshots and prior HSalive traces from 24 own current probes are compacted
+in `tmp/stage11-second-barn-platform-probe-verified-summary.json` (384,167 bytes).
+Their 16 own per-probe manifests/output trees were removed after verification;
+the two full-cold candidates and canonical continuations remain.
+
+Final v4 native guest-RAM scan cleanup removed a further 18,677,760 own
+regenerable bytes, keeping each report-bearing chunk and all short logs and
+hashes (`tmp/zorro-iii-exec-v4-scan-cleanup-summary.json`). The final checker
+still accepts both positive cases from that retained evidence and rejects the
+actual corruption control with readable status `BAD00002 guest pattern
+comparison mismatch`. Python compilation, source-header audit (including the
+new untracked tool explicitly) and Git diff whitespace checks pass. No core
+binary changed and no commit, push, tag or release was performed.
+
+
+### Second Stage11 barn accepted; second platform cold pair running - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-eleven-second-barn-raised-knight-route.json`
+is now accepted. Two independent complete DF0 cold boots on the unchanged
+current CPU each pass all 10,161 rows, including the accepted post-barn prefix
+hash. Both end Frame70774, X2104/Y105, HSalive FF, Type31 $07FF7B54
+Type0/flags40, zero non-ROM exceptions, exact identical hash
+`D49D3F8243CEE76F6E200073CE4FEE878A4E16EA303EE606DB7E9DAFB211A2DC`.
+Both active images were reviewed and show the living visible hero at the
+second raised barn entrance. This supersedes the earlier checkpoint-only
+status for that knight, not for Stage11 or the following platform.
+
+Evidence: `tmp/stage11-second-barn-raised-knight-full-a/verified-summary.json`
+and `-b`, both retained images and scenario/Runner/Core SHA256. Their own
+reviewed regenerable raw logs were removed after verification; intentional
+absence is not a failed replay. Earlier accepted stages and passages remain
+accepted. The current core is still the previously tested 382/382 and 30/30
+version; no CPU/hardware code change occurred during this diagnostic turn.
+
+After that acceptance, two independent full DF0 cold boots of
+`tmp/stage11-second-platform-far-bank-full-candidate.json` were started in
+`tmp/stage11-second-platform-far-bank-full-a` and `-b` (sessions66928/95625).
+They run `tmp/mmu-simple-move-runner/GameRunner.dll`, no final checkpoints,
+unique end capture `second-platform-far-bank-hold-11`, and now include the
+new reviewed second-barn prefix hash. Require Frame71157, X2492/Y121,
+HSalive FF, matching hashes, zero non-ROM exceptions and both reviewed active
+images before promoting the candidate to Tools. Type24, both Type25s and
+Type32 should remain active: this is a platform ride and bypass, not kills.
+The exact canonical short continuation remains
+`tmp/stage11-second-platform-far-bank-current.json`. Next inspect actual
+terrain and enemy phases to the right of X2492. Stage11 remains open;
+completion still requires a visible independently reproduced stage transition.
+
+
+### Stage11 second platform accepted; post-platform Type32 candidate - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-eleven-second-platform-far-bank-route.json`
+now passes two independent complete DF0 cold boots: Frame71157 X2492/Y121,
+HSalive FF, zero non-ROM exceptions over 10,243 rows each, identical exact hash
+`7DEB73983477E19C69481C9068268D35EA7152CB172F26AAAEAB66CBF5D0DDD9`.
+Both active images were reviewed and show the living visible hero on the
+fixed far bank. Type24, both Type25s and Type32 remain active; count the
+platform ride and timed bypass, not kills or Stage11 completion.
+All final RAM guards, including the prior knight fields outside the selected
+watch list, were enforced directly by the runner. Their absence from a watch
+row is not a failed assertion.
+
+Evidence: `tmp/stage11-second-platform-far-bank-full-a/verified-summary.json`
+and `-b` with both images and Runner/Core SHA256. These used the prior
+unchanged mmu-simple-move runner. Their own reviewed raw logs were removed
+only after compact evidence was saved; intentional absence is not a failure.
+One current diagnostic checkpoint was reproduced with the accepted exact hash
+at `tmp/stage11-second-platform-far-bank-current-checkpoint/`.
+
+Checkpoint-only: direct Right from X2492 dies X2566 at Frame71194 to Type32
+$07FF8324, confirmed by HSalive hero_coll/A5. Five short Right intervals,
+eighteen short Right+Up intervals, release and twelve neutral long intervals
+instead reach X2656/Y121 living through Frame71323. Type32 remains active.
+The same real-input continuation on the old and new A1000-KCLK core has all
+40 row endpoints identical in frame/image hash, CPU registers, cache control,
+watched RAM and display registers, zero non-ROM exceptions. This is a bounded
+checkpoint control, not a new full-cold pass; evidence
+`tmp/stage11-kclk-core-input-control-verified-summary.json`.
+
+Two independent full DF0 cold runs of
+`tmp/stage11-postplatform-type32-overjump-full-candidate.json` are running in
+`tmp/stage11-postplatform-type32-overjump-full-a` and `-b` (sessions28039/2180),
+current `tmp/a1000-kclk-runner/GameRunner.dll`, no final checkpoints and unique
+end image `postplatform-type32-hold-11`. Require final living X2656/Y121,
+Frame71323, matching hashes, zero non-ROM exceptions and both reviewed active
+pictures before promotion. The full prefix contains all accepted guards,
+including the newly accepted second-platform hash. Canonical short script:
+`tmp/stage11-postplatform-type32-overjump-current.json`.
+
+Further bounded Right from X2656 dies at the next edge, X2778/Y130 Frame71384,
+hero_coll A5=$07FF79C4, decimal Type31 on Y153. The upper Type25 is $07FF7A64,
+Type26 is $07FF7A14. Map inspection shows an animated FRONT-GID663 trap at
+X2768/Y64 and fixed/one-way tree tiles at X2800. Current short jump probes
+are diagnostics only. No later landing or Stage11 completion is claimed.
+
+### A1000 gated KCLK pin-reset detector and v21 state - 2026-10-24
+
+`Input/A1000KeyboardReset.cs` independently models the ideal nominal motherboard
+RC detector and reset stretcher, rather than porting another emulator's code.
+The [Commodore 252276 sheet-1 drawing](https://erikarn.github.io/amiga/1000/Amiga_A1000_Schematics_2.pdf)
+was rendered and visually checked at the LM2901 KCLK network: 22 kohm/10 uF
+clock detector and 100 kohm/10 uF reset stretcher. Exponential RC charging and
+nominal comparator hysteresis give detection around 152 ms and release around
+704 ms after KCLK returns high. Values are nominal, not analogue tolerance
+or electrical conformance. The [Commodore keyboard interface specification](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0172.html)
+distinguishes the keyboard-generated long KCLK pulse from its optional reset
+warning. The component accepts the physical pin level; a keyboard MCU/chord
+and warning generator are not supplied by this change.
+
+`AmigaSystem.DriveDevelopmentA1000KeyboardClock` accepts that input only on the
+gated A1000 factory. Ordinary selectable models reject it. E-clock sampling
+asserts motherboard reset after a sustained low, reopens the bootstrap/WCS
+latch and CIA overlay without clearing Chip RAM or WCS, and holds CPU execution
+and pending bus retirement until the pin is released and the stretcher expires.
+Both normal and component-profiled execution honor the held reset. Release
+resets the CPU, refetches bootstrap vectors and permits actual guest execution.
+Motherboard reset does not clear the external detector or release a held-low
+clock. PowerCycle currently returns the settled detector to idle; the original
+power-on diode/ramp is explicitly not modeled.
+
+Only a development A1000 now writes core version21, with explicit pin flags,
+clock frequency and both capacitor phases. Invalid flags, timing versions,
+frequencies, NaN voltages and truncation reject before changing live CPU/RAM,
+WCS/decoder, beam or pin state. Legacy v19 A1000 snapshots import a neutral
+released pin without changing guest memory. Ordinary model v18 and multi-card
+Zorro III v20 layouts remain unchanged; an earlier diagnostic A500/WCS board
+continues to use v19. Normal model menus, settings, public save files and the
+regular runner still reject A1000. No availability gate was relaxed.
+
+Three new independent cases bring the A1000 group to 12/12 and the complete
+.NET suite to **385/385**, runner preflight **30/30**, builds zero warnings/errors.
+Tests reject ordinary serial pulse trains and a 151-ms low, assert by 154 ms,
+retain a long-held low, and require the stretcher after release (still held
+at 700 ms, released by 710 ms). Real 68000 instructions perform the synthetic
+bootstrap/WCS handoff, remain suspended with identical complete CPU state
+through both tick paths, survive held-reset restore and execute the handoff
+again after release. An independent WCS marker not written by the synthetic
+loader and a physical Chip RAM marker survive. A truncated or corrupt detector
+payload leaves the compared reset domains unchanged. The synthetic bootstrap
+is a unit fixture, not a real A1000 boot or a replacement ROM.
+
+Two initial test assumptions were corrected: reset exposes ROM at low addresses,
+so physical RAM must be read above that overlay; and generic core saves contain
+an unrelated host-running RTC divider even on this board without a wired RTC.
+The reset trajectory control therefore compares complete CPU, physical Chip
+RAM, WCS/decoder, detector phases, CIAs/input, beam and framebuffer explicitly,
+not wall-clock time. Its first huge regenerable failure dump was summarized
+and removed (`tmp/a1000-kclk-initial-test-diagnostics-summary.json`).
+
+Current actual A500/Kick13, A3000/Kick31 and A4000-030/Kick31 cold boots (each
+desktop with 8-MiB Zorro III) retain the prior exact insert-disk hashes at
+Frame422 with zero non-ROM exceptions; all three pictures were reviewed.
+A3000 four-card and A4000 two-card native v20 cold/warm/reset/restore routes
+also pass all eight configured snapshots, unchanged physical Exec pool ranges,
+exact complete CPU/bus restore assertions, old image hashes and both reviewed
+warmboot pictures. No HDF was used. Evidence:
+`tmp/a1000-kclk-native-boot-output/verified-summary.json` and
+`tmp/a1000-kclk-zorro-native-reset-restore-output/verified-summary.json`.
+
+A private A500 before/after ABBA control uses 100 warmup frames and five samples
+of 100 frames on each run. All 20 complete CPU-state and framebuffer endpoints
+match. The first sample on both cores allocates 6072 bytes; samples1-4 allocate
+zero on both. This is not a new allocation regression or a zero-allocation
+claim for the entire workload. Medians 183.88 before versus 185.82 FPS include
+large run-order drift; no general percentage or real-time promise is made.
+Compact samples, CPU/image/allocation pairs and binary SHA256 are retained in
+`tmp/a1000-kclk-a500-benchmark-verified-summary.json`. The two own private
+benchmark build directories were removed after verification; current/previous
+runners and the required private A500 checkpoint remain.
+
+Consolidated evidence and source/binary hashes:
+`tmp/a1000-kclk-verified-summary.json`; final suite log
+`tmp/a1000-kclk-final-regression.log`. Source PDF and the reviewed circuit crop
+are retained in `tmp/pdfs/` for the remaining PAL work. Own reviewed platform
+logs, old test dump and disposable benchmark builds totaling 85,779,533 bytes
+were removed after compact proof; no old blocked tree or user media was touched.
+
+Still open for A1000: keyboard MCU reset-warning/chord generation, the original
+power-on reset ramp, exact overlay/ROM-mirror PAL behavior and an actual
+bootstrap/DF0-loaded Kickstart boot. The separate bootstrap ROM is absent
+locally. FPU and a distinct 68040 remain unimplemented. Next connect a tested
+keyboard transmitter to the pin detector and validate the real bootstrap path
+when its ROM is available; keep all current gates until then. Overall roadmap
+completion is not claimed.
+
+
+### Stage11 post-platform Type32 accepted; higher route cold pair - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-eleven-postplatform-type32-overjump-route.json`
+now passes two independent complete DF0 cold boots on the current A1000-KCLK
+core. Each checks all 10,282 rows with zero non-ROM exceptions, enforcing all
+accepted earlier prefix hashes. Both end Frame71323 X2656/Y121, HSalive FF,
+exact hash `0276F6A75F4150C4F6A7CEB00B68F3636A103D9878BA686991A7E2DB3C180B97`.
+Both active pictures were reviewed and show the visible living hero beyond
+Type32; the projectile is bypassed, not killed. This also fully replays the
+accepted Stage1-11 prefix after the gated A1000 change without invalidating
+any previously accepted passage. Stage11 remains open.
+
+Evidence: `tmp/stage11-postplatform-type32-overjump-full-a/verified-summary.json`
+and `-b`, both retained pictures and current Runner/Core SHA256. Their own
+reviewed regenerable raw logs (69,510,660 bytes) were removed after compact
+proof; missing raw logs are intentional. Seventeen current short probes plus
+the old/new core input control, exact scenarios, bounded MOB snapshots and
+HSalive traces are consolidated in
+`tmp/stage11-upper-tree-probes-verified-summary.json` (309,737 bytes).
+Their nineteen own per-probe paths were removed. Canonical short scripts,
+full candidates, needed checkpoints and accepted images remain; no old blocked
+tree, HDF or user save was touched.
+
+The lower path from X2656 cannot simply be run forward: it dies to the raised
+Type31 at X2778, and earlier/later jumps pass that knight but land in one of
+four decimal Type29s ($07FF7974 is the first observed contact). Apparent tree
+trunk GID18/38/58 tiles are not solid. A legitimate higher alternative starts
+from the already accepted X2492 bank; it does not invalidate the lower Type32
+pass. The following is checkpoint-only until the full pair passes:
+
+* Left three short intervals to X2468, release, wait eight long intervals.
+  Up alone two short intervals then Right in the air four short intervals,
+  release both for two short intervals: X2496/Y73 on the first solid row96.
+  Twelve/sixteen long waits instead die to the returning Type32 before ascent.
+* Walk Right three short intervals to align X2518, then Right+Up twelve short
+  intervals, release and twelve long intervals: X2604/Y25 Frame71389 on the
+  fixed high row48. The extra launch offset is necessary; launching directly
+  from X2496 misses the high platform and returns to lower ground.
+* Right three short intervals, Right+Up ten short intervals, release five
+  short intervals, Right+Up eight short intervals, release eight short plus
+  twelve long intervals: X2752/Y57 Frame71594 on fixed GID37 before the
+  FRONT-GID663 trap. Both Type25s remain active below/behind. A further
+  eighteen long neutral intervals remain living while Type26 patrols
+  X2816..2912/Y25, reaching its far turn at Frame71720.
+* Up alone two short intervals clears the trap vertically; Right in the air
+  nine short intervals reaches the next upper platform. Release both for two
+  short intervals; Right+Up twelve short intervals over Type26; release Up
+  while retaining Right for two short intervals to the far edge, then press
+  Up again for ten short intervals. Release both and wait twelve long
+  intervals: living X2984/Y25 through Frame71935 on the animated GID91 area.
+  Type25/Type26 remain present; Type32 may expire/recycle, which is not a kill.
+
+Two independent complete DF0 cold runs of
+`tmp/stage11-upper-worm-far-floating-stone-full-candidate.json` are now running
+in `tmp/stage11-upper-worm-far-floating-stone-full-a` and `-b`
+(sessions12408/15531), current `tmp/a1000-kclk-runner/GameRunner.dll`, no final
+checkpoints. Unique captures are `stage11-upper-type25-high-stone-hold-11`,
+`stage11-upper-twin-type25-trap-step-hold-11` and
+`stage11-upper-worm-floating-stone-hold-11`. Require both intermediate RAM
+states and final X2984/Y25/HSalive FF, matching hashes per label, zero non-ROM
+exceptions and all SIX reviewed active pictures before permanent promotion.
+The full prefix starts from DF0 and contains all accepted guards through
+X2492. Canonical short input is
+`tmp/stage11-upper-worm-far-floating-stone-current.json`; its diagnostic
+source checkpoint is the accepted second-platform current checkpoint.
+Earlier step-only candidates are superseded by this combined route, not
+accepted independently. Checkpoint images remain invalid as full-cold visual
+proof. Next investigate terrain and enemies beyond X2984 only after checking
+this pair. A stage completion still requires a visible reproduced transition.
+
+
+### Stage11 upper Type25/trap/worm route accepted - 2026-10-24
+
+Two independent complete DF0 cold boots on the retained `a1000-kclk-runner`
+passed all 10,423 rows with zero non-ROM exceptions. All SIX intermediate/end
+images were reviewed individually and show the visible living hero. Exact
+per-label hashes and RAM agree between both runs:
+
+| Permanent route | Frame and living position | Exact framebuffer SHA256 |
+| --- | --- | --- |
+| `Tools/a3000-celtic-heart-stage-eleven-upper-type25-high-stone-route.json` | 71389, X2604/Y25, HSalive FF | `8A4260F127938900C1268CBC19C37A89C35598708838D28F4900F5F7D09DAAF8` |
+| `Tools/a3000-celtic-heart-stage-eleven-upper-twin-type25-trap-step-route.json` | 71594, X2752/Y57, HSalive FF | `55150F418D221B8CC0B1F494BFD06321024584268BE77AE022C596EDD50E1104` |
+| `Tools/a3000-celtic-heart-stage-eleven-upper-worm-far-floating-stone-route.json` | 71935, X2984/Y25, HSalive FF | `EE7B049EB69BE50DB2D73D1DEED02F85187AE0C994BF4836F9F4BEC2E68DAADC` |
+
+Evidence: `tmp/stage11-upper-worm-far-floating-stone-full-a/verified-summary.json`
+and `-b`, all six retained images, scenario/raw-log/Runner/Core SHA256. This
+supersedes the earlier checkpoint-only status of these three upper landings.
+Type25s and Type26 are bypassed, not killed. The final GID91 region is animated;
+twelve neutral long intervals are demonstrated, not solidity in every phase.
+The separate accepted lower Type32 bypass remains accepted. Stage11 is open.
+
+A current diagnostic checkpoint reproduced the accepted final hash from the
+canonical real inputs: `tmp/stage11-upper-worm-floating-stone-current-checkpoint/`.
+Three bounded continuations show that direct Right dies X3028/Y51, while a
+short braked jump dies X3056/Y19. An eighteen-short-interval Right+Up jump,
+release and twelve neutral long intervals instead reaches X3112/Y153,
+Frame72083, sustainably living in a checkpoint probe. It is NOT a full pass.
+Two independent full DF0 cold runs of
+`tmp/stage11-far-upper-bank-full-candidate.json` are running in
+`tmp/stage11-far-upper-bank-full-a` and `-b` (sessions93073/88837), final
+`tmp/a1000-keyboard-hard-reset-final-runner/GameRunner.dll`, no final checkpoints
+and unique end capture `stage11-far-upper-bank-hold-11`. All three newly accepted
+upper hashes are prefix guards. Require matching end hashes, X3112/Y153,
+HSalive FF, zero non-ROM exceptions and both reviewed active pictures before
+promotion. Canonical short: `tmp/stage11-far-upper-bank-current.json`.
+
+### A1000 external hard-reset keyboard personality; held-warm-reset fix - 2026-10-24
+
+`Input/A1000KeyboardHardReset.cs` is a protocol-level personality without the
+optional reset-warning exchange; it does not emulate a keyboard MCU or ROM.
+The [Commodore HRM keyboard appendix](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_g.html)
+specifies the reset chord, minimum half-second KCLK assertion, extension while
+all reset keys remain down, and keyboard synchronization/power-up stream after
+release. Warning support varies among keyboards and remains separate.
+
+Only the gated A1000 board connects existing raw Ctrl/Left-Amiga/Right-Amiga
+input to this transmitter. It finishes any queued serial byte, latches the
+recognized chord, drives the existing analogue pin detector, enforces the
+minimum pulse even after a quick release, and extends a held chord. The
+transmitter continues ticking while the motherboard/CPU are held in reset.
+Motherboard reset preserves the external keyboard's physical key set and
+protocol state. Keyboard restart synchronizes and sends FD, the remaining
+held keys and FE through the actual CIA serial receiver. Normal models retain
+the existing reset/input behavior and no availability gate changes.
+
+A new failing-before regression found a real reset-domain defect: a host warm
+reset performed CPU vector fetches even while the external KCLK detector still
+held reset. The request now resets motherboard devices but defers CPU reset/
+vector fetch until physical release. The original case fails before this fix
+and passes after it (`tmp/a1000-kclk-held-warm-before.log`). An initial new WCS
+marker fixture attempted a write after guest write protection; it was corrected
+to write before the actual guest handoff, not by changing WCS protection.
+
+Only development A1000 saves now write core v22, retaining the complete v21
+analogue payload plus a validated 15-byte transmitter and raw external pin.
+Invalid versions, clock, key mask, flags, timer, inconsistent clock drivers and
+truncation reject before guest RAM/CPU restoration. v21 detector snapshots
+import a neutral transmitter; v19 import remains neutral. Ordinary core v18
+and Zorro multi-card v20 remain unchanged. Public save files, settings, model
+menu and the ordinary runner still reject A1000.
+
+All **16 A1000 cases and 389/389 complete .NET cases** pass on the final source;
+runner preflight **30/30** and build zero warnings/errors also pass. Tests cover
+short/held/quick-release chords, exact pulse limits, pending serial edges,
+normal/profiled ticking, motherboard warm reset while held, complete restored
+reset domains, the synthetic real 68000 bootstrap/WCS handoff, WCS retention,
+actual CIA FD/held-keys/FE stream, corrupt-state guards and v19/v21 imports.
+The full final log is `tmp/a1000-keyboard-hard-reset-final-regression.log`;
+current runner is `tmp/a1000-keyboard-hard-reset-final-runner/GameRunner.dll`.
+Real A500/Kick13, A3000/Kick31 and A4000/030/Kick31 cold regressions are being
+checked separately; no HDF or installed OS disk was used.
+
+Limits: the ordinary serial sender remains the existing CIA-queued abstraction;
+this is not a cycle-exact full keyboard MCU/matrix implementation. Optional
+reset-warning/abort/KDAT grace handling, original power-on diode/ramp, remaining
+PAL/ROM-mirror details and a real bootstrap/DF0 Kickstart boot remain open.
+The separate bootstrap ROM is still absent locally. FPU and a distinct 68040
+remain unimplemented. Next verify native regressions, then add the optional
+warning exchange only with its own KDAT/timeout/restore controls; real A1000
+boot acceptance still requires its actual ROM. No completion is claimed.
+
+
+### Stage11 far tree step accepted on current Release core - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-eleven-far-tree-upper-step-route.json` passes
+two independent full DF0 cold boots on the final v22 Release/x64 runner.
+Each passes all 10,488 rows and all earlier accepted prefix hashes with zero
+non-ROM exceptions. Final Frame72199, X3264/Y57, HSalive FF, exact hash
+`02192AD60D8DCE039EFDB3C8E5BFEECA6FD495FAAC7FE4F1288B4CF167EED212`.
+Both active pictures were reviewed individually and show the visible living
+hero on the high tree step, with the next Type26 on the branch to the right.
+The timed GID111 crossing and rearmed third jump are accepted; neither the
+remaining Type26 nor the lower Type31s are killed. Stage11 remains open.
+
+Evidence: `tmp/stage11-far-tree-upper-step-release-full-a/verified-summary.json`
+and `-b`, both PNGs and Runner/Core SHA256. Accepted raw logs were removed
+only after compact proof and image retention. The canonical continuation is
+`tmp/stage11-far-tree-upper-step-current-release.json`; the required current
+private checkpoint is under `tmp/stage11-far-tree-upper-step-current-checkpoint/`.
+
+Four new partial candidates were accidentally started with an unoptimized
+Debug/AnyCPU build. They were explicitly stopped, not counted as passes or
+regressions, and their partial states/hashes saved in
+`tmp/stage11-cancelled-debug-candidates-summary.json`. The accepted Release
+pair above supersedes the Debug far-tree attempt. The lower X3112 bank
+candidate was abandoned without a cold pass; its earlier pending status is
+superseded. No earlier accepted route was invalidated or rerun because of a
+missing intentionally removed log.
+
+Fourteen own bounded upper-tree/next-bank/phase probes are consolidated in
+`tmp/stage11-far-tree-probes-verified-summary.json` (360,458 bytes), including
+exact inputs, first/last-live/first-dead states, raw hashes, bounded MOB bytes
+and HSalive traces. A previously misaligned diagnostic MOB display was
+correctly decoded at the actual 80-byte slot boundaries: the bank attackers
+$07FF77E4/$07FF7834 are decimal Type31, while $07FF7794 is decimal Type26.
+Do not interpret the misaligned byte output as monster types.
+
+After compact source/binary/probe proof, 19 own regenerable targets totaling
+149,980,887 bytes were removed with checked absolute paths inside repository
+tmp. These are the three own unused Debug build directories, four cancelled
+Debug output trees, four compacted probe output trees/manifests and four
+reviewed accepted raw logs. All accepted pictures/proofs, current Release
+runner, canonical scripts and needed private checkpoints remain. No older
+blocked tree, ROM, HDF or user save was touched. Inventory/result:
+`tmp/stage11-hard-reset-own-cleanup-inventory.json` and `-result.json`.
+
+Checkpoint-only next route: from X3264, Right+Up ten 250000-cycle intervals,
+release both for two short intervals, rearmed Right+Up fourteen short intervals,
+release both and hold twelve 500000-cycle intervals. This overjumps the returning
+Type26 and lands sustainably X3436/Y25 Frame72375. Type26 remains active.
+Eighteen-short-interval second flights die at the next hazard; walking or a
+single long jump hits Type26, and waiting eight long intervals followed by a
+single jump reaches lower X3392 but dies later to $07FF8374. These are bounded
+checkpoint controls, not independent cold gameplay passes.
+
+Two independent full DF0 cold runs of
+`tmp/stage11-far-worm-high-stone-full-candidate.json` are running in
+`tmp/stage11-far-worm-high-stone-full-a` and `-b` (sessions66951/38621), current
+`tmp/a1000-keyboard-hard-reset-v22-release-runner/GameRunner.dll`, no final
+checkpoints, unique image `stage11-far-worm-high-stone-hold-11`. Check end RAM,
+Type26 byte1A, matching hashes, zero non-ROM exceptions and BOTH active pictures
+before promotion. Canonical short: `tmp/stage11-far-worm-high-stone-current.json`.
+Next inspect FRONT-GID663 X3456/Y32 and the two Type26s on the X3440..3584
+upper branch. A real independently repeated visible transition is still required
+for Stage11 completion.
+
+### Final A1000 keyboard Release verification and retained limits - 2026-10-24
+
+The final source additionally prevents unrelated keys from inventing a reset
+edge when a v21 snapshot imports all three reset modifiers already held. A
+new physical release/repress still triggers normally; the original recognized
+chord remains latched while its last serial edges finish. These controls are
+part of the same 16 A1000 cases. Full Debug and Release/x64 suites both pass
+389/389; Release preflight passes 30/30, Release build zero warnings/errors.
+Final logs use `tmp/a1000-keyboard-hard-reset-v22-release-*`; the current
+immutable runner is `tmp/a1000-keyboard-hard-reset-v22-release-runner/GameRunner.dll`.
+The earlier Debug builds were functional-test evidence, not performance builds.
+They have been hashed and removed after the Release replacement.
+
+Final actual A500/Kick13, A3000/Kick31+8MiB-Zorro and A4000/030/Kick31+8MiB-Zorro
+Release cold boots retain the old exact disk-screen hashes at Frame422, zero
+non-ROM exceptions, with all three new pictures reviewed. Native four-card
+A3000 and two-card A4000 cold/warm/reset/restore scenarios also pass: eight
+configured snapshots, correct physical Exec pools (64/24MiB), unchanged old
+hashes, exact runner restore assertions and no non-ROM exceptions. Both new
+warmboot pictures were reviewed; each model's two restored PNGs are byte-identical
+to its reviewed warmboot PNG. The independent Zorro verifier accepts both.
+No HDF was used. Final compact evidence:
+`tmp/a1000-keyboard-hard-reset-v22-release-native-boots-output/verified-summary.json`
+and `tmp/a1000-keyboard-hard-reset-v22-release-zorro-reset-output/verified-summary.json`.
+Source/build/test identities remain in
+`tmp/a1000-keyboard-hard-reset-v22-verified-summary.json`.
+
+This remains a bounded no-warning external keyboard protocol personality plus
+an ideal nominal reset circuit, not a keyboard MCU/ROM or complete pin-level
+serial implementation. Optional reset-warning/abort/KDAT grace handling,
+power-on ramp, exact PAL details and a real bootstrap/DF0 Kickstart boot remain
+open. The separate ROM is absent. Normal availability gates are unchanged;
+FPU and a distinct 68040 remain unimplemented. No overall roadmap completion,
+new performance percentage, commit, push, tag or release is claimed.
+
+
+### Stage11 far-worm high stone accepted; full completion/Stage12 pair running - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-eleven-far-worm-high-stone-route.json` now
+passes two independent complete DF0 cold boots: 10,530 rows each, Frame72375,
+X3436/Y25 HSalive FF, Type26 $07FF7794 still byte1A, zero non-ROM exceptions,
+exact hash `63B35402B79F9CEE13AF5C99EB75197935BB1F6AD4341EB2B288143A7DACD617`.
+Both active pictures were reviewed individually and show the visible living
+hero on the high right-hand branch with the active worms still present.
+The new cold guard is incorporated in subsequent candidates. Proofs and PNGs
+remain in `tmp/stage11-far-worm-high-stone-full-a/verified-summary.json` and `-b`.
+This passage is accepted; Stage11 completion is NOT yet accepted.
+
+Checkpoint-only actual-input continuation now reaches the exit. Right+Up18
+short intervals from X3436, release two short intervals, rearmed Right+Up20
+short intervals and twelve neutral long intervals land X3704/Y105 alive.
+A short Right+Up6 step and six neutral short intervals reach X3748/Y57;
+twelve neutral long intervals remain alive. A single short Right offset,
+Right+Up14, release and twelve long intervals land X3852/Y25. The launch
+offset avoids missing the high stone; a direct launch instead falls onto the
+lower FRONT-GID667 trap. Right+Up18 from X3852, release Up while keeping Right
+ten more short intervals, release Right and twenty-million-cycle settling
+reaches the real TYPE7 exit. HSalive clears intentionally at Frame72949,
+X4022/Y106, A5=$001F70, with exitHero in the call chain. Eight extra long waits
+before this last jump instead die to the last Type26 $07FF7564; they are
+negative controls, not exits.
+
+Focused checkpoint pictures show visible LEVEL COMPLETE at Frame73244 and
+then, after the prior proven Fire500000/release and two20M waits, THE FOREST
+STAGE3 at Frame73814. These pictures are NOT full-cold acceptance. The next
+known three-Fire activation sequence, with an extra40M ready wait, produces
+GET READY and visible active movement to X60/Y185 HSalive FF at Frame75063
+in a checkpoint probe. Its three focused pictures were reviewed but are not
+independent cold passes. No checkpoint-based final hash was imposed on the
+new full route, because earlier restore graphics discrepancies require actual
+cold picture review first.
+
+Two independent complete DF0 cold runs are now running with
+`tmp/stage11-complete-stage12-active-full-candidate.json` in
+`tmp/stage11-complete-stage12-active-full-a` and `-b` (sessions90886/52158),
+current Release/x64 runner, no final checkpoints. Each captures exactly five
+unique labels: `stage11-final-high-stone-hold-11`, `stage11-level-complete`,
+`stage12-title-settle`, `stage12-after-fire1`, `stage12-move-settle`.
+Require all accepted prefix guards including X3436; living X3852/Y25 before
+exit; matching per-label hashes, zero non-ROM exceptions, and ALL TEN reviewed
+pictures. Only then count Stage11 complete after visible reproduced transition,
+then separately accept visible Stage12 active movement. Stage12 itself remains
+open. In particular, RAM alone or GET READY/title images are not gameplay.
+
+Nineteen current bounded endgame controls are compacted in
+`tmp/stage11-exit-probes-verified-summary.json` (510,050 bytes), including exact
+inputs, boundary states, bounded MOB snapshots and HSalive writes. The prior ten
+worm probes remain in `tmp/stage11-far-worm-probes-verified-summary.json`
+(226,500 bytes); their four own raw output/manifest paths were removed after
+hash checks (1,401,991 bytes). Focused checkpoint images, canonical full candidate
+and required private checkpoints remain. No old blocked trees or user media
+were touched. The existing hourly continuation prompt has been updated while
+preserving the schedule/status; overall roadmap completion is not claimed.
+
+
+A bounded A500 ABBA control of the final no-warning keyboard change also passes
+all twenty complete serialized CPU/framebuffer endpoints and identical allocation
+sequences: first sample6072 bytes, each subsequent sample0 on both cores.
+The fixed private state, 100 warmup frames and five100-frame samples per run
+were measured alongside the two full-game cold replays. Run medians before/
+after/after/before are151.98/166.36/170.38/169.27FPS; pooled medians156.97/168.09
+include substantial host/load and order drift. No general speedup percentage
+or real-time guarantee is established. Short raw JSONL samples, all states and
+binary hashes remain in `tmp/a1000-hard-reset-abba-verified-summary.json`.
+Both own private benchmark builds were removed after verification; current/
+previous immutable runners and the required A500 checkpoint remain.
+
+
+A focused slot check corrects the earlier informal description of the lower
+attacker met at X3620: $07FF7744 has actual MOtype byte1D/decimal29 (hellhound),
+not a knight. The upper route bypasses it unchanged; no kill or cold-pass
+count depended on that name. Use observed slot types, not map GIDs or sprite
+appearance, especially when a slot is inactive or later recycled.
+
+
+### Stage11 complete and Stage12 visibly active: final full-cold acceptance - 2026-10-24
+
+The two complete DF0 cold runs in
+`tmp/stage11-complete-stage12-active-full-a` and `-b` have finished successfully
+on the unchanged final Release/x64 A1000-v22 core. Each executes 10,734 logged
+states, passes all 221 existing exact framebuffer guards and 673 runtime RAM-byte
+assertions, and has zero non-ROM exceptions. All ten actual captured PNGs were
+reviewed individually; matching pairs are also byte-identical. No checkpoint
+image substitutes for a cold pass. Their root `verified-summary.json` files
+retain captured CPU/RAM/display/input states, raw-log SHA256/size, manifest and
+Runner/Core SHA256, visual decisions and all PNG hashes.
+
+| Actual captured state (both cold boots) | Frame | Exact framebuffer SHA256 |
+| --- | --- | --- |
+| Living final Stage11 high stone X3852/Y25, HSaliveFF | 72864 | `4F3B90CE43FF7F1A9E8750DE10541E00635FA2B3B1C0484DC48F2BEB5A9F38D9` |
+| Visible LEVEL COMPLETE after real exit contact | 73244 | `BFD35C4142E9B2C28A7288F66280BE9B7E1DFD62FDF9C23D776486C9D02F8E10` |
+| Visible THE FOREST STAGE3 title | 73814 | `CEC92017F7F75D3DD2CDF7F61C00E0ED8298E9783DFE4573A1A4C49A4C59DCDD` |
+| Visible Stage12 GET READY (not gameplay) | 74669 | `208D5CB5AAA21701947AB57828CA95D1B38656DA4C4FBD0DE27797BD711627F4` |
+| Visible living Stage12 hero X60/Y185 after real Right input, HSaliveFF | 75063 | `9CE3F29AF43A0DA8B1F663A563CC5312F60705797152D88222488177790C3B34` |
+
+`Tools/a3000-celtic-heart-stage-eleven-complete-stage-twelve-title-route.json`
+contains the reviewed prefix through the Stage12 title;
+`Tools/a3000-celtic-heart-stage-twelve-active-movement-route.json` additionally
+contains the genuine Fire/GET READY/activation/movement sequence. The five new
+cold hashes and corresponding observed RAM bytes are now exact guards. Stage11
+is complete; Stage12 is visibly active, not complete. The exit deliberately
+clears HSalive through exitHero; it is not counted as a death. The narrow colored
+pixels at the far left of Stage12 are present in both actual cold images too;
+this visual observation remains recorded without an unsupported fix or hardware
+conformance claim. The moving red hero and active enemies are visibly present.
+
+Next concrete game work starts from accepted Stage12 X60/Y185. Bounded
+checkpoint-only controls already establish that direct Right eventually dies
+at X188 around Frame75210: the HSalive trace identifies A5=$07FF80F4, active
+MOtype byte1D/decimal29 at X198/Y185, not a map hazard. A vertical Up2 short
+intervals followed by Right16 short intervals and twelve neutral long intervals
+ends X172/Y185 alive at Frame75211; this is a candidate, not an accepted opening
+passage or kill. Standing Fire at X60 also stays alive within that bounded
+window, without a verified kill. Inspect actual runtime slot types and phases,
+continue through a sustainable living landing with genuine inputs, then require
+two independent complete DF0 cold runs and reviewed active pictures. The local
+`tmp/stage12-active-diagnostic-checkpoint` is diagnostic only. The original local
+LHA archive supplied only the previously missing level12.tmx; source/archive
+hashes and matching level11 extraction are in
+`tmp/celtic-level12-source-proof.json`, with no original media overwritten.
+
+The final source remains the tested 16 A1000 cases / 389 complete Debug and
+Release cases and 30 Runner preflight cases. Final real A500, A3000 and A4000/030
+boots, Zorro multi-card native reset/restore, and bounded A500 ABBA state/control
+comparisons remain valid as documented above; new work after those checks only
+adds data routes, evidence and this documentation. A1000 remains development-only,
+without a real bootstrap boot; FPU and a separate 68040 are still absent. Overall
+roadmap work remains incomplete. No commit, push, tag, release or HDF write was
+performed. Earlier acceptance and permitted compacted raw-log removal remain
+valid; preserve all reviewed PNGs, compact proofs and necessary checkpoints.
+
+Both promoted routes pass the final Release Runner `--validate` check. Final
+source-header audit reports zero missing Apache-2.0 headers and `git diff --check`
+passes. After compact proof and individual PNG review, SHA-checked cleanup removed
+only twelve new own targets: the two accepted raw logs plus the nineteen-probe
+endgame bundle's five manifests/five output trees, 75,080,028 bytes total.
+`tmp/stage11-complete-stage12-final-cleanup-result.json` records exact paths and
+counts; all ten actual cold PNGs, both verified summaries, permanent routes,
+focused controls and necessary checkpoints remain. Missing accepted raw logs are
+not a new failure. No old blocked diagnostic tree or user medium was removed.
+The existing hourly prompt now starts from accepted Stage12 active movement,
+while preserving its schedule, active status and quiet-notification intent.
+
+
+### Stage12 opening phase isolated; two independent full-cold pairs running - 2026-10-24
+
+From the accepted X60/Y185 Frame75063, bounded genuine-input controls isolate
+three returning decimal Type27 Vikings: $07FF81E4, $07FF8194 and $07FF8144.
+Right14 short250000-cycle intervals stops X160/Y185. Wait70 short intervals,
+Fire14 short intervals, release/one short interval, Fire14, release/wait10 short,
+then Fire14 and release. Twelve neutral500000 intervals end X160/Y185 living
+Frame75629 with all three Type0/flags40; observed kills are Frames75394/75446/
+75527. The later78-interval first-strike control instead dies. These are still
+checkpoint diagnostics, not accepted cold passes.
+
+Two independent complete DF0 cold runs use
+`tmp/stage12-opening-three-viking-kills-full-candidate.json` in
+`tmp/stage12-opening-three-viking-kills-full-a` and `-b` (sessions46902/10679),
+unchanged final Release/x64 v22 runner, --no-final-checkpoint, and the unique
+`three-viking-hold-11` end picture. They must repeat every accepted prefix guard,
+end X160/Y185 HSaliveFF with the three verified dead slots, have matching actual
+cold hashes, zero non-ROM exceptions and both reviewed living pictures before
+promotion. No checkpoint hash is imposed as a new final visual guard.
+
+Bounded continuation then defeats three actual Type29 hellhounds, slots
+$07FF80F4/$07FF80A4/$07FF8054, by crouching Down before Fire. Standing Fire fails
+three close approach controls; original hero.asm defines standing/crouching
+strike offsets4/12, consistent with the lower hound collision zone. From X160,
+Right9 short intervals, release, Down2, Fire16, release Down/Fire and twelve long
+neutral intervals end X224/Y185. Then Right10, release, Down6, Fire16, release
+and twelve long; Right7, release, Down6, Fire16, release and twelve long end
+X344/Y185 Frame76192, all three Type0/flags40. Their observed kills are
+75700/75907/76080. An earlier second strike misses the later activated hound;
+no emulator damage/AI modification or kill from appearance alone is used.
+
+Right20 from X344 then Right+Up10, release10 short, four long neutral intervals,
+Fire16 and release/twelve long end X556/Y169 Frame76502 with raised Type31
+$07FF7FB4 Type0/flags40. Omitting the four long waits dies. Right13 then
+Right+Up18, release, Left70000 cycles/release, Fire16 and release/twelve long
+land sustainably X772/Y185 Frame76753 and kill following Type31 $07FF7F64
+(observed76654). Right18/22 approaches jump too late and collide; the earlier13
+jump passes but a neutral hold alone is killed by its returning patrol.
+
+A second independent full-cold pair combines the three accepted-prefix Viking
+candidate kills, all three hounds and both knights, with RAM assertions at each
+new milestone. Source `tmp/stage12-hounds-barn-twin-knights-full-candidate.json`,
+outputs `tmp/stage12-hounds-barn-twin-knights-full-a` and `-b`, sessions13760/96507.
+Exactly three unique captures per cold run: `stage12-three-hounds-hold-11`,
+`stage12-first-barn-knight-hold-11`, `stage12-second-knight-hold-11`. Require
+matching per-label full-cold hashes, six actual reviewed active images, living
+end X772/Y185, all eight intended Type0/flags40 and zero non-ROM exceptions.
+Until those checks finish, none of the new Stage12 kills is counted as passed.
+The current runner is `tmp/a1000-keyboard-hard-reset-v22-release-runner/GameRunner.dll`;
+no emulator source has changed since389/389 and30/30.
+
+Further checkpoint-only control from X772 times a legitimate ground doorway
+and three jumps past four unbreakable Type28 barrels. Right8 short; Right+Up8,
+Up release while retaining Right for exactly2 short; Right+Up10, same2-short
+release; Right+Up12, same2-short release; release Right and twelve long neutral
+intervals end X1080/Y185 Frame76992 living, all four barrels still Type28/flags80.
+Only one short rearm interval instead dies at X936/Frame76837, A5=$07FF8324.
+No barrel kill is claimed. Immediate Right+Up6, release and twelve long then
+reach the thin lower Type8 step X1088/Y137 Frame77098; earlier left offsets are
+also living controls. The tall wall X1104 and upper approach remain unresolved.
+These later diagnostics have not been cold-promoted or appended to a permanent
+accepted route.
+
+All33 current bounded cases, exact scenarios, first/last/live/dead states,
+watched type/flag transitions, bounded MOB snapshots and HSalive traces are
+consolidated in `tmp/stage12-opening-barn-barrel-probes-verified-summary.json`
+(1094635 bytes). Its own13 raw-output inventory totals7754562 bytes; cleanup
+must verify raw SHA256, keep compact proof, canonical input manifests and
+necessary private diagnostic checkpoints, and avoid all prior blocked trees.
+All four long full-cold runs remain separate and untouched. Stage12 and the
+overall roadmap remain open. No commit/push/release, media or HDF write occurred.
+
+The own13 bounded raw-output trees above were SHA/path-verified and removed,
+7754562 bytes, recorded in `tmp/stage12-opening-barn-barrel-probes-cleanup-result.json`.
+All33 exact controls remain in the compact bundle and their canonical JSON
+inputs/private checkpoints remain. The full continuation through the barrel
+door and first high-wall step is prepared and validates at
+`tmp/stage12-barrel-door-high-wall-step-full-candidate.json`, but has NOT been
+started or accepted; first inspect the two active full-cold pairs above.
+No older blocked tree, media, game save or active full-cold output was deleted.
+
+
+### Stage12 first three Type27 kills accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-opening-three-viking-kills-route.json`
+now passes two independent complete DF0 cold runs:10891 states each, Frame75629,
+X160/Y185 HSaliveFF and actual Type27 slots $07FF81E4/$07FF8194/$07FF8144
+all Type0/flags40 after the three genuine grounded Fire strikes. Exact paired
+framebuffer hash `E3DA217D386CB71952D8BB762FB019A003D5024858F34AD5C631D4CD912CAC24`,
+zero non-ROM exceptions, and both actual living red-hero images individually
+reviewed. They are also PNG-byte-identical. The permanent final hash is now a
+reviewed cold guard. Both roots
+`tmp/stage12-opening-three-viking-kills-full-a/verified-summary.json` and `-b`
+retain complete final state, runtime assertion counts, manifest/raw-log/PNG and
+Runner/Core SHA256. Only these three new kills are accepted at this point;
+Stage12 remains open, and the hounds/barn/two-knight pair is still running.
+No checkpoint picture was substituted for cold acceptance.
+
+
+### Stage12 high-wall route isolated behind barrel phases - 2026-10-24
+
+After the accepted first three Vikings, the hounds/barn/twin-knight full-cold pair
+above remains in progress. Beyond its provisional X772 end, the prepared barrel
+route now has a complete legitimate upper solution to the X1104 wall. This is
+still checkpoint-only and is NOT accepted as a cold passage yet.
+
+From the barrel-route X1080/Y185: Right+Up6 short, release/twelve long reaches
+X1088/Y137 F77098. Left+Up8, release/twelve long reaches X1032/Y89 F77210.
+Left14 short, Up while retaining Left6 short, release both/twelve long stops
+X888/Y105 F77365 after bypassing middle Type28 $07FF83C4. Only13 approach
+intervals instead die; the earlier12-interval hop also falls into this barrel.
+Left+Up6, release/twelve long lands X868/Y57 F77471. Right+Up8, release/twelve
+long reaches X924/Y25 F77583. Direct Right14 from here hits upper Type28
+$07FF8414 at F77628. The positive alternative runs Right6, then Right+Up12,
+release/six short to living X1052/Y41 F77668; rearmed Right+Up9, release/twelve
+long clears FRONT-GID663 X1072 and the wall, landing sustainably X1116/Y25
+F77784. The entire positive sequence has HSaliveFF throughout; there is no
+death/chest-respawn hidden in the landing. Barrels remain Type28, not kills.
+
+`tmp/stage12-upper-barrel-trap-wall-current.json` retains exact short input
+sequence from the private barrel checkpoint. Eight new bounded wall controls,
+including failed variants, are compacted in
+`tmp/stage12-high-wall-probes-verified-summary.json` (340561 bytes). Six own raw
+output trees were removed after SHA/path checks (2481097 bytes), while canonical
+inputs, compact proof and required checkpoints remain. The two newly accepted
+Viking cold raw logs were also removed only after proof/PNG checks (73630399
+bytes); their root summaries and both reviewed PNGs remain.
+
+`tmp/stage12-barrel-high-wall-full-candidate.json` is prepared and validates,
+contains the accepted Viking cold guard, and supersedes the earlier step-only
+prepared candidate. It is NOT started yet: first finish acceptance of both
+hounds/barn/twin-knight full-cold runs, propagate their reviewed guards, then
+run the next two full cold routes with unique pictures at the living X1080
+barrel passage and X1116 wall top. Stage12 remains open. The final A1000 source
+SHA256 still matches all four source entries of its389/389 proof; no core
+change occurred. Header audit and diff check pass after the new route data.
+
+
+### Stage12 hounds, barn and both knights accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-hounds-barn-twin-knights-route.json`
+now passes two independent complete DF0 cold runs, 11173 states each on the
+unchanged final Release/x64 v22 core. Both pass all226 pre-existing exact hash
+guards and756 runtime RAM-byte assertions; the additionally compared accepted
+three-Viking end hash is identical too. HSalive remains FF throughout every
+Stage12 state after the accepted active start: no death/respawn is hidden in
+the living end. Zero non-ROM exceptions, matching per-capture hashes, and all
+SIX actual active PNGs individually reviewed, also byte-identical per pair.
+
+| Living actual full-cold milestone | Frame | Exact paired framebuffer SHA256 |
+| --- | --- | --- |
+| X344/Y185, three Type29 slots $07FF80F4/$07FF80A4/$07FF8054 Type0/flags40 after crouched Fire | 76192 | `18F51407AEFA1B46CB86747A43AB4B4698402760FC1E7F7A651B2A213EB6F2EF` |
+| X556/Y169, raised Type31 $07FF7FB4 Type0/flags40 after genuine standing Fire | 76502 | `A48360FD724BD224D740432E208CA4394AD4603E09337E726B5615DDDC721F90` |
+| X772/Y185, following Type31 $07FF7F64 Type0/flags40 after genuine left Fire | 76753 | `140E977D5CE501D3B035336600EE6D9265FD3FF537117532D7E397311788FC2C` |
+
+Together with the earlier three accepted Type27 kills, all eight intended
+slots are Type0/flags40 at the sustained end. The three new cold hashes and
+accepted Viking end hash are now guards in the permanent route. Compact full
+CPU/RAM/display/input capture states and Runner/Core/manifest/raw-log/PNG hashes
+remain in `tmp/stage12-hounds-barn-twin-knights-full-a/verified-summary.json`
+and `-b`. Both new own accepted raw steps.jsonl were removed only after hash
+and six PNG checks; exact byte count/path record is
+`tmp/stage12-hounds-barn-twin-knights-raw-cleanup-result.json`. All six PNGs and
+compact proofs remain. These three passages pass; Stage12 itself is not complete.
+
+After this acceptance, all four reviewed new prefix guards were propagated to
+`tmp/stage12-barrel-high-wall-full-candidate.json`. Two independent complete
+DF0 cold runs have now STARTED in `tmp/stage12-barrel-high-wall-full-a` and `-b`
+(sessions69267/89864), no final checkpoints and exactly two unique pictures per
+run: `stage12-barrel-far-wall-hold-11` (expected X1080/Y185 F76992) and
+`stage12-high-wall-top-hold-11` (expected X1116/Y25 F77784). Require all accepted
+prefix guards, living milestone/final RAM, matching actual per-label hashes,
+zero non-ROM exceptions and ALL FOUR active pictures before permanent promotion.
+No checkpoint hash has been assumed as the new cold visual guard. Canonical
+short positive wall source is `tmp/stage12-upper-barrel-trap-wall-current.json`
+from the own barrel-far-wall diagnosis checkpoint; its entire sequence stays
+living. Stage12 and overall roadmap remain open. Next after accepted high wall:
+real inputs through the roof/missile terrain right of X1116, with actual slot
+phases and full-cold visual checks again. Preserve the unchanged source/runner,
+reviewed pictures, compact proofs and necessary private checkpoints.
+
+
+### Stage12 barrel/high-wall passage accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-barrel-high-wall-route.json` passes two
+independent complete DF0 cold boots on the unchanged final Release/x64 v22 core:
+11406 states each, all230 accepted exact prefix hash guards and the runtime RAM
+assertions. Zero non-ROM exceptions. HSalive stays FF in every Stage12 state
+after its accepted active start, so no chest respawn/death is hidden in the
+route. All FOUR actual active PNGs were individually reviewed and matching
+pairs are byte-identical. Type28 slots $07FF8324/$07FF8374/$07FF83C4/$07FF8414
+remain Type28 at both captured milestones; this is a bypass, not barrel kills.
+
+| Living actual full-cold milestone | Frame | Exact paired framebuffer SHA256 |
+| --- | --- | --- |
+| Ground landing after three timed jumps, X1080/Y185 HSaliveFF | 76992 | `38EC7114DC13EDC3ED069D41B575D2F2761AF57E0D5B22FDFD8C8869DD709EB9` |
+| Lower steps, middle/upper barrel bypass, FRONT-GID663 X1072 and wall X1104 cleared to X1116/Y25 HSaliveFF | 77784 | `8E6A6F1FF52F735AAD76B46EE65A6B3B1BF012A9030A2FA7698D63E6A56BD624` |
+
+Both new cold hashes are now permanent route guards. Compact full capture/CPU/
+RAM/display/input states and Runner/Core/manifest/raw-log/PNG SHA256 remain in
+`tmp/stage12-barrel-high-wall-full-a/verified-summary.json` and `-b`, with all
+four reviewed PNGs. This passage passes; Stage12 remains incomplete. The native
+roof/chest area and visible projectiles are actual gameplay, not a title/menu
+pass. No core/source changes, media or HDF writes, commits/pushes/releases.
+
+The own diagnostic continuation is
+`tmp/stage12-high-wall-diagnostic-checkpoint/stage12-high-wall-diagnostic-core/checkpoint.amigasav`,
+made from the exact positive input sequence and asserted X1116/Y25/HSaliveFF.
+It is diagnostic only. Initial live actor snapshot here confirms Type32 byte20
+slots $07FF8234 X1312/Y41 and $07FF8284 X1312/Y105 inactive until approach, and
+$07FF82D4 X1148/Y185 active; Type25 byte19 and Type30 byte1E further right must
+be distinguished from map GIDs. Right alone dies X1240/Y41 F77846 at upper
+$07FF8234. Right8, Right+Up17 and release reach X1292/Y105 but holding is killed
+F77939 by lower $07FF8284. A genuine left-gap jump/drop reaches a stable living
+pocket X1248/Y121/F78037; another left jump alone ends on the overlapping ledge
+X1172/Y105 and dies F78121 to $07FF8284. Three extra Left intervals clear that
+ledge and reach ground X1152/Y185, but F78119 then collides with ground
+$07FF82D4. These new negatives are checkpoint-only controls, not passes or
+emulator fixes. Isolate ground-projectile phase, then find sustained living
+movement under the far wall X1344; accept only after two independent full cold
+boots and actual active-image review again.
+
+
+### Stage12 three-projectile/lower-wall passage accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-three-missile-lower-wall-route.json`
+passes two independent COMPLETE DF0 cold boots on the unchanged prior final
+Release/x64 v22 runner. Each11540-state run passes all232 accepted prefix image
+hash guards and778 runtime RAM-byte assertions. The logged watch subset allows
+596 of those bytes to be independently rechecked from JSONL; the runner checks
+all778 directly at execution. There are zero non-ROM exceptions and every
+Stage12 continuation state remains HSaliveFF. No death/respawn is concealed.
+Both actual active full-cold PNGs were individually reviewed: the visible living
+hero stands on ground beyond the three projectiles and the hanging wooden wall.
+The PNGs are byte-identical. Final X1360/Y185 Frame78259 has exact framebuffer
+SHA256 `12AB33367C156F368A76190F22BFA2CA91B8DB1124A9B5F2E898FE16B50313F4`, now a permanent cold route guard.
+Type32 slots $07FF8234/$07FF8284/$07FF82D4 remain byte$20/decimal32; they are
+avoided, not killed. Both upper missiles are hidden in the final state; flags80
+alone do not imply visible movement or a kill. The low missile is still active.
+
+The real route jumps from X1116 into the gap, drops to X1292/Y105, moves left
+under the overhang into the X1248/Y121 pocket without an extra hold, jumps left
+again and clears the overlapping ledge with three additional Left intervals.
+It descends to ground near X1152, runs right to X1312, then jumps the small
+X1328 ground obstacle to X1360 under the hanging wall. Four extra long pocket
+intervals also survive in a checkpoint control; eight extra intervals die to
+the ground projectile. This timing finding is not an emulator graphics fix.
+
+Both compact proofs `tmp/stage12-three-missile-lower-wall-full-a/verified-summary.json`
+and `-b` retain the full final capture/CPU/RAM/display/input state and exact
+manifest/Runner/Core/raw-log/PNG SHA256. Both reviewed PNGs remain. Their own
+raw steps were removed only after SHA/picture/path checks (77007584bytes),
+recorded in `tmp/stage12-three-missile-lower-wall-raw-cleanup-result.json`.
+The earlier reviewed barrel/high-wall pair also retains all four PNGs/proofs;
+its own two checked raw steps were removed (77132539bytes), recorded in
+`tmp/stage12-barrel-high-wall-raw-cleanup-result.json`. Missing permitted raw
+logs do not invalidate either accepted passage. Stage12 remains open.
+
+### Stage12 next stump/Type27 bypass and Type29 strike - diagnostic only, 2026-10-24
+
+The own diagnostic checkpoint is
+`tmp/stage12-three-missile-far-bank-diagnostic-checkpoint/stage12-three-missile-far-bank-diagnostic-core/checkpoint.amigasav`
+at X1360/Y185/F78259. Initial actor snapshots distinguish the active elevated
+Type30 byte$1E at $07FF7C44/Y89, upper Type25 byte$19 and lower Type27 byte$1B
+slots $07FF7BF4/$07FF7BA4. A direct Right run dies X1428/Y185/F78293 at the
+FRONT-GID667 trap near X1440. Eight approach intervals before jumping are too
+late and hit the same trap while rising. Seven approach intervals and a
+12-interval jump clear the trap but land into Type27 $07FF7BF4 at F78329.
+Standing early Fire at X1408 also fails when that Type27 returns at F78417.
+
+A positive bounded checkpoint sequence uses Right7*250000, Right+Up8*250000,
+releases both for4 short intervals and lands on the fixed stump X1468/Y137.
+It immediately jumps Right+Up18 short intervals to X1596/Y185/F78389, bypassing
+both still-active Type27. Holding there eventually dies to actual Type29
+$07FF7AB4 at F78456, not to either Viking. Immediate crouch/fire bursts and a
+14-interval crouch delay are negative controls. Allowing Down to be evaluated
+for10 short intervals, then Fire16 short intervals, releases both and waits12
+neutral500000 intervals: continuously living X1595/Y185/F78565, Type29
+$07FF7AB4 Type0/flags40, both Type27 still active, next Type29 $07FF7A64 inactive.
+The one-pixel endpoint change occurs during the crouch/strike sequence.
+This is still CHECKPOINT-ONLY, not a new full visual pass.
+Canonical exact short source is
+`tmp/stage12-postmissile-stump-hound-early-crouch-current.json`.
+
+AFTER accepting the missile passage, two independent complete DF0 cold boots
+were started with `tmp/stage12-postmissile-stump-hound-kill-full-candidate.json`
+in `tmp/stage12-postmissile-stump-hound-kill-full-a` and `-b` (sessions32647/40294).
+They use the separately built current398-case Release runner
+`tmp/fpu-encoding-v1-release-runner/GameRunner.dll`,233 accepted prefix image
+hash guards, no final checkpoints and one unique actual end picture each:
+`stage12-postmissile-stump-hound-kill-hold-11`. Require expected F78565
+X1595/Y185/HSaliveFF, Type29 Type0/flags40, both Type27 still byte1B, matching
+actual hashes, zero non-ROM exceptions and BOTH individually reviewed active
+pictures before promoting to Tools. No checkpoint image hash was imposed.
+The older389-case private runner remains unchanged; the new isolated FPU format
+class does not participate in guest execution. Next after acceptance: actual
+terrain and remaining dog/Type27 phases right of X1595, then another sustained
+living route and full-cold pair. Stage12 only closes at a visible repeated
+level transition; all earlier passes remain accepted.
+
+Twenty own bounded missile/stump runs (including three exact old/new-core
+input controls) are consolidated with exact scenarios, first/last/first-dead/
+last-alive states, selected boundary states, complete bounded HSalive traces,
+MOB snapshot hex and raw SHA256 in
+`tmp/stage12-missile-stump-probes-verified-summary.json` (1280683bytes).
+Its eleven new own raw output roots were removed after hash/path checks
+(5132715bytes); cleanup-result beside the bundle records every target.
+Canonical manifests, needed own checkpoints, all accepted PNGs and compact
+proofs remain. No old blocked tree, media or HDF was touched.
+
+### Optional 68881/68882 operand foundation - 2026-10-24
+
+`Cpu/M68881Extended.cs` adds a lossless raw80-bit representation and Motorola's
+96-bit big-endian operand-memory codec. It ignores the input reserved word and
+writes it as zero, rejects every truncated buffer before mutation, preserves
+signed zero/NaN payload/signaling and classifies the explicit J bit according
+to Motorola, including exponent-zero J=1 normals and raw unnormal encodings.
+Signed32-bit integers (also sign-extended byte/word sources) and IEEE binary32/
+binary64 bit patterns expand exactly using integer shifts. No host float/double
+arithmetic or rounding is used. NaN transport is deliberately raw: it does NOT
+perform an architectural SNAN load, quieting or exception processing.
+Primary definition: Motorola MC68881/MC68882 User's Manual, section3 and
+tables3-1 through3-3, https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf.
+
+Nine focused cases include fixed edge encodings,10000 random raw codec cases,
+all finite single/double exponent fields with four boundary fractions and both
+signs,8192 seeded input bit patterns per IEEE width, signed integer extrema/
+4096 random integers, all individual NaN payload bit positions and all short
+buffer boundaries. An independent BigInteger dyadic-rational identity checks
+finite imports without sharing the production normalization algorithm or host
+floating arithmetic. Complete Debug AND Release suites pass398/398, no skips;
+preflight30/30, builds with zero warnings/errors, source-header audit and
+Diffcheck pass. Three bounded real Stage12 input controls on old/new private
+Release binaries retain all138 corresponding CPU/register/cache/frame/hash/
+RAM/input/display/disk/audio endpoints exactly, including identical negative
+controls. That is an input regression, not independent cold gameplay acceptance.
+Proof `tmp/fpu-encoding-v1-verified-summary.json` records source/binary/log SHA256,
+coverage and the registration file's newline-only normalization after testing.
+
+This is an operand-format FOUNDATION ONLY. No FPU instruction executes, no FPU
+is selectable, no FPCR/FPSR/FPIAR, arithmetic/output rounding, packed decimal,
+coprocessor bus protocol or FSAVE/FRESTORE is implemented here. The existing
+normal-model F200 absent-FPU exception test still passes. No CPU/model/state
+format wiring or A1000/Zorro availability gate changed; A1000 remains v22,
+normal cores v18 and multi-card Zorro v20. The distinct68040 also remains
+unimplemented. Next FPU step: independently tested exact output conversion and
+rounding/status primitives, followed by an explicit gated execution backend;
+only later connect decoded instructions and guest tests. No functional FPU or
+finished hardware claim is justified by these format tests.
+
+
+### Stage12 postmissile stump and first returning hound accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-postmissile-stump-hound-kill-route.json`
+passes two independent COMPLETE DF0 cold boots on the immutable
+`tmp/fpu-encoding-v1-release-runner/GameRunner.dll`. Each11627-state run passes
+233 existing image hash guards and787 runtime RAM-byte assertions;613 bytes
+are independently rechecked from the logged watch subset. No non-ROM exception
+and no Stage12 death/respawn: HSaliveFF throughout all its continuation states.
+Both actual active pictures were individually reviewed and are byte-identical.
+Final X1595/Y185/F78565 has exact framebuffer SHA256
+`588EECBDE40F931D2BC1CF2F1A7AB8F37CB1E58EF208570BC818B8EBE1C20646`, now a permanent cold guard.
+The real stump jump passes both active Type27 slots $07FF7BF4/$07FF7BA4;
+Down10 short intervals followed by Fire16 defeats actual Type29 $07FF7AB4
+(Type0/flags40). No Viking defeat is claimed. These observations supersede the
+earlier pending status, not earlier accepted routes. Stage12 remains open.
+
+Both `tmp/stage12-postmissile-stump-hound-kill-full-a/verified-summary.json`
+and `-b` retain full final CPU/RAM/display/input capture and exact Runner/Core/
+manifest/PNG/raw-log SHA256, with their reviewed PNGs. Only their own two
+checked raw steps were removed after SHA/picture/path checks (78637455bytes),
+recorded in the corresponding raw-cleanup inventory/result. The new own
+continuation checkpoint is
+`tmp/stage12-postmissile-stump-hound-kill-diagnostic-checkpoint/stage12-postmissile-stump-hound-kill-diagnostic-core/checkpoint.amigasav`,
+created by the exact positive input sequence on the new Release rounding core;
+its asserted RAM and frame agree. It is diagnostic, not another cold visual pass.
+
+### Stage12 second-hound escape and bank phase - pending cold acceptance, 2026-10-24
+
+Bounded real-input controls from accepted X1595 identify next Type29 $07FF7A64,
+not a third dog or missile. Direct Right dies X1719/F78627 by hero_coll at that
+slot. Right6 short intervals to X1638, Down8, Fire16 is too early and dies
+F78668. Down16 before Fire16 kills the hound (Type0/flags40), but holding there
+then dies F78776 to returning Type27 $07FF7BF4. Immediately moving Right16
+short intervals after releasing Down/Fire avoids the Viking and holds12 long
+neutral intervals: X1748/Y185/F78839 living throughout. Canonical exact short
+source `tmp/stage12-next-hound-kill-ground-escape-current.json` starts at the
+own accepted-stump checkpoint. This is still checkpoint-only.
+
+Two independent complete DF0 cold boots started with
+`tmp/stage12-second-hound-ground-escape-full-candidate.json` in
+`tmp/stage12-second-hound-ground-escape-full-a` and `-b` (sessions20526/35368),
+using current `tmp/fpu-rounding-v2-release-runner/GameRunner.dll`. The prefix
+contains234 accepted image guards, no final checkpoints and one unique picture
+per run: `stage12-second-hound-ground-escape-hold-11`. Require X1748/Y185,
+F78839/HSaliveFF, both defeated dogs Type0, second dog flags40, both Viking
+type bytes1B, all prefix guards, zero non-ROM exceptions, matching actual hashes
+and BOTH reviewed actual active pictures before Tools promotion. No unknown
+checkpoint endhash was imposed. Overall roadmap and Stage12 remain open.
+
+Further bounded CHECKPOINT-ONLY terrain controls start from own
+`tmp/stage12-next-hound-ground-diagnostic-checkpoint/stage12-next-hound-ground-diagnostic-core/checkpoint.amigasav`
+at X1748. Jumping immediately is too early to reach the32-pixel bank; direct
+Right stops X1824, where a returning Type27 kills F78963. An early braked Fire
+on the bank dies F78906 to actual Type31 $07FF7A14. Waiting10 short intervals
+under the bank still meets his leftward patrol; waiting18 places the jump just
+after his real X1840 left turn. Right11 to the wall, release/18 short waits,
+Right+Up3, release/8 short landing and12 long waits reaches stable X1832/Y153
+F79065. A genuine Right+Up10 and12 long hold crosses the FRONT-GID667 region
+near X1872 and reaches X1904/Y153/F79184. Two vertical/timing variants also
+survive; no invented emulator fix is needed.
+
+Right8 then Right+Up6/release/12 long waits lands X2004/Y105/F79318 on the fixed
+step. A Left+Up10/release/12 long hold lands X1933/Y73/F79437 on the west branch;
+Right2, Right+Up8/release/12 long hold lands X2005/Y25/F79557. These bounded
+routes stay HSaliveFF. Three active Type31 $07FF7974/$07FF79C4/$07FF7A14 remain
+below atY153; they are bypassed, not killed. A Type25/Viking with flags40 but
+nonzero type is merely removed from active display and must not be called a
+kill. Exact combined upper source is `tmp/stage12-far-bank-high-branch-current.json`.
+This bank/high-branch continuation is NOT cold-accepted yet. First examine the
+running X1748 pair; only after its acceptance build/execute the next full pair
+with actual intermediate/final images. No CP pictures substitute for cold images.
+
+### Optional 68881/68882 binary output rounding foundation - 2026-10-24
+
+`Cpu/M68881BinaryRounding.cs` rounds stored extended significands to binary32
+and binary64 entirely with integers. RN-even, RZ, RM and RP handle signed zero,
+normal/subnormal boundaries, significand carry and directed overflow. It returns
+separate PrecisionLost, Tiny-before-rounding and Overflow observations; Inexact
+combines precision/range loss. These are not FPSR bits or a trap policy. Exact
+subnormals remain Tiny without PrecisionLost; overflow can lose range without
+mantissa-bit loss. NaNs reject explicitly for future instruction-level payload/
+SNAN handling. Infinity is transported. Raw finite unnormals use their exact
+dyadic value. This does not represent a wider67-bit arithmetic intermediate.
+Primary reference: Motorola MC68881/MC68882 manual sections3.5,6.1.4/5/7,
+https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf.
+
+Eight new cases cover fixed half-ULP/sticky/even/odd/carry boundaries, signed
+underflow and min-normal carry, 63/64/65-bit discard boundaries, independent
+precision versus range flags, noncanonical raw inputs, invalid modes and NaN
+rejection. A separate BigInteger oracle binary-searches ordered target encodings
+and compares exact rational distances to both neighbors, rather than copying
+the production guard/sticky algorithm. It checks1440 boundary and4096 seeded
+raw conversions across all directions, plus4096 random input pairs round-trip
+in all modes. Complete Debug AND Release suites pass406/406 without skips;
+Runner preflight30/30, all builds zero warnings/errors, header audit/Diffcheck
+pass. No CPU/model/availability/state-format wiring changed. FPU instructions,
+FPCR/FPSR/FPIAR, arithmetic, output NaNs/integers/BCD, bus protocol, FSAVE and
+FRESTORE remain unimplemented. The normal F200 absence trap still passes.
+The separate68040 and real A1000 bootstrap remain unavailable.
+
+Current final Release A500/Kick13, A3000/Kick31 and A4000/030/Kick31 cold boots
+retain their exact old disk-insert hashes atF422, zero non-ROM exceptions; both
+desktops have8MiB opt-in Zorro III. Native A3000 four-card and A4000/030 two-card
+cold/warm/restore routes also retain exact hashes and configured layouts. The
+independent Exec verifier accepts all physical pools without phantom bytes.
+ALL FIVE current boot/warmboot images were individually reviewed. These are
+boot regressions, not gameplay/A1000/FPU execution acceptance. No HDFs used.
+Compact proofs: `tmp/fpu-rounding-v2-verified-summary.json`,
+`tmp/fpu-rounding-native-boots-output/verified-summary.json` and
+`tmp/fpu-rounding-zorro-reset-output/verified-summary.json`, including source/
+binary/log/PNG SHA256 and complete small native state rows. Old private runners
+remain unchanged. Current frozen runner is
+`tmp/fpu-rounding-v2-release-runner/GameRunner.dll`; do not overwrite prior
+proof runners. Next FPU work: separately tested integer/NaN output and an
+explicit gated register/status/execution backend before any guest opcode hookup.
+
+
+### Stage12 second hound and escape accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-second-hound-ground-escape-route.json`
+now passes two independent COMPLETE DF0 cold boots on the current frozen
+406-case Release runner. Each11701-state run passes234 accepted prefix image
+hash guards and797 runtime RAM-byte assertions;626 bytes are independently
+rechecked in the logged watch subset. Every Stage12 continuation state stays
+HSaliveFF, and non-ROM exceptions are zero. Both actual active full-cold PNGs
+were individually reviewed and are byte-identical. Final X1748/Y185/F78839 has
+exact framebuffer SHA256
+`823AA9FFF143F43CF0AEF42D22C6BD6F454A1270E27B363E4F797082F9A64091`, now a permanent cold guard.
+Second Type29 $07FF7A64 is Type0/flags40; the preceding defeated dog remains
+Type0, while both Type27 slots retain byte1B. Actual rightward escape after
+the crouched strike avoids a returning Viking. Stage12 is still incomplete.
+This supersedes the earlier pending X1748 status and preserves earlier passes.
+
+Proofs `tmp/stage12-second-hound-ground-escape-full-a/verified-summary.json`
+and `-b` retain full final state and manifest/Runner/Core/PNG/raw-log SHA256,
+plus both reviewed actual pictures. Only their own two checked raw steps were
+removed after SHA/picture/path checks (79841957bytes), recorded in
+`tmp/stage12-second-hound-ground-escape-raw-cleanup-result.json`.
+Fourteen bounded second-hound/bank controls remain with exact scenarios,
+first/last/first-dead/last-alive states, milestones, MOB hex, HSalive traces and
+raw hashes in `tmp/stage12-second-hound-bank-probes-verified-summary.json`
+(707837bytes); ten own raw roots were checked/removed (3549576bytes), with
+cleanup-result beside the bundle. Canonical JSONs, required private checkpoints,
+all reviewed PNGs and compact proofs remain. No old blocked tree or media touched.
+
+### Stage12 high roof to moving platform - checkpoint-only candidate, 2026-10-24
+
+Additional real controls extend the positive upper-branch source from X2005/Y25.
+Right21 short intervals crosses TYPE12 roof to X2153/Y25/F79631. Right+Up18
+then releasing/stopping ends X2280/Y185 and dies F79710 to Type27 $07FF7924.
+Continuing Right for5 short intervals and pressing Up before landing is ignored
+while still airborne; water/map death follows F79719. The corrected landing
+sequence uses only4 Right intervals, releases Right, and waits3 short intervals
+on the last shore at X2308/Y185/F79719 before rearming Right+Up. Ten or six
+horizontal jump intervals then overshoot the original platform center window
+and die F79767, not an emulator fault.
+
+Original `monster.asm:platform_check` requires `Mx-12 < HeroX <= Mx+12`, a
+positive vertical velocity and feet within `My +/- HSvy/4`. It does not use the
+full visible sprite width. Three horizontal jump intervals and releasing
+Right/Up now catch actual Type24 $07FF7CE4. The hero descends onto Y178 above
+platform My201, follows its left turn at X2320/F79772 and rides right to
+X2362/Y178/F79814, HSaliveFF and HERO_PLATFORM flag08; heroX and platformX
+are both2362. All states in this combined short route are living. Type24 remains
+byte18/decimal24, not a kill; both ground Type27 and three ground Type31 remain
+present. Source `tmp/stage12-high-roof-platform-center-catch-current.json`
+starts at the necessary own X1748 diagnosis checkpoint. This is NOT a full
+cold visual pass. Five exact roof/platform controls and their negative boundaries
+are preserved in `tmp/stage12-high-roof-platform-probes-verified-summary.json`
+(883272bytes), including complete inputs, milestones, MOB hex, HSalive traces
+and hashes. Their five own raw roots were checked/removed (4195022bytes), with
+cleanup-result beside the bundle. No previously blocked output was removed.
+
+AFTER accepting the X1748 pair, two independent complete DF0 cold runs STARTED
+with `tmp/stage12-far-bank-high-branch-platform-full-candidate.json` in
+`tmp/stage12-far-bank-high-branch-platform-full-a` and `-b` (sessions74195/88459).
+They use the immutable current `tmp/fpu-rounding-v2-release-runner/GameRunner.dll`,
+235 accepted prefix image guards,32 watched bytes, no final checkpoints and
+exactly FOUR unique pictures per run:
+
+| Unique label | Expected living full-cold RAM/frame |
+| --- | --- |
+| stage12-lake-bank-hold-11 | X1832/Y153/F79065 |
+| stage12-lake-upper-step-hold-11 | X2004/Y105/F79318 |
+| stage12-lake-high-branch-hold-11 | X2005/Y25/F79557 |
+| stage12-lake-platform-ride-hold-11 | X2362/Y178/F79814, HSaliveFF, flags08, Type24 X2362/Y201/flags80/type18 |
+
+Require matching actual hashes PER label, every accepted prefix guard, zero
+non-ROM exceptions, continuous HSaliveFF and ALL EIGHT individually reviewed
+active pictures before permanent promotion/acceptance. The three Type31 must
+remain type1F, the two Type27 byte1B; these are bypasses, not kills. No unknown
+checkpoint hash was inserted as a cold visual guard. Next after acceptance:
+continue the genuine Type24 ride and find a living far-bank landing near X2528
+before the wall X2576; then check actual terrain/MOB phases and repeat full
+cold proof. Stage12 only closes at a visibly repeated transition. All prior
+stages and accepted passages stay accepted; the seven-point roadmap stays open.
+
+### Stage12 bank, branches and platform accepted fully cold - 2026-10-24
+
+The formerly pending pair is now accepted. The permanent route is
+`Tools/a3000-celtic-heart-stage-twelve-far-bank-high-branch-platform-route.json`.
+Each independent complete DF0 cold run contains11936 states and passes235
+accepted prefix image guards and838 runtime RAM-byte assertions;649 logged
+watch bytes were independently checked. Every Stage12 state remains HSaliveFF;
+non-ROM exceptions are zero. ALL EIGHT actual active pictures were individually
+reviewed, with each of the four pairs byte-identical. Hero is visibly present
+at the bank, two upper branches and on the moving platform. New cold guards:
+
+| Capture | Living state | Actual framebuffer SHA256 |
+| --- | --- | --- |
+| bank | X1832/Y153/F79065 | DE83C23E8B66A9E7B5A9BAC12B19A2F9ABBFB1DA45B406E4E74CF7FF356762B9 |
+| upper step | X2004/Y105/F79318 | D3CB6811A7217B4690ABD24B1B860D10BDE01D93DC7844578F11C2A26EB197D1 |
+| high branch | X2005/Y25/F79557 | 01F52A405EE7DFCC69EC8D74A7DA3C2D674A69256945559E23F00244807D33D9 |
+| platform ride | X2362/Y178/F79814 | 42CC2B4AC9EAF9CC0376E30540C053460B876DA43638A0200B0F83EF5451F431 |
+
+Final HERO_PLATFORM08 and Type24 $07FF7CE4 X2362/Y201/type18/flags80 confirm
+attachment. Three Type31 remain1F and two Type27 remain1B: bypasses, no kills.
+Proofs `tmp/stage12-far-bank-high-branch-platform-full-a/verified-summary.json`
+and `-b` retain all capture states, PNG/manifest/Runner/Core/raw-log SHA256.
+All eight actual PNGs remain. This supersedes the pending candidate above;
+Stage12 itself is still open. Next: true platform ride to the far shore near
+X2528 and living passage at wallX2576, with repeated full cold proof.
+
+After the host crash, these proofs, pictures, permanent route and new isolated
+integer/NaN helper source files survived. The helper files are not yet tested
+or connected to CPU execution at this point. The last complete tested core
+remains406/406 Debug/Release and30/30 preflight. No released binary is changed.
+
+### Optional FPU integer and NaN output foundation - 2026-10-24
+
+`Cpu/M68881IntegerConversion.cs` adds integer-only signed byte/word/long output
+with all four rounding directions. It checks signed range AFTER rounding,
+including asymmetric endpoints and ties-even at the negative minimum. Finite
+overflow and infinity produce the signed destination endpoint per FMOVE;
+raw finite unnormals are interpreted as exact dyadics. Returned destination
+bits are zero-extended two's-complement bytes. PrecisionLost and OutOfRange
+are observations only, not FPSR bits or exception/trap policy. The exact shared
+shift/remainder rounding primitive is reused without changing its algorithm.
+
+`Cpu/M68881NaNOutput.cs` provides an explicit, separate external-output payload
+path: set extended fraction bit62 to quiet, discard low payload bits without
+numeric rounding, preserve IEEE/extended sign and record WasSignaling. Integer
+outputs use the high8/16/32 significand bits including rawJ, independently of
+the separate sign. The source is immutable. Numeric converters continue to
+reject NaNs rather than silently choose exception priority. Non-NaN operands
+are rejected by the NaN-only helper. This is a representation/output foundation,
+not architectural FP-register loading, enabled-exception handling or a bus store.
+Primary reference is Motorola MC68881/MC68882 User's Manual, section3.2.5,
+FMOVE and6.1.2/3/7: https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf.
+
+Ten new cases use an independent signed BigInteger DivRem/distance oracle:
+1140 boundary vectors,49152 seeded raw conversions,16384 exact signed32
+round-trips,252 individual payload/sign/J variants and4096 NaN import pairs.
+Initial test importer spelling and one hand-calculated NaN fixed-vector typo
+were corrected; no implementation defect is claimed from those test edits.
+Complete Debug AND Release suites pass416/416 without skips. Preflight30/30,
+builds without warnings/errors, header audit and diffcheck pass. The inserted
+registration line was normalized to the surrounding existing LF style after
+build, with no semantic change. Proof `tmp/fpu-output-v3-verified-summary.json`
+records source/binary/log SHA256 and the limits. The frozen current runner is
+`tmp/fpu-output-v3-release-runner/GameRunner.dll`; older proof runners remain
+unchanged. Normalv18, multicard-Zorrov20 and A1000v22 layouts stay unchanged.
+
+Real current A500/Kick13, A3000/Kick31 and A4000/030/Kick31 cold boots and
+ZorroIII four-/two-card cold/warm/reset/restore routes preserve old exact
+hashes atF422, zero non-ROM exceptions and correct physical Exec pools. All
+five actual current pictures were individually reviewed. Recorded CPU/cache/
+RAM/input/disk/expansion/display rows match the prior406-core runs exactly.
+Proofs are `tmp/fpu-output-v3-native-boots-output/verified-summary.json` and
+`tmp/fpu-output-v3-zorro-reset-output/verified-summary.json`. No HDFs used.
+These are boot regressions, not FPU execution or real A1000 boot acceptance.
+
+Still absent: an executing/selectable FPU, FPCR/FPSR/FPIAR and exception priority,
+arithmetic/67-bit ALU intermediate rounding, BCD, coprocessor bus protocol,
+FSAVE/FRESTORE, and a separate68040. All A1000 availability gates remain closed.
+Next FPU work is an explicitly gated register/status/execution backend with
+independent status/exception tests, before guest-opcode hookup and guest tests.
+
+### Stage12 lake far shore accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-lake-far-shore-route.json` now passes two
+independent COMPLETE DF0 cold boots on the frozen416-case Release core.
+Each11978-state run passes239 accepted prefix image hashes and844 runtime
+RAM-byte assertions;655 bytes are independently checked in the logged watch
+subset. Every Stage12 state is HSaliveFF, non-ROM exceptions zero. Both actual
+active PNGs were individually reviewed and byte-identical: X2548/Y185/F80053,
+framebuffer SHA256
+`9E03E2E7C915B2B66490131EED83C5A52FC93CBD235C46B344A2B6A1F1E4F2BC`.
+The hero is visibly on the opposite lake bank after18 additional long platform
+ride intervals and an8-short-interval Right+Up jump. Three Type31 retain1F and
+two Type27 retain1B. Their flags40 offscreen state does not imply a kill.
+Proofs/PNGs `tmp/stage12-lake-far-shore-full-a/verified-summary.json` and `-b`
+retain manifest/Runner/Core/PNG/raw SHA256 and full final states. Stage12 stays
+open; old accepted passages are not reopened. The preceding bank/platform
+pair retains all eight reviewed PNGs and proofs; only its two checked own raw
+steps were removed (81453488bytes), recorded in
+`tmp/stage12-bank-platform-raw-cleanup-result.json`.
+
+### Stage12 low wall and five rolling barrels - bounded continuation, 2026-10-24
+
+A host crash interrupted work after the prior full pair had finished; stored
+proofs/images and source survived. The private platform regeneration also
+finished and remains valid. No prior accepted passage was repeated as a new
+requirement. The newer integer/NaN helpers have since passed the416-case suites.
+
+After the accepted shore, direct Right is blocked atX2560 and dies F80126 to
+$07FF7F14, actual byte1C/decimal28. A first Right+Up reaches X2584/Y169 through
+the lower opening but meets that barrel F80103. Ducking and early airborne Fire
+also fail. This is the original game's barrel collision, not a demonstrated
+emulator defect. Waiting18 short intervals, vertical Up14, release/rearm1,
+Right+Up22 and twelve long neutral intervals reaches X2640/Y169/F80331 alive.
+Delays19/20 also live; delays8/12/16 fail. Source instructions and live watches
+confirm rolling Type28, not a knight, projectile, map death or kill.
+
+The combined genuine-input source
+`tmp/stage12-wall-five-barrels-far-end-current.json` starts at the own accepted
+shore diagnostic checkpoint. Repeated short, rearmed jumps, measured waits,
+and braking between the last two barrels reach X3032/Y169/F80908 with every
+state alive, then twelve long neutral end intervals. All five slots
+$07FF7F14/$07FF7EC4/$07FF7E74/$07FF7E24/$07FF7DD4 remain byte1C; no kills.
+They can bounce and follow again. A too-long vertical-only third dodge dies
+F80496; unbraked last-pair jumping dies F80763. Brake3/settle5 or6 and
+brake4/settle5 work; brake4/settle6 dies F80778. These are CHECKPOINT controls,
+not full cold visual passes. Some historical probe names imply five barrels
+before the final pair was actually crossed; only the combined final source
+represents all five bypasses.
+
+Thirty-four own controls (exact inputs, initial/final and live/dead boundary
+states, complete watched-state histories, HSalive traces and raw SHA256) are
+compacted in `tmp/stage12-lake-wall-barrel-probes-verified-summary.json`
+(2689378bytes). Their twelve own raw roots were SHA/path/reparse checked and
+removed (5840855bytes), with cleanup-result beside the bundle. Inputs and
+necessary private checkpoints remain, especially the shore and the current
+far-end diagnostic state:
+`tmp/stage12-wall-five-barrels-far-end-diagnostic-checkpoint/stage12-wall-five-barrels-far-end-diagnostic-core/checkpoint.amigasav`.
+No old blocked output or user media was touched.
+
+ONLY AFTER accepting the far shore, two complete independent DF0 cold runs
+started with `tmp/stage12-wall-five-barrels-full-candidate.json` in
+`tmp/stage12-wall-five-barrels-full-a` and `-b` (sessions47697/19204).
+They use the immutable416-case `tmp/fpu-output-v3-release-runner/GameRunner.dll`,
+240 accepted prefix hashes,31 watched bytes, no final checkpoints, and exactly
+two unique captures per run:
+
+| Unique label | Expected living state |
+| --- | --- |
+| stage12-wall-first-barrel-hold-11 | X2640/Y169/F80331/HSaliveFF |
+| stage12-wall-five-barrels-far-end-hold-11 | X3032/Y169/F80908/HSaliveFF, all five Type28 still1C |
+
+Require every runtime RAM assertion, continuous Stage12FF, zero non-ROM
+exceptions, equal actual hashes PER label and ALL FOUR reviewed actual active
+pictures before promoting the permanent route. No unknown checkpoint hash was
+made a cold visual guard. Current source/header audit/diffcheck pass. No HDFs.
+
+Next bounded controls from X3032: direct Right stops X3040 and is caught by the
+returning Type28 $07FF7DD4 F80944. A jump clears that low stump but meets actual
+Type27 $07FF78D4 (original X3200/Y185) F80964/80965. The two following Type27
+originate X3296/X3344, with Type26 and later moving platforms ahead. Continue
+with actual input timing/strikes or an upper route, not a fabricated emulator
+repair. These post-barrel controls are diagnostic only. Stage12 only closes
+after an actual visibly repeated level transition; the full roadmap stays open.
+
+The accepted far-shore pair now retains only reviewed PNGs and compact proofs;
+its two own raw steps were SHA/image/path checked and removed (81739142bytes),
+with `tmp/stage12-lake-far-shore-raw-cleanup-result.json` preserved. Three later
+negative postbarrel controls, exact inputs, watched-state histories, MOB hex
+snapshots and death traces are compacted in
+`tmp/stage12-postbarrel-stump-probes-verified-summary.json` (251728bytes);
+their two own raw roots were checked/removed with a cleanup result beside it.
+Current pending corridor manifest contains12193 actions,240 accepted prefix
+hash guards and859 runtime RAM-byte assertions. No checkpoint end hash is
+assumed for the new actual cold captures.
+
+### Stage12 five-barrel barn accepted fully cold - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-wall-five-barrels-route.json` now passes
+TWO independent COMPLETE DF0 cold boots on the unchanged416-case Release core.
+Each12194-state run passes240 accepted prefix image guards and859 runtime
+RAM-byte assertions;653 present logged-watch bytes are independently rechecked.
+Every Stage12 state remains HSaliveFF, zero non-ROM exceptions. ALL FOUR actual
+active pictures were individually reviewed; both pairs are byte-identical.
+The hero is visibly inside the barn at both living captures:
+
+| Capture | Living state | Actual framebuffer SHA256 |
+| --- | --- | --- |
+| first barrel | X2640/Y169/F80331 | 648E0165ABB72A158B516632D2D2B33716E09CD93E5249EC7663AE59772DE6E7 |
+| barn far end | X3032/Y169/F80908 | 078D6FA25293516D7A919A910C1DEFD08D02EFC48435D1526ADA3F06B6A2157C |
+
+Both hashes are now permanent cold guards. All five Type28 slots remain1C;
+the route bypasses them without kills, and their later return is still possible.
+Proofs/PNGs `tmp/stage12-wall-five-barrels-full-a/verified-summary.json` and
+`-b` retain complete capture/final states and manifest/Runner/Core/raw/PNG SHA256.
+Only their two own reviewed raw steps were removed after SHA/picture/path checks
+(82847883bytes), with `tmp/stage12-wall-five-barrels-raw-cleanup-result.json`
+retained. A local PowerShell property-count check aborted before any deletion;
+the corrected array count then completed all checks. No automatic approval was
+rejected. This supersedes the earlier pending barn status, not any prior pass.
+Stage12 and the seven-point roadmap remain incomplete.
+
+### Stage12 three Vikings and first worm - bounded follow-up, 2026-10-24
+
+From accepted X3032, an early braked jump and Fire16 followed by12 long neutral
+intervals reach X3124/Y169/F81095 without kills. Right12 then stops on the lower
+floor X3208/Y185. Fire16 kills Type27 $07FF7884, six long neutral intervals and
+Fire16 kill $07FF7834, one long neutral interval and Fire16 kill the returning
+$07FF78D4. Release and12 long neutral intervals end F81440, X3208/Y185, all three
+Type0/flags40 and every state alive. A two-long final delay also works, three
+long dies F81341; later third-Viking strikes die F81274. These successful CP
+kills are not full cold acceptance. Canonical input source:
+`tmp/stage12-postbarrel-three-viking-kills-current.json`; private checkpoint:
+`tmp/stage12-postbarrel-three-viking-kills-diagnostic-checkpoint/stage12-postbarrel-three-viking-kills-diagnostic-core/checkpoint.amigasav`.
+
+AFTER accepting the barn pair, two independent COMPLETE DF0 cold runs started
+with `tmp/stage12-postbarrel-three-viking-kills-full-candidate.json` in
+`tmp/stage12-postbarrel-three-viking-kills-full-a` and `-b` (sessions87115/81358).
+Current immutable runner remains `tmp/fpu-output-v3-release-runner/GameRunner.dll`.
+The candidate has12328 actions/expected12329 states,242 accepted prefix hash
+guards,870 runtime RAM-byte assertions and32 watch bytes. No final checkpoints;
+exactly ONE unique actual image per run: stage12-postbarrel-three-viking-kills-hold-11.
+Require F81440/X3208/Y185/HSaliveFF, all three specified Type27 Type0/flags40,
+every prefix/RAM guard, continuous living Stage12, zero non-ROM exceptions,
+equal actual image hashes and BOTH individually reviewed full-cold active PNGs
+before permanent promotion. No CP hash is assumed as the new cold end guard.
+
+Further checkpoint-only controls: direct Right32 from X3208 falls at X3406
+into map/water death F81539. Actual watched Type24 slots are $07FF7D34 atY57
+and $07FF7D84 atY153; lower Type26 $07FF77E4 walks X3376..3424/Y137. Right22
+to X3362, release/wait6 long intervals, Right+Up2, release/brake and6 short
+landing intervals reach fixed X3376/Y137 atF81587. Waiting10 landing intervals
+instead starts Fire too late: one negative control eventually kills the worm
+AFTER the hero has already died F81624. Such a Type0 is explicitly NOT a pass.
+Original `monster.asm:moveRedWorm` is killable; no invulnerability or emulator
+repair was invented. Down+Fire immediately after the actual sixth landing
+interval, Fire16, release and12 long neutral intervals instead kill Type26
+and live continuously at X3380/Y137/F81728, Type0/flags40. Extra1/2 crouch
+intervals also pass bounded controls. Canonical short input source is
+`tmp/stage12-postviking-first-worm-crouched-kill-current.json`, from the own
+X3208 checkpoint; needed positive diagnostic checkpoint is
+`tmp/stage12-postviking-first-worm-diagnostic-checkpoint/stage12-postviking-first-worm-diagnostic-core/checkpoint.amigasav`.
+This is not a cold visual pass. After the three Vikings are cold-accepted,
+repeat the worm passage twice fully cold and inspect actual images. Then find
+a genuine living platform catch from the lower step toward the next bank.
+
+Twenty-three exact bounded controls (inputs, watched-state histories, live/dead
+boundaries, HSalive traces, source/Runner/raw SHA256) are compacted in
+`tmp/stage12-postbarrel-vikings-worm-probes-verified-summary.json` (3077974bytes).
+Canonical sources, needed private checkpoints and every accepted PNG/proof stay.
+Source/binary hashes match the existing416/416 Debug/Release and30/30 proof;
+there was NO Core change, so no redundant broad suite or boot rerun was made
+for these data-only routes. Header audit, diffcheck and route validation pass.
+No HDFs, commits, pushes, tags, releases or hardware availability changes.
+
+All eight own raw output roots for those23 compacted controls were SHA/path/
+reparse checked and removed (6907988bytes), with cleanup-result preserved
+beside the3077974-byte bundle. Canonical inputs, needed diagnostic checkpoints
+and all actual reviewed full-cold images/proofs remain.
+
+### Stage12 postbarrel three Vikings accepted fully cold - 2026-10-24
+
+The two previously running Viking cold starts are now both fully checked.
+`Tools/a3000-celtic-heart-stage-twelve-postbarrel-three-viking-kills-route.json`
+records X3208/Y185/F81440, every Stage12 state alive, all three Type27
+$07FF78D4/$07FF7884/$07FF7834 Type0/flags40. Both actual active pictures were
+individually reviewed and byte-identical, with a visible living hero. Actual
+framebuffer hash88807052AA74AD34FD023E91A4D7090D924478540DE129819C609BA1A4991AAC
+is now a permanent cold guard. Each complete independent DF0 run contains12329
+states and passes242 prior image guards and870 runtime RAM-byte assertions;
+zero non-ROM exceptions. The recorded watch subset is independently checked
+in the verified summaries. Stage12 itself remains open. No core change.
+
+Proofs/actual PNGs remain in
+`tmp/stage12-postbarrel-three-viking-kills-full-a/verified-summary.json` and
+`-b`, with complete final states and manifest/Runner/Core/PNG/raw SHA256.
+This supersedes the earlier pending Viking pair, not any older accepted pass.
+Work now continues on the first worm, lower platform and opposite bank using
+real inputs; those later checkpoint-only routes still require full cold images.
+
+### Stage12 lower platform, far knights and exit candidate - 2026-10-24
+
+After the accepted three Vikings, bounded genuine-input controls reach the exit.
+These are CHECKPOINT DIAGNOSTICS, not full-cold visual passes. The canonical
+combined worm/platform/bank source is
+`tmp/stage12-worm-lower-platform-far-bank-current.json`, from the own X3208
+checkpoint. The lower Type26 is killed by crouched Fire at X3380/Y137/F81728.
+Right5 short intervals, release/wait8 long, Right+Up4 short, release and12 long
+neutral intervals catch Type24 $07FF7D84: X3493/Y130/F81900, HERO_PLATFORM08,
+platform X3493/Y153. Its center tolerance is narrow; waiting11 long intervals
+instead misses the center and falls into the water. Eight further long ride
+intervals, Right+Up7 short, release/12 long land on fixed X3600/Y137/F82066.
+`tmp/stage12-far-bank-raised-stone-current.json` then jumps8 short intervals
+and holds12 long to fixed X3656/Y89/F82178.
+
+`tmp/stage12-far-twin-knight-crouched-kills-current.json` starts from that raised
+stone. Right+Up17 short, release/12 long lands X3776/Y185/F82323 beneath the
+Type30 flyer. An immediate stump jump dies to that flyer; the positive route
+waits4 short intervals, Right+Up3, release and10 short landing intervals, then
+holds Down/waits52 long. Fire16 short, release Fire/wait4 long, Fire16 again,
+release Down/Fire and12 long neutral intervals end X3788/Y169/F82974. Both
+Type31 $07FF7654/$07FF76A4 are Type0/flags40; every positive-route state lives.
+The higher crouched strike reaches them across the low stump. Standing Fire
+from X3776/Y185 did not kill either. Type30 and Type32 are bypassed, not killed.
+
+`tmp/stage12-exit-trap-jump-current.json` takes14 short Right intervals to
+X3886, then Right+Up18, release/12 long to X4012/Y185/F83171 alive. Direct
+walking dies to a map collision near X3910; the static FRONT683/BACK68 at that
+location have TYPE0, so no particular deadly tile or emulator defect is
+claimed without decoding the live map. The jump is a legitimate living bypass.
+The following TYPE7 door is the genuine level exit. Right12 short then40 long
+settle intervals visibly show LEVEL COMPLETE at F83494 in the bounded probe;
+one Fire/release and40 million Chipcycles show THE FOREST STAGE4 / CODE 9KZL
+at F84064. BOTH actual checkpoint pictures were inspected for diagnosis only.
+At F83175, HSalive is intentionally cleared through exitHero/deactivateHero
+(PC $07FEBE60); this normal exit is distinct from a collision death. Do not
+misreport the required post-exit HSalive00 as a failed living route, or accept
+an earlier death/respawn. All earlier positive states remain FF.
+
+Two independent COMPLETE DF0 cold runs are now executing
+`tmp/stage12-complete-stage13-title-full-candidate.json` in
+`tmp/stage12-complete-stage13-title-full-a` and `-b` (sessions78410/69131).
+Immutable416-test Release runner: `tmp/fpu-output-v3-release-runner/GameRunner.dll`.
+The manifest contains12759 actions/expected12760 states,243 accepted prefix
+image guards,910 runtime RAM-byte assertions and32 selected watch bytes. No
+final checkpoint; exactly EIGHT unique actual pictures per run: worm kill,
+lower-platform ride, far bank, raised stone, far twin-knight kills, exit-hazard
+far bank, LEVEL COMPLETE and Stage13 title. No unknown checkpoint hash is
+assumed as a cold guard. Require every accepted prefix/RAM guard, zero non-ROM
+exceptions, continuous Stage12 HSaliveFF up to the intentional TYPE7 exit,
+correct final transition, identical actual paired hashes and ALL SIXTEEN
+individually reviewed cold pictures before promotion or Stage12 completion.
+Stage12 remains OPEN until that proof; Stage13 is not yet active or accepted.
+
+Twenty-seven exact bounded controls are consolidated with complete inputs,
+watched histories, live/dead boundaries, HSalive traces, auxiliary snapshots and
+SHA256 in `tmp/stage12-platform-knights-exit-probes-verified-summary.json`
+(3571129bytes). Nineteen own regenerable targets were SHA/path/reparse checked
+and removed (7974540bytes); diagnostic PNGs and needed private checkpoints stay.
+The two accepted Viking rawlogs were likewise rechecked against compact proofs
+and individually reviewed identical PNGs, then removed (84134149bytes).
+Cleanup inventories/results remain. Missing permitted rawlogs are not failures.
+No original media, old blocked diagnostics or HDFs were changed. Core remains
+unchanged since416/416 Debug/Release and30/30; only scenarios/docs were added.
+
+A following bounded diagnostic also confirms the intended activation inputs for
+Stage13, without accepting that stage: `tmp/stage13-active-input-checkpoint.json`
+shows GET READY at F84919, then genuine Right movement from X16 to X32/Y185,
+HSaliveFF at F85303. Both actual checkpoint PNGs were individually inspected.
+`tmp/stage13-activation-checkpoint-verified-summary.json` retains exact inputs,
+watch histories, complete capture states and raw/image SHA256. The15-action
+continuation is `tmp/stage13-activation-input-tail.json`; it contains RAM guards
+but no assumed checkpoint image hashes. After full-cold Stage12 acceptance,
+append it to the new accepted title prefix and require two complete independent
+DF0 cold starts and actual GET READY/active pictures for Stage13 activation.
+The recurring continuation prompt now records the accepted Viking proof and
+the two pending complete Stage12 runs; older session references are superseded.
+
+The absent level13.tmx was read as one explicitly named entry from the retained
+own `tmp/CelticHeart-source-20261017.lha`, using the local tar reader. The archive
+SHA256 stayed unchanged and the existing level12 matched its archive entry.
+Proof: `tmp/celtic-level13-source-proof.json`. No download, ROM/game write or
+installed media operation was needed. Object movement/type attributes in this
+TMX are not automatically MOtype bytes; identify live slots before claiming
+enemy kinds, kills or safe passages in Stage13.
+
+### Stage12 visibly complete in two whole cold starts - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-twelve-complete-stage-thirteen-title-route.json`
+is now ACCEPTED. Both independent COMPLETE DF0 cold starts finish normally,
+with12760 states each,243 accepted prefix image guards,910 executed runtime
+RAM-byte assertions and709 present logged watch bytes independently checked.
+There are zero non-ROM exceptions. Every sampled Stage12 state from F75063
+through the living exit-bank hold F83171 has HSaliveFF. The single subsequent
+clear at F83175/PC$07FEBE60 is the genuine exitHero/deactivateHero TYPE7 exit,
+not a collision death or concealed respawn. Both actual LEVEL COMPLETE pictures
+and both actual THE FOREST STAGE4 / CODE 9KZL title pictures were individually
+viewed. ALL SIXTEEN new actual full-cold pictures were individually reviewed;
+every paired PNG is byte-identical. Hero is visibly living on the worm ledge,
+platform, far-bank ledges, knight stump and exit bank. No CP picture was used
+as the visual acceptance substitute.
+
+| Actual full-cold capture | Frame / living hero position | New permanent framebuffer SHA256 |
+| --- | --- | --- |
+| stage12-first-worm-crouched-kill-hold-11 | F81728 / X3380/Y137/HSaliveFF | 7EC9A040611BFD25F02081A6974E05D5EBF727C928FE13EEA1FB711C21C4F42C |
+| stage12-lower-platform-center-ride-hold-11 | F81900 / X3493/Y130/HSaliveFF | B1DF21540E596E581094FA7007D226B9758660F2FC2CCEEDD4206B816C856943 |
+| stage12-lower-platform-far-bank-hold-11 | F82066 / X3600/Y137/HSaliveFF | DBA1EC91D744D788D78B178A6D2BA7B46927BC93A59CCC36858DD7FD554A58AE |
+| stage12-lower-platform-raised-stone-hold-11 | F82178 / X3656/Y89/HSaliveFF | 1096604C1C0ECEFE10EA655EE75475D7F195A88891F72B1C0C8FB8B6EE6C147A |
+| stage12-far-twin-knight-crouched-kills-hold-11 | F82974 / X3788/Y169/HSaliveFF | 4C597B09BC5495D1F2406F2D0CBCD83B8B8424B08FFE1A09A75CB3A80C78C2E4 |
+| stage12-exit-hazard-far-bank-hold-11 | F83171 / X4012/Y185/HSaliveFF | FC1C4DE9E101FE1427B84FFC234C4AFFD8B120CF9BF2B0B62B977984A4DF1119 |
+| stage12-level-complete-full | F83494 / X4020/Y185/HSalive00 | 89643222D628019CB2FE68CFD3048945A67B76A85B98033E9E7DA65569AC7E31 |
+| stage13-title-full | F84064 / X4020/Y185/HSalive00 | 0852BD7B67DE5F0FF0409A4D85AEFD5A6D9A8F1A0479C61AC1866AC162F704F7 |
+
+The lower Type26 $07FF77E4 and both far Type31 $07FF7654/$07FF76A4 are
+Type0/flags40 after the actual crouched strikes. Lower Type24 $07FF7D84 has
+X3493/Y153 while the hero rides X3493/Y130 with HERO_PLATFORM08. The upper worm,
+Type30 flyer and Type32 projectile are bypasses, not invented kills. The normal
+exit is reached after a living map-hazard overjump. Stage12 is COMPLETE; Stage13
+is only a passed title at this point. The new permanent route contains251
+accepted image guards, including all eight newly measured cold hashes.
+
+Compact proofs and every actual PNG are retained in
+`tmp/stage12-complete-stage13-title-full-a/verified-summary.json` and `-b`, with
+full capture states, intentional exit trace and manifest/Runner/Core/PNG/raw
+SHA256. After individual image review and renewed SHA/path/reparse checks,
+the two own regenerable rawlogs were removed (87077705bytes); inventory and
+cleanup-result remain. `python tmp/verify_stage12_complete_pair_20261024.py
+--compact` passes retained proof/manifest/binary/all16-PNG integrity without
+requiring or pretending to recheck deleted rawlogs. Its normal mode is only
+for new raw runs before compaction. Earlier accepted proofs remain valid.
+
+AFTER Stage12 acceptance, two independent COMPLETE DF0 cold starts now execute
+`tmp/stage13-active-movement-full-candidate.json` in
+`tmp/stage13-active-movement-full-a` and `-b` (sessions28332/22834), current
+immutable416-test Release runner.12822 actions/expected12823 states,251 accepted
+prefix image guards,920 runtime RAM-byte assertions,32 watch bytes, no final
+checkpoints and exactly TWO unique images each: stage13-after-fire1 (GET READY,
+X16/Y185/HSalive00/F84919) and stage13-active-movement-full (real Right movement,
+X32/Y185/HSaliveFF/F85303). Unknown CP image hashes are not assumed as guards.
+Active waits are split into500000-Chipcycle intervals: every active snapshot
+from the second Fire must remain FF, with no hidden deaths/respawns. The bounded
+control matches all final CPU/RAM/cache/input/disk/audio/display/hash fields of
+the earlier unsplit input and has57 living sampled states; proof is
+`tmp/stage13-bounded-activation-control-verified-summary.json`. This is still
+only a functional CP control. Require every prefix/RAM guard, actual paired
+hashes, zero non-ROM exceptions and ALL FOUR individually reviewed full-cold
+GET READY/active pictures before Stage13 activation is accepted. Then identify
+real opening MOB slots/phases and continue actual gameplay. Stage13 itself is
+open. No source/core implementation or hardware availability changed; the
+416/416 Debug/Release and30/30 baseline remains the current verified core.
+
+### Stage13 visible activation and bounded opening route - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-thirteen-active-movement-route.json` is now
+ACCEPTED for activation only. Two independent COMPLETE DF0 cold starts each
+pass12823 states,251 accepted prefix image guards and920 executed runtime
+RAM-byte assertions;719 present logged watch bytes are independently checked.
+Zero non-ROM exceptions. All57 sampled active states from the second Fire
+remain HSaliveFF; no hidden death/respawn. ALL FOUR actual full-cold GET READY
+and active pictures were individually viewed, both PNG pairs byte-identical.
+The living hero is actually visible after genuine Right movement from X16 to
+X32. Thin left-edge artifacts are also present in these cold pictures; no
+reference-based renderer fix is claimed. The two actual new cold guards are:
+
+| Actual capture | Frame / position / HSalive | Framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-after-fire1 / GET READY | F84919 / X16/Y185 / 00 | 6AFE0B4CF8225103FEC09899492416544F9AB5CD2F7571F04DE79F4340A35BDA |
+| stage13-active-movement-full | F85303 / X32/Y185 / FF | 163D9766EF1F5D3E28498FCA7D1CED903ABE0B9F8913E3D9FCC9B9187B85CCC3 |
+
+Proofs and all four actual PNGs remain in
+`tmp/stage13-active-movement-full-a/verified-summary.json` and `-b`, with full
+capture states and manifest/Runner/Core/PNG/raw SHA256. The permanent route
+now has253 accepted image guards. Stage13 is ACTIVE, not completed. Stages1-12
+and every previously accepted passage remain passed. Missing compacted rawlogs
+do not reopen them. The verifier's --compact mode checks retained proofs/PNGs.
+
+Live MOB identification in the new private checkpoint proves Type30 $07FF82D4
+at original X192/Y153 and Type30 $07FF8324 at original X304/Y105: world3
+flyEagle, not Type29 hounds or Type32 projectiles. The TMX signed type values
+are loaded as Mvx by original initMonsters; they are not MOtype identifiers.
+First Type24 is $07FF8374/Y137. The fixed stump is BACK54 at X240/Y176.
+Right32 short250000-Chipcycle intervals from X32 stops X224/Y185 at F85416.
+Right+Up4 short, release and8 long500000 landing intervals reach X236/Y153;
+immediate Fire16 short, release and12 long neutral intervals kill the lower
+Type30 and live through F85627. All states FF; Type0/flags40, upper Type30
+still1E and platform still18. Waiting12 long before Fire starts too late and
+dies; the exact successful source is
+`tmp/stage13-opening-lower-eagle-kill-current.json`. This is still CP-only.
+
+The positive platform continuation (also CP-only) starts from the needed own
+`tmp/stage13-first-eagle-diagnostic-checkpoint/stage13-first-eagle-diagnostic-core/checkpoint.amigasav`.
+Up2 short, add Left8 short, release both catches the left-moving platform.
+Four long neutral intervals ride to X149/Y114/F85690/HERO_PLATFORM08. Up2 short,
+add Left5 short, release and6 short neutral intervals jump above the returning
+upper eagle and re-land X109/Y114/F85736/HERO_PLATFORM08. Left+Up7 short,
+release/12 long lands fixed X60/Y89/F85845. Right+Up7 short, release/12 long
+lands fixed X108/Y41/F85954; Right+Up16 short, release/12 long lands the fixed
+BACK186-190 strip X220/Y25/F86095. The second Type30 remains alive: a genuine
+bypass, not a second kill. Further Left10 overshoots the first platform center;
+standing Fire freezes horizontal movement in original controlHero and lets
+the platform leave the hero. No emulator repair was invented. A predicted
+rightbound/barn control missed the platform and reached only lower X367/Y185;
+it is explicitly NOT an accepted platform/barn passage despite living FF.
+
+The exact combined source is
+`tmp/stage13-first-eagle-platform-upper-branch-current.json`, from the own
+active X32 checkpoint. Its runtime-RAM-guarded combined replay passes all
+states FF to F86095; needed final diagnostic checkpoint is
+`tmp/stage13-upper-branch-diagnostic-checkpoint/stage13-upper-branch-diagnostic-core/checkpoint.amigasav`.
+Do NOT count checkpoint images or hashes as full-cold visual passes.
+
+AFTER activation acceptance, two independent COMPLETE DF0 cold starts now run
+`tmp/stage13-first-eagle-platform-upper-branch-full-candidate.json` in
+`tmp/stage13-first-eagle-platform-upper-branch-full-a` and `-b`
+(sessions92972/22114). Immutable current416-test Release runner:
+`tmp/fpu-output-v3-release-runner/GameRunner.dll`.13015 actions/expected13016
+states,253 accepted prefix image guards,979 runtime RAM-byte assertions and30
+watch bytes; --no-final-checkpoint, exactly SIX unique actual captures each:
+
+| New full-cold capture | Required actual state |
+| --- | --- |
+| stage13-opening-lower-eagle-kill-hold-11 | F85627 X236/Y153/FF, lower Type30 Type0/flags40 |
+| stage13-first-platform-ride-before-eagle | F85690 X149/Y114/FF, HERO_PLATFORM08 |
+| stage13-first-platform-eagle-overjump-reland | F85736 X109/Y114/FF, HERO_PLATFORM08 |
+| stage13-first-platform-left-step-hold-11 | F85845 X60/Y89/FF |
+| stage13-first-platform-upper-left-step-hold-11 | F85954 X108/Y41/FF |
+| stage13-first-platform-upper-long-branch-hold-11 | F86095 X220/Y25/FF |
+
+Require every prefix/RAM guard, all active Stage13 states FF, zero non-ROM
+exceptions, actual paired hashes per label and ALL TWELVE individually viewed
+actual cold pictures before permanent promotion. No unknown CP hash is assumed.
+Then continue real inputs from the high strip, inspect live map/MOB phases
+before the deadly BACK111 tiles at X304/320Y48 and the tall barn X384. Do not
+claim that the low platform alone clears the barn roof, or that visually green
+background tree branches are solid; consult actual tile properties/live state.
+Stage13 only completes after a visibly reproduced genuine exit transition.
+
+Nineteen exact bounded controls, positive and negative, are consolidated with
+inputs, full watched histories, first-dead/last-live states, HSalive traces,
+MOB snapshots and SHA256 in
+`tmp/stage13-opening-platform-probes-verified-summary.json` (2297994bytes).
+Eight own probe output roots were SHA/path/reparse/inventory checked and
+removed (4710510bytes). The two accepted activation rawlogs were likewise
+rechecked against all four individually reviewed PNGs/proofs, then removed
+(87507044bytes). Ten total own targets, cleanup inventory/result retained.
+All actual pictures, compact proofs, canonical input sources and needed own
+private checkpoints stay. No old blocked tree, original media or HDF touched.
+No Core change since416/416 Debug/Release and30/30; these new scenarios/docs
+receive focused route preflight, header audit and diffcheck, not redundant
+broad builds or boot reruns. Repo writes/Git reads used authorized escalation
+under the current read-only sandbox; Git was not moved or reconfigured.
+
+### Stage13 first eagle/platform/upper strip fully cold accepted - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-thirteen-first-eagle-platform-upper-branch-route.json`
+is now ACCEPTED. Both independent COMPLETE DF0 cold runs pass13016 states,
+253 accepted prefix image guards and979 runtime RAM-byte assertions;756 present
+logged watch bytes are independently rechecked. Zero non-ROM exceptions. All
+250 sampled active Stage13 states remain FF, without concealed death/respawn.
+ALL TWELVE actual full-cold images were individually inspected and the six
+paired PNGs are byte-identical. The living hero is visibly on the stump,
+moving platform before/after the upper-eagle jump, both fixed left steps and
+the long high strip. Lower Type30 $07FF82D4 is Type0/flags40; upper Type30
+$07FF8324 stays1E and Type24 $07FF8374 stays18. This is one kill and a genuine
+upper-eagle bypass, not a second kill. Stage13 itself is NOT complete.
+
+| Actual full-cold capture | Frame / hero position | New permanent framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-opening-lower-eagle-kill-hold-11 | F85627 / X236/Y153/HSaliveFF | E86520B29B6EA36D4499AFD7E49FA9EE5725A9D8FF8C2A88E883A48E294B3BE0 |
+| stage13-first-platform-ride-before-eagle | F85690 / X149/Y114/HSaliveFF | CD47B0A87C2C71328CC2C7E9FBB19A46EEED184E567BD20CF938B6FCEBC3FA0B |
+| stage13-first-platform-eagle-overjump-reland | F85736 / X109/Y114/HSaliveFF | B240B5A2456B36DDC7A996DE028AB682B5BE345F91F3C3784BFD7619D3E2A5AB |
+| stage13-first-platform-left-step-hold-11 | F85845 / X60/Y89/HSaliveFF | 66353F71319D42E30C58926BCFAF2A1BACE71B52532F1814585048E6C822895F |
+| stage13-first-platform-upper-left-step-hold-11 | F85954 / X108/Y41/HSaliveFF | 4576FF259BE3EC7E301EA4BBB75F43AE456AD9079D52EB37234C514ACC567C85 |
+| stage13-first-platform-upper-long-branch-hold-11 | F86095 / X220/Y25/HSaliveFF | DAA1EA937222D45C3C826B183E6C39E5F55F39F71C8598CCF9EFFC2F14D497C6 |
+
+Proofs and all twelve actual PNGs remain in
+`tmp/stage13-first-eagle-platform-upper-branch-full-a/verified-summary.json`
+and `-b`, with full capture states and manifest/Runner/Core/PNG/raw SHA256.
+The permanent route now has259 accepted image guards. After every image was
+individually reviewed and all SHA/path/reparse checks repeated, the two own
+rawlogs were removed (88045634bytes); inventory/result remain. The verifier
+`tmp/verify_stage13_first_platform_pair_20261024.py --compact` validates the
+retained accepted proof/manifest/binaries/PNGs without requiring removed raw
+logs or reopening an accepted pass. Old sessions92972/22114 are finished.
+
+### Stage13 animated bridge and first barn knight candidate - 2026-10-24
+
+The next BACK111 tiles at X304/320Y48 are NOT permanently deadly. Inspection
+of the actual `<animation>` in the existing author w3types source shows an
+18-phase cycle with120ms per phase: GIDs111/112/113 are non-solid TYPE1,
+GIDs91/92/93/94 are solid TYPE8. Earlier no-wait high-edge jumps die in the
+danger phase at F86146-86148, even when shifted by70000/140000 Chipcycles.
+This corrects the earlier static-only shorthand, without an emulator change.
+
+A genuine-input checkpoint continuation now lives from accepted X220/Y25 to
+the first barn roof and defeats its Type31. Source:
+`tmp/stage13-solid-bridge-barn-knight-current.json`, from the needed own
+`tmp/stage13-upper-branch-diagnostic-checkpoint/stage13-upper-branch-diagnostic-core/checkpoint.amigasav`.
+Five neutral500000-Chipcycle intervals wait for the solid phase. Right2 short
+250000 intervals plus140000 cycles approach X238. Add Up/hold Right8 short,
+release both and5 short landing intervals settle X296/Y25/F86185 on the near
+edge of the now solid bridge. Wait4 long intervals for the knight phase, then
+Right+Up10 short plus140000 cycles, release both and12 long intervals reach
+living X372/Y57/F86334 on the barn edge. Wait7 short, Fire16 short, release
+and12 long neutral intervals kill Type31 $07FF8054 and live through
+F86500/X372/Y57, Type0/flags40. Upper Type30 and Type24 remain present, lower
+Type30 stays killed. Every positive-control snapshot remains FF. Five short
+fire-alignment intervals instead miss and later die; a three-long bridge pause
+lands into the approaching knight. Those are retained negative controls,
+not passes even if a later respawn restores FF. No CP hash/image is promoted.
+
+A corrected rightbound low-platform control actually catches/rides the platform
+and jumps above the eagle, but its barn attempt reaches only X368/Y185: the
+measured jump apex is Y64 against the required roof standing Y57. This remains
+a failed barn approach despite FF, not a claimed accepted alternative or a
+reason to alter emulator physics. The successful route uses the solid high
+bridge instead. Required new private follow-up checkpoint:
+`tmp/stage13-barn-knight-diagnostic-checkpoint/stage13-barn-knight-diagnostic-core/checkpoint.amigasav`.
+Its guarded combined replay reaches86500 with zero non-ROM exceptions; still
+only functional checkpoint evidence pending actual full-cold pictures.
+
+AFTER first-platform cold acceptance, two independent COMPLETE DF0 cold runs
+now execute `tmp/stage13-solid-bridge-barn-knight-full-candidate.json` in
+`tmp/stage13-solid-bridge-barn-knight-full-a` and `-b` (sessions32117/79721).
+Immutable416-test Release runner: `tmp/fpu-output-v3-release-runner/GameRunner.dll`.
+13108 actions/expected13109 states,259 accepted prefix image guards,1010 runtime
+RAM-byte assertions,30 watch bytes; --no-final-checkpoint and exactly THREE
+unique images per run:
+
+| New full-cold capture | Required actual state |
+| --- | --- |
+| stage13-solid-laser-bridge-near-edge | F86185 X296/Y25/FF, grounded |
+| stage13-barn-edge-living-before-knight | F86334 X372/Y57/FF, Type31 still1F |
+| stage13-barn-knight-kill-hold-11 | F86500 X372/Y57/FF, Type31 Type0/flags40 |
+
+Require every accepted prefix/RAM guard, every active Stage13 snapshot FF,
+zero non-ROM exceptions, actual paired hashes per label and ALL SIX actual
+cold images individually viewed before permanent route promotion and pass.
+No unknown CP hashes are preloaded as cold guards. Afterwards continue actual
+inputs on the barn roof toward BACK97 at X432/Y64, identify live traps and
+next MOB phases, and require sustained living two-cold-image evidence. Stage13
+only completes after a visible reproduced level-exit/ending transition.
+
+Ten new bounded controls with exact inputs, full watch histories, live/dead
+boundaries, HSalive traces, MOBhex and raw SHA256 are consolidated in
+`tmp/stage13-solid-bridge-barn-probes-verified-summary.json` (1230648bytes).
+Five own regenerated probe roots were SHA/path/reparse/inventory checked and
+removed (2556037bytes); together with two accepted first-platform rawlogs,
+seven exact targets. Cleanup inventory/result remain. All accepted pictures,
+compact proofs, canonical input JSONs and needed private checkpoints remain;
+no old blocked diagnostic tree, original medium or HDF changed. The core is
+unchanged since416/416 Debug/Release and30/30; only these data routes and docs
+changed, so focused route validation/header/diff checks apply. No commit,
+push, tag, release, availability gate or Git configuration changed.
+### Stage13 solid bridge and barn knight fully cold accepted - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-thirteen-solid-bridge-barn-knight-route.json`
+is ACCEPTED after both independent COMPLETE DF0 cold runs:13109 states,
+259 existing image guards,1010 runtime RAM-byte assertions and787 present
+logged bytes independently rechecked. All343 active Stage13 snapshots remain
+FF; zero non-ROM exceptions. ALL SIX actual cold pictures individually viewed,
+all three PNG pairs byte-identical: visible hero on solid bridge and barn edge,
+knight present before Fire and absent after the genuine defeat.
+
+| Actual capture | Frame / hero | Permanent cold framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-solid-laser-bridge-near-edge | F86185 X296/Y25/FF | 075F21DAF21285A209ED0CDF64F7009E6E0DE2576B8C288787D90FB0C06E9287 |
+| stage13-barn-edge-living-before-knight | F86334 X372/Y57/FF | 8747868A2E179B0ABB139CB278684C0EAC16E51CF876B297B511660A3706BE9A |
+| stage13-barn-knight-kill-hold-11 | F86500 X372/Y57/FF | 49B333AD72AF097C474D0279897DE5E5F634B0C9247EC79694417DE71F4DAA23 |
+
+All three snapshots are grounded. Type31 $07FF8054 is1F at bridge/barn arrival,
+then Type0/flags40 after timed standing Fire. Lower Type30 remains0, upper
+Type30 remains1E and Type24 remains18. No second eagle/platform kill claimed.
+The permanent route now has262 cold image guards. Proofs and all SIX actual
+PNGs remain in `tmp/stage13-solid-bridge-barn-knight-full-a/verified-summary.json`
+and `-b`, including full states and manifest/binary/raw/PNG SHA256.
+`tmp/verify_stage13_barn_pair_20261024.py --compact` checks retained integrity.
+Sessions32117/79721 are finished. Stage13 is NOT complete. Next: actual inputs
+from X372/Y57 toward the BACK97 roof trap at X432/Y64 and later live MOB phases;
+new checkpoint evidence alone is never a full-cold visual pass. No Core change
+since416/416 Debug/Release and30/30; no hardware gate or commit/push changed.
+
+### Stage13 roof trap, second platform and upper-magic continuation - 2026-10-24
+
+The accepted bridge/barn pair retains all SIX reviewed pictures and compact
+proofs. `tmp/verify_stage13_barn_pair_20261024.py --compact` passes after the
+two own checked rawlogs were removed; missing permitted rawlogs are not a new
+failure. The next real-input checkpoint route from X372 lives through the roof
+BACK97 trap: Right6 short250000-Chipcycle intervals, Right+Up7 short, release
+and12 neutral500000 intervals settle X464/Y57/F86630. Right4 short walks off
+the barn; release lets Type24 $07FF8284 catch the hero at F86651/X493/Y98.
+Twenty-four neutral long intervals total ride to X653/Y98/F86813, platform
+X655/Y121/HERO_PLATFORM08. Right+Up8 short, release/12 long lands sustainably
+X708/Y57/F86925 on the fixed far GID91 bridge. All combined checkpoint states
+remain FF, zero non-ROM exceptions; NO full-cold visual pass yet.
+
+Canonical guarded input source:
+`tmp/stage13-roof-second-platform-far-bridge-current.json`.
+Needed own diagnostic checkpoint:
+`tmp/stage13-roof-second-platform-far-bridge-diagnostic-checkpoint/stage13-roof-second-platform-far-bridge-current/checkpoint.amigasav`.
+AFTER the barn pair was fully accepted, two independent COMPLETE DF0 cold runs
+started `tmp/stage13-roof-second-platform-far-bridge-full-candidate.json` in
+`tmp/stage13-roof-second-platform-far-bridge-full-a` and `-b`
+(sessions97020/59186), immutable `tmp/fpu-output-v3-release-runner/GameRunner.dll`.
+13192 actions/expected13193 states,262 accepted prefix image guards,1114 runtime
+RAM-byte assertions,30 watch bytes, --no-final-checkpoint; THREE unique actual
+pictures each, with no unknown checkpoint hashes assumed:
+
+| Pending actual capture | Required state |
+| --- | --- |
+| stage13-barn-roof-trap-far-edge-hold-11 | F86630 X464/Y57/FF, grounded |
+| stage13-second-platform-far-turn-ride | F86813 X653/Y98/FF, HERO_PLATFORM08; Type24 X655/Y121/type18 |
+| stage13-second-platform-upper-far-bridge-hold-11 | F86925 X708/Y57/FF, grounded |
+
+Require every prefix/RAM guard, all active Stage13 states FF, zero non-ROM
+exceptions, matching actual hashes per label and ALL SIX actual cold images
+individually viewed before promotion. Prepared verifier:
+`tmp/verify_stage13_second_platform_pair_20261024.py`; run ordinary mode only
+after both runs finish, then inspect actual pictures. Do not let old process
+IDs or an interrupted rawlog substitute for current completion evidence.
+
+Further checkpoint-only positive route starts from the X708 diagnostic state:
+Right+Up8 short/release12 long -> X768/Y57/F87038; rearmed Right+Up9 short,
+release12 long -> X832/Y57/F87154. Right+Up7 short and4 neutral short land on
+fixed BACK131-134 branch X884/Y25/F87193; immediately rearmed Right+Up13 short,
+release12 long bypass upper Type25 $07FF7FB4 and land X976/Y185/F87323. Both
+Type25 remain byte19, not kills. FRONT647 at the high branch is TYPE1 in the
+FOREGROUND dispatcher, i.e. collectible coins; it is not a deadly BACK TYPE1.
+Original hero.asm dispatchers were checked before making this distinction.
+
+Two genuine crouched Fire strikes defeat both Type29 $07FF7F14/$07FF7F64 in a
+bounded combined replay. Face Left for70000 cycles, release; Down10 short,
+Fire16 short -> first Type29 becomes0 at X973/F87416. Release Fire AND Down,
+wait one short to actually stand, Right for ONLY70000 cycles, release Right
+and press Down; wait8 short, Fire16 short, release Fire/Down and12 long neutral
+-> X976/Y185/F87589/FF, both Type0/flags40. Type27 $07FF7EC4 remains1B, no kill.
+All positive combined states are FF and every explicit runtime guard passes;
+this is still ONLY checkpoint evidence, NOT a full-cold gameplay pass.
+Canonical guarded source `tmp/stage13-upper-magic-twin-hound-kills-current.json`
+and required own final diagnostic checkpoint
+`tmp/stage13-upper-magic-twin-hound-diagnostic-checkpoint/stage13-upper-magic-twin-hound-kills-current/checkpoint.amigasav`
+remain. Only AFTER the X708 full pair is accepted, append this exact genuine
+input continuation to its permanent cold prefix and demand two independent
+whole DF0 cold runs and actual pictures before accepting branches/magic/hounds.
+
+Source controlHero intentionally skips horizontal movement/facing while cowered.
+Trying Right while Down remains held fires Left and later dies; explicitly
+uncrouching but turning Right for a full250000-cycle interval instead moves
+into FRONT683 at X992/Y192. Its bounded HSalive trace kills at F87433,
+A5=$0007D8 (map offset), not a hound collision. The70000-cycle turn stays short
+of that trap and succeeds. No emulator repair was invented; failed final FF
+or respawns never count as a pass. Further terrain right of X976 remains open.
+
+Sixteen exact new bounded controls, positive/negative, are consolidated with
+source scenarios, complete watched histories, first-dead/last-live boundaries,
+MOB dump hex, bounded HSalive traces and raw SHA256 in
+`tmp/stage13-roof-platform-magic-hounds-probes-verified-summary.json`
+(2670452bytes). Eight own short output roots plus the two accepted barn
+rawlogs were SHA/path/reparse/inventory checked and removed:10 exact targets,
+94039389bytes. Inventory/result: `tmp/stage13-roof-own-cleanup-*.json`.
+All canonical JSONs, needed private checkpoints, actual accepted PNGs and
+compact proofs remain; no blocked old diagnostics, media or HDF touched.
+The core is unchanged since416/416 Debug+Release and30/30. Stage13 and the
+seven-point/A1000 roadmap remain incomplete; no commits/pushes/tags/releases.
+
+
+### Stage13 roof and second platform fully cold accepted - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-thirteen-roof-second-platform-far-bridge-route.json`
+is ACCEPTED after both complete independent DF0 cold runs.13193 states,262
+prior image guards,1114 runtime RAM-byte assertions and857 present watch bytes
+independently rechecked. All427 active Stage13 snapshots remain FF; zero
+non-ROM exceptions. ALL SIX actual pictures individually reviewed, three pairs
+byte-identical. The living hero is visible on the roof, moving platform and
+far upper bridge. Type24 remains18; the earlier knight remains0/flags40 and
+lower Type25 remains19. No new kill claimed. Stage13 remains incomplete.
+
+| Actual capture | Frame / hero | New permanent cold SHA256 |
+| --- | --- | --- |
+| stage13-barn-roof-trap-far-edge-hold-11 | F86630 X464/Y57/FF | 103EF0BCCC88617B0E5CFD4F440B846932E7D64FB6F43978B177472F6F86342B |
+| stage13-second-platform-far-turn-ride | F86813 X653/Y98/FF | C2659700E205FA1974F498DC50D7B187B3894A5FB8193E271FCAEE57828695CB |
+| stage13-second-platform-upper-far-bridge-hold-11 | F86925 X708/Y57/FF | 4B1BB933C51C056E7208EBBB73A7A906F1778F46B65A67C0141405C47BA83384 |
+
+Proofs/all six actual PNGs stay in
+`tmp/stage13-roof-second-platform-far-bridge-full-a/verified-summary.json`
+and `-b`, with full states and manifest/binary/raw/PNG SHA256. The permanent
+route now has265 accepted cold image guards. Old sessions97020/59186 are done.
+`tmp/verify_stage13_second_platform_pair_20261024.py --compact` checks retained
+proof/manifest/binary/PNG integrity. Next, the exact checkpoint-verified
+upper-magic/two-hound tail is appended to this accepted cold prefix; no
+checkpoint image/hash is treated as a new visual cold pass.
+
+
+### Stage13 upper-magic and two-hound full-cold pair running - 2026-10-24
+
+AFTER accepting both X708 cold runs, the exact guarded real-input continuation
+was appended to its permanent cold prefix in
+`tmp/stage13-upper-magic-twin-hound-kills-full-candidate.json`. Both independent
+COMPLETE DF0 cold runs are active in
+`tmp/stage13-upper-magic-twin-hound-kills-full-a` and `-b` (sessions73539/15720),
+immutable416-test Release runner.13364 actions/expected13365 states,265 accepted
+prefix image guards,1304 runtime RAM-byte assertions,30 watch bytes. No external
+startup save; the original accepted prefix retains its self-restore control.
+No new checkpoint hash is assumed as a visual cold guard. Six unique actual
+captures per run, --no-final-checkpoint:
+
+| Pending actual capture | Required state |
+| --- | --- |
+| stage13-bridge-chain-first-hold-11 | F87038 X768/Y57/FF |
+| stage13-bridge-chain-second-hold-11 | F87154 X832/Y57/FF |
+| stage13-upper-magic-near-branch-land | F87193 X884/Y25/FF |
+| stage13-upper-magic-ground-bypass-hold-11 | F87323 X976/Y185/FF, both Type29 still1D |
+| stage13-first-postmagic-hound-kill | F87416 X973/Y185/FF, first Type29=0, second1D |
+| stage13-postmagic-twin-hound-kills-hold-11 | F87589 X976/Y185/FF, both Type29 Type0/flags40 |
+
+Require all prefix/RAM guards, every active Stage13 snapshot FF, zero non-ROM
+exceptions, paired actual hashes and ALL TWELVE actual cold pictures individually
+reviewed before permanent promotion. Type25 $07FF7FB4 stays19 and Type27
+$07FF7EC4 stays1B: no flame/Viking kill in this route. Prepared verifier:
+`tmp/verify_stage13_upper_magic_hounds_pair_20261024.py`. The immediate user
+request remains active until the X976 pair is reviewed, not merely launched.
+The accepted X708 rawlogs were rechecked against reviewed PNGs/proofs, SHA and
+resolved paths/reparse ancestors, then removed:89243175bytes. Inventory/result
+`tmp/stage13-second-platform-raw-cleanup-*.json`; all six PNGs and proofs remain.
+The compact X708 verifier still passes. No old blocked tree or media touched.
+
+### Stage13 bounded post-hound Viking/barrel preparation - 2026-10-24
+
+While the requested whole-cold X976 pair runs, bounded real-input diagnostics
+prepare the next route without counting any later checkpoint as a cold pass.
+Starting at the own X976/F87589 two-hound diagnostic checkpoint, immediate
+standing Left Fire is too late and dies at F87600. Up2 short vertical then
+Right13 short clears FRONT683 X992/Y192 but delayed Fire still dies to the
+pursuing Type27; shortening the first flight allows a genuine earlier hit.
+Some failed probes kill the Viking only after the hero dies: Type0 alone is
+not accepted. All such first-dead boundaries and traces are retained.
+
+Positive complete guarded checkpoint source:
+`tmp/stage13-posthound-viking-twin-barrel-step-current.json`.
+Up2 short, Right10 short, release Up/Right, Left70000 cycles to face the pursuer,
+release Left and immediately Fire16 short: Type27 $07FF7EC4 is0 while the hero
+lives at X1044/Y185/F87688. Release Fire and immediately Up2 short/Right9 short,
+release and ONE long500000 interval settle below the wall at X1104/Y185/F87734.
+Rearmed Right+Up5 short, release/THREE long intervals reach X1124/Y153/F87773.
+Immediately Up2 short vertically, Right8 short, release/12 long intervals bypass
+the approaching second Type28 and live on the fixed tunnel ledge at
+X1180/Y153/F87893. All combined snapshots FF, zero non-ROM exceptions, explicit
+runtime guards pass. Type27 is Type0/flags40 finally, both prior hounds remain0;
+all THREE Type28 $07FF8234/$07FF81E4/$07FF8194 remain1C, no barrel kills.
+This remains ONLY functional checkpoint evidence, not an accepted cold passage.
+Required own follow-up checkpoint:
+`tmp/stage13-posthound-viking-twin-barrel-diagnostic-checkpoint/stage13-posthound-viking-twin-barrel-step-current/checkpoint.amigasav`.
+After the requested X976 pair is accepted, the next whole-cold test can append
+this exact guarded tail, with actual pictures and paired independent starts.
+
+The first attempt to enter the wall reaches only X1104/Y185, not a raised
+landing. Its apparent living endpoint must not be mislabeled as a wall pass.
+Waiting long there lets the returning Type28 kill the hero. An early raised
+landing is struck by the second barrel; a short braked landing followed by an
+immediate vertical lift clears it. No emulator/physics repair invented.
+Nineteen exact positive/negative controls with full watched histories, source
+scenarios, first-dead/last-live states, MOBhex, HSalive traces and raw SHA256
+are consolidated in `tmp/stage13-posthound-viking-barrels-probes-verified-summary.json`
+(2325899bytes). Eleven own regenerated output roots were SHA/path/reparse/
+inventory checked and removed (4204624bytes); cleanup inventory/result remain.
+Canonical source JSONs, needed own checkpoints and all accepted cold pictures/
+proofs remain. No old blocked diagnostics, original media or HDF changed.
+Core remains unchanged since416/416 Debug/Release and30/30. These bounded
+future controls do not replace the ongoing requested X976 cold acceptance.
+
+### Stage13 X976 upper-spider bypass and two hounds fully cold accepted - 2026-10-24
+
+The direct user request to first verify both X708 cold runs and then continue
+through the route and two hound defeats to X976 is NOW FULFILLED. Both routes
+have two independent complete DF0 cold runs and ALL EIGHTEEN actual pictures
+individually inspected. This does NOT complete Stage13 or the broader roadmap.
+
+`Tools/a3000-celtic-heart-stage-thirteen-upper-type25-twin-hound-kills-route.json`
+is ACCEPTED. Both X976 runs pass13365 states,265 previous cold image guards,
+1304 runtime RAM-byte assertions and1036 present watch bytes independently
+rechecked. All599 sampled active Stage13 states remain FF; zero non-ROM
+exceptions. ALL TWELVE actual full-cold pictures individually reviewed, all
+six PNG pairs byte-identical. The hero is visibly alive on both high-bridge
+stops, the near branch, the ground after bypass, crouching after the first hit
+and finally standing after both hound defeats. No hidden death/respawn.
+
+| Actual full-cold capture | Frame / hero | New permanent cold framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-bridge-chain-first-hold-11 | F87038 X768/Y57/FF | 62219AB1EB19E4AEC712FA1837D6B0B333609E1B53A36C4321383EDCED0E45F4 |
+| stage13-bridge-chain-second-hold-11 | F87154 X832/Y57/FF | 1F486E2388E5099E626F0334F9B36F7537D5B0A0B611CF2165C21E8FE83686F9 |
+| stage13-upper-magic-near-branch-land | F87193 X884/Y25/FF | B0635BFCF3646459FC88F3109145017C5E2984AA6DCE14ADB7535336AA3A86C4 |
+| stage13-upper-magic-ground-bypass-hold-11 | F87323 X976/Y185/FF | 5AEBB5E9FB5EB8BDECC0F34169B30A4D8D500F0A775AD177162F428E951F2C77 |
+| stage13-first-postmagic-hound-kill | F87416 X973/Y185/FF | 323DA1568F487BB66127B595C4D61A1CF81D3AB8339EF2612987EC37F492DCBE |
+| stage13-postmagic-twin-hound-kills-hold-11 | F87589 X976/Y185/FF | 91C029183D0B0FDFE225996D1A158B75CAF769D7F5F541E521577AFFD7DAC9E1 |
+
+At F87323 both Type29 remain1D. At F87416 $07FF7F14 is0 while $07FF7F64 remains1D;
+at final F87589 both are Type0/flags40. Type27 $07FF7EC4 remains1B throughout
+these captures, and upper Type25 $07FF7FB4 stays19. Exactly TWO new hound kills;
+no Viking/spider kill. The permanent route now has271 accepted cold image
+guards, including six new actual cold hashes. Proofs and all12 actual PNGs stay
+in `tmp/stage13-upper-magic-twin-hound-kills-full-a/verified-summary.json` and
+`-b`, retaining full capture states and manifest/Runner/Core/raw/PNG SHA256.
+`tmp/verify_stage13_upper_magic_hounds_pair_20261024.py --compact` validates
+retained integrity without demanding permitted removed rawlogs. Old sessions
+73539/15720 are finished. X708 sessions97020/59186 are likewise finished.
+
+Terminology correction from actual images and the existing author's original
+MOB dispatch: world3 decimal Type25 is `moveSpider3` / spider, not magical fire.
+`CelticHeart/mob.asm` was read as a named entry from the existing own source
+archive without modifying/extracting over media. Its #24/#25/#26/#27/#28/#29
+entries map platform/spider/red worm/Viking/burning barrel/hellhound. The
+live byte19 and visible sprite agree. Historical filenames/action labels with
+magic are retained for exact replay/hash provenance, but are NOT a new claim
+of magical-fire behavior or invulnerability. Earlier accepted bypass results
+remain valid. Archive and named-entry SHA256 are retained in each new proof.
+
+Next concrete continuation is already bounded/guarded at X1180/Y153/F87893
+via `tmp/stage13-posthound-viking-twin-barrel-step-current.json`, including a
+real following Viking defeat and two-barrel phase bypass. This is ONLY
+checkpoint evidence and remains unaccepted. After this X976 acceptance, append
+that exact tail to the new permanent cold prefix and require two independent
+whole cold runs and individually reviewed pictures before a next pass. All
+three barrels remain1C. Actual Stage13 exit/ending is still open.
+No core change since416/416 Debug+Release and30/30; focused route validation,
+header audit and diffcheck apply. No new commit/push/tag/release or hardware gate.
+
+
+The two own accepted X976 rawlogs were removed only after all12 individual
+image reviews and repeated SHA/proof/resolved-path/reparse checks:90408818bytes.
+Inventory/result `tmp/stage13-hounds-raw-cleanup-*.json` remain. The compact
+X976 verifier passes after removal; actual PNGs, complete compact proofs and
+all needed own checkpoints stay. Combined with X708, four accepted own rawlogs
+were compacted this turn,179651993bytes; no original media or HDF changed.
+The recurring roadmap prompt now starts from accepted X976 and the bounded
+X1180 follow-up, not obsolete pending sessions. No additional full runs were
+started after fulfilling this direct X976 request.
+
+
+### Stage13 Viking/twin-barrel whole-cold candidate - 2026-10-24
+
+After the X976 route was fully cold accepted, its exact guarded continuation
+was appended to the permanent cold prefix and both independent COMPLETE DF0
+cold runs now execute `tmp/stage13-viking-twin-barrel-step-full-candidate.json`
+in `tmp/stage13-viking-twin-barrel-step-full-a` and `-b` (sessions35177/90080).
+Immutable416-test Release runner;13456 actions/expected13457 states,271 accepted
+prefix image guards,1405 runtime RAM-byte assertions,32 watch bytes.
+--no-final-checkpoint and three unique actual images per run:
+
+| Pending actual cold capture | Required actual state |
+| --- | --- |
+| stage13-posthound-viking-kill | F87688 X1044/Y185/FF, Type27=0 |
+| stage13-first-barrel-fixed-upper-step | F87773 X1124/Y153/FF, Type27=0/flags40 |
+| stage13-twin-barrel-far-step-hold-11 | F87893 X1180/Y153/FF, Type27=0/flags40 |
+
+All three Type28 must remain1C and both previous hounds0 at these captures.
+Require every prefix/RAM guard, all active Stage13 samples FF, zero non-ROM
+exceptions, paired actual frame/PNG hashes and ALL SIX actual cold images
+individually viewed before permanent promotion. Prepared verifier:
+`tmp/verify_stage13_viking_barrel_pair_20261024.py`. No unknown CP hash is
+preloaded. Stage13 remains open; no new core/build or hardware availability.
+
+### Stage13 bounded third barrel, spider and eagle route to X1612 - 2026-10-24
+
+While both whole-cold X1180 candidates run, a new combined checkpoint-only
+real-input continuation from that own X1180 diagnostic checkpoint now stays
+alive through the third barrel, upper spider, eagle, following Vikings and
+far fixed step. This is NOT a full-cold visual pass. Canonical guarded source:
+`tmp/stage13-third-barrel-spider-eagle-far-step-current.json`.
+Every positive replay snapshot is FF, zero non-ROM exceptions; all explicit
+runtime guards pass. Required own final diagnostic checkpoint:
+`tmp/stage13-third-barrel-spider-eagle-far-step-diagnostic-checkpoint/stage13-third-barrel-spider-eagle-far-step-current/checkpoint.amigasav`.
+
+| Functional checkpoint milestone | Actual state |
+| --- | --- |
+| third-barrel-landing-hold-11 | F88012 X1236/Y121/FF, stable beyond FRONT663 |
+| upper-inner-platform-hold-11 | F88125 X1292/Y89/FF, fixed BACK217 platform |
+| eagle-overjump-land-5 | F88273 X1448/Y185/FF, Type30 bypassed |
+| first-returning-viking-fire-13 | F88322 X1448/Y185/FF, Type27 $07FF7E24=0 |
+| returning-barrel-viking-land-5 | F88371 X1492/Y185/FF, third barrel and second Type27 bypassed |
+| far-wall-final-hold-11 | F88505 X1584/Y185/FF, BELOW the next wall |
+| far-raised-step-final-hold-19 | F88667 X1612/Y153/FF, fixed raised landing after20 long neutral intervals |
+
+Exact inputs are in the canonical source. Short summary: Up2 short250000 then
+Right8 short, release/12 long500000 -> X1236/Y121; rearmed Right+Up8, release/
+12 long -> X1292/Y89. Right+Up16, release -> X1404/Y185/F88181 under the room
+roof. Wait12 short, Up2 vertical/Right6, release6 short -> X1448/Y185/F88273,
+above/past the flying eagle. Fire14 short kills the approaching first Type27.
+Release Fire and IMMEDIATELY Up2 vertical/Right6, release6 short bypasses the
+returning third Type28 and the second Type27. Right14 short, release12 long
+reaches lower X1584. Right+Up6 short, release20 long reaches the genuinely
+raised X1612/Y153/F88667. All three Type28 remain1C; Type25 $07FF7E74 remains19,
+Type30 $07FF7D84 remains1E, second Type27 $07FF7DD4 remains1B. Exactly one new
+Type27 $07FF7E24 is Type0/flags40 at the end, in functional CP evidence only.
+Earlier accepted Viking $07FF7EC4/hounds remain0. No extra barrel/spider/eagle
+kills claimed. After X1180 is fully cold accepted, append this exact guarded
+tail to that permanent cold prefix and require independent full runs and all
+actual milestone pictures before a next pass. Then investigate terrain/trap
+near X1696 and actual later MOB phases. Stage13 ending remains open.
+
+Standing Fire from the lower ground misses the elevated Type30. Airborne Fire
+animations also fail: original hero.asm activates the magical strike only in
+the grounded path (the .grounded/.activstrike block); an airborne animation
+is not proof that an attacking strike was activated. No emulator repair is
+justified. Genuine vertical/right overjump bypasses the eagle. An immediate
+second grounded Fire after the first Viking dies instead gets killed at F88330
+by the returning Type28 $07FF8194, confirmed by HSalive trace/A5; it is not a
+second-Viking/eagle collision. Shortening the first Fire to14 intervals and
+jumping immediately avoids it. Failed dead/respawn endpoints are not passes.
+
+Fourteen bounded exact controls with full scenarios, watched histories,
+first-dead/last-live states, MOBhex, HSalive traces and raw SHA256 are preserved
+in `tmp/stage13-third-barrel-eagle-far-step-probes-verified-summary.json`
+(2588565bytes). Eight own regenerated output roots were SHA/path/reparse/
+inventory checked and removed (5137115bytes). Inventory/result:
+`tmp/stage13-third-barrel-own-cleanup-*.json`. All canonical JSONs, needed own
+private checkpoints, accepted cold PNGs/compact proofs remain. No blocked old
+tree, original media or HDF touched. Core still416/416 Debug+Release and30/30;
+only routes/diagnostics/docs changed, so focused validation/header/diff checks.
+
+### Stage13 Viking defeat and twin-barrel step fully cold accepted - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-thirteen-viking-twin-barrel-step-route.json`
+is ACCEPTED. Both independent COMPLETE DF0 cold runs pass13457 states,
+271 previous image guards,1405 runtime RAM-byte assertions and1151 present
+watch bytes independently rechecked. All691 active Stage13 samples remainFF;
+zero non-ROM exceptions. ALL SIX actual full-cold images individually viewed,
+all three PNG pairs byte-identical. Living hero visible beside the defeated
+Viking and on both raised steps. Type27 $07FF7EC4=0 at F87688,0/flags40 by
+F87773/final. All three Type28 remain1C, both earlier hounds0: one new Viking
+kill, real barrel bypasses, no barrel kills. Stage13 remains incomplete.
+
+| Actual full-cold capture | Frame / hero | Permanent cold framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-posthound-viking-kill | F87688 X1044/Y185/FF | 273BC081FE043969BB2709C490C974248CB0A68FCFA6C86F47FF89CE9A563122 |
+| stage13-first-barrel-fixed-upper-step | F87773 X1124/Y153/FF | D0670F7A31B27D84D24C64EC0B7164A6D4024964FBFEFEB4BDACDED28AE47C16 |
+| stage13-twin-barrel-far-step-hold-11 | F87893 X1180/Y153/FF | 6A1033A501829D3F67522C72511E9DFD07AC500C7B566F720FE7468C549EE1FB |
+
+Proofs/all SIX actual PNGs remain in
+`tmp/stage13-viking-twin-barrel-step-full-a/verified-summary.json` and `-b`,
+with full states and manifest/binary/raw/PNG SHA256. The permanent route now
+has274 accepted cold guards. `tmp/verify_stage13_viking_barrel_pair_20261024.py --compact` checks retained integrity. Sessions35177/90080 are finished. Only
+after this full acceptance was the exact longer X1612 guarded tail appended
+to the new cold prefix; that continuation is not yet a cold pass.
+
+### Stage13 long third-barrel/spider/eagle whole-cold pair started - 2026-10-24
+
+AFTER X1180 cold acceptance, two independent COMPLETE DF0 cold starts now run
+`tmp/stage13-third-barrel-spider-eagle-far-step-full-candidate.json` in
+`tmp/stage13-third-barrel-spider-eagle-far-step-full-a` and `-b`
+(sessions42248/94704). Immutable416-test Release runner,13649 actions/expected
+13650 states,274 accepted prefix image guards,1645 runtime RAM-byte assertions,
+32 watch bytes. --no-final-checkpoint, exactly SEVEN unique actual images each:
+
+| Pending actual cold capture | Required state |
+| --- | --- |
+| stage13-third-barrel-raised-stone-hold-11 | F88012 X1236/Y121/FF |
+| stage13-inner-fixed-platform-hold-11 | F88125 X1292/Y89/FF |
+| stage13-eagle-overjump-land | F88273 X1448/Y185/FF, Type30 remains1E |
+| stage13-next-viking-ground-kill | F88322 X1448/Y185/FF, Type27 $07FF7E24=0 |
+| stage13-returning-barrel-viking-overjump-land | F88371 X1492/Y185/FF, second Type27/third barrel remain present |
+| stage13-far-lower-wall-hold-11 | F88505 X1584/Y185/FF, lower wall approach only |
+| stage13-far-raised-step-hold-19 | F88667 X1612/Y153/FF, actual fixed raised landing |
+
+Require every prefix/RAM guard, all active Stage13 states FF, zero non-ROM
+exceptions, actual paired hashes per label and ALL FOURTEEN actual cold images
+individually viewed before permanent promotion. No unknown CP hash is assumed.
+Prepared verifier `tmp/verify_stage13_far_step_pair_20261024.py`. Type25 stays19,
+Type30 stays1E, second Type27 $07FF7DD4 stays1B, all three Type28 stay1C. Only
+the following first Type27 $07FF7E24 becomes0/flags40. Stage13 remains open.
+After full acceptance continue genuine inputs from X1612 toward the next
+raised wall and FRONT667 near X1696; inspect actual phases before new pass.
+No core change, commit/push/tag/release or optional-hardware availability.
+
+
+The two own accepted X1180 rawlogs were SHA/proof/picture/resolved-path/reparse
+checked after all six actual images were individually reviewed, then removed
+(91839060bytes). Inventory/result `tmp/stage13-viking-barrel-raw-cleanup-*.json`
+remain, with all six actual PNGs, compact proofs and needed checkpoints. The
+compact accepted-pair verifier still passes after removal. No old blocked
+diagnostic tree, original media or HDF was touched. New long X1612 cold runs
+remain pending and must be checked first on continuation.
+
+### Stage13 third-barrel/spider/eagle far step fully cold accepted - 2026-10-24
+
+`Tools/a3000-celtic-heart-stage-thirteen-third-barrel-spider-eagle-far-step-route.json`
+is ACCEPTED. Both independent COMPLETE DF0 cold starts finish13650 states,
+274 previous cold image guards and1645 runtime RAM-byte assertions.1346
+present logged watch bytes independently rechecked; all884 sampled active
+Stage13 states remainFF, zero non-ROM exceptions. ALL FOURTEEN actual cold
+pictures individually viewed; all seven frame-hash and PNG pairs identical.
+The hero is visibly on both hut steps, on the ground beside the defeated
+Viking, past the returning barrel and finally on the fixed raised step.
+The X1584 capture is only the LOWER approach, not a raised landing.
+
+| Actual full-cold capture | Frame / hero | Permanent cold framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-third-barrel-raised-stone-hold-11 | F88012 X1236/Y121/FF | 75F91A854EFAE9D89643DEA7024BEF1EDFDFAA7AC5E386EB6D8F0FCF79A43BB5 |
+| stage13-inner-fixed-platform-hold-11 | F88125 X1292/Y89/FF | 6C196930AC572F345F07FF4FFAE56ED88CE65A38217290BDD78E99F06170D53A |
+| stage13-eagle-overjump-land | F88273 X1448/Y185/FF | 47098A19B60FA7A4207E3A485C5B06BDF29C1B84E6A946BFBC8499DEB0EE38D0 |
+| stage13-next-viking-ground-kill | F88322 X1448/Y185/FF | 0C3358B2BA03FF5B6C668F2EAC9C93192F10D8422DB2863CEFFF62E39E5B11C8 |
+| stage13-returning-barrel-viking-overjump-land | F88371 X1492/Y185/FF | F3B684691A803D03BEF01FFA76B6CF40F41706663ED5A28CA95622709E49A19D |
+| stage13-far-lower-wall-hold-11 | F88505 X1584/Y185/FF | B95AFB48FF83DFFAE3786644C8CBA59E6D15822E131487384D99005BBD0627CF |
+| stage13-far-raised-step-hold-19 | F88667 X1612/Y153/FF | 38AE480DB17CD535E98ACAC50069D3067F4355F1EDE5B7531B507682370966A2 |
+
+Exactly one following Type27 $07FF7E24 is killed (0 atF88322, flags40 by
+F88371); second Type27 $07FF7DD4 remains1B. Type25 $07FF7E74 stays19,
+Type30 $07FF7D84 stays1E, all three Type28 stay1C. Earlier accepted Viking
+and hound defeats remain0. No eagle, spider, barrel or second-Viking kill.
+The permanent route now includes281 accepted actual cold image guards.
+Proofs/all14 actual PNGs stay in
+`tmp/stage13-third-barrel-spider-eagle-far-step-full-a/verified-summary.json`
+and `-b`, with complete capture states and manifest/Runner/Core/raw/PNG SHA256.
+`tmp/verify_stage13_far_step_pair_20261024.py --compact` checks the preserved
+proofs without requiring any subsequently permitted removed rawlogs.
+Old sessions42248/94704 are finished, not pending. Stage13 remains OPEN.
+
+Next genuine-input investigation starts at accepted X1612/Y153/F88667 using
+`tmp/stage13-third-barrel-spider-eagle-far-step-diagnostic-checkpoint/stage13-third-barrel-spider-eagle-far-step-current/checkpoint.amigasav`.
+Inspect raised terrain and FRONT667 nearX1696 plus actual MOB phases; require
+sustained living inputs, two independent whole cold runs and every actual
+picture before another pass. No core change since416/416 Debug+Release and
+30/30; focused route/header/diff checks apply. No commits/pushes/tags/releases,
+optional-hardware gate changes, original media or HDF writes.
+
+### Stage13 raised trap and two Vikings/knight: bounded route, whole-cold pair pending - 2026-10-24
+
+AFTER X1612 full-cold acceptance, genuine-input controls solved FRONT667 at
+X1696: Right+Up8 short250000, release5 short lands X1668/Y121; Up3 vertical,
+Right14 short, release12 long500000 reaches X1768/Y121/F88857 alive.
+Right alone stopsX1664/Y153. A longer first jump dies at X1694/F88709;
+advancing toX1682 and waiting also dies, so last FF before death is not a pass.
+The original FRONT tile26 animation contains TYPE9 and TYPE0 phases; no
+emulator repair or permanently deadly phase claim. At X1768 the actual MOBs
+are two Type27 $07FF7CE4/$07FF7C94 and Type31 $07FF7BA4, not hounds.
+
+Wait29 short, Fire16 short, release/wait6 short, Fire16 short, release/wait6
+short, Fire16 short, release12 long kills all three with actual grounded Fire.
+First Type27 dies byF89015; Type31 byF89092; second Type27 byF89170. All three
+are Type0/flags40 and hero X1768/Y121/FF throughF89254. Earlier Fire timing
+misses and ultimately dies. Canonical combined guarded CP source:
+`tmp/stage13-raised-trap-twin-vikings-knight-current.json`.
+Every CP snapshot FF/zero non-ROM. Needed private end checkpoint:
+`tmp/stage13-raised-trap-twin-vikings-knight-current-output/stage13-raised-trap-twin-vikings-knight-current/checkpoint.amigasav`.
+THIS IS STILL CHECKPOINT-ONLY, not an accepted cold pass.
+
+Two independent COMPLETE DF0 cold starts now run
+`tmp/stage13-raised-trap-twin-vikings-knight-full-candidate.json` in
+`tmp/stage13-raised-trap-twin-vikings-knight-full-a` and `-b`
+(sessions98086/70855), immutable416-test Release runner.13813 actions/expected
+13814 states,281 accepted prefix image guards,1890 runtime RAM-byte guards,
+30 watch bytes, --no-final-checkpoint, FOUR unique actual pictures per run:
+
+| Pending actual cold label | Required actual state |
+| --- | --- |
+| stage13-raised-front-trap-far-plateau-hold-11 | F88857 X1768/Y121/FF, both Vikings1B/knight1F |
+| stage13-plateau-first-viking-kill | F89015 X1768/Y121/FF, $07FF7CE4=0 |
+| stage13-plateau-knight-kill | F89092 X1768/Y121/FF, $07FF7BA4=0 |
+| stage13-plateau-twin-vikings-knight-hold-11 | F89254 X1768/Y121/FF, all three0/flags40 |
+
+Prepared verifier `tmp/verify_stage13_raised_trap_pair_20261024.py`.
+Require every prefix/RAM guard, continuous active FF, zero non-ROM exceptions,
+actual paired hashes and ALL EIGHT actual cold pictures individually viewed
+before permanent promotion. Unknown CP hashes are not used as new cold guards.
+
+A further bounded CP-only continuation already passes BACK97 atX1856 and
+kills the lower Type31 $07FF7BF4: fromX1768/F89254 Right8 short, addUp18 short,
+release12 long -> X1952/Y121/F89430. Right+Up10 short, release/FIVE short
+landing intervals, then Fire16 short, release12 long -> X2024/Y153/F89624,
+Type31=0/flags40. Only FOUR landing intervals starts Fire airborne and dies
+atF89525 despite a Fire animation; the actual grounded check matters.
+Canonical `tmp/stage13-back97-lower-grounded-knight-current.json`, needed
+private end CP under its matching -output directory. NOT a full-cold pass;
+accept the running X1768 pair first before promoting or starting another
+whole-cold continuation. The next terrain is fixed water stones fromX2144.
+Stage13 exit/ending and the broader roadmap remain OPEN. Core unchanged.
+
+### Stage13 further fixed-water-stone route remains checkpoint-only - 2026-10-24
+
+The bounded positive path beyond the pending X1768 triple-kill route now
+continues through BACK97 and a confirmed grounded lower-knight strike to
+X2024/Y153/F89624, then through all four fixed water stones and the far shore:
+Right5 short250000, addUp12 short, release12 long500000 -> X2144/Y153/F89768;
+Right+Up10 short/release12 long -> X2215/Y121/F89888; Right+Up11/release12 long
+-> X2292/Y121/F90011; Right+Up11/release12 long -> X2368/Y153/F90134;
+Right+Up12/release12 long -> X2452/Y153/F90261. Every combined CP sample FF,
+zero non-ROM exceptions, all explicit position/grounding/living guards pass.
+No moving-platform ride or extra kill is inferred from these fixed stones.
+
+Canonical combined source from X1768/F89254:
+`tmp/stage13-back97-lower-knight-lake-far-shore-current.json`.
+Needed own final private diagnostic checkpoint:
+`tmp/stage13-back97-lower-knight-lake-far-shore-current-output/stage13-back97-lower-knight-lake-far-shore-current/checkpoint.amigasav`.
+The shorter sources `tmp/stage13-back97-lower-grounded-knight-current.json`
+and `tmp/stage13-four-lake-stones-far-shore-current.json` retain their own
+needed diagnostic checkpoints. NONE is a new full-cold gameplay pass.
+First accept both running X1768 full cold routes and all eight actual pictures;
+only then append the exact combined tail for another independent whole cold
+pair. Stage13 level exit/ending is not yet seen. Next actual terrain from
+X2452 includes elevated knight and real Type32 projectiles; inspect live slots
+and phases before making any kill/bypass claim.
+
+24 new bounded controls are consolidated with exact scenarios, all watched
+histories, first-dead/last-live states, complete first/final states, memory
+snapshot hex, HSalive traces and raw SHA256 in
+`tmp/stage13-raised-trap-knights-lake-probes-verified-summary.json`
+(2282342bytes). Ten own regenerable raw output roots were fully SHA/resolved-
+path/reparse/inventory checked and removed (5439682bytes). Inventory/result:
+`tmp/stage13-raised-own-cleanup-*.json`. Exact source manifests, needed private
+CPs, accepted actual PNGs and compact proofs remain; no old blocked tree,
+original media or HDF touched.
+
+Two own accepted X1612 rawlogs were removed only after all14 actual images,
+compact proofs, binaries, PNG/raw hashes and resolved-path/reparse checks
+(93160534bytes). Inventory/result `tmp/stage13-far-step-raw-cleanup-*.json`
+remain; compact accepted-pair verifier still passes. An initial PowerShell
+ancestor-check attempt used an unsupported Split-Path parameter set; it was
+interrupted BEFORE deletion. Corrected IO.Path traversal and Stop-on-error
+then passed before either deletion. This was a local script error, not an
+automatic approval denial. No test evidence or guest media was lost.
+Core remains unchanged since416/416 Debug+Release and30/30; no redundant suite
+or native-boot repetition claimed for these data/scenario-only changes.
+
+Final focused checks for these data-only changes pass: the new permanent
+X1612 route, pending whole-cold X1768 candidate and both canonical guarded
+continuations all validate; both new helper scripts parse; source-header audit
+reports0 missing Apache headers and git diff --check passes (only pre-existing
+LF/CRLF conversion warnings). The recurring prompt now starts with accepted
+X1612 and pending sessions98086/70855, then the bounded combined X2452 tail.
+The two whole-cold X1768 runs remain in progress; no new full-cold pass is
+claimed for that route or the X2452 checkpoint continuation. No further cold
+pair was launched before accepting the current one.
+
+### Stage13 FRONT667 and two Vikings/knight fully cold accepted - 2026-10-24
+
+The user's requested FIRST check of both X1768 cold starts is NOW FULFILLED.
+`Tools/a3000-celtic-heart-stage-thirteen-raised-trap-twin-vikings-knight-route.json`
+is ACCEPTED. Both independent COMPLETE DF0 runs finish13814 states, all281
+previous accepted cold hash guards and1890 runtime RAM-byte assertions pass;
+1546 present watch bytes independently rechecked. All1048 sampled active
+Stage13 states remainFF, zero non-ROM exceptions, no HDF involved. All EIGHT
+actual cold pictures individually viewed; four frame/PNG pairs byte-identical.
+The living hero is visible on the far plateau, during the two strike stops
+and after the sustained final neutral wait. Exactly two Type27 and one Type31
+are killed with genuine grounded Fire, not a death/respawn endpoint.
+
+| Actual full-cold capture | Frame / hero | Permanent cold framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-raised-front-trap-far-plateau-hold-11 | F88857 X1768/Y121/FF | 0C2F9189C029023C8BC05992A0EE99F8E2A1FEEE43B752F8D15891732183FF71 |
+| stage13-plateau-first-viking-kill | F89015 X1768/Y121/FF | 5077D70AE309EA85EF8199B8F62C68BAF1981B8098B2DB90EF5EDFBA27DD5733 |
+| stage13-plateau-knight-kill | F89092 X1768/Y121/FF | 909F204AACEC85F320AAEA74F8CD93C914DD00E396F40AEE5C54246B64B94EAE |
+| stage13-plateau-twin-vikings-knight-hold-11 | F89254 X1768/Y121/FF | CF21AF2B80554ECB8B4863D08282AE7C41D8EFA3EF0DE1D100A5ECDDBD50C4A3 |
+
+At first stop Type27 $07FF7CE4/$07FF7C94 remain1B and Type31 $07FF7BA4 remains1F.
+First Viking is0 byF89015, knight0 byF89092, second Viking0 by finalF89254;
+all three final Type0/flags40. Earlier accepted defeats remain accepted.
+Proofs/all8 actual PNGs stay in
+`tmp/stage13-raised-trap-twin-vikings-knight-full-a/verified-summary.json`
+and `-b`, with full capture states and manifest/Runner/Core/raw/PNG SHA256.
+`tmp/verify_stage13_raised_trap_pair_20261024.py --compact` verifies retained
+integrity. The permanent route now includes285 accepted actual cold guards.
+Old sessions98086/70855 are complete; Stage13 remains OPEN.
+
+The user also requested continuation via the prepared X2452 route. Only AFTER
+this X1768 acceptance may the exact combined real-input tail be appended to
+the new permanent prefix. Gated preparation script:
+`tmp/prepare_stage13_back97_lake_pair_20261024.py`; canonical source
+`tmp/stage13-back97-lower-knight-lake-far-shore-current.json`.
+Its functional-only proof retains259 living states and249 independently
+rechecked RAM-byte assertions in the matching output's functional-summary.json.
+These are not yet a whole-cold visual pass. Require both complete DF0 runs,
+all prefix/RAM guards, seven actual paired milestones and all14 actual PNGs
+individually viewed before promotion. Prepared verifier:
+`tmp/verify_stage13_back97_lake_pair_20261024.py`. No unknown CP hashes are
+assumed as cold guards. No core change since416/416 Debug+Release and30/30;
+no new commit/push/tag/release, HDF write or optional-hardware availability.
+
+### Stage13 BACK97/lower-knight/four stones/far-shore whole-cold pair started - 2026-10-24
+
+AFTER X1768 cold acceptance and all eight actual image reviews, the exact
+combined X2452 tail was appended to the permanent285-cold-guard prefix.
+Two independent COMPLETE DF0 cold starts now run
+`tmp/stage13-back97-knight-lake-far-shore-full-candidate.json` in
+`tmp/stage13-back97-knight-lake-far-shore-full-a` and `-b`
+(sessions52002/24277), immutable416-test Release runner.14071 actions/expected
+14072 states,285 accepted prefix image guards,2160 runtime RAM-byte assertions,
+30 watch bytes, --no-final-checkpoint. Exactly SEVEN unique actual captures
+per run; no unknown CP framebuffer hashes assumed:
+
+| Pending actual cold label | Required actual state |
+| --- | --- |
+| stage13-back97-far-plateau-hold-11 | F89430 X1952/Y121/FF, grounded |
+| stage13-lower-knight-grounded-kill-hold-11 | F89624 X2024/Y153/FF, grounded |
+| stage13-lake-first-fixed-stone-hold-11 | F89768 X2144/Y153/FF, grounded |
+| stage13-lake-second-fixed-stone-hold-11 | F89888 X2215/Y121/FF, grounded |
+| stage13-lake-third-fixed-stone-hold-11 | F90011 X2292/Y121/FF, grounded |
+| stage13-lake-fourth-fixed-stone-hold-11 | F90134 X2368/Y153/FF, grounded |
+| stage13-lake-far-shore-hold-11 | F90261 X2452/Y153/FF, grounded |
+
+First capture must retain lower Type31 $07FF7BF4=1F; byF89624 and every later
+capture it must be Type0/flags40. Raised next Type31 $07FF7B04 remains1F and
+both Type32 $07FF80F4/$07FF80A4 remain20: no additional kill or projectile
+removal inferred. Four water stops are FIXED stones, not moving-platform rides.
+Require all285 prefix hashes and2160 runtime RAM-byte guards, all active
+Stage13 samples FF, zero non-ROM exceptions, actual paired frame/PNG hashes
+for every label and ALL FOURTEEN actual cold PNGs individually viewed before
+permanent promotion. `tmp/verify_stage13_back97_lake_pair_20261024.py` writes
+only pending-visual machine proof until actual images are reviewed. The source
+and full-candidate SHA/expected counts are retained in the matching candidate-
+metadata.json. Stage13 ending is still OPEN; this X2452 cold pair is pending.
+
+Both newly accepted X1768 own rawlogs were SHA/proof/image/resolved-path/
+reparse checked after all eight actual image reviews and removed93449825bytes.
+Inventory/result `tmp/stage13-raised-trap-full-raw-cleanup-*.json` remain;
+all8 actual PNGs and compact proofs preserved. The compact verifier still
+passes without requiring removed rawlogs. Needed CPs and canonical inputs stay.
+No original media/HDF or older blocked tree was touched. The workspace is now
+writable; no Git metadata move/configuration or publication occurred.
+
+### Stage13 BACK97, grounded knight and fixed-water far shore fully cold accepted - 2026-10-24
+
+The direct user request to FIRST verify both X1768 runs and THEN continue the
+route to X2452 is NOW FULFILLED. Both new permanent routes pass two independent
+COMPLETE DF0 cold starts each, with ALL TWENTY-TWO actual pictures individually
+reviewed across the two pairs. This does NOT finish Stage13 or the roadmap.
+
+`Tools/a3000-celtic-heart-stage-thirteen-back97-knight-lake-far-shore-route.json`
+is ACCEPTED. Both X2452 runs finish14072 states; all285 accepted previous cold
+image guards and2160 runtime RAM-byte assertions pass.1759 present watch bytes
+independently rechecked; all1306 sampled active Stage13 states remainFF,
+zero non-ROM exceptions and no HDFs. ALL FOURTEEN actual cold pictures viewed
+individually; all seven framebuffer/PNG pairs byte-identical. The living hero
+is clearly visible on both banks, each fixed water pillar and the far shore.
+
+| Actual full-cold capture | Frame / hero | Permanent cold framebuffer SHA256 |
+| --- | --- | --- |
+| stage13-back97-far-plateau-hold-11 | F89430 X1952/Y121/FF, grounded | 476D8CF05C839217EB3D3CC60DCECF946D58F3B7178D0A9F760EB62093F0BAE4 |
+| stage13-lower-knight-grounded-kill-hold-11 | F89624 X2024/Y153/FF, grounded | B05E75D20A06AA4D8177695517C0E541B13364992498EB152F16994A2A6DFE4E |
+| stage13-lake-first-fixed-stone-hold-11 | F89768 X2144/Y153/FF, grounded | D5EF75B5F41E4457A847CF8CD7A49644A4C8594BC1066487C9B205557466E8D6 |
+| stage13-lake-second-fixed-stone-hold-11 | F89888 X2215/Y121/FF, grounded | 7D9062BD416119B1D2D23D3FF67FBEF08FADF57F401EF0D3DF64E6AC0B019C04 |
+| stage13-lake-third-fixed-stone-hold-11 | F90011 X2292/Y121/FF, grounded | AA386D28181761C2744DFC700B722BFDF9FCE521503EB2E33427DAF4D48C1E00 |
+| stage13-lake-fourth-fixed-stone-hold-11 | F90134 X2368/Y153/FF, grounded | 9322E613F6BA45453C7F80DC23F119B0173972C7228FF2FE3DB98E8C0F5FA40D |
+| stage13-lake-far-shore-hold-11 | F90261 X2452/Y153/FF, grounded | 734589A7498126103839A7FE22DBB92B91E5A826F07B52ED2C0134BF4947CDA4 |
+
+Lower Type31 $07FF7BF4 remains1F at the first capture; atF89624 and all later
+captures it is Type0/flags40 after actual grounded Fire. Raised next Type31
+$07FF7B04 remains1F; both Type32 $07FF80F4/$07FF80A4 remain20. Exactly ONE new
+lower-knight defeat, no additional knight/projectile kill inferred. The four
+water steps are fixed tile pillars, not a moving-platform ride. All previous
+accepted Viking/knight/hound/bypass results remain accepted.
+
+Proofs/all14 actual PNGs remain in
+`tmp/stage13-back97-knight-lake-far-shore-full-a/verified-summary.json` and `-b`,
+with full capture states and manifest/Runner/Core/raw/PNG SHA256. The permanent
+route now includes292 actual accepted cold image guards. Compact integrity:
+`tmp/verify_stage13_back97_lake_pair_20261024.py --compact`.
+Old sessions52002/24277 are complete; no whole-cold candidates remain pending.
+The prepared CP route was never counted as a full-cold visual pass; all seven
+new permanent hashes were obtained from these actual independent cold runs.
+
+Next concrete Stage13 work starts at accepted X2452/Y153/F90261 using the
+needed own checkpoint
+`tmp/stage13-back97-lower-knight-lake-far-shore-current-output/stage13-back97-lower-knight-lake-far-shore-current/checkpoint.amigasav`.
+Inspect actual raised Type31/Type32 phases and terrain to the right, use real
+input timing with sustained life, then require two new independent whole DF0
+cold runs and individually reviewed actual images before another pass.
+Stage13 visible level exit/ending remains OPEN. No optional hardware gate,
+Core opcode/MMU/FPU/A1000 change, new commit/push/tag/release or HDF write.
+The immutable runner remains the416/416 Debug+Release /30/30 tested build.
+The six source entries recorded in the FPU-output-v3 proof still match SHA256;
+no broad regression/native-boot rerun is claimed for these data-only changes.
+
+Final acceptance checks for this direct request pass: both new permanent
+routes validate (285 and292 actual cold hash guards); all three helper scripts
+parse, source-header audit reports0 missing Apache headers and git diff --check
+passes with only the pre-existing LF/CRLF conversion warnings. Both compact
+pair verifiers pass after the permitted rawlog removals. The X2452 own rawlogs
+removed95204511bytes after all14 actual image reviews and complete proof/SHA/
+resolved-path/reparse checks; inventory/result
+`tmp/stage13-back97-lake-full-raw-cleanup-*.json` remain. Together with X1768,
+four newly accepted own rawlogs were compacted (188654336bytes), preserving
+all22 reviewed PNGs and compact proofs. No older blocked tree or user media
+was removed. The recurring prompt now starts at accepted X2452 and the actual
+right-side terrain/Type31/Type32 investigation, not obsolete pending sessions.
+No further whole-cold candidate was started beyond fulfilling the direct
+X2452 request; Stage13 and the overall roadmap remain active and incomplete.
+
+### Stage13 projectile, two raised knights and high bridges: bounded route and cold pair - 2026-10-24
+
+From accepted X2452/Y153/F90261 a genuine-input CP-only route now stays alive
+to X3004/Y57/F91084. Canonical guarded source:
+`tmp/stage13-projectile-twin-knights-high-bridges-current.json`.
+First Right10 short250000, releaseRight, Up2 short vertical, addRight12 short,
+release all and ONE short neutral interval reaches grounded X2608/Y153.
+DirectRight diesF90317 with A5=$07FF80F4 (the actual Type32). A jump
+started after14 approach intervals instead diesF90313 through the map path
+(A5=$0013F4, caller$07FEBAA2); its precise tile cause is NOT established and
+it is not relabelled as a missile hit. Actual traces also identify the raised-
+knight and later ground-barrel boundaries. No emulator repair is inferred.
+
+Then Right+Up4 short, release4 short -> X2636/Y105/F90377 grounded. Fire16 short,
+release12 long500000 -> F90517 first Type31 $07FF7B04=0/flags40. TWO neutral
+intervals after the first missile jump shift this landing a few frames later
+and die to that knight despite the Fire animation; ONE succeeds. Right5 short,
+addUp8 short, release12 long -> X2728/Y57/F90648. Right4 short, addUp8 short,
+release12 long -> X2812/Y9/F90774. Right+Up14 short, release EIGHT long neutral
+intervals -> X2912/Y9/F90880 on the fixed solid animated middle tile. Right+Up13
+short, release5 short -> X3004/Y57/F90943 grounded. Fire16 short, release12 long
+-> F91084 far Type31 $07FF79C4=0/flags40, sustained living hero. Twelve instead
+of eight long middle waits land at the wrong knight patrol phase and die.
+The two animated TYPE1 fields are jumped over; no permanent-deadly or
+phase-independent guarantee is claimed. Failed left-side ascent died through
+the map path (A5=$001428); its precise tile was not established, so no invented
+coin/renderer cause. Actual right-side ascent is used in the positive route.
+
+Both Type32 $07FF80F4/$07FF80A4 remain20. Two Type28 $07FF7AB4/$07FF7A64 stay1C
+and Type29 $07FF7A14 stays1D: two knight kills only, genuine elevated bypasses,
+no projectile/barrel/hound kills. Needed own end CP:
+`tmp/stage13-projectile-twin-knights-high-bridges-current-output/stage13-projectile-twin-knights-high-bridges-current/checkpoint.amigasav`.
+CP hashes/images are not independent cold evidence.
+
+After a complete guarded CP replay passed, two independent COMPLETE DF0 cold
+starts were launched with
+`tmp/stage13-projectile-twin-knights-high-bridges-full-candidate.json` in
+`tmp/stage13-projectile-twin-knights-high-bridges-full-a` and `-b`
+(sessions92907/91842). Immutable416-test Release runner,14302 actions/expected
+14303 states,292 accepted previous cold image guards,2441 runtime RAM-byte
+assertions,30 watch bytes, --no-final-checkpoint. EIGHT unique actual captures
+each, no unknown CP hashes assumed:
+
+| Pending actual cold capture | Required actual state |
+| --- | --- |
+| stage13-first-projectile-overjump-land | F90345 X2608/Y153/FF, grounded; first/far knights 1F/1F |
+| stage13-first-raised-knight-grounded | F90377 X2636/Y105/FF, grounded; first/far knights 1F/1F |
+| stage13-first-raised-knight-kill-hold-11 | F90517 X2636/Y105/FF, grounded; first/far knights 00/1F |
+| stage13-right-upper-fixed-step-hold-11 | F90648 X2728/Y57/FF, grounded; first/far knights 00/1F |
+| stage13-high-solid-bridge-hold-11 | F90774 X2812/Y9/FF, grounded; first/far knights 00/1F |
+| stage13-middle-solid-step-phase8 | F90880 X2912/Y9/FF, grounded; first/far knights 00/1F |
+| stage13-far-raised-knight-grounded | F90943 X3004/Y57/FF, grounded; first/far knights 00/1F |
+| stage13-twin-raised-knights-far-bank-hold-11 | F91084 X3004/Y57/FF, grounded; first/far knights 00/00 |
+
+Prepared verifier `tmp/verify_stage13_projectile_knights_bridges_pair_20261024.py`
+requires all prefix/RAM guards, every active Stage13 sample FF, zero non-ROM,
+all eight actual paired hashes and ALL SIXTEEN actual cold PNGs individually
+viewed before permanent promotion. This entire X3004 route remains pending,
+NOT a full-cold pass. Stage13 ending remains open; no core or hardware change.
+
+### Stage13 further platform, BACK97 and two spider defeats remain CP-only - 2026-10-24
+
+A separate guarded functional continuation from the own X3004 CP now stays
+alive to X3344/Y185/F91740. Canonical combined source:
+`tmp/stage13-platform-trap-twin-spider-current.json` (179 living snapshots).
+Right9 short, addUp16 short, release12 long catches Type24 $07FF8144 and rides
+to X3102/Y82/F91256 with HSflags08. Right8 before jumping misses its strict
+center window and falls into the gap. Fourteen additional long neutral ride
+intervals reach X3172/Y82/F91355/flags08. Right+Up14 short, release12 long
+passes BACK97 nearX3232 and lands X3272/Y57/F91489. Type24 remains18; genuine
+ride and trap overjump, no platform kill. Original platform_check requires
+Mx-12 < HeroX <= Mx+12 with suitable downward feet crossing; the failed
+8-interval approach is just outside at the crossing, not an emulator defect.
+
+Right10 short, release TWO short intervals lands X3344/Y185/F91531 grounded.
+Left70000 clocks, releaseLeft, Down ONE short, Fire16 short kills Type25
+$07FF7924 byF91592 at X3341/Y185 (other Type25 still19). Release all and wait
+ONE short neutral interval BEFORE Right70000 clocks, releaseRight, Down ONE
+short and Fire16 short; release12 long -> X3344/Y185/F91740, both Type25
+$07FF7924/$07FF7974 Type0/flags40, living hero. Without that neutral un-crouch
+interval Right does not turn the hero and the returning right spider kills
+him. Original controlHero suppresses horizontal/facing updates while ducked;
+this is real input handling, no patch. Type30 $07FF7834 remains1E. Exactly two
+new spider kills in CP-only evidence, no eagle kill. Needed private end CP:
+`tmp/stage13-platform-trap-twin-spider-current-output/stage13-platform-trap-twin-spider-current/checkpoint.amigasav`.
+
+FIRST finish and accept both pending X3004 cold runs and all16 actual pictures.
+Only then may the exact combined X3344 tail be appended to the accepted cold
+prefix for another independent cold pair. Neither checkpoint-only follow-up
+nor its hashes count as a cold visual pass. All accepted prior routes and
+compact proofs remain valid; normal game states/media/HDFs untouched.
+
+### Stage13 stump, two Vikings, two hounds and FRONT667: bounded follow-up - 2026-10-25
+
+Further genuine-input CP diagnostics extend the X3344 route to X3684/Y185/F92633,
+with all248 sampled states HSaliveFF and zero non-ROM exceptions. This is NOT
+an independent cold pass. Canonical guarded source:
+`tmp/stage13-stump-twin-vikings-twin-hounds-trap-current.json`.
+It starts at the own X3344 CP recorded above; its own needed end checkpoint:
+`tmp/stage13-stump-twin-vikings-twin-hounds-trap-current-output/stage13-stump-twin-vikings-twin-hounds-trap-current/checkpoint.amigasav`.
+
+Exact positive timing, short=250000 / long=500000 chip clocks:
+Right11, addUp3, release6long lands on stump X3440/Y169/F91832. Down1 then
+Fire16, release12long keeps the hero alive; this initial elevated strike does
+NOT kill either Viking. That wait/strike timing is retained in the canonical
+route. Right18 reaches X3566/Y185/F92039. Down1 then Fire16 and release12long
+kills Type27 $07FF77E4 AND Type29 $07FF75B4; both become0 in the same sampled
+strike state F92078, later0/flags40. Hero X3567/Y185/F92184 remains FF.
+Canonical intermediate CP/source `tmp/stage13-stump-viking-first-hound-current`
+are retained. No extra eagle/worm kill is asserted.
+
+Right2short plus140000clocks (Right still held), release, Down8short reaches
+X3586/Y185 before FRONT667 atX3600. Fire16 kills the second Type29 $07FF7564
+byF92263. Release8long, Down1/Fire16 kills the returning Type27 $07FF7794
+byF92365. Release12long -> X3586/Y185/F92478, all four new opponents0/flags40.
+Up6short vertically, addRight14short, release12long crosses FRONT667 and lands
+sustainably alive X3684/Y185/F92633. Early Up2 instead dies through the map
+path F92202, A5=$001C32; later horizontal land/Fire attempts die to the actual
+second Type29 $07FF7564 atF92255/92256/92270. Endpoints after a respawn are
+explicitly rejected. Killing it from the safe pre-trap edge resolves that
+phase; no jump-physics or emulator correction is claimed.
+
+The current whole-cold X3004 pair must FIRST complete all machine and actual
+image review. Only then combine the exact CP follow-ups with its accepted
+prefix and run another two whole independent DF0 cold starts. Private CP
+kills/frames/hashes are not cold visual passes. Stage13/overall roadmap remain
+open; the next untested terrain begins toward the low stump X3792, following
+spiders/eagles and the exit. ROMs, game media, normal saves and HDFs untouched.
+
+26 earlier current projectile/knight/platform/spider probes were consolidated
+with exact inputs, complete Watch histories, live/dead boundaries, MOBhex,
+HSalive traces and raw SHA256 in
+`tmp/stage13-projectiles-knights-platform-spiders-probes-verified-summary.json`
+(3071836 bytes). Fifteen new own raw-output roots were SHA/path/reparse checked
+and removed (7513786 bytes), inventory/result
+`tmp/stage13-projectiles-own-cleanup-*.json` retained. Fourteen additional
+stump/Viking/hound/trap controls are now consolidated similarly in
+`tmp/stage13-stump-vikings-hounds-trap-probes-verified-summary.json`
+(3098301 bytes). Nine new own output roots were checked and removed
+(6387462 bytes), inventory/result `tmp/stage13-stump-own-cleanup-*.json`.
+All canonical inputs, needed own CPs, accepted actual images/compact proofs
+and active full-cold candidates remain. No older blocked tree was touched.
+Core unchanged since416/416 Debug+Release and30/30 preflight; scenario work
+alone does not imply new broad suite/boot or hardware acceptance.
+
+### Stage13 projectile overjump, two raised knights and high bridges: full cold acceptance - 2026-10-25
+
+The previously pending X3004 pair is NOW ACCEPTED. Permanent route:
+`Tools/a3000-celtic-heart-stage-thirteen-projectile-twin-knights-high-bridges-route.json`.
+Both independent complete DF0 cold runs finish14303 states, all292 accepted
+previous image guards and2441 runtime RAM-byte assertions passed;1990 present
+logged Watchbytes independently rechecked. All1537 active Stage13 samplesFF,
+zero non-ROM exceptions throughout, no HDFs. ALL SIXTEEN actual cold PNGs were
+individually viewed; all8 paired PNG hashes are byte-identical. Living hero is
+visible at every stop, knights visible before and absent after their grounded
+Fire defeats. Thin green high-bridge presentation remains as actually cold
+rendered; no renderer/reference fix is claimed.
+
+| Actual accepted cold capture | State | Paired actual frame hash |
+| --- | --- | --- |
+| stage13-first-projectile-overjump-land | F90345 X2608/Y153/FF | F0EB9B6A2A0E3F1618F11A24810095B9035E497712752C169AE3AE7E5D986622 |
+| stage13-first-raised-knight-grounded | F90377 X2636/Y105/FF | FA71CB6731C496C34F3801C9D61895D7D2FC6F004AD285480EA5928DA1170996 |
+| stage13-first-raised-knight-kill-hold-11 | F90517 X2636/Y105/FF | 1472DDB64649CC845D9F51A9BEED8A819D9929CF60E65408EE7199A1FE3AD071 |
+| stage13-right-upper-fixed-step-hold-11 | F90648 X2728/Y57/FF | C423544DDBA0041DF1DDD1237C8B0BFD3C09A0B70A3C8EB39CE143933CEF9462 |
+| stage13-high-solid-bridge-hold-11 | F90774 X2812/Y9/FF | 64689B14039A75EFB245C178F60514A9B84A4D2578D60A110871B1B5D4B6B0F7 |
+| stage13-middle-solid-step-phase8 | F90880 X2912/Y9/FF | D1C17B77B0653E5C37AB5CA268D6329805523B6FFDFB2A8222B0800A4647719C |
+| stage13-far-raised-knight-grounded | F90943 X3004/Y57/FF | 105815D13DBDA7DAE05E9988F9CD9DD1D429FA1905BA91A39C487D1F2A8D1CB4 |
+| stage13-twin-raised-knights-far-bank-hold-11 | F91084 X3004/Y57/FF | 3F11ED2B59F0D16D1C5DDB66B6FA6C9CCD595830D38EE317475AF8F862DF45CF |
+
+First Type31 $07FF7B04 becomes0/flags40 atF90517, far Type31 $07FF79C4 only
+atF91084: exactly TWO new knight kills. Type32 $07FF80F4/$07FF80A4 remain20,
+Type28 $07FF7AB4/$07FF7A64 remain1C, Type29 $07FF7A14 remains1D. Earlier accepted
+kills remain0. These are genuine projectile/terrain bypasses, no other kills.
+All8 actual new hashes are permanent cold guards,300 total in the new route.
+Proofs and all16 actual PNGs remain in
+`tmp/stage13-projectile-twin-knights-high-bridges-full-a/verified-summary.json`
+and the corresponding `-b` root; complete Capture states, raw/manifest/binary/
+PNG SHA256 retained. The two sessions92907/91842 completed successfully.
+`tmp/verify_stage13_projectile_knights_bridges_pair_20261024.py --compact`
+checks retained proof/manifest/immutable binary/actual PNG integrity.
+
+Next concrete work is the exact already living CP-only platform/BACK97/two-
+spider and stump/two-Viking/two-hound/FRONT667 route through X3684/F92633,
+recorded above. Now that X3004 is accepted, it may be combined with this300-
+guard prefix for another pair of independent whole cold starts and actual
+pictures. Private follow-up kills/hashes alone remain NO cold acceptance.
+Stage13 exit/ending and the whole roadmap remain OPEN. Core unchanged416/416
+Debug+Release and30/30; no new commits/pushes/tags/releases or hardware gates.
+
+### Stage13 platform, two spiders, two Vikings and two hounds: next cold pair started - 2026-10-25
+
+Only AFTER full X3004 acceptance, the exact previously living CP follow-ups
+were combined with the permanent300-cold-guard prefix. New combined diagnostic
+`tmp/stage13-platform-spiders-vikings-hounds-trap-current.json` independently
+replays all423 snapshots alive through X3684/Y185/F92633, zero non-ROM.
+No unknown CP image hash is promoted. Metadata records exact source/input/
+immutable-binary SHA256 and new Capture RAM values. Prepared whole candidate:
+`tmp/stage13-platform-spiders-vikings-hounds-trap-full-candidate.json`,
+14724 actions/expected14725 states,300 previous accepted cold image guards,
+3728 runtime RAM-byte assertions,30 Watchbytes. Two independent COMPLETE DF0
+cold runs started in `tmp/stage13-platform-spiders-vikings-hounds-trap-full-a`
+and `-b`, sessions81776/99795, immutable416-test Release runner,22:11 UTC on
+2026-10-24 / 00:11 Europe/Berlin on2026-10-25. --no-final-checkpoint, exactly
+ELEVEN unique actual images per run:
+
+| Pending actual cold capture | Required state |
+| --- | --- |
+| stage13-next-platform-center-catch | F91256 X3102/Y82/FF, HSflags08 |
+| stage13-next-platform-right-turn-ride | F91355 X3172/Y82/FF, HSflags08 |
+| stage13-back97-far-platform-bank-hold-11 | F91489 X3272/Y57/FF, HSflags00 |
+| stage13-twin-spider-grounded-before-strike | F91531 X3344/Y185/FF, HSflags00 |
+| stage13-left-spider-crouched-kill | F91592 X3341/Y185/FF, HSflags10 |
+| stage13-twin-spider-crouched-kills-hold-11 | F91740 X3344/Y185/FF, HSflags00 |
+| stage13-postspider-stump-grounded | F91832 X3440/Y169/FF, HSflags00 |
+| stage13-first-viking-hound-crouched-kills-hold-11 | F92184 X3567/Y185/FF, HSflags00 |
+| stage13-second-hound-pretrap-kill | F92277 X3586/Y185/FF, HSflags10 |
+| stage13-twin-vikings-twin-hounds-kills-hold-11 | F92478 X3586/Y185/FF, HSflags00 |
+| stage13-front667-far-ground-hold-11 | F92633 X3684/Y185/FF, HSflags00 |
+
+Type24 $07FF8144 remains18; the first two stops require HSflags08 and actual
+platform coordinates matching the hero X/feet. Spiders $07FF7924/$07FF7974,
+Vikings $07FF77E4/$07FF7794 and hounds $07FF75B4/$07FF7564 must end0/flags40:
+SIX new defeats only. Type30 $07FF7834 stays1E, all three watched Type26 stay1A,
+earlier raised knights stay0; no eagle/worm/platform kills. Prepared checker
+`tmp/verify_stage13_platform_spiders_hounds_pair_20261025.py` requires all
+prefix/RAM guards, continuous active Stage13 FF, null non-ROM, matching actual
+hashes for every label and ALL TWENTY-TWO actual images individually viewed
+before any permanent promotion. These new whole-cold runs remain PENDING;
+Stage13 and the overall roadmap remain incomplete.
+
+Additional bounded end-stump controls from the own X3684 CP are NEGATIVE:
+Right13/addUp4/release6long reaches X3796/Y169, but crouched or standing Fire
+there does not defeat the approaching Type30 $07FF76F4; actual standing-control
+HSalive/A5 trace identifies its contact atF92805. Immediate Right+Up14 from
+that ledge instead meets the second following Type25 $07FF7654 atF92780,
+A5 confirmed. No successful final-stump/exit pass or extra kill is claimed.
+These controls have explicit death/respawn boundaries. Next terrain remains
+stumpX3792, following spiders/eagles, then actual TYPE7 exit. The new X3684
+whole-cold pair is the next acceptance gate, not those negative diagnostics.
+
+### Stage13 current evidence compaction and retained next step - 2026-10-25
+
+After all16 actual X3004 images were individually reviewed, both verified-
+summary proofs and every PNG SHA were checked again. Only the two own accepted
+steps.jsonl files were removed,96777181 bytes; inventory/result
+`tmp/stage13-projectile-knights-full-raw-cleanup-*.json` retained. All16 PNGs,
+full Capture states, raw SHA, candidate/permanent manifests, immutable runner
+and needed own CPs remain. The --compact verifier still checks retained proof,
+manifest, binary and PNG integrity without requiring deliberately removed raw.
+Three new negative final-stump controls were consolidated with exact inputs,
+complete Watch history, first death/last live state and bounded HSalive traces
+in `tmp/stage13-end-stump-negative-probes-verified-summary.json` (416707 bytes).
+Their three own raw roots787519 bytes were path/SHA/reparse checked and removed;
+inventory/result `tmp/stage13-end-stump-own-cleanup-*.json` retained. No accepted
+images/private checkpoints or older blocked diagnostics/media/HDFs were removed.
+
+NEXT required action is to inspect both running full X3684 cold outputs,
+sessions81776/99795 (verify actual outputs after any restart), then ordinary
+`tmp/verify_stage13_platform_spiders_hounds_pair_20261025.py`, all11 capture
+RAM states and ALL22 actual cold PNGs individually. Promote only after that
+whole proof. Needed own follow-up CP remains
+`tmp/stage13-stump-twin-vikings-twin-hounds-trap-current-output/stage13-stump-twin-vikings-twin-hounds-trap-current/checkpoint.amigasav`.
+Accepted X3004 remains a pass; pending X3684 and negative end-stump diagnostics
+must not replace it or imply Stage13/roadmap completion. No core changes or new
+Git publication; the 416/416 Debug+Release and30/30 baseline remains historical
+and valid. Focused scenario/parser/header/diff checks apply to the new data.
+
+### Stage13 final stump, animated trap, congratulations and story: guarded CP-only ending - 2026-10-25
+
+While the independent whole-cold X3684 pair continues, the final route has been
+found with genuine inputs. This is private-checkpoint evidence ONLY, not Stage13
+cold acceptance. Canonical guarded source
+`tmp/stage13-final-eagle-trap-ending-current.json` starts at the own X3684 CP;
+188 snapshots, zero non-ROM, every active snapshot FF until the intentional
+TYPE7 exit. `tmp/stage13-final-eagle-trap-ending-current-verified-summary.json`
+retains input/raw SHA, all8 capture states and actual exit trace. No unknown CP
+image hash becomes a cold guard.
+
+Right13short/addUp4/release6long -> X3796/Y169/F92735. Wait THREE neutral250000-
+clock intervals, Fire16short, release12long defeats Type30 $07FF76F4 and lives
+to F92886, Type0/flags40. Five waits also works; seven is too late. The earlier
+immediate Fire failures were genuine timing misses; no invulnerability or
+emulator defect is inferred. Own intermediate source/needed CP:
+`tmp/stage13-end-stump-eagle-kill-current.json` and corresponding current-output
+checkpoint. Both final Type25 $07FF7604/$07FF7654 stay19 and final Type30
+$07FF76A4 stays1E: exactly one new CP-only eagle defeat, no spider kills.
+
+Right+Up14short, release ONE neutral short -> X3896/Y185/F92939. Up2short
+vertically, addRight ELEVEN short -> X3972/Y185/F92984, alive beyond the final
+animated trap. Release ONE neutral short, Up2short vertically, addRight12short
+crosses the last eagle and enters TYPE7. Last sampled active state F93013
+X4006/Y135/FF/HSflags01; atF93016 X4014/Y138, actual exitHero->deactivateHero
+PC$07FEBE60/first return$07FEBE70 sets HSalive00/HSflags41 intentionally.
+This is level exit, NOT death/respawn. Generic helper firstDead means merely
+first non-FF; actual trace/source and the lack of any respawn distinguish this
+exit. The final guard explicitly expects00 afterF93016, FF before it.
+
+Distinct negative causes: unbraked horizontal rearm atX3910 dies through MAP
+F92943/A5$001EB8. The braked vertical variant crosses that hazard but later dies
+F92997 to actual final Type30 $07FF76A4. The additional landed/vertical rearm at
+X3972 resolves that contact. Original w3types GID683 is an ANIMATED floor hazard:
+6831000ms,684100ms,685100ms,686100ms,687200ms,686100ms,685100ms,684100ms;
+GIDs685–687 are TYPE9. Existing archive/local bytes match exactly; source SHA
+`tmp/stage13-final-trap-animation-source-proof.json`. It is not permanently safe
+TYPE0. FRONT647 remains fg_coin. No invented renderer/physics repair.
+
+Individually viewed actual CP pictures show CONGRATULATIONS / PRESS BUTTON at
+F93361. A genuine Fire500000clocks and two20000000-clock waits then show the
+illustrated final story beginning FINALLY ERIC atF93959. It is NOT Stage14:
+original game.i defines LEVEL_END=13 and game.asm selects the final-game path;
+archive/entry SHA in `tmp/stage13-game-ending-source-proof.json`. The earlier
+F93389 CP capture is in the text overlay's blink-off phase and has NO visible
+completion text; never count it as visible LEVEL COMPLETE. Both actual CP
+congratulations/story images remain under
+`tmp/stage13-checkpoint-congratulations-ending-visible-output`, diagnostic only.
+Historical next-title filenames remain for provenance, not a Stage14 claim.
+A first read-only source assertion incorrectly assumed two literal tabs in the
+LEVEL_END definition; corrected to parse whitespace and exact numeric13 before
+any proof/document mutation. No guest test or accepted evidence was affected.
+
+FIRST accept the X3684 whole-cold pair and all22 actual pictures. Prepared
+`tmp/prepare_stage13_ending_pair_20261025.py` refuses to combine until its compact
+accepted proof and permanent311-guard route exist. Then two independent COMPLETE
+DF0 cold starts, `tmp/verify_stage13_ending_pair_20261025.py`, actual paired hashes
+and ALL16 new cold pictures individually viewed are required. Only then may
+Stage13 and the thirteen-stage Celtic Heart game be completed. Seven-point
+hardware roadmap/A1000 remain open regardless. Core unchanged416/416 Debug+
+Release,30/30; no Git publication or hardware availability change.
+
+### Stage13 final-control evidence compaction - 2026-10-25
+
+Eight current exact bounded final-stump/eagle/trap/exit controls are compacted
+in `tmp/stage13-final-eagle-trap-ending-probes-verified-summary.json`
+(1412043 bytes), including all input cases, full Watch histories, first inactive/
+last active snapshots, bounded HSalive traces and raw SHA. The intentional
+F93016 TYPE7 exit is explicitly distinguished from negative death/respawn cases.
+Five NEW own raw-output roots2801501 bytes were SHA/path/reparse checked and
+removed, inventory/result `tmp/stage13-final-eagle-own-cleanup-*.json` retained.
+Canonical final source, its needed X3684/X3796 CPs and combined functional
+ending output remain for later cold preparation. CP congratulations/story
+pictures are individually checked and hashed in
+`tmp/stage13-checkpoint-ending-pictures-verified-summary.json`, explicitly
+checkpoint diagnostics, never independent cold proof. The original blink-off
+image and historical filenames remain correctly classified.
+
+The ending preparation/checker parse successfully. All six FPU-output-v3
+source SHA values still match the immutable416-test baseline; no source/core
+change or broad suite/boot rerun is implied. Current first gate remains both
+X3684 whole cold runs and all22 actual pictures; then two whole cold ending
+runs/all16 actual pictures before completion. No original media/HDFs, older
+blocked trees, normal saves or unrelated changes were touched.
+
+### Stage13 platform, two spiders, two Vikings and two hounds: whole-cold acceptance - 2026-10-25
+
+The pending X3684 pair is NOW ACCEPTED. Permanent route:
+`Tools/a3000-celtic-heart-stage-thirteen-platform-spiders-vikings-hounds-trap-route.json`.
+Both independent complete DF0 cold runs finish14725 states;300 previous cold
+image guards and3728 runtime RAM-byte assertions passed,3275 present logged
+Watchbytes independently rechecked. All1959 active Stage13 samplesFF, null
+non-ROM exceptions throughout, no HDFs. ALL22 actual cold PNGs were individually
+viewed, eleven pairs byte-identical. Actual platform rides and living hero
+are visible; all six newly defeated enemies have final Type0/flags40. These
+actual cold pictures replace no earlier pass and use no CP visual assumption.
+
+| Actual accepted cold capture | State | Paired actual frame hash |
+| --- | --- | --- |
+| stage13-next-platform-center-catch | F91256 X3102/Y82/FF/flags08 | 1C4E62269CE832A37250C966CBEE60D9F5D3A04BE19E520FA7E3315F6E931DEE |
+| stage13-next-platform-right-turn-ride | F91355 X3172/Y82/FF/flags08 | FFA676CDB56E081D5F575D660894DF119D39F7D22F965B935576BD683BE976C7 |
+| stage13-back97-far-platform-bank-hold-11 | F91489 X3272/Y57/FF/flags00 | FB31D0D7016653C61051C3E55ED224F73E33C578461D692374D631B61ED1D64A |
+| stage13-twin-spider-grounded-before-strike | F91531 X3344/Y185/FF/flags00 | 28AC7B9A97F85CF92DA7234B3EB7D6010B475E5F2C5DAE8C160B961C9F4E86CA |
+| stage13-left-spider-crouched-kill | F91592 X3341/Y185/FF/flags10 | 5B0C742A233FF7EBEFDE565AAE718D4BB6364060B41A6DDE1C44F4826F55BF0D |
+| stage13-twin-spider-crouched-kills-hold-11 | F91740 X3344/Y185/FF/flags00 | A945E17992DFBD4AE80CD3012C289DE225A74767435D31C0C3568C8E0F63ED47 |
+| stage13-postspider-stump-grounded | F91832 X3440/Y169/FF/flags00 | B0AEC2455710BE072DA0199F6701D0E41C71B7A28EEEF209EDBD46CB2316F490 |
+| stage13-first-viking-hound-crouched-kills-hold-11 | F92184 X3567/Y185/FF/flags00 | 860DF7AA516AF1EC527BBCAB29BA966E50556D6750D01FD9C6342A4B05285168 |
+| stage13-second-hound-pretrap-kill | F92277 X3586/Y185/FF/flags10 | C6B8C01B49E807D9D877D1854F4035DB303C32A4ECB55BB5D2D560DDAACF8396 |
+| stage13-twin-vikings-twin-hounds-kills-hold-11 | F92478 X3586/Y185/FF/flags00 | FE53F925C74BCA99E34287E2549B65C9B257D76D3C10A78B364AA568A27AA329 |
+| stage13-front667-far-ground-hold-11 | F92633 X3684/Y185/FF/flags00 | 7EC3AEA6495E4F1A07C6F9E171B9DB25E6C90B66F5A5BCB288F15DE080DE007A |
+
+Type24 $07FF8144 stays18; first two stops prove actual center catch and ride
+with flags08 and platform coordinates. Type25 $07FF7924/$07FF7974, Type27
+$07FF77E4/$07FF7794 and Type29 $07FF75B4/$07FF7564 all end0/flags40: exactly SIX
+new defeats. First spider F91592 and second hound F92277 are immediately Type0
+with flags80, subsequently40; no premature40 claim. Type30 $07FF7834 remains1E,
+three Type26 remain1A, earlier raised knights remain0. No eagle/worm/platform
+kills. All11 new actual hashes are permanent cold guards,311 total.
+Proofs/all22 actual PNGs remain in
+`tmp/stage13-platform-spiders-vikings-hounds-trap-full-a/verified-summary.json`
+and corresponding `-b`, preserving full Capture states and raw/manifest/binary/
+PNG SHA256. Sessions81776/99795 completed successfully.
+`tmp/verify_stage13_platform_spiders_hounds_pair_20261025.py --compact` verifies
+retained accepted evidence without requiring any later permitted raw compaction.
+
+NEXT: prepare/run the exact guarded final stump/eagle/trap/TYPE7/congratulations/
+story tail now that the311-guard prefix is fully cold accepted. Its existing
+CP-only success and two viewed diagnostic pictures still do NOT finish Stage13.
+Two further whole independent DF0 cold starts and all16 actual new pictures
+must reproduce the intentional F93016 exit, visible congratulations and the
+actual final story before game completion. Seven-point roadmap/A1000 stay open.
+No core changes since416/416 Debug+Release and30/30; no hardware gates or Git
+publication changed.
+
+### Stage13 actual final-ending cold pair started after X3684 acceptance - 2026-10-25
+
+Only AFTER both whole X3684 runs, all guards and ALL22 actual pictures were
+accepted, the guarded final tail was combined with the new permanent311-cold-
+guard prefix. Candidate `tmp/stage13-complete-ending-full-candidate.json`,
+14911 actions/expected14912 states,311 accepted previous image guards,
+4962 runtime RAM-byte assertions,30 Watchbytes. No new unknown CP hash is
+assumed. Two independent COMPLETE DF0 cold starts now run in
+`tmp/stage13-complete-ending-full-a` and `-b`, sessions48230/86356,
+started22:43 UTC on2026-10-24 / 00:43 Europe/Berlin2026-10-25. Unchanged immutable
+416-test Release runner, --no-final-checkpoint, exactly EIGHT unique actual
+captures per run:
+
+| Pending actual cold capture | Required actual state |
+| --- | --- |
+| stage13-final-stump-grounded | F92735 X3796/Y169/HSaliveFF/HSflags00 |
+| stage13-final-stump-eagle-kill-hold-11 | F92886 X3796/Y169/HSaliveFF/HSflags00 |
+| stage13-final-spiders-ground-before-trap | F92935 X3894/Y185/HSaliveFF/HSflags00 |
+| stage13-final-trap-far-ground-before-eagle | F92984 X3972/Y185/HSaliveFF/HSflags00 |
+| stage13-final-exit-overjump-living | F93013 X4006/Y135/HSaliveFF/HSflags01 |
+| stage13-type7-exit-deactivated | F93016 X4014/Y138/HSalive00/HSflags41 |
+| stage13-congratulations-message | F93361 X4014/Y138/HSalive00/HSflags41 |
+| stage13-ending-message | F93959 X4014/Y138/HSalive00/HSflags41 |
+
+NEXT first read both actual results after any restart; old session identifiers
+may then be invalid. Run ordinary
+`tmp/verify_stage13_ending_pair_20261025.py` only after both finish. It requires
+all311 cold prefix guards,4962 runtime RAM assertions, all living Stage13
+samples FF up to F93016, exactly one intentional exitHero->deactivateHero
+write (PC$07FEBE60/first return$07FEBE70) atF93016, no death/respawn, HSalive00/
+flags41 thereafter, zero non-ROM exceptions, no HDF and paired actual hashes.
+ALL SIXTEEN actual pictures must be individually viewed, especially visible
+CONGRATULATIONS atF93361 and the illustrated FINAL STORY atF93959; CP pictures
+are no substitute. Only then promote a permanent final route/actual hashguards
+and complete Stage13/the thirteen-stage Celtic Heart game. This final pair is
+PENDING; overall roadmap/A1000 remain open even if the game later passes.
+
+Exactly one further Type30 $07FF76F4 is defeated after standing Fire timed by
+three short waits on the stump. Final Type25 $07FF7604/$07FF7654 and Type30
+$07FF76A4 remain present, bypassed, not killed. The F93016 inactive hero is an
+intentional TYPE7 exit, never a hidden death. The F93389 message capture from an
+older CP is blink-off, not visible completion text; use confirmed F93361 and
+actual F93959 story. Original archive game.i LEVEL_END=13, not Stage14. Needed
+own X3684 and X3796 CPs, canonical final-eagle-trap-ending-current inputs,
+source proofs, all CP diagnostic images and earlier accepted cold proofs remain.
+No core changes, HDF/media modifications, Git publications or new hardware
+availability are implied. Focused parsers/route/header/diff checks apply;
+416/416 Debug+Release and30/30 remain the unchanged core baseline.
+
+### Stage13 X3684 compact proof retained; ending is the next gate - 2026-10-25
+
+After full actual-image review, all22 PNG/Proof hashes and both new accepted
+raw hashes were rechecked. Only those two own steps.jsonl files were removed,
+99634843 bytes; inventory/result
+`tmp/stage13-platform-six-kills-full-raw-cleanup-*.json` remain. All22 actual
+cold pictures, full Capture states/compact proofs, exact raw SHA, input routes,
+immutable binaries and needed private CPs remain. The --compact X3684 verifier
+passes without deliberately compacted rawlogs. Running final-ending candidates
+and all CP diagnostic images were untouched, as were old blocked trees/media.
+
+Next acceptance is ONLY the two already running complete final-ending cold
+boots, sessions48230/86356, then all16 actual cold pictures and exact F93016
+intentional exit trace. CP congratulations/story is diagnostic and does not
+complete Stage13 yet. Future completion must not complete the broader hardware
+roadmap: FPU execution/68040/A1000 real boot and the documented wider OS/video/
+controller/CPU acceptance remain open. All six source SHA values still match
+416/416 Debug+Release,30/30; only scenarios/helpers/documentation changed.
+Focused route/parser/header/diff checks pass, no extra broad suite implied.
+
+### Celtic Heart Stage13 and the thirteen-stage game: full cold ending accepted - 2026-10-25
+
+The two final independent COMPLETE DF0 cold starts are NOW ACCEPTED. Stage13
+and Celtic Heart's complete thirteen-stage genuine-input A3000/Kickstart3.1
+route are finished. This does not finish the broader seven-point roadmap or
+A1000, FPU/68040, installed-OS or independent graphics/reference work.
+Permanent full route:
+`Tools/a3000-celtic-heart-stage-thirteen-complete-ending-route.json`.
+
+Both runs finish14912 states. All311 previous accepted cold image guards and
+4962 runtime RAM-byte assertions passed;2678 present logged Watchbytes were
+independently rechecked. All2079 sampled active Stage13 states before the exit
+are FF; zero non-ROM exceptions throughout, no HDFs. Exactly one Stage13
+HSalive00 transition occurs atF93016 through the actual exitHero/deactivateHero
+PC$07FEBE60/first return$07FEBE70. HSalive00/flags41 after that is intentional
+exit/final story, not a hidden death/respawn. All16 actual cold PNGs were
+individually viewed; all8 pairs are byte-identical. Visible congratulations
+and actual illustrated ending were inspected in BOTH whole-cold runs.
+
+| Actual accepted final cold capture | State | Paired actual frame hash |
+| --- | --- | --- |
+| stage13-final-stump-grounded | F92735 X3796/Y169/HSaliveFF/flags00 | EC7662032F4C53F591F27C5930EAB6C58DC0E1E7D636627E4E9458D35983A896 |
+| stage13-final-stump-eagle-kill-hold-11 | F92886 X3796/Y169/HSaliveFF/flags00 | 31F565FB3182F594418C4AB0790C5CC1150409F7C9E37846AC925DB8A7E4090E |
+| stage13-final-spiders-ground-before-trap | F92935 X3894/Y185/HSaliveFF/flags00 | 2163D8970ABEE4EE067F023249AE5EDA6B57BD07148443F5D7888239DD09A9E1 |
+| stage13-final-trap-far-ground-before-eagle | F92984 X3972/Y185/HSaliveFF/flags00 | 9F890CE47688100EA3D59CF3494F9AF468725E625512CD2678C8DEEC06D890DC |
+| stage13-final-exit-overjump-living | F93013 X4006/Y135/HSaliveFF/flags01 | 9DC1398E137D31B1D2499FAF2F85166DBC9FE479F87FFFEFF1637F98CF354FFB |
+| stage13-type7-exit-deactivated | F93016 X4014/Y138/HSalive00/flags41 | 81170B934D60C6EAF48B1F187CAA2D24475395F0A647EC16CAB5AEA760D04B03 |
+| stage13-congratulations-message | F93361 X4014/Y138/HSalive00/flags41 | D5F2DA0C2EB2E2DACAFCB29C2C81EF56FD30FC41DF6995F0EE1BF141ACF5927D |
+| stage13-ending-message | F93959 X4014/Y138/HSalive00/flags41 | 278FA7CAE3035FE3E564E1021628DB92E114C0970102EC77581B1E60FC33C6D1 |
+
+Final Type30 $07FF76F4 is0/flags40; the last two Type25 $07FF7604/$07FF7654 and
+Type30 $07FF76A4 remain present, genuinely bypassed. No additional kills are
+invented. F93361 shows actual CONGRATULATIONS / PRESS BUTTON. F93959 is the
+final illustrated story, not Stage14; original LEVEL_END=13 is independently
+sourced. The older F93389 CP blink-off image was not used for visual acceptance.
+Only these actual whole-cold images supply the eight new permanent guards,
+319 total. Earlier accepted Stages1-12 and all Stage13 passages remain passed;
+permitted missing compacted rawlogs are not new failures.
+
+Proofs/all16 actual PNGs remain in
+`tmp/stage13-complete-ending-full-a/verified-summary.json` and corresponding
+`-b`, with complete Capture states, raw/trace/manifest/binary/PNG SHA256 and exact
+intentional exit record. `tmp/verify_stage13_ending_pair_20261025.py --compact`
+checks retained proof/manifest/prefix/binary/PNG integrity without requiring
+later permitted raw compaction. Sessions48230/86356 are completed, not pending.
+Needed own CPs and CP diagnostic images remain correctly classified.
+
+Only scenarios/verifiers/documentation changed since the416/416 Debug+Release
+and30/30 preflight core baseline; no redundant broad suite/boot rerun claimed.
+No commit, push, tag, release or hardware gate was changed. Next concrete work
+moves to another still-open acceptance item: inspect the documented native
+A500/Kick1.3 Cannon Fodder post-mission route and single-drive request/media
+handoff, while preserving all normal saves/ROMs/disks and blocked HDF trees.
+Cannon's already passed first mission is not reopened. The seven-point
+roadmap remains active; completing one full game does not imply full coverage.
+
+### Ending compact evidence retained; next native campaign investigation - 2026-10-25
+
+After the sixteen actual ending PNGs had been individually reviewed and all
+accepted proof/PNG/raw SHA values rechecked, only the two own accepted ending
+steps.jsonl files were removed,100900272 bytes. Exact absolute path, SHA, size,
+parent/reparse and retained-image checks are recorded in
+`tmp/stage13-ending-full-raw-cleanup-inventory.json` and corresponding result.
+All16 actual cold PNGs, accepted full Capture proofs, exit-write traces, exact
+input manifests, immutable binaries and needed private CPs remain. The compact
+ending verifier passes after removal. No older blocked paths or media changed.
+
+Read-only inspection of all five retained normal Cannon Fodder saves found
+embedded cracktro/loader instructions, two black previews and one army recruit
+menu. All five embedded previews were individually viewed, and original save
+SHA256 values before/after match. These are historical stored screenshots,
+not new running-machine or requester/campaign acceptance. The small metadata,
+exact source hashes and extracted previews are in
+`tmp/cannon-existing-save-metadata-20261025/source-metadata.json`. Normal saves
+were neither overwritten nor deleted. The old external diagnostics directory
+was intentionally removed by the user's earlier space cleanup (documented
+2026-10-13); its absence is not a new regression or reason to reject earlier
+passes. The earlier accepted A500/Kick1.3 first mission remains accepted.
+
+A new private native A500/Kick1.3 DF0 campaign base uses the existing cold
+input/media route through mission-live, write-protected original ADFs, one
+needed own checkpoint and four unique runtime captures; no HDFs. Manifest
+`tmp/cannon-a500-native-campaign-base-20261025.json`. Its loader's explicitly
+allowed vectors4/5/9 and600-event cap are retained; do not misclassify the
+historical intentional CPU-detection/trace traps as a new zero-exception
+requirement. Inspect its actual requester/army/mission pictures before new
+acceptance; then continue campaign with genuine controls and visible media
+requests. No later campaign pass is inferred from save metadata or a loader
+screen. Core remains416/416 Debug+Release,30/30; all six referenced source SHA
+values still match, header audit and diff check pass. No extra broad suite or
+boot rerun, hardware availability or publication is implied.
+
+### Current native Cannon requester/base and bounded squad controls - 2026-10-25
+
+The fresh real A500/512K Chip+512K Slow/Kick1.3 DF0 run now finishes39 states,
+F23133, with the exact prior mission-live hash
+67924E6A2AC167743764DCE214E70E00379EB5C863B7795B933EDF07DE686F39.
+All four actual cold pictures were individually inspected: a visible PLEASE
+INSERT CANNON FODDER DISK2 IN ANY DRIVE prompt, actual army HOME/AWAY recruit
+menu after real DF0 disk2/disk1/disk2 handoff, a BLACK intermediate frame
+historically labelled mission-briefing, and the real jungle with Jools/Jops.
+The black frame is not a visible briefing pass. The loader reports366 allowed
+intentional events (vector5=1,4=4,9=361), no unapproved vector; floppy writes0,
+no HDF. This re-establishes a current functional native loader/control base,
+not a newly completed objective or later campaign/requester pass. The earlier
+accepted first-mission history is preserved. Proof and all four actual PNGs:
+`tmp/cannon-a500-native-campaign-base-20261025-output/verified-summary.json`.
+Needed own current base:
+`tmp/cannon-a500-native-campaign-base-20261025-output/A500-Cannon-native-campaign-base-20261025/campaign-base-current.amigasav`.
+
+Nine bounded follow-up cases preserve exact input scenarios, all recorded
+states, raw/manifest/binary/PNG SHA and32 individually viewed actual control
+pictures in
+`tmp/cannon-native-campaign-probes-verified-summary-20261025.json`
+(516225 bytes). Short own raw logs remain. Every continuation has zero new
+non-ROM exceptions and no HDF. Same-frame real right-fire/idle controls share
+F23133/23152/23180/23209/23293/23294 and identical settled aim; right mouse
+Second changes POTINP5500->5100, releases to5500, and changes the actual image.
+This proves input delivery, not a kill. A diagonal route around the palm loses
+Jops byF23598; it is explicitly negative. A farther-right bottom order reaches
+the open right side with both Jools and Jops HUD rows present in the reviewed
+F23596 endpoint. Subsequent aim/short tracking-fire images do not provide an
+independent kill/objective update; disappearing sprites are not accepted kills.
+No new campaign success or emulator repair is inferred.
+
+A separately repeated hash-guarded control matches all recorded final CPU,
+cache, input, floppy, audio, display, expansion, frame and image fields at
+F23596. This is not an unrecorded whole-RAM equivalence claim. It saves exactly
+one required private continuation checkpoint:
+`tmp/cannon-native-clear-right-control-current-20261025-output/Cannon-native-clear-right-control-current/clear-right-control-current.amigasav`.
+Exact canonical inputs:
+`tmp/cannon-native-clear-right-control-current-20261025.json`.
+Next: start from that genuine far-right control state, establish an unambiguous
+enemy hit/objective update with settled real mouse coordinates and preserved
+squad, then require a visible next mission and actual later single-drive
+request/media handoff. Earlier accepted first mission remains passed. All
+normal saves and original ADFs remain untouched; five normal-save source SHA
+checks still match. All game-ending evidence remains accepted; no processes
+from these completed runs remain pending. Core stays416/416 Debug+Release,
+preflight30/30; only scenarios, proofs and documentation changed.
+
+### Configured Slow RAM diagnostics and Cannon objective replay - 2026-10-25
+
+A real diagnostic limitation was found while continuing the native Cannon
+campaign: GameRunner rejected mapped A500 Slow RAM at$C00000-$C7FFFF for
+memoryWatch, expectedMemoryBytes, memory-snapshot and write observations.
+The before regression rejects valid mapped storage (Expected0/Actual1).
+InspectableRam now includes only the configured model's actual Slow RAM size;
+no-Slow profiles and end-crossing/window-wrap accesses remain rejected. Three
+new model/end-boundary preflight cases pass; the complete runner preflight is
+now33/33. The separate Release runner builds with0 warnings/errors:
+`tmp/cannon-slowram-diagnostics-release-runner/GameRunner.dll`.
+It references the existing frozen core DLL directly: AmigaEmulator.dll is
+byte-identical to the FPU-output-v3 core (SHA256
+5a06285a0ac63a5536581486cb75d18c2135a28b5cd6d1a38391459ad24039da).
+No core rebuild, hardware selection, state version or emulation semantics
+changed;416/416 Debug+Release remains the unchanged core unit baseline. All
+six sources in that core proof still match. The old frozen runners remain.
+
+All24 old/new recorded Cannon prefix states match in CPU/cache/input/floppy/
+audio/display/frame/image fields; only newly requested watches/images differ.
+This does not claim unrecorded whole-RAM equivalence. A narrow read-only
+parser for OWN A500 core18 checkpoints was independently compared against
+65536 actual bus PeekByte bytes with zero guest clocks, all identical. It
+extracts saved arrays, never patches them. Actual original game code at
+$C1DD64-$C1DE41 enumerates44 sprites at$C7DB2C, stride118, skips negative
+word0 and counts the listed enemy types, including5 at+24. Kill-all objective
+$C02A08=FFFF checks that count and writes$C01DCC=FFFF atPC$C1DE1E. This
+independently resolves the prior ambiguous disappearing sprite: the first
+actual enemy entry$C7DC8E becomes$8000 atF23588 through originalPC$C2B8C2.
+The original JOY0DAT delta routine at$C0CB00 exposes mouse$C0CABA/CABC;
+player fire-target fields were also read. No host RAM/CPU patch was used.
+
+The native upper-right route preserves both squad members. A PRIVATE
+feedback recorder read only those owned runtime coordinates to choose actual
+mouse deltas/right-button states, then wrote the ordinary physical-input
+sequence. It made no game-code/CPU intervention or guest-memory writes.
+The921 emitted real input actions were replayed independently by the normal
+GameRunner with NO feedback, matching final CPU, frame and image hash exactly.
+Two compile-only development errors (parenthesis and cycles-int type) were
+corrected before any guest execution; their logs remain. A proof-only image
+count initially omitted the last three disk-response pictures; the written
+proof correctly counts31, with no case-result change.
+Nine bounded functional cases, exact scenarios, all watch trajectories,
+first/final states, SHA values and31 individually inspected actual control
+images are preserved in
+`tmp/cannon-slowram-diagnostics-verified-summary-20261025.json` (2107107 bytes).
+Checkpoint pictures above remain functional diagnostics, never cold passes.
+
+### Cannon native mission objective: two complete DF0 cold boots accepted - 2026-10-25
+
+Permanent route:
+`Tools/a500-cannon-fodder-mission-one-objective-route.json`.
+Both independent native A500/512K Chip+512K Slow/Kick1.3 runs start from actual
+DF0 and finish1096 states/F25024. The full route uses only standard real
+key/mouse/joystick/disk/wait inputs, no checkpoint restore, adaptive feedback,
+CPU intervention or RAM patch. All590 runtime RAM-byte guards and the prior
+native mission-live image guard pass;176 present logged watchbytes were
+independently checked. All1059 active gameplay samples retain both positive
+player entries; no player deactivation occurs in the actual guest-write trace.
+The same366 reviewed initial loader probes remain (vector5=1,4=4,9=361), with
+ZERO additional gameplay non-ROM events or unapproved vectors. No HDFs and
+no floppy writes. Earlier first-mission acceptance remains valid; this adds
+an exact objective/control prefix for the later campaign, not a later mission.
+
+ALL14 actual whole-cold PNGs were individually viewed; all7 pairs are byte-
+identical. Seven actual cold guards are now permanent (one prior, six new):
+
+| Actual cold capture | Frame | Paired frame SHA256 |
+| --- | --- | --- |
+| cannon-22-cf-22-briefing-loaded: visible initial Disk2 requester |15392|1BA1C6D930540C137EA648B4FF0254A8F3CF94C94D5755F06C1A4D0760609D49|
+| mission-live |23133|67924E6A2AC167743764DCE214E70E00379EB5C863B7795B933EDF07DE686F39|
+| clear-right-control-current |23596|5944BB1C80D39A77BAB5D275420DE6FB6C5E1B7B839E220ADE1EDC01A9F2D643|
+| right-column-rise-39 |23905|56A01012BC0CAB3BF9ECB3049188F42DE6D6F9B8C7F817CA07D4081C4F0D4211|
+| controller-objective-set: actual objective flag, overlay not yet visible |24743|CE1A2942E15141DAE228775A76BF777CD734D9C6FC1C5B084897FA085ED3D82E|
+| post-objective-05: visibly MISSION COMPLETE |24785|FE207E0099039AE414089E7AEC0E0645A80622C5466401926FC6207E6AA62066|
+| post-objective-39: blink-off, both named squad rows still present |25024|5DF00D23B40224ED4ACE9691B66A6420467DBE9130C56C84C249CAA5039D4E16|
+
+The three original enemy entries become$8000 through originalPC$C2B8C2:
+$C7DC8E atF23588,$C7DD04 atF24341,$C7DC18 atF24740. Their final type is4,
+not active enemy5. OriginalPC$C1DE1E first writes the completion flag at
+F24743 (later repeated same-value writes are normal). Actual F24785 clearly
+shows MISSION COMPLETE in both cold runs. F25024 is blink-off, not another
+visible-text proof. Jools and Jops remain present; no hidden squad loss or
+respawn is accepted. Sessions94569/7563 are completed.
+
+Proofs/all14 actual PNGs:
+`tmp/cannon-mission-one-objective-full-a/verified-summary.json` and -b.
+`tmp/verify_cannon_mission_one_pair_20261025.py --compact` checks retained
+candidate/permanent-route/binary/PNG integrity. After full proof/image/SHA/
+absolute-path/reparse checks, only the two OWN accepted steps.jsonl files were
+removed,7617337 bytes; inventory/result
+`tmp/cannon-mission-one-full-raw-cleanup-*-20261025.json` remain. All traces,
+full Capture states, raw hashes, exact inputs, binaries, images and needed
+private CPs remain. Missing permitted compacted raws are not failures. No older
+blocked tree, normal save, original media or HDF was changed.
+
+### Cannon post-completion handoff remains open - 2026-10-25
+
+The accepted objective endpoint can be continued from the needed own CP
+`tmp/cannon-native-recorded-tracking-objective-current-20261025-output/Cannon-native-recorded-tracking-objective-current/recorded-objective-current.amigasav`.
+A genuine left confirm fades to a black later loader. An additional180 million
+chip clocks still show black; a bounded real Disk1 RESPONSE CONTROL followed
+by60 million clocks also remains black. All these controls have zero new
+non-ROM events and were individually viewed. This is not a visible later
+requester, Mission2 acceptance or proof of a renderer defect. The Disk1
+experiment must not be renamed an actually requested Disk1 handoff.
+
+The actual loader A0 descriptor at$C2FF3A names WON.RAW; the32-byte descriptor
+is byte-identical to the original read-only Disk1 catalog at offset16928.
+The plain name also occurs at100621 in Disk1; no plain WON.RAW name was found
+in Disk2/3. Catalog presence does NOT establish which disk holds its payload.
+All three original ADF hashes were only read, no media modified. Next inspect
+the original loader's requested-media/payload fields for that descriptor;
+then perform bounded genuine media responses and demand a visible later
+requester/next mission before campaign acceptance. Do not guess a phase from
+a filename or repair intentional black output without a reference.
+Needed latest own loader CP:
+`tmp/cannon-native-post-complete-disk-one-response-control-20261025-output/Cannon-native-post-complete-disk-one-response-control/post-complete-disk-one-current.amigasav`.
+The preceding disk2/long-wait CP and exact controls remain. All source/media/
+input hashes, first/final/watch trajectories and31 actual functional pictures
+are in the diagnostics proof above. The full Celtic Heart A3000/Kick31
+thirteen-stage ending remains passed. Broader campaign/video/OS/CPU/FPU/040/
+ZorroIII/A1000 gates remain open; no publication or hardware release occurred.
+
+Exact read-only loader/catalog/media provenance and uninterpreted descriptor
+fields are retained in
+`tmp/cannon-post-complete-won-asset-source-proof-20261025.json`.
+
+### Cannon native post-mission request decoded; Mission2 controls - 2026-10-25
+
+The previous WON.RAW observation was an actual A0/catalog-byte match, but it
+was not the requested filename. Read-only native disassembly now shows
+C0BC58 starts A0 at the first cached catalog entry C2FF3A. The actual request
+is retained at C0C7B8 by the existing TRAP1 store, with the wrapper's saved
+input registers as an independent cross-check. At the earlier disk2 wait it
+is rankfont.lbm; after the disk1 response it is morphbig.lbm. Returning the
+real DF0 to disk2 loads morphbig and actually displays HEROES IN VICTORY /
+Mission1 followed by JOOLS/JOPS promotions. The old WON fields remain raw,
+uninterpreted catalog fields; catalog presence never established a payload
+disk. No CPU/RAM/game patch or renderer repair was made. The private host-only
+capstone5.0.6 disassembler is under tmp/cannon-m68k-disassembly-tools.
+Exact bytes/disassembly, request-register/CP hashes and all three unchanged
+ADF hashes: tmp/cannon-native-loader-request-correction-proof-20261025.json.
+Native error6 is the original seek retry timeout (100 unsuccessful track-zero
+steps, including unpopulated drives), not itself a CPU fault or emulator bug.
+
+The next genuine confirm requests pstuff.lbm. A real disk1 response loads it,
+then mapm2.spt waits; the following real disk2 response reaches the next army.
+Army header clicks are not a mission start. Three bounded pointer controls
+stayed in the army; a fourth opens SAVE/FORMAT/CONTINUE GAME. No save/format
+was invoked, floppywrites remain0. The final route uses the own earlier army
+CP and a real click below the header, as required by original C258F8..C25970,
+not the failed top-row controls. One zero-new-fault diagnostic guard then
+rejected the reloaded original protection sequence. Its363 events match all
+non-frame event fields, including SR/opcode/target, exactly against the last
+363 events of the accepted initial loader: vector4=2 and trace-vector9=361.
+A separately bounded corrected control permits only that exact sequence;
+all other new controls have zero new non-ROM events. This is not a new
+execution-Core failure, nor permission to ignore other faults. The full cold
+candidate expects729 native events: prior366 plus this repeated363.
+
+The native next map/briefing controls now actually show MISSION2 / ONLY VIRGIN
+SOLDIERS, then PHASE1 OF2 / BRIDGE OVER THE RIVER PIE / KILL ALL ENEMY. A later
+fully loaded briefing says3 soldiers and27 recruits. Confirming it reaches
+the actual river/jungle with JOOLS/JOPS/STOO HUD; all three type0 player entries
+remain positive through F35977. Native counter C00658=2, objective C01DCC=0.
+This is only checkpoint-functional evidence so far, not a second-mission
+completion or a visible later single-drive requester. Some actual transition
+PNGs are black even when cached row fields describe nonblack content; only
+pictures actually viewed are called visible. Cold pictures remain required.
+Own live CP:
+tmp/cannon-native-mission-two-loaded-briefing-confirm-20261025-output/Cannon-native-mission-two-loaded-briefing-confirm/mission-two-active-current.amigasav.
+Read-only world/sprite analysis: tmp/cannon-native-mission-two-start-ram-analysis-20261025.json.
+The native world is736x576, camera431/251, three players near654..671/355..366,
+and17 positive original objective-list entries remain. This is a planning
+observation, no additional kill/mission pass.
+
+All15 new bounded controls, exact inputs/full watch trajectories and all42
+actual individually reviewed functional PNGs are retained in
+tmp/cannon-native-debrief-mission-two-controls-verified-summary-20261025.json
+(1607664 bytes), with raw/manifest/binary/CP/PNG hashes. Short rawlogs remain.
+All normal user saves, ROMs/ADFs, HDFs and older blocked paths are preserved.
+
+Two independent whole DF0 cold replays of the successful physical sequence
+are now pending in tmp/cannon-mission-two-active-full-a/-b, started only after
+the functional route was assembled. Candidate:
+tmp/cannon-mission-two-active-full-candidate-20261025.json; metadata alongside.
+2170 expected states,7 prior accepted cold guards,1590 runtime RAM-byte guards,
+32 watches,7 unique new pictures per run, --no-final-checkpoint. No unknown
+CP hash is supplied as a new cold guard. Initial assembly rejected a duplicate
+already included21-action prefix before any candidate write/guest execution;
+the final candidate contains that physical prefix once. Ordinary verifier
+tmp/verify_cannon_mission_two_pair_20261025.py must wait for both finished runs,
+then all14 actual cold pictures must be viewed before any promotion. Pure
+normal input/disk/wait actions, no save/restore/feedback or CPU/RAM intervention.
+The immutable Cannon Slow-RAM runner and bit-identical416-Core remain in use;
+no Core source, hardware/state gate or Git publication changed. Visible later
+requester, Mission2 objective/phase progression and longer campaign stay open.
+
+### Cannon Mission2 activation: both whole DF0 cold replays accepted - 2026-10-25
+
+The preceding pending pair is complete. Permanent route:
+Tools/a500-cannon-fodder-mission-two-active-route.json. Both independent whole
+native A500/512KChip+512KSlow/Kick1.3 DF0 cold boots finish F35977,2170 states
+each. All7 earlier actual cold guards and1590 runtime RAM-byte assertions pass;
+724 present watch bytes were independently rechecked. All2170 recorded states
+agree between the runs except host seconds/output paths, including CPU/cache/
+input/disk/audio/display/expansion/watch/frame/hash. No unrecorded complete-RAM
+equality is claimed. The M1 prefix retains1059 positive player samples;32
+sampled M2-tail states retain all three positive type0 players (the first
+include the transition, not all are visible gameplay). No player-negative
+write occurs in either relevant actual gameplay window. No HDFs/floppywrites.
+Exactly729 native loader/protection events are explained: the prior366
+(vector5=1/4=4/9=361), followed at F31985..31986 by the exact same363-event
+original loader subsequence (vector4=2/9=361), matching all non-frame fields
+including SR/opcode/target against the initial load. No others were accepted.
+Do not demand zero absolute Cannon loader events or silently broaden policy.
+
+ALL14 actual cold pictures individually viewed; seven pairs byte-identical.
+These7 new actual cold guards plus the earlier7 are permanent,14 total.
+
+| Label | Frame | Actual cold hash / individually viewed image |
+| --- | --- | --- |
+| native-morph-disk-two-wait-079 | 29261 | 420021983AD2C5CA9A186463E292AF456102B94FE4A79BDF27FD0FD50F4815B4; Actual HEROES IN VICTORY / Mission1 is visible. |
+| native-morph-disk-two-wait-119 | 29542 | 8FF32F9213EDAC83E50931F37F8EB5157248D010C08C7EA75A321261DB26F4DE; Actual Mission1 JOOLS/JOPS promotion display is visible. |
+| mapm2-disk-two-wait-119 | 31808 | DE2E6DAC4516222DDA85C392978D2D29640AF0039DA24AF151D69A7285B485FD; Actual following HOME/AWAY army and both veteran names are visible. |
+| second-map-data-wait-119 | 33584 | 94CCA59922AEE74E61DC2B2155ADE50BFCA7B719C8E7B58F8C15015125238203; Actual MISSION2 / PHASE1OF2 / BRIDGE OVER THE RIVER PIE / BRIEFING / KILL ALL ENEMY is visible. |
+| mission-two-data-wait-159 | 35175 | 1F3D2A70F6ACD3284849EC8863D30EEA405CC2066961E880E98DE7B21CEEC2D8; Actual lower briefing body: WITH3SOLDIERS YOU MUST KILL ALL ENEMY /27RECRUITS REMAINING /GO FOR IT. Title/frame are absent in this actual cold image; no complete title overlay claimed at this capture. |
+| mission-two-active-wait-015 | 35865 | 694ABE19C03FA8F086F502E2CE8AB81B569EFAF815A0EB62F2C3BC30AF3180F4; Actual active river/jungle scene with JOOLS/JOPS/STOO HUD is visible. |
+| mission-two-active-wait-031 | 35977 | 9A1C6B7A71853DA3A689A687D9F81DEE82FB674549277C98E06268A48A23995C; Later actual active river/jungle scene, all three named HUD rows still visible. |
+
+
+The actual cold image reviews, not CP overlays/cached row fields, define
+visible acceptance. In particular F35175 shows the lower briefing body only;
+its title/frame are absent in both actual cold PNGs. The earlier actual cold
+F33584 separately shows Mission2/Phase1of2/title/briefing. No renderer fix
+without a reference is claimed. Proofs/all14 actual PNGs:
+tmp/cannon-mission-two-active-full-a/verified-summary.json and -b, retaining
+full Capture states, individual reviews and all manifest/binary/PNG/raw/trace
+hashes. python tmp/verify_cannon_mission_two_pair_20261025.py --compact passes
+retained integrity without demanding permitted removed rawlogs. Only the two
+OWN newly accepted steps.jsonl files were removed after full image/proof/SHA/
+absolute-path/allowlist/reparse checks,15103932 bytes. Inventory/result:
+tmp/cannon-mission-two-full-raw-cleanup-*-20261025.json. All actual pictures,
+traces, needed own CPs, manifests and binaries remain. Older blocked/user/
+media/HDF paths were untouched. Sessions80568/64238 finished, none pending.
+The initial duplicate-source construction guard rejected the duplicate before
+candidate write/guest execution; the final route contains that prefix once.
+The zero-event diagnostic rejection of known reloaded protection probes is
+also transparently retained. No Core mutation or accepted guest-failure pass.
+
+This accepts the native first-mission debrief and actual Mission2 activation,
+not Mission2 completion, Phase2 or a visible later single-drive requester.
+The next start remains the own F35977 CP documented above. A new bounded
+near-river right-fire/idle comparison preserves all three players through
+F36111, zero new native exceptions, no HDFs/writes; all8 actual functional
+pictures individually viewed. Native Second changes POTINP5500->5100->5500,
+red crosshair appears, all three native player targets become604/262; idle
+keeps targets0/0. Camera431/251->431/204 and mouse compensation preserve that
+world target. The nearby enemy moves to about626/285 and remains positive
+Type5; all17 positive Type5 enemies remain in both controls. No kill/objective
+pass. Exact inputs/full states/8 actual image reviews/raw/CP hashes:
+tmp/cannon-native-mission-two-near-river-aim-verified-summary-20261025.json.
+Short raws and both diagnostic CPs remain. Next use a genuine tracked shot or
+legitimate movement/shot line for moving slot28/C7E814, preserve all3 players,
+demand native hit/objective evidence, then two whole independent cold replays
+with actual images for a new passage. No broad Core/boot rerun is claimed:
+416/416 Debug+Release Core and33/33 Runner preflight are unchanged baselines.
+Broader seven-point/A1000/FPU/040/OS/video/controller gates stay open; no new
+commit/push/tag/release or hardware/state gate changed.
+
+### Cannon Mission2 near-enemy tracked input and explicit player types - 2026-10-25
+
+A separate private recorder (tmp/cannon-m2-native-tracking-controller-build,
+0warnings/errors) reads only the own restored M2 RAM/camera to choose real
+mouse deltas/Second pin edges. It records459 normal physical actions, without
+CPU/RAM/game-code intervention. The unchanged normal SlowRAM GameRunner then
+replays those actions without feedback, final CPU/frame/hash exactly matching
+the recorder. At F36220 original PC C2B8C2 writes80 to enemy28 C7E814; final
+word0=8000 and Type4. All three player entries remain positive and Type0 in
+the recorder checks through F36389 after24 neutral500000-clock holds; the
+normal functional replay has zero new native CPU events/no HDFs/writes and
+all4 actual pictures individually reviewed. The own final sprite snapshot
+retains16 positive Type5 enemy entries and objective0, not a M2 completion.
+Functional proof: tmp/cannon-m2-first-tracked-kill-functional-verified-summary-20261025.json.
+Source/portable recording and normal replay:
+tmp/cannon-m2-native-near-target-recording-20261025/recorded-inputs.json and
+tmp/cannon-m2-near-target-recorded-input-replay-20261025.json/-output.
+Needed own CP:
+tmp/cannon-m2-near-target-recorded-input-replay-20261025-output/Cannon-M2-near-target-recorded-input-replay/m2-near-target-kill-current.amigasav.
+This is not yet a full cold kill pass; checkpoint pictures cannot substitute
+for two complete cold replays.
+
+A later native negative movement control exposed a useful acceptance boundary:
+a dead player can have positive X/Y while its native Type is4. Thus positive
+coordinates alone must not be used as survival evidence for NEW M2 combat
+acceptance. The original accepted M1/M2-activation/Celtic proofs remain passed;
+no contradictory old outcome or Core regression was observed. The west route
+m2-west-lower-open-wait-19 fails the explicit Type0 guard at F37099 (Jools
+Type4 while X still515), not a CPU fault. Right-edge movement earlier stops
+at the forest near663/385 rather than the requested690/420. A stationary
+southern tracking control has no verified further kill. These are genuine
+terrain/combat observations, not emulator defects. A shorter west approach
+through wait-07 still has all3 explicit Type0 players at F37015; its follow-up
+tracking later loses Jools and is negative. Do not accept an enemy change or
+positive final coordinates if any relevant player becomes a corpse.
+
+Two initial complete near-kill candidates (old sessions25929/31011) finished
+F36389 before a stop was attempted; no process was terminated. They are NOT
+accepted because their player predicate omitted explicit types. Files remain
+as superseded unaccepted diagnostics, not failed old passes. The restart record
+is tmp/cannon-m2-first-kill-unaccepted-restart-20261025.json. No Core or physical
+input/cycle change: the final candidate adds explicit Type0 words to EVERY new
+tail action, all-three Type0 watches and type-byte Write traces. Cold prefix
+has14 accepted image guards,2629 expected states,5208 runtime RAM assertions,
+32 watches and exactly4 new actual pictures per run. No unknown CP image hash
+is a cold guard. Candidate:
+tmp/cannon-m2-first-tracked-kill-type0-full-candidate-20261025.json.
+Two independent complete DF0 replays pending in
+tmp/cannon-m2-first-tracked-kill-type0-full-a/-b (sessions80962/27922), frozen
+Cannon SlowRAM runner/bit-identical416-Core. Use ordinary verifier
+tmp/verify_cannon_m2_first_kill_type0_pair_20261025.py only after both finish;
+then individually inspect ALL8 actual cold pictures before route promotion.
+Demand729 exactly explained native loader events, no additional events, all
+old14 imageguards/RAMguards, a single actual C7E814=80 write at F36220/PC C2B8C2,
+final8000/Type4, and all3 player Type0 plus positive coordinates throughout
+the new combat tail. M2 completion/later visible requester remain open. No
+publication/hardware gate/HDF/original-media/user-save mutation.
+
+### Cannon Mission2 first tracked enemy: strict Type0 cold pair accepted - 2026-10-25
+
+The preceding strict pair is now fully accepted. Permanent route:
+Tools/a500-cannon-fodder-mission-two-first-tracked-enemy-kill-route.json.
+Both independent whole DF0 cold starts finish F36389,2629 recorded states each,
+14 prior actual cold imageguards,5208 runtime RAM-byte assertions and4716
+independently rechecked present watch bytes. The M1 prefix keeps1059 positive
+player samples. All491 sampled M2-tail states (including the initial transition)
+keep all3 players positive AND their explicit native Type words0000. Every
+new physical tail action has Type0 guards; the actual Write traces contain no
+relevant player-negative-X or nonzero-player-Type writes. This closes the
+NEW combat predicate gap demonstrated by the negative corpse control, without
+reopening an old accepted pass. The459 recorded normal mouse/wait actions run
+without feedback/restore/CPU/RAM intervention in both whole cold routes.
+Exactly729 previously explained native loader/protection events, no new combat
+CPU event, no HDFs/floppywrites. Both entire recorded-state sequences agree
+except host seconds/output paths; this is not a complete unrecorded RAM claim.
+
+Original PC C2B8C2 writes80 to C7E814 exactly once at F36220, final word8000 /
+Type4. All8 actual cold pictures individually viewed, four PNG pairs identical;
+all3 named HUD rows are present, but survival acceptance comes from the Type0/
+coordinate/write checks. A host verifier initially treated the whole F36220 as
+post-hit; actual ordered sample m2-tracking-0430 is still0260/Type5, the next
+m2-tracking-0431 is8000/Type4 in the SAME frame. The corrected verifier retains
+the exact native write requirement and checks every state from the actual
+ordered confirmation capture onward. No guest/input/Core/candidate change.
+Transparent verifier record: tmp/cannon-m2-first-kill-verifier-development-20261025.json.
+
+| Actual new label | Frame | Cold framebuffer hash |
+| --- | --- | --- |
+| m2-near-enemy-left-type5 | 36220 | 86C73FAA317D767715FFB4516E090DA12BF175F0576ADC23867E2BC285E1D843 |
+| m2-near-target-post-03 | 36248 | 2F3F28EDC158DF3AED831F7CC12CE964EAF1A26A6E23F0EDB5FB5672A5E76A8C |
+| m2-near-target-post-11 | 36305 | DB6A9A8FEFCD74A31D0422C27CC6C0C887757644CD7092732D8E9337104382F3 |
+| m2-near-target-post-23 | 36389 | 0FB3AA9B6D34554212F25F3257D485ED70DADDDD9C94B07CC403B9CFCC5299B1 |
+
+
+The4 new actual cold guards are permanent (18 total). Proofs/all8 actual PNGs:
+tmp/cannon-m2-first-tracked-kill-type0-full-a/verified-summary.json and -b,
+with full Capture states, individual image reviews, native hit/type evidence
+and manifest/binary/PNG/raw/trace SHA256. python
+tmp/verify_cannon_m2_first_kill_type0_pair_20261025.py --compact checks retained
+candidate/route/binary/PNG/write-trace/exception-trace integrity. Only these two
+OWN accepted strict steps.jsonl files were removed after complete proof/image/
+SHA/absolute-allowlist/path/reparse checks,18297071 bytes; inventory/result:
+tmp/cannon-m2-first-type0-full-raw-cleanup-*-20261025.json. All8 actual pictures,
+traces, proofs, exact inputs, private binaries and needed own CPs remain.
+The two superseded unaccepted coordinate-only runs/raws/images remain and are
+not promoted. Strict sessions80962/27922 and old25929/31011 are all finished;
+no cold candidate pending. Missing permitted compacted logs are not failures.
+
+The functional normal-replay end snapshot has16 remaining positive Type5
+entries, objective0. That global count is an own CP RAM observation, not a
+claim to have independently compared every cold RAM byte. Exactly the new
+monitored enemy28 defeat is cold-accepted, not Mission2/Phase2 completion or
+any visible later single-drive request. The canonical cold-covered own start
+for further work is still the F36389 near-target-kill CP documented above.
+
+Six further bounded forest controls, all20 actual functional pictures reviewed,
+exact scenarios/watch histories/raw hashes and the corpse Type evidence:
+tmp/cannon-m2-forest-type4-controls-verified-summary-20261025.json (3974679 bytes).
+These are NOT additional cold passages. Stationary southern tracking leaves
+no verified further kill while all3 native Type0 players remain throughF38078.
+A real right-edge order stops around663/385 before target690/420. The first
+west/south route rejects Type4 at sampled F37099 while JoolsX515 remains
+positive; a short F37015 approach is Type0 for all3, but its tracked follow-up
+has an actual Type4 write atF37118/PC C16D3C, JoolsX515/Y410 still positive at
+F37119, and all3 HUD names still displayed. Thus HUD/positive X alone cannot
+stand for surviving foot soldiers. These genuine negative controls are not
+Core/renderer/physics defects. All short rawlogs and diagnostic pictures/CPs
+remain; no original/user/HDF/older blocked path changed.
+
+Next concrete alternative adds a purely horizontal west waypoint BEFORE the
+south turn, so Jools can clear the measured forest corner. Functional source:
+tmp/cannon-m2-west-first-before-south-order-20261025.json. Own needed CP:
+tmp/cannon-m2-west-first-before-south-order-20261025-output/Cannon-M2-west-first-before-south-order/m2-west-extra-order-current.amigasav,
+F36961, three Type0 players498/373,510/373,519/373. This is CP-only, not yet a
+cold bypass/pass, and its west movement order is still in progress. Read the
+actual nearer southern slots23/24/25 and try a bounded early tracked shot or
+legitimate movement/shot line, abort on any non-Type0 player, then normal
+feedback-free input replay and two whole independent cold starts before a
+new passage. Version any recorder variant under a fresh own private name;
+never overwrite the existing near-target/southern recorder or frozen runner.
+All broad seven-point/A1000/FPU/040/OS/video/controller gates remain open.
+Core416/416 Debug+Release and Runner33/33 remain unchanged baselines; only
+private recorders/scenarios/verifiers/docs changed, no broad rerun claimed.
+No commits/pushes/tags/releases/hardware gates/state versions changed.
+
+### Cannon Mission2 southern and westbank routes: eight further original enemies cold-accepted - 2026-10-25
+
+Two successive new passages are now independently complete-DF0-cold accepted,
+using the unchanged private Cannon SlowRAM runner and its unchanged Core DLL.
+All inputs in the whole runs are ordinary physical keys/mouse/buttons/disks/
+waits, without restore, feedback, CPU hooks or RAM/code writes. The private
+recorders only helped discover real physical inputs; separate normal Runner
+replays and both whole cold boots execute those fixed inputs without feedback.
+The previous M1/M2/Celtic acceptances remain intact.
+
+1. Tools/a500-cannon-fodder-mission-two-west-three-enemies-route.json:
+   two independent whole cold boots,3168 states each,18 prior image guards,
+   8442 runtime RAM-byte assertions,7614 present watch bytes independently
+   checked. M1 has1059 positive player samples; all1030 M2 samples retain all
+   three positive native Type0 players, with no nonzero native player-Type
+   write. All8 actual new images were opened individually,4 byte-identical
+   pairs. Original enemy25/C7E6B2 is removed by PC C2B8C2 atF37213,23/C7E5C6
+   atF37251 and24/C7E63C atF37265. FinalF37297 has all three8000/Type4 and all
+   players alive. Exactly3 new original enemies, not a Mission2 completion.
+2. Tools/a500-cannon-fodder-mission-two-southwest-westbank-bridge-five-enemies-route.json:
+   two independent whole cold boots,6016 states each,22 prior image guards,
+   36954 runtime RAM-byte assertions,24201 present watch bytes independently
+   checked. All3878 M2 samples retain all3 positive native Type0 players and
+   native player-Type traces have no nonzero write. All20 actual new images
+   individually opened,10 byte-identical pairs. Original enemy21/C7E4DA is
+   removed by PC C2B8C2 atF37923,22/C7E550 atF37936,18/C7E378 atF38627,
+   17/C7E302 atF39302 and19/C7E3EE atF40319. Each combat starts with guarded
+   original Type5 identity and ends with guarded8000/Type4. FinalF40403 is
+   the living SOUTH bridge approach; no bridge crossing is accepted by this
+   route. Exactly5 further original enemies, not Mission2/Phase2 completion.
+
+Both complete recorded state sequences match between independent boots except
+seconds/output image paths. This is the recorded CPU/cache/input/disk/audio/
+display/expansion/watch/frame/image sequence, not unrecorded whole-RAM equality.
+Both retain exactly729 already explained native protection events (5=1/4=6/
+9=722, the exact original366 plus repeated363 sequence), ZERO additional
+unexplained combat events, no HDFs and no floppy writes. Their extended new
+runtime guards also require Objective0/Mission2 in every new-tail action.
+The second pair uses all32 watch bytes for player and original combat identities;
+its goal/counter bytes remain executed runtime guards, not independently
+rechecked watch bytes. No false claim to have logged these unavailable bytes.
+
+| New actual cold label | Frame | Actual cold framebuffer hash |
+| --- | --- | --- |
+| m2-west-single-tracking-0000 | 36962 | 02D8D7609B5EC946A1FE92419AC06677437610BA0B590029F38FD969EDE8FACE |
+| m2-west-single-tracking-0200 | 37074 | 6C80F7DBC5E1B6470D42D01B58F5E3D8F53E0D94FE086F73641E5F62EC5485F3 |
+| m2-west-first-south-enemy-left-type5 | 37213 | F29D049A322D24868CFED2DF85E3B96D6063AC92E681DED7E881792CF4006511 |
+| m2-west-single-post-11 | 37297 | 5FCCBBAAF16513E735CF0C09F23986A2462BE11E401F8C552DE1A1CF9240CBDE |
+| m2-west-south-clear-wait-23 | 37489 | 8715731BE598B1B35166AF2D58A8587E8C70AB670896C3BAE07D4A36DA97461D |
+| m2-west-southwest-clearing-wait-31 | 37744 | 57A309E0F1957A0E5E12F90355978A8555E69B85339333CC39651A356450DF98 |
+| m2-southwest-first-enemy-left-type5 | 37923 | 2B8D12F9A98990C854941CBDB10801EB1CAF423B18E4E9C486AFC278245B8BD4 |
+| m2-southwest-pair-post-11 | 38007 | 5E5485F1A50B61BD7966B531BC36FB49B8FF24C0ABC76F41AA1113021EC2445B |
+| m2-westbank-controller-real-right-release | 39044 | BC025837D0CFDD8F6B3E127B320DA583A77C73E13A3E30C06C4F203561C3D121 |
+| m2-westedge-both-enemies-left-type5 | 39302 | 726598428940341466877FF7B4CD71DEE149A64452AEBE9E51138A1C9DB139E5 |
+| m2-westedge-pair-post-11 | 39386 | 72AAFBBE0166B29EF008DC841343AF07B6CD2DBC7455A2E31CFDACA02C56CEFC |
+| m2-bridge-south-align-wait-41 | 40060 | EE01AAB64E1FA9963ACBD6D532971FD9E5D0B8E4D643884A65948EF3661B9AF6 |
+| m2-bridge-enemy19-left-type5 | 40319 | 0CD5D967F2A41F8264CD500B03FE39E60A7D70C40A5A24F12889B3256ABEB5D4 |
+| m2-bridge-early-post-11 | 40403 | 527A9D6286871A939D77F963958520657E09F099C0804B214790F3604A8E66B8 |
+
+The4+10 actual new guards are permanent:32 accepted cold image guards total.
+Proofs/all28 actual new PNGs, full capture states, individual reviews and
+manifest/binary/PNG/raw/write-/exception-trace SHA256 remain in
+ tmp/cannon-m2-west-three-enemies-type0-full-a/-b/verified-summary.json and
+ tmp/cannon-m2-southwest-westbank-bridge-five-type0-full-a/-b/verified-summary.json.
+The focused checkers
+ tmp/verify_cannon_m2_west_three_type0_pair_20261025.py --compact and
+ tmp/verify_cannon_m2_southwest_westbank_bridge_five_type0_pair_20261025.py --compact
+verify retained route/candidate/binary/image/trace integrity without demanding
+permitted removed raw logs. Only the4 newly accepted OWN steps.jsonl files
+were removed after full image/proof/SHA/absolute-path/allowlist/reparse checks,
+64010857 bytes total. Inventories/results:
+ tmp/cannon-m2-west-three-full-raw-cleanup-*-20261025.json and
+ tmp/cannon-m2-five-full-raw-cleanup-*-20261025.json.
+All images, traces, exact scenarios, compact proofs and needed private CPs
+remain; no original/user media, prior blocked trees or HDFs changed.
+All91531/7079/68064/8053 whole-run sessions are finished and accepted.
+
+Native freed-slot reuse is now explicitly accounted for. Original enemy28
+still dies atF36220 and remains8000/Type4 through its acceptedF36389 endpoint.
+The original game later reuses that slot with non-Type5 roles0017/0006 and
+may remove those roles again; it does not recreate the original enemy.
+A copied short-prefix verifier initially incorrectly demanded permanent
+Type4 and only one write80 throughout the longer tail. The corrected verifier
+preserves the exact original write, original endpoint and all old guards,
+independently constrains/retains the later native non-Type5 role samples,
+and requires each new original enemy's Type5 start and native defeat within
+its own combat window. Reused-role writes are never additional enemy kills.
+Transparent host-only correction:
+ tmp/cannon-m2-west-three-verifier-development-20261025.json.
+The first functional image after restoring the west CP also differs from the
+actual first cold image; only the reviewed actual cold hash02D8D760... is
+promoted. This is why CP hash/images never replace complete cold evidence.
+
+Functional controls behind these routes and the later bridge investigation
+are retained in two compact bundles:
+ tmp/cannon-m2-west-southwest-functional-controls-verified-summary-20261025.json
+ (3 cases,12 individually reviewed actual functional images,2152354 bytes),
+ tmp/cannon-m2-westbank-bridge-functional-controls-verified-summary-20261025.json
+ (9 cases,21 further individually reviewed functional images,1014637 bytes).
+The second bundle encodes every watch row losslessly as changed-byte deltas,
+roundtrip checked, and references exact preserved canonical input manifests
+by SHA. All short raw logs remain. No functional-only image is a cold pass.
+Historical v3 bounded-no-target-removal/no-removal file wording only meant
+not BOTH selected enemies were removed: original enemy18 really dies there,
+while17 dies in the next v4 route. Historical both-enemies labels in v4
+refer to just that one original17 removal; filenames retain provenance.
+
+The first native north order at the bridge is genuinely negative: exact
+Jools Type4 write C7DB45 atF40234/PC C16D3C, not a host CPU fault or a pass.
+A real earlier stationary shot removes approaching19 before the safe
+F40403 endpoint. The subsequent center-alignment/short-north route is
+CP-functional: all3 Type0 players reach294/237,294/242,294/248 near the
+north bank atF41012. The large first north mouse delta did not reach the
+assumed farther world target; the measured short follow-up is necessary.
+Canonical cold-covered F40403 CP:
+ tmp/cannon-m2-southwest-westbank-bridge-five-current-20261025-output/Cannon-M2-southwest-westbank-bridge-five-current/m2-southwest-westbank-bridge-five-current.amigasav.
+Later required CP-only north-bank checkpoint:
+ tmp/cannon-m2-bridge-north-bank-short-order-20261025-output/Cannon-M2-bridge-north-bank-short-order/m2-bridge-north-bank-short-current.amigasav.
+
+No Core source/model/state/build changed. Core416/416 Debug+Release and
+Runner33/33 remain the existing baselines, no redundant broad rerun claimed.
+The frozen old runners remain untouched; private recorder variants are new
+separate directories. Overall seven-point/A1000/FPU/040/OS/video/controller
+work and Mission2 completion/Phase2/visible later requester remain open.
+No commits, pushes, tags, releases or hardware gates changed.
+
+### Cannon Mission2 center bridge/NW-three cold-accepted; Phase1 objective pending - 2026-10-25
+
+Tools/a500-cannon-fodder-mission-two-bridge-northwest-three-enemies-route.json
+is now independently whole-DF0-cold accepted:7631 states per boot,32 prior
+actual image guards,53122 executed RAM-byte assertions,43414 present watch
+bytes independently checked. All5493 M2 samples retain all3 positive native
+Type0 players, with no nonzero native player-Type writes. All16 actual new
+pictures individually opened,8 byte-identical pairs. The real bridge center,
+measured short north step and north-bank west route lead to original enemy3/
+C7DC8E atF41948,5/C7DD7A atF42068 and4/C7DD04 atF42107, all removed by original
+PC C2B8C2. FinalF42191 has players114/237,123/237,132/237, allType0 and Goal0.
+Both entire recorded sequences match except seconds/output image paths;
+exactly729 known native protection events, no additional combat CPU events,
+HDFs or floppy writes. No unrecorded full-RAM equality claim.
+
+| Actual new cold label | Frame | Actual cold framebuffer hash |
+| --- | --- | --- |
+| m2-cleared-bridge-center-north-wait-19 | 40699 | F81A1D6364E2BDB29E900AA2BF6384B809FBF1D299D05E326CD053B5228F36A9 |
+| m2-cleared-bridge-center-north-wait-45 | 40882 | B135747F5108AA7B972F342AFB29A73CB90FC91E6C32EDABAD77033A1E5A2F05 |
+| m2-bridge-north-short-wait-15 | 41012 | B9393EE7698FAF37D78470B6BDA5E5AD85717B1B5F85E2CB26A6306DBC4107B7 |
+| m2-northwest-midway-controller-real-right-release | 41657 | 997A0FD44073701AC31B7FD48825F537C01B96FCC3AFD415F63AF323199B1305 |
+| m2-nw-early-shot-wp0-approach-15 | 41797 | 568872526E7D02CFF7FC842213040869032F17316137320C1FD1DFB4883AE57C |
+| m2-nw-early-shot-all-three-left-type5 | 42107 | 4588BB3B83B5EA7E162F9AC4BA0DBD87F00D0B1A46FEC1F1D253A233A690640E |
+| m2-nw-early-shot-pair-post-03 | 42135 | 62600762221E6E4BD983A24147DB9A179978355ADB3BA3079DD480387642221D |
+| m2-nw-early-shot-pair-post-11 | 42191 | EE768656B19D80038D939D4B8652E7050F59C157853A77903C4E0FB30F6660FC |
+
+All8 new actual guards are permanent,40 total. All16 actual pictures/full
+capture states/individual reviews/native trace/manifest/binary/raw/imageSHA
+remain in tmp/cannon-m2-bridge-northwest-three-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2_bridge_northwest_three_type0_pair_20261025.py --compact
+checks preserved integrity after exactly the2 new own accepted steps.jsonl
+files were removed following complete proof/image/SHA/absolute-path/allowlist/
+reparse checks,53244772 bytes. Inventory/result:
+ tmp/cannon-m2-bridge-nw-three-full-raw-cleanup-*-20261025.json.
+All70922/21959 sessions are finished/accepted. Thus these three successive
+new routes have accepted11 additional original M2 enemies in this turn and
+preserve ALL44 actual new cold pictures. Six accepted own raw logs removed,
+117255629 bytes; missing permitted compacted logs are not new failures.
+The old first tracked enemy remains accepted; Mission2 is not complete yet.
+
+The remaining north/east controls are now compactly preserved with exact
+canonical input references, lossless roundtrip-checked watch deltas, native
+hit/goal/type writes, CP/raw/manifest/imageSHA and ALL26 individually viewed
+actual functional images (8 controls):
+ tmp/cannon-m2-north-east-phase-one-functional-controls-verified-summary-20261025.json
+ (825164 bytes). Together with the two preceding bundles this turn has20
+bounded control cases and59 individually reviewed functional pictures;
+these do not replace the separate44 actual cold pictures. All short rawlogs,
+canonical inputs, traces and needed CPs remain. Two combined normal-feedback-
+free continuity runs also match the recorded final CPU/frame/hash.
+
+The first offscreen west order places the cursor at native mouseX27 on the
+HUD and produces no west movement; it is no traversal pass. A nearer visible
+west order reaches194/237,205/237,215/237. Advancing north before firing is
+negative: exact original Jools Type4 write atF42028/PC C16D3C. Instead, the
+single west waypoint reaches114/237 and earlier tracked fire defeats all3
+northwest enemies while everyone remains Type0; no physics/pathfinding fix.
+The first long east order only reaches263/101 with5 enemies still present.
+Intended world coordinates from pointer arithmetic do not prove that an
+actual in-game order reached that target; neither this stop nor the native
+camera/HUD phase establishes an emulator collision/renderer defect. A real
+shorter Y77 upper route gives original14/C7E1A0 atF44254 and15/C7E216 atF44296;
+next26/C7E728 atF45413 and27/C7E79E atF45265; finally the measured lower clear
+gap Y109/right approach removes16/C7E28C atF46060. All are originalPC C2B8C2.
+Native C01DCC first becomesFFFF atF46063/PC C1DE1E. All3 players remain Type0
+throughF46145, final700/109,690/109,681/109. Own final CP RAM has0 positive
+Type5 entries; this is a CP count, not independently compared entire cold RAM.
+
+Actual functional pictures F46088/post03 andF46117/post07 visibly say PHASE
+COMPLETE. F46067 confirms the native flag but has no completion overlay;
+F46145/post11 is blink-off and must NOT be called a visible-text image.
+This is Mission2 PHASE1 of2, not entire Mission2 or Phase2 acceptance.
+Needed own functional final CP:
+ tmp/cannon-m2-phase-one-objective-normal-replay-v13-20261025-output/Cannon-M2-phase-one-objective-normal-replay-v13/m2-phase-one-objective-current.amigasav
+ SHA be2465eaba5e4aea0907e013d214b28b96ad064b19b5a74c668400acb87c7ccd.
+The complete feedback-free tail from acceptedF42191 also passes in
+ tmp/cannon-m2-phase-one-objective-current-20261025.json/-output;
+its explicit m2-phase-one-objective-combined-current.amigasav is preserved.
+
+A narrowly required RUNNER-only diagnostic capacity increase is implemented:
+Tools/GameRunner/Program.cs now accepts1..16 distinct configured inspectable
+RAM write addresses instead of1..8. All3 native player types plus5 enemies
+and the native objective need9 simultaneous observations; actual cold cases
+now also retain all3 player-X writes (12 addresses). No bus/CPU/game/model/
+state behavior changed. Two new preflight cases reproduce failure on the
+frozen old runner for the concrete9-address squad/5-enemy/goal request, accept
+9 and16, and reject17/duplicate/custom-register addresses BEFORE outputs or
+HDF creation. Full current Runner preflight35/35, release build0warnings/errors.
+New separate frozen runner:
+ tmp/cannon-wide-write-diagnostics-release-runner/GameRunner.dll
+ SHA c43416bba3501bf0f61644dbb9f7d6640afb94791ca97d71253f7791c6975988.
+Its Core is the exact old5a06285a0ac63a5536581486cb75d18c2135a28b5cd6d1a38391459ad24039da
+DLL, referenced/copied without a Core build. The old SlowRAM33-preflight
+runner and all older evidence runners remain untouched. A real12-observation
+normal replay equals all522 recorded old-runner states except seconds/image
+output paths, plus the entire5192-byte sprite snapshot, and observes exactly
+the same native goalPC/frame. No unrecorded whole-RAM equality claim.
+Proof/build/preflight/failing-before/source/binary/logSHA:
+ tmp/cannon-wide-write-diagnostics-verified-summary-20261025.json.
+Core416/416 Debug+Release remains the unchanged baseline;35/35 is RUNNER only.
+
+FIRST next: inspect the two NEW whole-DF0 Phase1-objective candidates started
+ONLY after the40-guard bridge/NW acceptance, on the new unchanged wide runner:
+ tmp/cannon-m2-phase-one-objective-type0-full-candidate-20261025.json in
+ tmp/cannon-m2-phase-one-objective-type0-full-a/-b, sessions66055/40226.
+13200 actions/13201 states expected,40 accepted actual prefix guards,
+202198 executed RAM-byte assertions,32 watched bytes,12 native write addresses,
+--no-final-checkpoint, exactly9 unique actual pictures per boot. Actual results
+after any restart take precedence over possibly stale session IDs. Prepared
+checker: tmp/verify_cannon_m2_phase_one_objective_type0_pair_20261025.py;
+ordinary mode only after BOTH runs finish. Require every old guard/RAM check,
+all11063 recorded M2 samples/all3positive Type0 coordinates, no negative X or
+nonzero player-Type write, exactly729 known original native probe events and
+ZERO extra combat events, all5 new original defeats/nativePC/frames above,
+first native goalFFFF atF46063/PC C1DE1E, finalF46145 three live coordinates,
+GoalFFFF/Mission2, no HDFs/floppy writes. Native freed-slot reuse after each
+original combat identity is never an extra enemy kill.
+
+Expected actual image labels/frames (no new CP hash is a cold guard):
+- m2-northeast-wp0-approach-35 F42465;
+- m2-ne-bounded-controller-real-right-release F43714;
+- m2-ne-upper-gap-controller-real-right-release F44912;
+- m2-final-east-controller-real-right-release F45634;
+- m2-phase-one-last-enemy-left-type5 F46060;
+- m2-phase-one-objective-confirmed F46067;
+- m2-last-enemy-clear-gap-pair-post-03 F46088;
+- m2-last-enemy-clear-gap-pair-post-07 F46117;
+- m2-last-enemy-clear-gap-pair-post-11 F46145.
+ALL18 actual pictures must be individually viewed,9 actual pairs equal,
+especially really visible PHASE COMPLETE in post03/post07. Only then promote
+Tools/a500-cannon-fodder-mission-two-phase-one-objective-route.json with9 new
+actual cold guards (49 total), and accept PHASE1 only. The builder/exact fixed
+input tail and metadata are preserved in
+ tmp/build_cannon_m2_phase_one_full_candidate_20261025.py and
+ tmp/cannon-m2-phase-one-objective-physical-tail-20261025.json.
+After acceptance, continue genuine Phase2/media requests from the own phase1
+checkpoint; read actual C0C7B8/wrapper request, never infer it from the first
+WON.RAW cache entry or filenames. A visible later single-drive requester,
+Phase2/whole Mission2 and broader roadmap remain open.
+
+Final integrity: all6 FPU/Core/test sourceSHA, all3 originalADFs and5 normal
+user-saveSHA remain identical, frozen old runnerSHA unchanged; explicit proof
+ tmp/cannon-m2-phase-one-roadmap-integrity-20261025.json.
+All new Python parsers and focused scenario preflights pass. No broad Core/
+boot-suite repeat, CPU/FPU/hardware/state gate change, new commit/push/tag/
+release or original media/HDF/old blocked-tree modification. A1000/FPU/040,
+independent video references and all other unfinished roadmap work remain open.
+
+### Cannon Mission2 Phase1 fully cold-accepted; genuine Phase2 first enemy pending - 2026-10-25
+
+The previously pending Phase1 pair is FINISHED and fully accepted:
+Tools/a500-cannon-fodder-mission-two-phase-one-objective-route.json.
+Two whole independent native DF0 boots,13201 states each,40 prior actual
+cold image guards,202198 executed RAM-byte assertions,154836 present watch
+bytes independently checked. All11063 recorded M2 samples retain all3
+positive native Type0 players, with no negative player-X or nonzero player-
+Type writes. Original14/15/27/26/16 die exactly atF44254/44296/45265/45413/
+46060 throughPC C2B8C2, and first native goalFFFF isF46063/PC C1DE1E.
+FinalF46145 players700/109,690/109,681/109 allType0, GoalFFFF. Exactly729
+known native protection events, ZERO additional combat events, no HDFs or
+floppy writes. Both complete recorded sequences match except seconds/image
+paths. No unrecorded entire-RAM equality is claimed.
+
+ALL18 actual new cold pictures were individually opened and reviewed,9 PNG
+pairs byte-identical. In BOTH actual whole-cold PNGs F46088/post03 really
+shows PHASE COMPLETE. Actual whole-cold F46117/post07 andF46145/post11 are
+BLINK-OFF without text. The CP post07 picture did show text; it does NOT
+substitute for the actual cold picture. The previous pending CP expectation
+is superseded by this actual review; no renderer fix/cause asserted.
+This is PHASE1 of2, not entire Mission2 or Phase2 completion.
+
+| Actual new cold label | Frame | Actual cold framebuffer hash |
+| --- | --- | --- |
+| m2-northeast-wp0-approach-35 | 42465 | A12D519E2ACC1EDB69178464DF364E997B3ADF0719D11C4ADB5D0ED7C045CCA9 |
+| m2-ne-bounded-controller-real-right-release | 43714 | DEEFDDF62BFF4A3FF48F88A8D3BC87E2B89263158967685F2BD92819A0F95098 |
+| m2-ne-upper-gap-controller-real-right-release | 44912 | 57A7F03F0624367AFB39F5C585F44DCA272019798826CD6364A9F4622B4B77DB |
+| m2-final-east-controller-real-right-release | 45634 | 8E811B0D3E2B99DDD3311511B2CC2A3B1F555664FD095AF9D53BEBCD818EE34C |
+| m2-phase-one-last-enemy-left-type5 | 46060 | 7B4CD05193C612FB23175AEC097645234BE140F6F4481D9924E5E8004F3A77C9 |
+| m2-phase-one-objective-confirmed | 46067 | 093FC7861A020B0F4B8557F2FDD534AFA064046E2821F6EB91A2DCB0E756E974 |
+| m2-last-enemy-clear-gap-pair-post-03 | 46088 | 028F32F23537A12C58F26E195F8B9B110A72B82F589F6884821527F0AC4DFCE1 |
+| m2-last-enemy-clear-gap-pair-post-07 | 46117 | 76A646A6CBE6DC475705F15F80C53D647A56D6F42914E3F636709796459F819E |
+| m2-last-enemy-clear-gap-pair-post-11 | 46145 | 3D8DC083B11C9D036801EE8210BADA90BE998E09DDDEC7AB9386141855EDA6F2 |
+
+The9 actual new guards are permanent,49 total. Full capture states/individual
+picture reviews/all18 actual PNGs/native objective and original enemy writes/
+manifest/binary/image/raw/trace SHA remain in
+ tmp/cannon-m2-phase-one-objective-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2_phase_one_objective_type0_pair_20261025.py --compact
+passes after exactly these2 own accepted steps.jsonl were removed following
+complete picture/proof/SHA/absolute-allowlist/path/reparse checks,92188439 bytes.
+Inventory/result: tmp/cannon-m2-phase-one-full-raw-cleanup-*-20261025.json.
+The4 new accepted pairs this turn retain ALL62 actual new cold pictures;
+8 own accepted rawlogs compacted209444068 bytes. Short functional raws, all
+pictures/traces/proofs/canonical inputs/needed private CPs remain. Old normal
+user data, blocked trees/HDFs and older unaccepted runs remain untouched.
+Sessions66055/40226 are finished/accepted; do not wait for/restart them.
+
+After this acceptance, one REAL left confirm plus bounded ordinary waits on
+the same read-only DF0 Disk2 really reaches MISSION2 / PHASE2OF2 / TRASH ENEMY
+HQ / KILL ALL ENEMY / DESTROY ENEMY BUILDINGS atF46722. F47285 actually shows
+only the lower3-soldier/27-recruit/GOFORIT briefing body; F47848 is black.
+After a genuine briefing-confirm, F47890/F47918 are still black transitions,
+then F47974 actually shows the live new river/jungle field with all3 soldiers.
+These black pictures were viewed and are NOT gameplay/title/requester passes.
+The next bounded real tracked input removes original new-phase enemy3/
+C7DC8E atF48222/PC C2B8C2 and lives throughF48306 with all3 Type0 players
+614/70,619/66,627/62, Goal0. Own end CP has15 positive Type5 entries; this
+is CP-only RAM analysis, not entire cold-RAM equality or Phase2 completion.
+All3 functional cases/all10 actual images individually reviewed, exact
+input/watch-delta/native-code/trace/raw/CP/imageSHA in
+ tmp/cannon-m2p2-first-enemy-functional-verified-summary-20261025.json
+ (91731 bytes). All short rawlogs/images/needed CPs remain.
+
+Important native field correction: C00658 is a remaining-phase/control
+countdown, NOT mission number. Actual title remainsMISSION2 while this word
+goes2->1 and C00634 goes0->1. Original code C071AE ADDQ.W #1,C00634 then
+C071B4 SUBQ.W #1,C00658/BNE C0725C and native write traces atF46413 prove
+this. Historical Phase1 value2 checks remain valid predicates; their prior
+informal nativeMission naming is superseded, not an invalid old pass. Never
+apply that value2 test blindly to Phase2 or call it Mission1 when it is1.
+
+The original new-map initialization atF46414/PC C14B4C,C23990 writes player
+X negative/8000 with NO Type4 writes. Exactly the loading samplesF46440 and
+F46511 have all3X8000/Type0 while actors are not instantiated. This exact
+code-/trace-/title-supported boundary is NOT a general exception for deaths.
+Every actual gameplay-tail sample after genuine Phase2 briefing confirm
+requires3 positive Type0 actors and no negative-X/nonzero-Type writes.
+An initial compact-proof assertion accidentally applied gameplay-positive-X
+to loading and stopped before writing a proof; exact native source/trace
+then established these two initialization rows. No guest/Core/input change.
+The sampled C0C7B8 after the new main-loop progression is binary, not a plain
+current request string; do not infer filename/requester outside actual loader
+wrapper execution. No disk swap was guessed and no later visible requester
+is accepted by this continuation.
+
+FIRST next inspect two NEW whole DF0 runs started ONLY after49-guard Phase1
+acceptance and feedback-free combined Phase2 replay:
+ tmp/cannon-m2p2-first-enemy-type0-full-candidate-20261025.json in
+ tmp/cannon-m2p2-first-enemy-type0-full-a/-b, sessions38173/80439.
+13712 physical actions/13713 expected states,49 actual prefix guards,
+218582 runtime RAM-byte assertions,32 watch bytes,15 native write addresses,
+new unchanged wide35 runner, --no-final-checkpoint and exactly6 unique actual
+pictures per boot. Prepared strict checker:
+ tmp/verify_cannon_m2p2_first_enemy_type0_pair_20261025.py.
+Only run ordinary mode after BOTH results finish; actual files take precedence
+over potentially stale session IDs after a restart. Require all prefix/RAM
+checks, exact729 native probes and no new CPU events, no HDFs/floppy writes,
+all3Type0, exact4 code-proven initialization negative-X writes and exactly2
+loaded absent rows only, then487 explicit positive Type0 gameplay-tail samples
+(including early transitions), native phase increment/decrementF46413 at
+observerPC C071B4/C071BA, first new-phase enemy3 removalF48222/PC C2B8C2,
+finalF48306 coordinates/Goal0/remaining1/index1. The original Phase1 enemy3
+and native new Phase2 enemy3 are different proven map instances, not a
+resurrected old kill or double counting of a reused effect slot.
+
+Exactly6 actual image stops per boot:
+- m2-phase2-first-loader-wait-07 F46722, actual Mission2/Phase2 title expected;
+- m2-phase2-first-loader-wait-15 F47285, actual briefing body;
+- m2-phase2-first-active-wait-31 F47974, real active field;
+- m2p2-first-enemy-left-type5 F48222;
+- m2p2-first-post-03 F48250;
+- m2p2-first-post-11 F48306.
+ALL12 actual cold pictures must be individually viewed and all6 actual PNG/
+hash pairs equal before promoting
+Tools/a500-cannon-fodder-mission-two-phase-two-first-enemy-route.json with6
+actual new cold guards (55 total). No CP hash is a new cold guard. Do NOT
+accept a cached-row nonblack value/black picture as active/title evidence.
+This is Phase2 activation/one enemy only, not Phase2/wholeMission2 victory or
+later requester. No other full cold candidate remains pending.
+
+Exact normal combined source/512 physical inputs:
+ tmp/cannon-m2p2-first-enemy-combined-current-20261025.json/-output and
+ tmp/cannon-m2p2-first-enemy-physical-tail-20261025.json.
+Needed own final CP:
+ tmp/cannon-m2p2-first-enemy-combined-current-20261025-output/Cannon-M2P2-first-enemy-combined-current/m2p2-first-enemy-combined-current.amigasav.
+After full acceptance, inspect actual new-phase enemies/objectives/buildings,
+especially next original4 near545/57 vs players614/70, and find genuine living
+inputs. Never reuse the Phase1 recorder's raw-counter2/old-enemy-count gates.
+Keep all3Type0/native hits, normal replay without feedback and two whole
+cold boots before every further accepted passage. Later single-drive request,
+Phase2 destruction objectives/wholeMission2 and all other roadmap/A1000/FPU/
+040/OS/video/controller gates remain open. Current frozen wide runner35 and
+identical old Core416 baselines persist; no additional Core changes, state/
+hardware releases, publications, commits/pushes/tags or original media writes.
+
+### Cannon Mission2 Phase2 first enemy cold-accepted; north-bank four-enemy pair pending - 2026-10-25
+
+The previously pending38173/80439 pair is FINISHED and fully accepted:
+Tools/a500-cannon-fodder-mission-two-phase-two-first-enemy-route.json.
+Two independent whole native A500/Kick1.3 DF0 boots,13713 states each,
+49 previous actual cold image guards,218582 executed RAM-byte assertions,
+124652 logged watched bytes independently rechecked. All11063 Phase1 samples
+retain three positive Type0 actors; the Phase2 tail has512 Type0 samples,
+510 positive outside exactly the two source-proven actor-initialization rows,
+and487 explicit gameplay-tail samples with all3 positive Type0 players.
+Exactly the4 proven negative-X initialization writes atF46414 and two absent
+actor loading rowsF46440/F46511 are preserved; no general death exception.
+The native original new-phase enemy3/C7DC8E is removedF48222/PC C2B8C2.
+FinalF48306 players614/70,619/66,627/62 allType0, Goal0,remaining1/index1.
+Exactly729 original native protection probes (5=1/4=6/9=722, original366+
+bit-identical repeated363), ZERO additional combat CPU events, no HDFs or
+floppy writes. Both entire recorded sequences match except seconds/image
+paths; no unrecorded entire-RAM equality is claimed.
+
+ALL12 actual new cold pictures were individually opened and reviewed,
+six PNG pairs byte-identical. The actualF46722 image visibly says MISSION2 /
+PHASE2OF2 / TRASH ENEMY HQ / KILL ALL ENEMY / DESTROY ENEMY BUILDINGS.
+F47285 shows the lower3-soldier/27-recruit/GOFORIT body only, without upper
+title/frame; F47974 genuinely shows the new active river/jungle field.
+The other three actual pictures show sustained active play at/after the
+native first enemy defeat. HUD names and sprite disappearance alone never
+substitute for the native Type0/coordinate/write survival/hit evidence.
+This accepts only Phase2 activation/one enemy, NOT Phase2 objectives,
+entire Mission2 completion or a visible later single-drive request.
+
+| Actual new cold label | Frame | Actual cold framebuffer hash |
+| --- | --- | --- |
+| m2-phase2-first-loader-wait-07 | 46722 | 321A73339E2CBCCE6F9E36CCEA2924E0EF5F96F916E0BBD7EA2EAE37D1BE0C53 |
+| m2-phase2-first-loader-wait-15 | 47285 | 46770B187B47262EE04E4EFB62B6AA560E8D0D795D14E6A485D788BC8813343F |
+| m2-phase2-first-active-wait-31 | 47974 | C3191787BD5FBF955ECD061E08590390DCBF927ECD48152AF33BDD69C516F3B4 |
+| m2p2-first-enemy-left-type5 | 48222 | C5F6E0476179F47C7FB977453F43E93DD9F5A0C2D118FAF18EA12CD53CEEA754 |
+| m2p2-first-post-03 | 48250 | 30AD11EE954151C3A7A7590911286EE38CA0EF64D8E2FC204DFA5762F308A628 |
+| m2p2-first-post-11 | 48306 | 0FBDCF6B7EA736ED1A7508C698D1B642CF02D0A7836354CB6C54E17F2EB11C2C |
+
+All6 new actual guards are permanent,55 total. All12 actual PNGs/full capture
+states/individual reviews/native writes/manifest/binary/raw/trace/imageSHA
+remain in tmp/cannon-m2p2-first-enemy-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_first_enemy_type0_pair_20261025.py --compact
+passes after exactly these2 new own accepted steps.jsonl files were removed,
+95757567 bytes, following picture/proof/SHA/exact absolute allowlist/reparse
+checks. Inventory/result: tmp/cannon-m2p2-first-full-raw-cleanup-*-20261025.json.
+Two initial ancestor checks stopped before any deletion; the corrected
+FileInfo.Directory / bare DirectoryInfo.Parent walk was first demonstrated
+read-only to the exact workspace root. No old blocked path or media touched.
+All short controls, pictures/traces/inputs/binaries/needed CPs remain.
+C00658 remains the source-proven remaining-phase counter, NOT mission number;
+the actual title is Mission2 while remaining/index are1/1.
+
+Six new bounded feedback-free controls are compactly preserved,397449 bytes:
+ tmp/cannon-m2p2-north-bank-functional-controls-verified-summary-20261025.json.
+All15 actual functional pictures were individually opened; short rawlogs,
+lossless roundtrip-checked complete watch histories, exact canonical input
+SHA, source-CP/recorder/normal-replay/native-write/imageSHA remain. Four
+further original enemy defeats are FUNCTIONAL ONLY until their own full pair:
+4/C7DD04 atF48484,29/C7E88A atF50351,5/C7DD7A atF50499,6/C7DDF0 atF50972,
+all originalPC C2B8C2. Enemy4 leaves Type5 in the sampleF48483 but its native
+negative-X write isF48484; likewise last6 captureF50971 precedes its negative-X
+writeF50972. Do not conflate first changed type/sample and exact native write.
+Each own combat window starts with original Type5 and ends8000/Type4;
+later freed-slot effects are not additional kills or enemy resurrection.
+
+The standing first west approach/v16 reaches394/61 and the closer/v17 reaches
+360/62 with all3 Type0, but neither removes5/29. The real upper-bank orders
+(350,25),(280,25) then provide two actual native defeats and finish274/30.
+A standing v19 target6 control also has no hit throughF51090, while the extra
+real waypoint(215,30) followed by tracked input removes6 and finishesF51056
+at209/35,218/34,227/33 allType0. These are measured input/terrain/phase
+controls, no emulator/pathfinding/physics/renderer repair or immunity claim.
+The failed full-route builder initially detected reused generic right-button
+labels before canonical/candidate writing or guest execution; only those
+labels were namespaced, all physical inputs unchanged. A following missing-
+manifest runner validation also executed no guest. Details retained in
+ tmp/cannon-m2p2-north-four-builder-development-20261025.json.
+
+The normal feedback-free combined2526-action continuation from the accepted
+F48306 CP passes in tmp/cannon-m2p2-north-four-current-20261025.json/-output.
+All2526 recorded physical states match their four source replays except
+labels/seconds/image paths/configured watch sets; every overlapping watched
+byte matches, and final CPU/frame/hash is exact. Native player X/Type writes
+show no loss. Own final CP has11 positive Type5 enemies/Goal0; this is only
+CP analysis, not independent whole-cold RAM equality. Compact normal proof:
+ tmp/cannon-m2p2-north-four-combined-functional-verified-summary-20261025.json.
+Needed own continuation CP:
+ tmp/cannon-m2p2-north-four-current-20261025-output/Cannon-M2P2-north-four-current/m2p2-north-four-combined-current.amigasav.
+Portable exact input tail and builder:
+ tmp/cannon-m2p2-north-four-physical-tail-20261025.json and
+ tmp/build_cannon_m2p2_north_four_full_candidate_20261025.py.
+
+FIRST next inspect the two NEW whole DF0 candidates started ONLY after
+55-guard first-Phase2-enemy acceptance and the positive combined normal replay:
+ tmp/cannon-m2p2-north-four-type0-full-candidate-20261025.json in
+ tmp/cannon-m2p2-north-four-type0-full-a/-b, sessions12513/28239.
+16238 ordinary physical actions/16239 expected states,55 actual prior cold
+image guards,296382 executed RAM-byte assertions,32 watched bytes,14 native
+write addresses, unchanged frozen wide35 runner/Core416, --no-final-checkpoint.
+No unknown CP hash is supplied as a new cold guard. Current actual files and
+results override possibly stale session IDs after a restart.
+Prepared strict checker: tmp/verify_cannon_m2p2_north_four_type0_pair_20261025.py.
+Its --preflight passes metadata/prefix/input/guard/RAM/binary checks without
+executing the guest. Ordinary mode ONLY after BOTH results finish. Require
+all previous guards/actual runtime RAM checks, entire recorded state-pair
+equality except seconds/image paths, exactly729 original probe events and
+ZERO extra CPU events/HDF/floppy writes; all11063 Phase1 samples Type0,
+3038 Phase2-tail Type0 samples (3036 positive outside exactly two native init
+rows),3013 explicit Phase2 gameplay samples and2526 new-tail samples with all3
+positive Type0 actors; only the exact4 old native initialization negative-X
+writes, no Type4 player writes. Require all4 new original native defeats at
+exact PCs/frames above and finalF51056 at209/35,218/34,227/33/Goal0/remaining1/
+index1. Source snapshots/hit windows must not count reused non-Type5 slots.
+
+Exactly11 unique actual images per boot (22 individually viewed before pass):
+- m2p2-four-enemy-left-type5: F48483.
+- m2p2-four-post-11: F48568.
+- m2p2-nw-close-wp3-approach-21: F49272.
+- m2p2-north-four-segment1-controller-real-right-release: F49778.
+- m2p2-upper-bank-wp0-approach-21: F49961.
+- m2p2-upper-bank-wp1-approach-21: F50137.
+- m2p2-upper-bank-both-enemies-left-type5: F50499.
+- m2p2-upper-bank-pair-post-11: F50583.
+- m2p2-close-north-six-wp0-approach-21: F50756.
+- m2p2-close-north-six-enemy-left-type5: F50971.
+- m2p2-close-north-six-post-11: F51056.
+
+All11 actual hash/PNG pairs must match. CP pictures/hashes are diagnostics,
+never substitutes for full cold visual review. Only then promote
+Tools/a500-cannon-fodder-mission-two-phase-two-north-four-enemies-route.json
+with11 actual new cold guards (66 total) and accept these4 further enemies.
+Do not accept Phase2 objective/buildings/wholeMission2/late requester from it.
+After acceptance, inspect genuine remaining enemies/west bank/bridge and
+building objectives from the needed CP, retain all3 native Type0 actors,
+find real inputs and repeat normal feedback-free replay/two independent
+whole cold boots/actual images for each new passage. No additional full
+cold candidate is pending. Old38173/80439 and all previous accepted runs
+are complete; missing permitted compacted rawlogs are not regressions.
+
+Core remains byte-identical5a06285a0ac63a5536581486cb75d18c2135a28b5cd6d1a38391459ad24039da;
+no Core source/build/state/model/FPU gate changed. Runner35/35 and historical
+Core416/416 Debug+Release baselines persist; no redundant broad units/boots.
+All original media/user saves and old frozen runners remain untouched.
+No new commits/pushes/tags/releases. Complete Celtic Heart and all accepted
+Cannon prefixes remain valid; entire roadmap/A1000/FPU/040/OS/independent
+video/timing/controller coverage and later visible requests remain OPEN.
+
+### Cannon Phase2 north-bank route fully cold-accepted; five further original enemies pending - 2026-10-25
+
+The previous12513/28239 pair is FINISHED and fully accepted:
+Tools/a500-cannon-fodder-mission-two-phase-two-north-four-enemies-route.json.
+Two independent whole native A500/Kick1.3 DF0 boots,16239 states each,
+55 previous actual cold image guards,296382 executed RAM-byte assertions,
+190680 present watched bytes independently rechecked. All11063 Phase1 samples
+retain3 positive native Type0 players;3038 Phase2-tail samples are Type0,
+3036 positive outside exactly two known source-proven initialization rows;
+3013 explicit Phase2 gameplay samples and2526 new-tail samples retain all3
+positive Type0 actors. Only the exact4 old native map-initialization negative-X
+writes atF46414, no nonzero player-Type writes. Exactly729 original native
+protection probes5=1/4=6/9=722, ZERO additional combat CPU events, no HDFs or
+floppy writes. Entire recorded sequences match except seconds/image paths;
+no unrecorded whole-RAM equality claimed.
+
+Four further ORIGINAL Phase2 enemies die throughPC C2B8C2:4/C7DD04 F48484,
+29/C7E88A F50351,5/C7DD7A F50499,6/C7DDF0 F50972. Old first new-phase3
+remains accepted atF48222. Sampled Type5 disappearance atF48483/F50971 must
+not be conflated with the negative-X native writes one frame later.
+FinalF51056 players209/35,218/34,227/33 allType0, Goal0/remaining1/index1.
+ALL22 actual new cold pictures individually opened and reviewed;11 PNG pairs
+byte-identical, active native terrain/input phases visible. HUD names/sprite
+appearance alone never establish hits/survival; native writes/Type0 do.
+
+| Actual new cold label | Frame | Actual cold framebuffer hash |
+| --- | --- | --- |
+| m2p2-four-enemy-left-type5 | 48483 | 303DFC4B92ED06F849145C8A5F8DF3E7454CC4D12A9DA39AD001EB8E015E7232 |
+| m2p2-four-post-11 | 48568 | 9612A6D84267F87C24009EEEA338CE863AE164925E91593BD9AA562493B9A3FC |
+| m2p2-nw-close-wp3-approach-21 | 49272 | 4E728014AFF7F3C36D28BE47A1F810950E107C282D2F529F8D21FA2091CA2140 |
+| m2p2-north-four-segment1-controller-real-right-release | 49778 | 20B53A3820052DF93030AC5D64ADA65F1852479BC80440800702CBE60EBDF79A |
+| m2p2-upper-bank-wp0-approach-21 | 49961 | 37DEC085DF796E5F2070FDF94BC1982BC57011E61FE140CD28F398A97B728750 |
+| m2p2-upper-bank-wp1-approach-21 | 50137 | 030F51C9D09AEA44121788D955674D5085333225D63878C0EFDFA3B53DF94C8A |
+| m2p2-upper-bank-both-enemies-left-type5 | 50499 | 7E45CB8ACE811374077AA6B48AC059F2ACD1D5B781AFBE4D8CC220A9A6E3CB28 |
+| m2p2-upper-bank-pair-post-11 | 50583 | 205E31CB95864A5470FB6006689640E99AAF35B9F2AA5636C94AA0FF8F3FB95C |
+| m2p2-close-north-six-wp0-approach-21 | 50756 | C3C93722E02C448E4DE1F94EB83D95BC6834038BCD5BB1A2CE8E45EF4FCB4440 |
+| m2p2-close-north-six-enemy-left-type5 | 50971 | 65C035C18437838A7B07148FF497E489D47EB5C7C61A010971D61F6801D60789 |
+| m2p2-close-north-six-post-11 | 51056 | D5B6D3FCBB2317699730A5A4EE9BB50BCF6CDEF4AECBEF5308C6377D474EA2E3 |
+
+All11 actual new guards permanent,66 total. All22 actual PNGs/full capture
+states/individual reviews/manifest/binary/raw/trace/imageSHA remain in
+ tmp/cannon-m2p2-north-four-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_north_four_type0_pair_20261025.py --compact
+passes after exactly these2 own accepted steps.jsonl files were removed
+following complete picture/proof/SHA/exact absolute allowlist/reparse checks,
+113405528 bytes. Inventory/result:
+ tmp/cannon-m2p2-north-four-full-raw-cleanup-*-20261025.json.
+Every actual picture/trace/proof/canonical input/needed private CP and short
+control remains. Old accepted rawlog compaction is not a new regression.
+No Phase2 objective/wholeMission2/requester acceptance follows from this route.
+
+Nine new bounded normal feedback-free controls, ALL27 actual functional
+pictures individually opened/reviewed, are compactly preserved (635231 bytes):
+ tmp/cannon-m2p2-west-river-functional-controls-verified-summary-20261025.json.
+Exact canonical inputs, lossless roundtrip-checked complete watch histories,
+original hit/player-Type writes, CP/raw/image SHA and all8 fresh private
+controller source/project/assembly/build-log SHA remain. Each private build
+has0 warnings/errors and copied bit-identical old Core, no Core build.
+All short rawlogs/images/traces/needed CPs remain. These functional pictures
+never replace actual cold pictures. The negative v21 route loses Jools through
+native Type4 write atF51481/PC C16D3C while X98 and all3 HUD rows still remain;
+it is a NEGATIVE control. First west order followed by earlier tracked fire
+(v22) instead removes original18/C7E378 atF51424/PC C2B8C2, all3 Type0.
+
+The west/south v23 control removes original17/C7E302 F52264 while requested13
+remains; historical status bounded-no-target-removal means not ALL requested
+targets removed, not zero hits. Its real endpoint64/161,73/160,74/154 stays
+alive, but further v24/v25 south/left orders stop nearY161/162 and do not
+remove13. No emulator/pathfinding/physics/renderer repair inferred from it.
+The source-backed east river orders (150,155),(235,155),(325,155) really reach
+319/160,310/160,301/160 and remove original16/C7E28C F53144 (v26). The upper
+right-bank control v27 remains alive without a21 hit. Adding a real lower-bank
+waypoint(434,230) to the385/165,428/175 approach then removes original21/
+C7E4DA F53968 and finishes428/235,427/229,426/224 allType0/F54052 (v28).
+An additional read-only observer, identical499 physical recorded states and
+all5192 sprite-snapshot bytes, independently confirms an extra original15/
+C7E216 removalF53991/PC C2B8C2 on these SAME inputs. This is one additional
+collateral original defeat, not a separate extra input path or duplicate21
+kill. Actual21 imageF53968 precedes15's native write; finalF54052 is after both.
+All five original18/17/16/21/15 defeats remain FUNCTIONAL ONLY until own pair.
+
+New read-only original-code/terrain/spawn/objective proof (48926 bytes):
+ tmp/cannon-m2p2-native-terrain-spawn-objective-proof-20261025.json.
+Original dispatch C153C6 uses tableC14608; Type0 goesC16730 and Type20 goes
+C16ED6. C150C2 calls C222CE at footX+8/Y-3. The latter reads mapC79DBC,
+descriptorsC79A3C and2-pixel masksC78DBC, then mappingC22340; nonzero
+collision code is handled by the original rollback path. Own narrow host
+helper tmp/cannon_native_terrain_reader_20261025.py reconstructs this lookup
+read-only, with18/18 actual native terrain-byte checks across six own CPs.
+Current Phase2 raw tile dimensions46x34 mean736x544; do not reuse the earlier
+Phase1 height576. The east route was ordinary input verified against actual
+movement afterwards; this is not a full pathfinding or hardware conformity
+claim, CPU call/hook or guest patch.
+
+The live Type5 pool is NOT fixed. In the bounded v24 control, old free slot29
+gets a NEW native Type5 write atF52698/observerPC C14A1A, returnC16F70. Original
+C149F0 rejects C01F5E>=10, otherwise allocates a free entry, setsType5 and
+copies the source position minus6X/plus4Y. Original Type20 dispatchC16ED6
+calls this function. The sole current entry using that dispatch is slot7/
+Type20 at649/482; code/coordinate evidence identifies it as the present
+spawner (inference, no unrecorded A0 trace claimed). The older original29
+removal atF50351 remains accepted: this new distant instance is not its
+resurrection. The combined functional trace also proves later slot18 position
+initialization atF53605/observerPC C14A1C/returnC16F70 after its original
+F51424 defeat. Own final CP has original10/11/12/13/14/22 plus new18/29
+positiveType5; all5192 combined final sprite bytes equal the primary case.
+This CP count is not a full-cold RAM comparison. Later freed entries can again become genuine new enemies;
+keep combat identity/windows instead of permanent Type4/global monotonic
+count assumptions. Native objective C1DD64 independently counts building-
+class Type20 entries except status38=5/7; C02A0A gates that count. Current
+C01DD0=1 and C02A0A=FFFF, while kill-all C02A08=FFFF and Goal0. The building
+objective and further spawned enemies must be resolved, not just initial
+foot soldiers. No building destruction has been accepted.
+
+The exact2412-input continuation passes a combined normal feedback-free
+replay with all2412 physical recorded states equal to its four source cases
+except labels/seconds/image paths/configured watch sets, overlapping watch
+bytes equal and final CPU/frame/hash exact. No player X/Type loss writes.
+The extra15 observer's499 physical states and5192 snapshot bytes also equal
+its primary case; it cannot change guest behavior. Proof:
+ tmp/cannon-m2p2-west-five-combined-functional-verified-summary-20261025.json.
+Canonical source/portable input tail/builder:
+ tmp/cannon-m2p2-west-five-current-20261025.json/-output;
+ tmp/cannon-m2p2-west-five-physical-tail-20261025.json;
+ tmp/build_cannon_m2p2_west_five_full_candidate_20261025.py.
+Needed own CP:
+ tmp/cannon-m2p2-west-five-current-20261025-output/Cannon-M2P2-west-five-current/m2p2-west-five-combined-current.amigasav.
+FinalF54052 players428/235,427/229,426/224 allType0, remaining1/index1, Goal0.
+Own final sprite count includes new spawn instances and is CP-only analysis,
+not independent entire cold-RAM equality or a Mission2 completion signal.
+
+FIRST next inspect the two new independent whole DF0 candidates started ONLY
+AFTER66-guard north-bank acceptance and the positive combined normal replay:
+ tmp/cannon-m2p2-west-five-type0-full-candidate-20261025.json in
+ tmp/cannon-m2p2-west-five-type0-full-a/-b, sessions62192/24115.
+18650 ordinary physical actions/18651 expected states,66 accepted actual
+prefix image guards,369766 executed RAM-byte assertions,32 watched bytes,
+16 native write addresses, unchanged frozen wide35 runner/Core416,
+--no-final-checkpoint. Current actual files/results after restart override
+possibly stale session IDs. No unknown CP hash supplied as new cold guard.
+Prepared checker tmp/verify_cannon_m2p2_west_five_type0_pair_20261025.py;
+--preflight and all five exact start-Type5/end8000-Type4 combat windows pass
+statically. Ordinary mode ONLY after BOTH results finish. Require all66 prior
+hash guards/all runtime RAM checks, entire recorded state-pair equality except
+seconds/image paths, exactly729 original protection events and ZERO new CPU
+exceptions/HDFs/floppy writes;11063 Phase1 positiveType0 samples,5450 Phase2
+Type0-tail samples/5448 positive except exactly two old initialization rows,
+5425 explicit Phase2 gameplay samples and2412 new-tail samples all3 positive
+Type0 actors; only exact4 old initialization negative-X writes/no nonzero
+player-Type writes. Require all5 exact native original removals above plus
+old new-phase3 F48222/PC C2B8C2 and finalF54052 coordinates/Goal0/remaining1.
+PhaseIndex bytes are guarded at EVERY new action and their single native
+increment is observed, although omitted from the32-watch set so all five
+enemy Type WORDS remain included; no new Runner/capacity change is required.
+Each original combat-identity endpoint is bounded; later real spawned Type5
+instances in old slots do not invalidate earlier defeats or count as new
+original kills.
+
+Exactly15 unique actual image stops per boot:
+- m2p2-west-early-eighteen-wp0-approach-21: F51232.
+- m2p2-west-early-eighteen-enemy-left-type5: F51424.
+- m2p2-west-early-eighteen-post-11: F51508.
+- m2p2-west-south-pair-wp0-approach-21: F51675.
+- m2p2-west-south-pair-wp1-approach-21: F51853.
+- m2p2-west-five-segment1-controller-real-right-release: F52359.
+- m2p2-river-east-sixteen-wp0-approach-21: F52542.
+- m2p2-river-east-sixteen-wp1-approach-21: F52721.
+- m2p2-river-east-sixteen-wp2-approach-21: F52900.
+- m2p2-river-east-sixteen-enemy-left-type5: F53144.
+- m2p2-river-east-sixteen-post-11: F53228.
+- m2p2-lower-right-twentyone-wp1-approach-21: F53574.
+- m2p2-lower-right-twentyone-wp2-approach-21: F53749.
+- m2p2-lower-right-twentyone-enemy-left-type5: F53968.
+- m2p2-lower-right-twentyone-post-11: F54052.
+
+All15 actual hash/PNG pairs must match and ALL30 actual cold pictures must be
+individually opened/reviewed before accepting summaries and promoting
+Tools/a500-cannon-fodder-mission-two-phase-two-west-river-five-enemies-route.json
+with15 actual new cold guards (81 total). Actual cold pictures override CP
+expectations; never promote CP hashes alone. This would accept only these5
+further original enemies and route, not the building/Phase2/wholeMission2 or
+later single-drive requester. All old12513/28239 and other accepted sessions
+are done; no other whole-cold candidate is pending.
+After acceptance continue actual lower-bank path/remaining enemies and the
+native building objective, especially the Type20 spawner649/482, preserving
+all3 Type0 actors and requiring normal fixed-input replay plus two whole cold
+boots/actual pictures before further passes. No invented media request or
+CPU/RAM/Trainer intervention. Existing proxy/cert/key/port settings and missing
+SSH target/bootstrap ROM/blocked HDF limits remain unchanged.
+
+No Core source/build/state/model/hardware gate changed; frozen Core SHA
+5a06285a0ac63a5536581486cb75d18c2135a28b5cd6d1a38391459ad24039da and wide
+runnerc43416bba3501bf0f61644dbb9f7d6640afb94791ca97d71253f7791c6975988 remain.
+Existing416/416 Debug+Release and35/35 Runner baselines retained, no redundant
+broad suites/boots. No new commits/pushes/tags/releases or original media/user
+save/HDF/old blocked-path changes. Full Celtic route and every accepted
+Cannon prefix remain passed. Overall roadmap/A1000/FPU/040/OS/independent
+video/timing/controller breadth and later actual requesters remain OPEN.
+
+
+### Cannon Phase2 west/river five-enemy route cold-accepted; lower-river original14 pair pending - 2026-10-25
+
+The previously pending62192/24115 pair is FINISHED and fully accepted:
+Tools/a500-cannon-fodder-mission-two-phase-two-west-river-five-enemies-route.json.
+Both independent whole native A500/Kick1.3 DF0 boots, ordinary physical input
+only/no checkpoint restore or feedback, execute18651 states/F54052. All66
+previous actual image guards and369766 runtime RAM-byte assertions pass;
+252696 present logged watch bytes independently rechecked. All11063 Phase1
+samples keep3 positive nativeType0 actors; all5450 Phase2 tailsamples keep
+Type0,5448 positive outside exactly the two old map-initialization rows.
+All5425 explicit Phase2 gameplay samples and2412 new-tail samples have3
+positiveType0 actors; no negative player-X/nonzero-Type writes beyond exactly
+four already proven map-initialization writes. Whole recorded state sequences
+match except seconds/image paths, not a claim about unrecorded whole RAM.
+Exactly729 native original protection events5=1/4=6/9=722, no additional combat
+CPU events, HDFs or floppy writes. Core416/Runner35 remain unchanged.
+
+Five additional ORIGINAL Phase2 enemy identities are removed by the native
+PC C2B8C2:18/C7E378 F51424,17/C7E302 F52264,16/C7E28C F53144,
+21/C7E4DA F53968 and15/C7E216 F53991. The extra15 is one collateral defeat,
+not a second21 kill. Later new spawns in freed slots18/29 do not undo their
+original combat-window defeats. FinalF54052 has players428/235,427/229,
+426/224 allType0,Goal0/remaining1/index1. Building destruction, Phase2/whole
+Mission2 completion and a visible later single-drive request remain OPEN.
+
+ALL30 actual whole-cold pictures were individually opened and reviewed;
+all15 actual image/hash/PNG pairs are identical. The fifteen new actual cold
+guards below are permanent,81 total. These are real cold results, not CP hashes.
+
+| Actual capture label | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-west-early-eighteen-wp0-approach-21 | 51232 | 9A66F7DCA7310DE37EC7EB25F35F2DF01D388FBF54C3BBD6B27B1EC6B57A195C |
+| m2p2-west-early-eighteen-enemy-left-type5 | 51424 | ACEB78CFE4C11AA55ADFBC42767669D9698ADB396D5369D72F94EAF180666330 |
+| m2p2-west-early-eighteen-post-11 | 51508 | 6F9334225CA88A0F243082683CD954FCF0E57501C3485450C285F10C7711D3AD |
+| m2p2-west-south-pair-wp0-approach-21 | 51675 | 48987CEA74BE30373CCA3764F8EF3B2B2D330267C7898D4F0F21E66500554276 |
+| m2p2-west-south-pair-wp1-approach-21 | 51853 | F3D458152E4BC8E4A443470D069F95189877600BC3549FFA5D444D470206D80E |
+| m2p2-west-five-segment1-controller-real-right-release | 52359 | A4FD132CC66CBF5374344FBAA6C9B1224375034EB7B8B6189DC4258873212EE9 |
+| m2p2-river-east-sixteen-wp0-approach-21 | 52542 | 6A7D3F1D5A9C77259A788023B1C861E0CBFF5713E10B00A759F06C62563D987C |
+| m2p2-river-east-sixteen-wp1-approach-21 | 52721 | 46125EA5457ACF91F9536B07E0148BA6B279ACD798027D9AF904581CCC90C430 |
+| m2p2-river-east-sixteen-wp2-approach-21 | 52900 | 7C14909D84195F7CAF88342C2D009C5552E4B12C38A394BD650E1808EA166DAD |
+| m2p2-river-east-sixteen-enemy-left-type5 | 53144 | 2D57CAA9390EB9F7C719A0A61C78D3CC2B005603FD7B723B8CDA5D28A4E30BC3 |
+| m2p2-river-east-sixteen-post-11 | 53228 | 0862CFC62A5D10AA8D893D119A53D77D59F14DF6FD3119D0C6D9D4DF3137609E |
+| m2p2-lower-right-twentyone-wp1-approach-21 | 53574 | C7BF38FFF32FCAEC3460DF194004F8003486AEF663CD6F6100FA097F7D183206 |
+| m2p2-lower-right-twentyone-wp2-approach-21 | 53749 | 62E02DF4A76C01188A2244380EA3F33F38DC467B4369341C8317E9D08AB8DDDC |
+| m2p2-lower-right-twentyone-enemy-left-type5 | 53968 | F70B5B295007DEFA73255EC020BCD8448A34E00C998F6F22AE93260613458D6C |
+| m2p2-lower-right-twentyone-post-11 | 54052 | A09908D91A75BE5F279EBBE2ED70EA3102EF4A442479DC685CC23BBC7CE2407C |
+
+Proofs/capture states/individual reviews/manifest/binary/raw/image/trace SHA:
+ tmp/cannon-m2p2-west-five-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_west_five_type0_pair_20261025.py --compact passes.
+Exactly two own accepted steps.jsonl were removed only after renewed actual
+picture/proof/SHA/exact absolute allowlist/all-ancestor reparse checks,
+130295581 bytes. Inventory/result:
+ tmp/cannon-m2p2-west-five-full-raw-cleanup-*-20261025.json.
+All30 actual PNGs, traces, inputs, proofs, frozen binaries, needed CPs and all
+short controls remain. Earlier north-four raw compaction113405528 bytes is
+still valid, no removed accepted rawlog is a regression. Both pairs of this
+turn preserve52 actual cold pictures and compact exactly four accepted rawlogs
+243701109 bytes, no other targets. Sessions12513/28239/62192/24115 are done.
+Do not wait on or repeat them without a new genuine reason.
+
+Four further bounded normal functional controls now have all10 actual PNGs
+individually reviewed, full lossless roundtrip-checked watch histories,
+exact input/source/CP/raw/trace/image/binary/build SHA in:
+ tmp/cannon-m2p2-lower-river-functional-controls-verified-summary-20261025.json
+(677706 bytes). Short raws/images/traces/needed private CPs remain.
+The v29 real waypoint(416,331) reaches body410/336,412/331,413/326 F54421
+with3Type0; its long fire tail remains without another original hit through
+F55209. Source foot lookup has terrainType6 at410/336 and368/336, type0 at
+290/336; passable geometry alone does not prove a grounded strike or shot line.
+The v30 west order(296,331),22 approach intervals then tracked real right-fire
+reaches290/336,299/336,308/336 F55223 alive and really removes original14/
+C7E1A0 via PC C2B8C2 atF55069. First observed Type4 sample is F55068, before
+the negative-X write frame; ordered samples and native writes remain distinct.
+Its historical bounded-no-target-removal recorder status means not ALL THREE
+requested11/13/14 were removed, NOT zero hits. Original11/13 stayType5.
+A first summary construction rejected an overly broad zero-hit assertion
+before summary writing; the verified trace resolved it. No Core/input change.
+
+The v31 second waypoint176/331 projected into the HUD before clicking it; the
+private recorder aborted at its host guard and emitted no replay. This is no
+guest death/CPU failure or accepted route. Source/runtime are preserved.
+All three fresh private controllers29/30/31 build with0 warnings/errors,
+reference/copy the unchanged frozen Core and keep all older controllers intact.
+One combined manifest initially used an unsupported checkpoint file property;
+preflight rejected it before guest/output execution. Copying the existing
+checkpoint action schema resolved this host-only construction error.
+
+Canonical positive lower-river source:
+ tmp/cannon-m2p2-lower-river-fourteen-current-20261025.json/-output;
+portable tail tmp/cannon-m2p2-lower-river-fourteen-physical-tail-20261025.json.
+Exactly1200 ordinary physical recorded states equal the two source segments
+except labels/seconds/image paths/watch configuration, every overlapping byte
+equal; finalCPU/frame/hash also exact. A5192-byte actual sprite snapshot equals
+own final saved RAM. All1203 recorded combined rows keep3positiveType0 and
+Goal0/remaining1/index1; no player loss writes/CPU faults/HDF/floppy writes.
+All5 combined actual pictures are included in the10 individually reviewed
+functional pictures, never substitutes for whole-cold pictures. Own needed CP:
+ tmp/cannon-m2p2-lower-river-fourteen-current-20261025-output/Cannon-M2P2-lower-river-original-fourteen-current/m2p2-lower-river-fourteen-current.amigasav.
+This original14 defeat and lower movement are NOT yet a cold acceptance.
+
+FIRST inspect the two independent whole DF0 boots started ONLY AFTER the
+81-guard west-five acceptance and positive combined fixed-input replay:
+ tmp/cannon-m2p2-lower-river-fourteen-type0-full-candidate-20261025.json in
+ tmp/cannon-m2p2-lower-river-fourteen-type0-full-a/-b, sessions2611/25718.
+19850 ordinary actions/19851 expected states,81 prior actual cold guards,
+384172 runtime RAM-byte assertions,32 watches/16 write addresses, unchanged
+wide35/Core416, --no-final-checkpoint. Current actual output/results after a
+restart take precedence over stale session IDs. Prepared strict checker:
+ tmp/verify_cannon_m2p2_lower_river_fourteen_type0_pair_20261025.py.
+Its --preflight validates metadata/prefix/physical input/binaries. Ordinary
+mode only after BOTH runs finish. Require all81 previous guards/all RAM checks,
+whole recorded-state pair equality except seconds/image paths, exact729 old
+native probes/no extra CPU events/HDF/floppy writes. All11063 Phase1 samples
+positiveType0,6650 Phase2 Type0 tailsamples/6648 positive outside exactly two
+old init rows,6625 explicit Phase2 gameplay samples and1200 new-tail samples
+3positiveType0. Exactly the old4 native initialization writes/no player Type
+loss. Require old original3/old west5 kills, new ORIGINAL14 F55069/PC C2B8C2,
+final14 X8000/Type4 and all3players290/336,299/336,308/336 F55223,Goal0/rem1/index1.
+
+Exactly5 actual new pictures per boot:
+- landing-only-m2p2-lower-corridor-three-wp0-approach-24: F54245.
+- landing-only-m2p2-lower-corridor-three-wp0-approach-49: F54421.
+- m2p2-lower-west-three-wp0-approach-21: F54604.
+- m2p2-lower-west-three-pair-tracking-0825: F55069.
+- m2p2-lower-river-controller-real-right-release: F55223.
+Require all5 actual hash/PNG pairs equal and ALL10 actual whole-cold PNGs
+individually viewed before accepting summaries/promoting a permanent route
+with5 real new cold guards (86 total). No unknown CP hash is a cold guard.
+No other full candidate is pending. No Mission2/building/late-requester pass.
+
+New read-only ammo/pickup original-code proof:
+ tmp/cannon-m2p2-native-ammo-pickup-source-proof-20261025.json (15839 bytes).
+All six current ammo words C01F4C/C01F4E/C01F50 andC01F52/C01F54/C01F56 are0
+in the accepted ownF54052 CP. Active Type37 slot8 is at689/490; its original
+dispatch C1B3B0 calls C1B448, which tests selected actor(C01554 offset)+2X/+2Y
+within distance6 and normal actor status. Type37 pickup would add4 to selected
+squad bank C01F4C atC1B3EA/observerPC C1B3EE and deactivate the item through
+C16D2A. A sibling routine adds4 toC01F52. Current numeric weapon modes are
+1/0/0; grenade/rocket naming and the real selection/throw input are not yet
+independently established. No ammo collected/weapon activation/building hit
+is claimed. Original Type20 spawner649/482 still counts as one required
+building atC01DD0, C02A0A=FFFF and kill-all C02A08=FFFF. It can create new
+Type5 instances, so total active enemy count is not monotonic. Ammo pickup,
+building destruction and then actual remaining objective progress need genuine
+inputs/native signals/normal replay/two whole cold boots and real pictures.
+
+After lower-river cold acceptance inspect own current remaining enemies and
+real west/south bank corridor, keep3positiveType0 and avoid HUD clicks. Static
+terrain/BFS geometry is planning only: it ignores enemy phases and swimming.
+A safer bounded follow-up should approach another visible westward waypoint
+(e.g.245/331) or move/scroll the real cursor at the viewport edge before aiming
+at176/331; do not bypass the host HUD guard with a fake click or RAM change.
+Further west/south terrain and the Type37 pickup need actual measured landing
+and native pickup proof, not a coordinate-only planning pass. All original
+media/usersaves/old private binaries/HDF/blocked-diagnostics/browser limits
+remain; no Core build/source/state/model/hardware/publication change.
+Celtic all13 stages remains complete; Cannon Phase2/wholeMission2/laterrequester
+and overall seven-point/A1000/FPU/040/OS/video/timing/controller breadth remainOPEN.
+
+The new lower-river checker additionally preflights all six exact old/new
+combat-window labels and start-Type5/end8000-Type4 predicates. Static review
+caught a copied old west-five label accidentally renamed only in the new
+verifier; it was restored to the immutable actual prefix label before ordinary
+verification. A host AST-selection attempt stopped before file writing, then
+was narrowed. No candidate/Core/input/running-process change. Transparent:
+ tmp/cannon-m2p2-lower-river-verifier-development-20261025.json.
+Latest integrity/focused-check records:
+ tmp/cannon-m2p2-west-and-lower-river-roadmap-integrity-20261025.json;
+ tmp/cannon-m2p2-west-and-lower-river-final-checks-20261025.json.
+
+
+### Cannon lower-river original14 cold-accepted; west original13/12/22 pair pending - 2026-10-25
+
+Sessions2611/25718 are FINISHED and fully accepted:
+Tools/a500-cannon-fodder-mission-two-phase-two-lower-river-fourteen-route.json.
+Both whole independent native A500/Kick1.3 read-only DF0 boots execute19851
+states throughF55223, all81 previous actual image guards and384172 runtime
+RAM-byte assertions passed,270624 present logged watch bytes independently
+checked. All11063 Phase1 samples retain3positiveType0 actors; all6650 Phase2
+tailsamples Type0,6648 positive outside exactly two old initialization rows.
+All6625 explicit Phase2 gameplay and1200 new-tail samples retain3positive
+Type0 actors. Only exact4 old map-init negative-X writes, no player-Type loss.
+Exactly729 original native protection events5=1/4=6/9=722, zero additional
+combat CPU events/HDFs/floppy writes. Full recorded state sequences match
+except seconds/image paths, not unrecorded whole RAM.
+
+Original14/C7E1A0 is removed F55069/PC C2B8C2, first Type4 sample atF55068;
+ordered Type conversion and negative-X-write frames differ legitimately.
+FinalF55223 players290/336,299/336,308/336 allType0,Goal0/rem1/index1,
+original14 X8000/Type4. ALL10 actual whole-cold PNGs individually opened;
+five actual hash/PNG pairs byteidentical. Five new actual guards permanent,
+86 total. Mission2/Phase2/building/ammo/late requester remain OPEN.
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| landing-only-m2p2-lower-corridor-three-wp0-approach-24 | 54245 | E8A31D2F38D913C0841E345746F3EB2C9E2B31E540EEAE8A6CBEFFD062744162 |
+| landing-only-m2p2-lower-corridor-three-wp0-approach-49 | 54421 | DBA6D503647EED3E4F0C512EECEADE86AD1B97D5B522CF9A1EFC2FA29E0D9AFF |
+| m2p2-lower-west-three-wp0-approach-21 | 54604 | 17D8FEF4DA4A1D95B7D31548735AF6C647385F9AB22302C28EDDEEF5F18BADEA |
+| m2p2-lower-west-three-pair-tracking-0825 | 55069 | 866F44E848301A9614C3C9A5BE8D5CD145332291FB857C75011E0E8878A68A57 |
+| m2p2-lower-river-controller-real-right-release | 55223 | 77359A6602B8D6F68A03C24DCF19694E350EB74A5DA215E9035411EB43B86F68 |
+
+Proofs/10actualPNG/capture states/individual reviews/manifest/binary/raw/traceSHA:
+ tmp/cannon-m2p2-lower-river-fourteen-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_lower_river_fourteen_type0_pair_20261025.py --compact
+passes after permitted removal of exactly both own accepted steps.jsonl,
+138690734 bytes, after all image/proof/SHA/exact absolute allowlist/reparse
+checks. Inventory/result tmp/cannon-m2p2-lower-river-fourteen-full-raw-cleanup-*-20261025.json.
+All actual PNGs/traces/proofs/inputs/needed CPs/frozen binaries/short controls
+remain, no other deletion. Old raw compactions are no regressions.
+
+Five new bounded normal feedback-free functional controls, ALL26 actual
+functional PNGs individually viewed, full lossless roundtrip-checked watch
+histories, native hits/player-loss/role-reuse traces, exact inputs/CP/raw/
+source/build/binary/image SHA:
+ tmp/cannon-m2p2-west-original-three-functional-controls-verified-summary-20261025.json
+(823935 bytes). All short raws/actual pictures/traces/needed CPs remain.
+Fresh private controllers32..36 are separate; each builds0 warnings/errors
+with unchanged copied frozen Core. They are diagnostics using own peeked RAM
+only outside CPU execution to choose ordinary mouse actions, never guest
+CPU hooks/RAM writes/trainer/state/media mutations. Normal replay has no
+feedback. Two positive physical source segments plus their combined replay
+repeat the SAME three original removals, not six independent kills.
+
+A real visible intermediate west waypoint245/331 followed by22 approach
+intervals/real tracked right-fire removes original13/C7E12A F55613/native
+PC C2B8C2, and holds12 long intervals toF55697:239/336,248/336,257/336,
+allType0. The next long west/south plan180/331,114/331,92/343,90/415 loses
+Jools through native Type4 write F56920/PC C16D3C (sampledF56922), even though
+all3HUD names remain. This is a NEGATIVE control, no pass. Private v33 stopped
+on loss before input-list emission; new v34 preserves the same waypoint plan
+through loss for its normal negative replay. One source-builder insertion
+assertion stopped before writing source; narrowed host insertion only.
+Do not infer an exact death frame from its500000-cycle sample or identify a
+specific shooter without evidence; the native write supplies the actual frame.
+
+Earlier fire after only the first two waypoints (v35) stays alive through
+F57449 but removes neither12 nor22, bounded normal control. Adding the real
+92/343 waypoint and firing after22 instead of50 third-waypoint wait intervals
+(v36) removes original12/C7E0B4 F56785 and22/C7E550 F56809, both PC C2B8C2,
+then holds12 long intervals: F56893 players86/348,88/343,90/338 allType0,
+Goal0/rem1/index1. The normal functional picture at the both-targets-left
+label is not a separate native write frame; exact native hit frames above.
+No emulator/pathfinding/physics/immunity/renderer change inferred.
+
+Freed ORIGINAL13 slot later becomes actual native non-Type5 role0006 at
+F56697; another negative-X write atF56745/PC C2B8C2 is not another original
+Type5 kill/resurrection. The original13 identity-window ends atF55697 with
+X8000/Type4; all later role samples/writes retained separately. A first
+combined proof assertion incorrectly demanded no later write for this slot;
+it stopped before summary writing, then was narrowed against the real Type6
+samples. No guest/Core/input/candidate change or extra kill claimed.
+
+Canonical positive combined source/own endCP:
+ tmp/cannon-m2p2-west-original-three-current-20261025.json/-output;
+ tmp/cannon-m2p2-west-original-three-current-20261025-output/Cannon-M2P2-west-original-three-combined-current/m2p2-west-original-three-combined-current.amigasav.
+Portable935-input tail:
+ tmp/cannon-m2p2-west-original-three-physical-tail-20261025.json.
+All935 physical recorded states match both source segments except labels,
+seconds/image paths/configured watch sets, every overlapping byte equal;
+all5192 final sprite-snapshot bytes equal final primary source/own save.
+All938 combined rows retain3positiveType0 actors, Goal0/rem1/index1 and no
+player-loss/native CPU/HDF/floppywrite. This functional evidence never replaces
+whole-cold pictures. The portable-tail builder caught two diagnostic snapshot/
+checkpoint actions accidentally appended by shared host-list alias before
+candidate writing/guest execution. Filtered exactly those two diagnostics;
+canonical normal manifest/935 physical inputs/recordings/outputs unchanged.
+Transparent tmp/cannon-m2p2-west-original-three-builder-development-20261025.json.
+
+FIRST inspect the two independent whole DF0 boots started ONLY AFTER the
+86-guard original14 acceptance and positive935-input combined normal replay:
+ tmp/cannon-m2p2-west-original-three-type0-full-candidate-20261025.json in
+ tmp/cannon-m2p2-west-original-three-type0-full-a/-b, sessions6044/15327.
+Started08:07UTC2026-10-25,20785 ordinary physical actions/20786 expected
+states,86 accepted prefix image guards,395410 runtime RAM-byte assertions,
+32 watches/16 native write addresses, unchanged frozen Wide35/Core416,
+--no-final-checkpoint. Current actual output/results override stale sessions
+after a restart. Prepared strict checker:
+ tmp/verify_cannon_m2p2_west_original_three_type0_pair_20261025.py.
+Its preflight validates manifest/prefix/binaries/eight exact old/new combat
+windows including start-Type5/end8000-Type4 and retained older native proofs.
+Ordinary mode only after BOTH results finish. Require all86 old hashguards/
+395410 runtimeRAM checks, complete recorded state-pair equality except seconds/
+imagepaths; exact729 old nativeprobes and ZERO extra CPU/HDF/floppywrite.
+All11063 Phase1 samples3positiveType0;7585 Phase2 tailsamples Type0/7583
+positive outside exactly two old init rows;7560 explicit Phase2 gameplay and
+935 new-tail samples3positiveType0. Only exact4 old init-negative-X writes,
+no nonzero player-Type writes. Require new original13 F55613,12 F56785,
+22 F56809/nativePC C2B8C2, original13 window throughF55697 and later role6
+F56697/removalF56745 without additional-original-kill counting. FinalF56893
+86/348,88/343,90/338 allType0,Goal0/rem1/index1,12/22 X8000/Type4.
+
+Exactly10 unique actual new pictures per boot:
+- m2p2-lower-west-thirteen-wp0-approach-21: F55415.
+- m2p2-lower-west-thirteen-enemy-left-type5: F55613.
+- m2p2-lower-west-thirteen-pair-post-03: F55641.
+- m2p2-lower-west-thirteen-pair-post-11: F55697.
+- m2p2-west-mid-south-pair-wp0-approach-49: F56063.
+- m2p2-west-mid-south-pair-wp1-approach-49: F56436.
+- m2p2-west-mid-south-pair-wp2-approach-21: F56605.
+- m2p2-west-mid-south-pair-enemy-left-type5: F56809.
+- m2p2-west-mid-south-pair-pair-post-03: F56837.
+- m2p2-west-mid-south-pair-pair-post-11: F56893.
+Require all10 actual hash/PNG pairs equal and ALL20 actual whole-cold images
+individually opened/reviewed before summaries/permanent route with10 new
+actual cold guards (96 total). No CP image/hash as new cold guard. No other
+whole candidate pending. These three original defeats/west-bank passage are
+NOT yet a cold pass, no ammo/building/Mission2 completion/late-requester pass.
+
+The16-observer set keeps6player/3new-enemy/old14/old3/Goal/phase-index/
+remaining and oldwest21/15 writes. Earlier originalwest18/17/16 native-PC
+proofs remain hash-pinned in BOTH accepted West5 summaries (already read and
+reviewed, preserved exceptions/writes/actual images), not falsely claimed as
+newly observed at unwatched addresses. All86 old actual hashes, entire
+unchanged prefix actions and their runtime RAM guards still execute. This
+explicitly bounded diagnostic evidence needs no Runner-capacity/Core change.
+
+New read-only exact two-button/numeric-weapon original-code proof:
+ tmp/cannon-m2p2-native-two-button-weapon-source-proof-20261025.json
+(25638 bytes;7 exact byte/decoded-instruction-boundary/SHA blocks).
+Original C0CBA0 polls left CIAA PRA bit6 and prior right C01478. A NEW left
+edge while right is already held writesFFFF to latchC0147E atC0CBDA;
+right is read through POTINP highbyte bit2 (whole-word bit10) atC0CC00/CC06.
+Selected-actor gate C168E4..FA and modeC021CC then choose numeric1 or3.
+Mode1 permits original C17D88 with nonzero bankC01F4C, decremented atC17E14
+(observer nextPC C17E18); mode3 permits C1B4FA with C01F52, decrementC1B584
+(nextPC C1B588). This is original-code interpretation, no actual pickup/
+weapon/bank-decrement/projectile/building execution pass. Numeric names stay
+1/3 until independently identified; do not invent grenade/rocket labels.
+All current bank words remain0; first legitimately reach Type37 ammo689/490,
+prove native+4/item state/real pictures, then input/projectile/building signals.
+The Type20 spawner649/482/buildingcount1 and all broader roadmap gates remain
+open. A new bounded private v37 west/bottom-route exploration may run from
+functional F56893 CP; it is not part of either current cold candidate and
+cannot be accepted without its own normal replay/whole pair. Original media,
+usersaves/HDF/old private binaries/blocked paths/browser workaround unchanged.
+
+
+### Cannon west-original13/12/22 route cold-accepted; original11 bottom route pair pending - 2026-10-25
+
+Sessions6044/15327 are FINISHED and accepted, not to be waited on or repeated:
+Tools/a500-cannon-fodder-mission-two-phase-two-west-original-three-enemies-route.json.
+Both independent whole DF0 boots execute20786 states/F56893,86 accepted
+previous image guards,395410 runtime RAM-byte assertions,268438 present
+logged watch bytes independently verified. All11063 Phase1 samples3positive
+Type0;7585 Phase2 tailsamples Type0/7583 positive outside exactly2 old init
+rows;7560 explicit Phase2 gameplay samples and935 new-tail samples3positive
+Type0. Exactly the four old native map-initialization writes, no player-Type
+loss. Exactly729 original native protection events5=1/4=6/9=722 and zero
+additional combat CPU/HDF/floppywrite. Entire recorded state sequences equal
+except seconds/image paths, no unrecorded entire-RAM equality claim.
+
+New ORIGINAL13/C7E12A F55613,12/C7E0B4 F56785,22/C7E550 F56809 all native
+PC C2B8C2; final86/348,88/343,90/338 all3Type0/Goal0/rem1/index1.
+ALL20 actual whole-cold pictures individually opened/reviewed,10 actual
+hash/PNG pairs byteidentical. Ten new actual guards permanent,96 total:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-lower-west-thirteen-wp0-approach-21 | 55415 | CDCFB4C50C2F8075FAB57D3203D1616B3777FA42281412E056677B1DEDF93068 |
+| m2p2-lower-west-thirteen-enemy-left-type5 | 55613 | 0F5DFFC790B6BC762DF0435575304100E3DDA3CE920035725529D8447D86E208 |
+| m2p2-lower-west-thirteen-pair-post-03 | 55641 | 016D1428B9207C8E91569935109F0A5C34E85CEC204BEF22081A2144228F8BDD |
+| m2p2-lower-west-thirteen-pair-post-11 | 55697 | 121A9AE39B4B367CEAE499FAA2B3B8F6EC66AA7C15A910596B4C54FF4D1211CD |
+| m2p2-west-mid-south-pair-wp0-approach-49 | 56063 | F8B573BEECC920DCADDEB834C20FD15475DF34640C31CF5ECC2B95CC965F4230 |
+| m2p2-west-mid-south-pair-wp1-approach-49 | 56436 | 84C10CDCD31E9B4175ACE0E67088AE21AB2E74CE99FE3F24631EC0F6909752C1 |
+| m2p2-west-mid-south-pair-wp2-approach-21 | 56605 | 28FBD5D4D0346D912D4E44FD8D7534F772B54CC0649E1576E2159B8142EECA14 |
+| m2p2-west-mid-south-pair-enemy-left-type5 | 56809 | D3908BD445F55B87123D3870EDE466F2EA57792BD41C75532627520503B41147 |
+| m2p2-west-mid-south-pair-pair-post-03 | 56837 | F6F66DB61018040F4EC47985103B26E2E596201F2D8E3BE07188FFCF089625F7 |
+| m2p2-west-mid-south-pair-pair-post-11 | 56893 | B190DA8507F77FBBB4BBACFDA7271D0D9B9B6877F9CD0C4B02B7F9FFBF5A0F29 |
+
+Proofs/20actualPNGs/capture states/individual reviews/manifest/binary/raw/
+traceSHA remain in tmp/cannon-m2p2-west-original-three-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_west_original_three_type0_pair_20261025.py --compact
+passes after allowed removal of exactly both own accepted steps.jsonl,
+145242626 bytes, after fresh Proof/picture/SHA/exact absolute allowlist/all-
+ancestor reparse checks. Cleanup inventory/result:
+ tmp/cannon-m2p2-west-original-three-full-raw-cleanup-*-20261025.json.
+Together with original14 acceptance this turn:4 additional original Phase2
+enemies,30 actual cold pictures retained, exactly4 own accepted rawlogs
+283933360 bytes compacted. All pictures/traces/proofs/needed own CPs/inputs/
+binaries and all short controls remain. No original media/user saves/HDFs/
+old blocked trees altered. Phase2/wholeMission2/building/ammo/late requester
+and overall roadmap/A1000 remain OPEN.
+
+The copied old13 later-slot filter initially counted every high-byte80 write
+but its functional removal list filtered original removal PC C2B8C2. The
+ordinary verifier stopped BEFORE summaries/acceptance. Actual both whole
+boots AND normal combined replay have identical exact two events after the
+original13 window: slot initializationF56696/PC C14AA8 and non-Type5 role6
+removalF56745/PC C2B8C2. Now require this EXACT two-event set; no broad waiver.
+Sampled role6 startsF56697; Type4 startsF56744. The original13 F55613/endF55697
+identity remains strict. No guest/Core/candidate/input change. Transparent:
+ tmp/cannon-m2p2-west-original-three-verifier-development-20261025.json.
+
+The further real west/south bottom route is NORMAL FUNCTIONAL, not yet cold:
+ tmp/cannon-m2p2-lower-west-bottom-eleven-current-v37-20261025.json/-output.
+Its664 recorded ordinary inputs replay with no feedback,667 states all3
+positiveType0/X/Y, original11/C7E03E negative-X write F58759/PC C2B8C2,
+12 long hold intervals toF58843. Final222/508,212/505,203/502 allType0,
+original11 X8000/Type4/Goal0/rem1/index1. All8 actual functional PNGs individually
+viewed, normal finalCPU/frame/hash equals recorder;5192 actual sprite bytes
+equal own saved RAM. Proof:
+ tmp/cannon-m2p2-lower-west-bottom-eleven-functional-verified-summary-20261025.json
+(144004 bytes). Needed own endCP:
+ tmp/cannon-m2p2-lower-west-bottom-eleven-current-v37-20261025-output/Cannon-M2P2-lower-west-bottom-eleven-current/m2p2-lower-west-bottom-eleven-current.amigasav.
+
+An additional read-only observer repeats the SAME664 physical inputs, all
+recorded states equal except seconds/image paths/watch set, all5192 sprite
+bytes equal primary. It observes native NEW22 Type5 initializationF57255/
+PC C14A1A/C7E569=05, returnC16F70, after original22 F56809 defeat. Final22
+Type5 is a new instance; do not require an old permanent Type4 or count it as
+resurrection. Canonical observer:
+ tmp/cannon-m2p2-bottom-eleven-new22-observer-v37-20261025.json/-output.
+No extra physical kill route/whole RAM equality implied.
+
+FIRST inspect the two independent whole DF0 boots started ONLY AFTER96-guard
+acceptance and positive normal664-input/extra-observer evidence:
+ tmp/cannon-m2p2-bottom-eleven-type0-full-candidate-20261025.json in
+ tmp/cannon-m2p2-bottom-eleven-type0-full-a/-b, sessions81911/73232,
+started08:41UTC2026-10-25.21449 ordinary physical actions/21450 expected
+states,96 accepted previous actual cold guards,403384 runtime RAM-byte
+assertions,32 watches/16 read-only write addresses, unchanged Wide35/Core416,
+--no-final-checkpoint. Current actual results/files take precedence over stale
+session IDs after a restart. Prepared strict checker:
+ tmp/verify_cannon_m2p2_bottom_eleven_type0_pair_20261025.py.
+Preflight validates manifest/prefix/binaries/nine old/new strict start-Type5/
+end8000-Type4 combat windows and retained native proofs. Ordinary mode only
+after BOTH results finish. Require96 old hashguards/403384 runtime RAM,
+full recorded state-pair equality except seconds/image paths, exact729 old
+protection events/no added combat CPU/HDF/floppywrite. All11063 Phase1 samples
+positiveType0;8249 Phase2 tailsamples Type0/8247 positive except exactly two
+known old init rows;8224 explicit Phase2 gameplay and664 new-tail samples
+3positiveType0. Only old4 initialization negative-X writes/no player Type loss.
+New ORIGINAL11 F58759/nativePC C2B8C2, final58843 all3positiveType0 coordinates
+above,Goal0/rem1/index1, original11 X8000/Type4. Old original22/endF56893 remains
+strict in its window; NEW22 Type5F57255/C14A1A must be observed and final22Type5.
+Old13 role6 condition is bounded to its accepted window throughF56893, not
+blindly extended over new longer tails. Older native-PC proofs are retained
+and hash-pinned, not falsely called fresh observations at unwatched addresses.
+
+Exactly8 actual unique new images per whole boot:
+- m2p2-lower-west-bottom-eleven-wp0-approach-49: F57264.
+- m2p2-lower-west-bottom-eleven-wp1-approach-49: F57632.
+- m2p2-lower-west-bottom-eleven-wp2-approach-49: F58000.
+- m2p2-lower-west-bottom-eleven-wp3-approach-49: F58367.
+- m2p2-lower-west-bottom-eleven-wp4-approach-21: F58542.
+- m2p2-lower-west-bottom-eleven-enemy-left-type5: F58759.
+- m2p2-lower-west-bottom-eleven-pair-post-03: F58787.
+- m2p2-lower-west-bottom-eleven-pair-post-11: F58843.
+All8 actual hash/PNG pairs equal and ALL16 actual whole-cold pictures
+individually opened/reviewed BEFORE accepting summaries or permanent route
+with8 actual new cold guards (104 total). No CP hash as a cold guard.
+This would accept only original11/bottom path, not original10/ammo/building/
+Phase2/wholeMission2/visible later requester. No other whole candidates pending.
+
+Five further bounded normal controls (v38negative/v39bounded/v40bounded/
+v41negative/v37extra-observer) have ALL15 actual functional pictures individually
+viewed, full lossless roundtrip watch histories, precise player/goal/native-
+spawn/PC/CP/raw/image/source/build SHA in:
+ tmp/cannon-m2p2-lower-east-functional-controls-verified-summary-20261025.json
+(1106957 bytes). All short raws/pictures/traces/snapshots/needed CPs/inputs/
+old binaries remain; fresh private controllers38..41 each0warnings/errors,
+unchanged copied Core/no Corebuild. No acceptance from failed movement/fire.
+
+v38 direct east order302/491,382/475 loses Jools nativelyF60192/PC C16D3C,
+X326/Y477 still positive/Type4/HUD name retained. v39 lower356/503,400/497
+stays3Type0 toF60767 but stops337/503 with no verified10/current-new18 defeat.
+Native terrain helper confirms foot337/503 code0 but338/503 code1/type3;
+static padding/path planning must not skip the small upper-edge curve.
+v40 actual clicks302/491,341/496,347/490,365/490 reach359/495,350/495,341/495,
+all3Type0 atF60366, still no10/new18 defeat. Its later real NEW13 Type5 init
+isF59229/PC C14A1A/C7E143=05, distinct from original13 and earlier role6.
+Needed own safe curveCP:
+ tmp/cannon-m2p2-lower-east-curve-safe-current-v40-20261025-output/Cannon-M2P2-lower-east-curve-safe-current-v40/m2p2-lower-east-curve-safe-current.amigasav.
+
+v41 adds379/474 then513/474 and4 final wait intervals beforeRightFire,
+loses Jools nativelyF59966/PC C16D3C. All4 actual5192-byte read-only goal
+snapshots remain. They show F59746 leader373/479/goal373/479, F59776 after
+last left-up leader381/479/goal507/479; F59804 all3actual goals507/479,
+leader408/479, BEFORE right-fire. Therefore no HUD/wrong-order/formation-
+command repair is evidenced; later death position384/467 is not proof that
+the correctly issued order was wrong. Do not identify a particular shooter
+or knockback cause without a specific independent signal. Proposed next
+separate bounded variant after accepting current pair: earlier real fire
+immediately after last left-up instead of4 waits, or prioritize the nearest
+new Type5 attacker; all3Type0 mandatory. No v42 exists yet. Static geometry
+is planning only, not gameplay, pathfinding/immunity or renderer conformity.
+
+All original inputs/media/usersaves/HDFs/old blocked diagnostics/private
+binaries remain. Core416/416 Debug+Release/Runner35/35 historical baselines
+unchanged, no redundant broad suite/boot or Core/state/hardware/publication
+change. Overall roadmap and every unsupported/gated model/FPU/040/A1000
+acceptance limitation remain open as documented.
+
+Latest focused verification/integrity for this continuation:
+ tmp/cannon-m2p2-three-and-bottom-final-checks-20261025.json;
+ tmp/cannon-m2p2-three-and-bottom-roadmap-integrity-20261025.json.
+The automation was updated in place to the current96-guard acceptance and
+first-check81911/73232 original11 pair. Old detailed evidence remains in this
+file/retained proofs; no stale prior pending pair should be rerun.
+
+
+### Cannon original11 bottom route fully cold-accepted; remaining enemy/building path open - 2026-10-25
+
+Sessions81911/73232 are FINISHED and fully accepted. No whole-cold candidate
+or recorder remains pending. Latest permanent route:
+Tools/a500-cannon-fodder-mission-two-phase-two-bottom-eleven-route.json.
+Two independent whole native A500/512KChip+512KSlow/Kick1.3 read-only DF0
+boots, ordinary fixed physical inputs/no feedback/CP restore,21450 states
+throughF58843. All96 old actual image guards,403384 runtime RAM-byte assertions
+pass;274482 present logged watch bytes independently checked. All11063
+Phase1 samples3positiveType0;8249 Phase2 tailsamples Type0/8247 positive
+outside exactly two old known init rows;8224 explicit Phase2 gameplay samples
+and664 new-tail samples3positiveType0. No nonzero player-Type writes or
+negative player-X beyond exactly the four old F46414 map-init writes.
+Exactly729 original protection events5=1/4=6/9=722, zero additional combat
+CPU/HDF/floppywrite. Whole recorded state sequences equal except seconds/
+image paths; no unrecorded whole-RAM equality implied.
+
+New ORIGINAL11/C7E03E removal F58759/PC C2B8C2, finalX8000/Type4. Final3
+players222/508,212/505,203/502 allType0,Goal0/rem1/index1. Native NEW22
+Type5 initializationF57255/PC C14A1A is independently observed in BOTH whole
+boots and the normal extra observer, after old original22 F56809. Final22
+Type5 is deliberately a new instance; no old defeat invalidation or extra
+original-kill count. All previous identity windows and native proofs remain
+strict, including old13 role6 condition only through its acceptedF56893 scope.
+
+ALL16 actual whole-cold pictures individually opened/reviewed; all8 actual
+hash/PNG pairs byteidentical. Eight actual new cold guards permanent,
+104 total. No original10/ammo/weapon/building/Phase2/wholeMission2/late visible
+requester pass. The only remaining initial Type5 identity is original10;
+later native spawns are additional real enemies and the Type20 building
+still counts toward the objective. No completion inferred from initial kills.
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-lower-west-bottom-eleven-wp0-approach-49 | 57264 | 0A1AA588B6CDBF92136059EA0DFEDCC52A23F70978B277096A61369E9D27CBB3 |
+| m2p2-lower-west-bottom-eleven-wp1-approach-49 | 57632 | B251C987B89B62B2D2542095B7D651557BF58F7CAA4AB42A6BF125C2D1C8C23D |
+| m2p2-lower-west-bottom-eleven-wp2-approach-49 | 58000 | 9D92215F503003E1366C36722AA0A435C3F87BE35EB56823F5C6A027813C0B45 |
+| m2p2-lower-west-bottom-eleven-wp3-approach-49 | 58367 | F2F838D78463947DC071DC480949749E035AB5AB0A1532018EFD288309E4475E |
+| m2p2-lower-west-bottom-eleven-wp4-approach-21 | 58542 | 3BC5E72C82F483974DFFF5DB461790DB9A8D3088E64AD44F574F1650DEDBBE30 |
+| m2p2-lower-west-bottom-eleven-enemy-left-type5 | 58759 | 15F44FA50A6BF0B8FC335A7FD54576D25EB408E8885169CD3968B8DEDFB8670D |
+| m2p2-lower-west-bottom-eleven-pair-post-03 | 58787 | 0EC3C9EFE99725728D3F12F89FC71ABD45633A04C061D9C06EB47F4DFE42F76C |
+| m2p2-lower-west-bottom-eleven-pair-post-11 | 58843 | 381FC196E0BDD0076DE9DC5537D9F3FB5B31AFC30C96D27BB9F3A0939522A3C6 |
+
+Proofs/16actualPNGs/capture states/individual reviews/manifest/binary/raw/
+traceSHA remain in tmp/cannon-m2p2-bottom-eleven-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_bottom_eleven_type0_pair_20261025.py --compact
+passes after permitted removal of exactly both own accepted steps.jsonl,
+149897185 bytes, after renewed Proof/image/SHA/exact absolute allowlist/
+all-ancestor reparse checks. Inventory/result:
+ tmp/cannon-m2p2-bottom-eleven-full-raw-cleanup-*-20261025.json.
+This entire continuation accepts5 further initial Phase2 enemies14/13/12/22/11
+across three independent whole-cold pairs, retains ALL46 actual new cold PNGs,
+and compacts exactly6 own accepted rawlogs433830545 bytes. No other deletion.
+All original media/user saves/HDFs/old private binaries/needed own CPs/
+canonical inputs/traces/short controls and older accepted proofs remain.
+
+Current cold-covered own continuation CP (normal saved state, with recorded
+path and Sprite-snapshot comparison; no claim of independent whole-cold RAM):
+ tmp/cannon-m2p2-lower-west-bottom-eleven-current-v37-20261025-output/Cannon-M2P2-lower-west-bottom-eleven-current/m2p2-lower-west-bottom-eleven-current.amigasav.
+Canonical664-input source and portable full-prefix tail remain:
+ tmp/cannon-m2p2-lower-west-bottom-eleven-current-v37-20261025.json;
+ tmp/cannon-m2p2-bottom-eleven-physical-tail-20261025.json.
+All8 functional pictures/144004-byte proof and extra-observer evidence remain
+valid alongside the16 actual whole-cold pictures; neither substitutes for them.
+
+FIRST next legitimate bounded alternative: start at this F58843 CP and inspect
+actual new enemies/shot line near the lower east corner. Existing v38/v41
+routes are NEGATIVE, v39/v40 safe movement-only controls. The measured v41
+native destinations507/479 for all3 atF59804 are correct; do not claim a HUD/
+formation-order/pathfinding defect from its later Jools Type4 write. A fresh
+separate v42 could use earlier real RightFire immediately after the final
+left-up rather than four wait intervals, or target a nearer NEW Type5 attacker
+before original10. No v42 exists yet; do not overwrite old controllers.
+Require all3positiveType0/X/Y throughout and actual original/native identity
+signals. Negative or respawn endpoints are never passes. Portable real inputs
+must normally replay WITHOUT feedback, then two new independent whole DF0
+boots/ALL actual pictures before any new route acceptance. No current process
+needs waiting or termination; next step is genuine new bounded work.
+
+Ammo Type37 at689/490, the Type20 spawner649/482, original10 and new native
+spawns remain open. All bank words0; numeric modes1/3 and original two-button
+path are code-only evidence until actual pickup/consumption/projectile/building
+signals and whole boots prove them. No false grenade/rocket name or emulator/
+physics/renderer repair. Overall seven-point/A1000/FPU/040/OS/video/timing/
+controller breadth remains OPEN, no hardware gates or publication changed.
+
+Final current104-guard integrity/focused checks:
+ tmp/cannon-m2p2-bottom-accepted-final-checks-20261025.json;
+ tmp/cannon-m2p2-bottom-accepted-roadmap-integrity-20261025.json.
+The existing heartbeat stays ACTIVE with the latest104-guard acceptance,
+no pending old process and the concrete next bounded corner-fire alternative.
+
+
+### Cannon lower-east immediate-fire functional path and full-cold verification pending - 2026-10-25
+
+Fresh separate v42 uses exactly the previous legitimate lower-east curved
+waypoints but presses RightFire immediately after final left-up, without the
+four final approach waits. Ordinary feedback-free replay1238physicalInputs/
+1241rows throughF60455 retains3positiveType0 at507/479,498/479,487/479. Native
+PC C2B8C2 removes NEW18F60069, NEW17F60135, remaining ORIGINAL10F60143, and
+NEW13F60371. NEW13 Type5 allocationF59229/PC C14A1A/returnC16F70 proves a new
+instance, not old original13 or its old role6. Later18 Type0017 initialization
+F60072/PC C14AA8 and removalF60103 are NON-Type5 reuse, not another enemy kill.
+All9 actual functional images individually opened/reviewed; final CPU/frame/
+hash equals the recorder and5192sprite bytes equal own save. All short logs,
+images/traces/inputs/private binaries/needed CP remain. Functional proof:
+ tmp/cannon-m2p2-immediate-fire-functional-verified-summary-20261025.json.
+Own ending CP is the v42 current-output/m2p2-lower-east-immediate-fire-current
+.amigasav;6 remaining Type5 slots14/15/16/21/22/29,zero ammo/building1/Goal0
+are ownCP observations, not whole-cold RAM equality or phase completion.
+
+After positive normal replay, two independent whole DF0 boots began09:21UTC,
+sessions80306/17368, candidate tmp/cannon-m2p2-immediate-fire-type0-full-
+candidate-20261025.json, roots immediate-fire-type0-full-a/-b.22687ordinary
+actions/22688expected states,104 accepted prefix image guards,418266RAM
+assertions,32watches/16readonly write observers,9actual images per boot.
+Strict checker tmp/verify_cannon_m2p2_immediate_fire_type0_pair_20261025.py
+preflight passes. Initial checker used wrong long-form standard action names;
+only host whitelist corrected to actual already validated key/disk/click
+schema; candidate/Core/guest inputs unchanged. Development proof retained.
+Ordinary pair check only after BOTH results exist, then ALL18actual cold
+images individually opened and paired hashes/PNGs checked BEFORE acceptance.
+No CP hashes as new cold guards. At this section's writing pair is PENDING,
+not yet an accepted route or mission completion. Latest later section wins.
+
+Bounded lower-right v43 from this functionalCP reaches551/507 with3Type0
+throughF61555 but does not remove target NEW14; v44 reaches571/523 through
+F61750 with3Type0 and NEW14 remains. Repeated writes on freed17/18 include
+non-Type5 roles and must not be counted as repeated original kills. V45
+far-east order loses Jools, exact negative normal replay retained; v46
+nearest-current-target variant retains same final loss. Neither is a pass.
+Actual controls/proofs/next input are documented in the later control bundle.
+No emulator/physics/pathfinding/HUD/renderer repair inferred. Actual ammo
+pickup, weapon consumption, building/Phase2/Mission2/later requester remain
+OPEN, as does the full roadmap/A1000/FPU/040. No Core/state/hardware/publication
+change; historical Core416/416/Runner35 baselines unchanged, no broad rerun.
+
+
+### Cannon remaining original10 and immediate-fire east route fully cold-accepted - 2026-10-25
+
+Sessions80306/17368 are FINISHED/accepted; no whole candidate pending. Two
+independent whole native A500/512KChip+512KSlow/Kick1.3 read-only DF0 boots,
+22688states/F60455,104accepted prefix image guards and418266runtime RAM-byte
+assertions all pass.292056present logged watchbytes independently rechecked.
+All11063Phase1 samples3positiveType0;9487Phase2 tailType0/9485positive outside
+exactly2old map-init rows;9462explicitPhase2gameplay samples and1238new-tail
+samples3positiveType0/X/Y. Only exact4old F46414 map-init negative-X writes
+and zero nonzero playerType writes. Exactly729original known loader probes
+5=1/4=6/9=722 (366+identical363), zero additional combat CPU events/HDFs/
+floppywrites. Entire recorded state sequences equal except seconds/image
+paths; no unrecorded wholeRAM equality. All old prefix actions/guards/runtime
+assertions preserved, old native PC evidence hash-pinned in accepted104
+proofs rather than falsely called fresh at unwatched addresses.
+
+NativePC C2B8C2 removes NEW18 F60069,NEW17 F60135,the final ORIGINAL10 F60143,
+and NEW13 F60371. Actual NEW13 Type5 allocationF59229/PC C14A1A/returnC16F70
+occurs after prior original13/role6, not a second original13. Later18 has
+Type0017 (decimal23) initializationF60072/PC C14AA8 and removalF60103/PC
+C2B8C2; that NON-Type5 reuse is not an extra enemy kill. Exact ordered Type
+transitions5/4/23/4 and both writes independently confirmed in both cold
+boots and normal replay. Prefix NEW22 allocationF57255 also observed in both.
+Final3soldiers507/479,498/479,487/479 allType0,Goal0/rem1/index1.
+
+ALL18 actual new whole-cold PNGs individually opened/reviewed,9actual pairs
+byteidentical. Nine actual new cold hashes promoted,113total. Latest route:
+ Tools/a500-cannon-fodder-mission-two-phase-two-immediate-fire-original-ten-route.json.
+All initial Phase2Type5 identities have now been defeated across accepted
+route windows; six remaining NEW Type5 in own endCP,spawner building1,zero
+ammo/Goal0 mean Phase2/Mission2/later requester are STILL OPEN. No complete
+objective inferred from the original set or from HUD names.
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-lower-east-immediate-fire-wp0-approach-49 | 59210 | DE9700199B06FC08616ED4B54DE3F03720A9A8736273CCDBE8C608868685E447 |
+| m2p2-lower-east-immediate-fire-wp1-approach-21 | 59381 | 3CDEE0AADFE70C91E290DE682EAE27E6AF3FC30CD9874A9FB759393D832E6497 |
+| m2p2-lower-east-immediate-fire-wp2-approach-11 | 59478 | 915CAE84ABE8AEEDD26D27FA6C865DE9340E3C0D41A9DD970B3CE89501DFB4A8 |
+| m2p2-lower-east-immediate-fire-wp3-approach-11 | 59577 | D75412E9AF83224E3ECD356AE6C195D6F7C24337CDA8D737D711079737A866C7 |
+| m2p2-lower-east-immediate-fire-wp4-approach-21 | 59746 | 932AC01DF63D38FB82AB846B32F6BFDF09B308FE1FE822ACEB304939EE053921 |
+| m2p2-lower-east-immediate-fire-wp5-real-left-up | 59776 | 054144276B91EEB3E668553F4A6602C21EB7B313A36A2F53EEF9B8E79FA37D0A |
+| m2p2-lower-east-immediate-fire-enemy-left-type5 | 60371 | 5C5923B6D1A38138B1FA34C1ED0D13B6A0A2E30BA72B95D8BA677E1B11709BA7 |
+| m2p2-lower-east-immediate-fire-pair-post-03 | 60399 | 2E5A590081DD6D17C8965BD372925728C8F8CC2739D92BCBCD00C086B3ADA725 |
+| m2p2-lower-east-immediate-fire-pair-post-11 | 60455 | B4ACEAA422323FE0366C4A323AB91A0DFBCE7159A95484B945FFC4BE7E96597B |
+
+Proofs/ALL18 actual coldPNGs/traces/full capture states/individual reviews/
+manifest/runner/Core/raw/PNG/traceSHA remain in
+ tmp/cannon-m2p2-immediate-fire-type0-full-a/-b/verified-summary.json.
+Strict checker tmp/verify_cannon_m2p2_immediate_fire_type0_pair_20261025.py
+--compact verifies public113route/prefix/source proofs/binaries/all PNGs/
+native traces without requiring any later permitted compacted rawlogs.
+Needed own now cold-covered continuation CP:
+ tmp/cannon-m2p2-lower-east-immediate-fire-current-v42-20261025-output/Cannon-M2P2-lower-east-immediate-fire-current-v42/m2p2-lower-east-immediate-fire-current.amigasav.
+All canonical1238physical inputs/functional9PNGs/neededCPs/short controls/old
+binaries remain. New bounded lower-right controls are diagnostics only; no
+new pickup/building/phase/mission/late-requester acceptance or Core/state/
+hardware/publication change. Historical416Core/35Runner baselines unchanged.
+
+
+### Cannon current113-guard follow-up controls and next bounded step - 2026-10-25
+
+All full sessions80306/17368 and private controllers42..46 are FINISHED. No
+whole cold candidate or recorder remains pending. Earlier pending sections
+are historical. Latest accepted113guard route and all18realcoldPNGs/proofs
+remain valid; do not rerun old accepted prefixes or demand compacted raws.
+Exactly2ownaccepted steps.jsonl158588844bytes removed only after renewed
+Proof/actual-image/SHA/exactabsoluteallowlist/all-ancestorReparse checks;
+all18actualcoldPNGs,all traces/proofs/neededCPs/inputs/binaries remain.
+Inventory/result tmp/cannon-m2p2-immediate-fire-full-raw-cleanup-*-20261025.json;
+--compact passes after removal. No old blocked tree/media/HDF/userSave touched.
+
+Four new bounded feedback-free normal controls,ALL18actual functional images
+individually opened,full lossless roundtrip watch histories/inputs/raw/trace/
+sourceCP/private-source/project/build/binary/imageSHA retained:
+ tmp/cannon-m2p2-lower-right-functional-controls-verified-summary-20261025.json
+(759509bytes). v43 has1462physicalinputs/F61555,3Type0 at551/507,542/507,535/502
+and NEW14 remainsType5. v44 has1495physicalinputs/F61750,3Type0 at571/523,567/518,
+567/515 and NEW14 remainsType5. Native fresh17/18 Type5 allocations and later
+role/removal writes remain explicitly ordered evidence, not a flat write80
+kill count or another ORIGINAL17/18. V43/44 are bounded functional controls,
+not new cold movement/kill passes.
+
+V45far-east last click653/518 and V46nearest-current-Type5 variant both lose
+Jools nativelyF61259/PC C16D3C; final sampledF61260 positiveX574/Y505 withType4,
+other2Type0. Both459fixedphysical sequences replay normally withoutfeedback
+with exactType4guards only at their2negative endpoint actions. These last
+three state rows including0cycle snapshot are negative, never passes. Actual
+3PNGseach retain HUDnames, which are not life evidence. V45/V46 physical
+aim sequences and finalCPU differ despite same deathframe, so no exact
+sequence/wholeRAM equality claimed. Private43..46 build0warnings/errors and
+bitidentical copiedCore; no Corebuild/patch. All short raws/pictures/snapshots
+remain; no cleanup of these controls.
+
+NEXT concrete fresh bounded variant could be v47,NOT yet created/executed:
+from acceptedF60455 ownv42CP, reuse legitimate lower curve but shorten the
+last far-east order from653/518 to613/518 and use immediate realRightFire on
+the currently nearest Type5 after lastleftup. Read actual positions/goals/
+shot line; all3positiveType0/X/Y mandatory, stopnegative immediately. This is
+a proposed ordinary tactical alternative, not a pathfinding/HUD/physics fix.
+Do not repeat the whole long V43/V44 no14-hit tail without a new reason.
+Original10 is now dead; remaining actors are NEWspawninstances plus building.
+Any positive portableinputs must replay normally withoutfeedback and then
+pass2independent wholeDF0boots/ALLactualimages before a new accepted route.
+AmmoType37 at689/490/6zero banks,spawnerType20 at649/482/building1/Goal0 and
+Phase2/Mission2/late requester remain open. Missing bootstrapROM/SSHtarget/
+blockedHDF copies and all broader hardware/model acceptance gates unchanged.
+
+Final focused checks/integrity for this continuation:
+ tmp/cannon-m2p2-immediate-fire-final-checks-20261025.json;
+ tmp/cannon-m2p2-immediate-fire-roadmap-integrity-20261025.json.
+No Core/FPU/test source/media/userSave/oldorcurrent frozenbinary changes;
+historical Core416/Runner35 baselines remain, no redundant broad reruns.
+
+
+### Cannon actual ammo pickup and lower corner route fully cold-accepted - 2026-10-25
+
+Whole sessions46040/36671 FINISHED/accepted. Latest route:
+ Tools/a500-cannon-fodder-mission-two-phase-two-corner-ammo-pickup-route.json.
+Two independent complete native A500/512KChip+512KSlow/Kick1.3 read-onlyDF0
+boots,24652states/F62076,113old actual imageguards and457564runtimeRAM-byte
+assertions pass.318652present loggedwatchbytes independently checked.
+All11063Phase1samples3positiveType0;11451Phase2tailsamplesType0/11449positive
+outside exactly2old map-init rows;11426explicitPhase2gameplay/1964new-tail
+samples3positiveType0/X/Y. Additional11784runtimebytes require all3Actor
+state38words0000 throughout1964actions;3928runtimebytes reproduce the
+separately observed required-building scratch word1 at these exact stops.
+That scratchword is NOT a general invariant or a building victory signal.
+Exactly4old nativeinitnegativeXwrites,zero nonzeroPlayerTypewrites. Exactly
+729original loaderprobes5=1/4=6/9=722,zero new combatCPUevents/HDFs/floppywrites.
+Whole recordedstates pairwise identical exceptseconds/imagepaths, no full
+unrecordedRAM equality. Older nativeprefixproofs SHA-pinned at unwatched
+addresses, all old guard/action/byte predicates preserved.
+
+Actual NEW14 (not the accepted older ORIGINAL14) removedF61760/PC C2B8C2,
+with freshly watched orderedType5->4 at its own combat instance. Item37
+slot8 at689/490 is ACTUALLY picked up F62002: bankC01F4C0->4/nativeObserver
+PC C1B3EE; itemType4/PC C16D3C and X8000/PC C2B8C2 sameframe. That item
+deactivation is neither playerdeath nor an enemykill. Bankremains4 through
+F62076,all3soldiers687/488,687/493,687/498 Type0/state38zero,Goal0/rem1/index1.
+No weapon consumption/projectile/building/Mission2/late requester acceptance.
+
+ALL26 actual whole-cold PNGs individually opened/reviewed,13actual pairs
+byteidentical. Last3 actual captures in EACH boot visibly show4 in ammoHUD.
+Thirteen genuine new cold imageguards promoted,126total. All13 hashes:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-lower-right-clear-corner-wp0-approach-11 | 60557 | A53B9F05F8C4B311DBE0EEC9C625B9231C2188962771A7F67175402BBC7944F0 |
+| m2p2-lower-right-clear-corner-wp1-approach-11 | 60655 | D85259FE7ED7AECCD0CD17C7CB2AF8E757DB7ADC7BCDD8EECFC16C9F071597BA |
+| m2p2-lower-right-clear-corner-wp2-approach-11 | 60753 | AE144DE0DFAD52DCCE18C76DC2B5C42FD9A2274B5E33A59B43C04F82C7EC98D6 |
+| m2p2-lower-right-clear-corner-wp3-approach-11 | 60851 | 81BC76E4901CD826B8EA0E9FE62A6A97F6A3826CE5844C85908E7E351CCE82A7 |
+| m2p2-lower-right-clear-corner-wp4-approach-11 | 60949 | B89DB8C3550D3938CA43570F49DB4459E9602DBFE86E389391E9509A057E00C6 |
+| m2p2-lower-right-clear-corner-wp5-real-left-up | 60962 | 1A7BE7DACDCC1EAAC6777C620656B041AA0FC64A76F3C29602A2BFE0D64E9382 |
+| m2p2-clear-corner-v49-controller-real-right-release | 61750 | BD042EEBE89E498943A783BFA6CC7C6B6FA9978CAACFA169094364EB8F11A008 |
+| m2p2-ammo-preserve-item-wp0-arrived | 61893 | A22CCF1066CA82CBE714BFF888B8726CBA7D30DD6C796D441617C2FB7D380040 |
+| m2p2-ammo-preserve-item-wp1-arrived | 61909 | 668D5C324DF04B108F486FEB2CA7609D4614B4667BB149BCB98014F9AD9FD60B |
+| m2p2-ammo-preserve-item-wp2-arrived | 61970 | DD47FCDF9E3FE62493BB0399A5AC0A15AA25D6A5AD04727A96206CFA03899B0F |
+| m2p2-ammo-preserve-item-wp3-arrived | 62008 | DA8A1F07D2EDD21196D5D88B927639271FE3CF4AF8CDE7E2FE4997C9140EE2FE |
+| m2p2-ammo-preserve-item-pickup-bank-observed | 62008 | DA8A1F07D2EDD21196D5D88B927639271FE3CF4AF8CDE7E2FE4997C9140EE2FE |
+| m2p2-ammo-preserve-item-final-right-release | 62076 | D07EE17A692401AC44D567E5DF56D2B323131474E664043570AA2A13AB62910A |
+
+Proofs/ALL26actualcoldPNGs/traces/fullCaptureStates/individualReviews/
+manifest/binary/raw/PNG/traceSHA retained in
+ tmp/cannon-m2p2-corner-ammo-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_corner_ammo_type0_pair_20261025.py --compact
+checks route/candidate/prefixproofs/binaries/images/traces, never requires
+subsequently permitted compacted rawlogs. No unknownCP hashes as coldguards.
+
+Normal source49+56 and direct combined1964physicalinputs remain in
+ tmp/cannon-m2p2-corner-ammo-functional-verified-summary-20261025.json
+(696080bytes),with all13actual functional images independently reviewed and
+11784neutral-state runtimebytes. Exactly one intermediateCP first-row
+presentation observation F61751 differs only in displayedhash/nonBlack
+(142975vs142948); exact index/fields/hashes preserved,all1964CPU/cache/input/
+disk/audio/display/expansion/frame/overlappingwatchfields and remaining1963
+rowhashes equal. Direct combinedreplay is authoritative and noCPboundary
+images substitute for wholecoldpictures. Hostcomparison initially rejected
+this narrow observation; proof only corrected with exact differing fields,
+no Core/guest/physicalinput change, transparent development file retained.
+
+Needed own now cold-covered current CP:
+ tmp/cannon-m2p2-corner-ammo-combined-current-20261025-output/Cannon-M2P2-corner-ammo-combined-current/m2p2-corner-ammo-combined-current.amigasav.
+All input/source/positiveCP/shortraw/picture/trace/privatebinary files remain.
+Actual weapon/building follow-up controls below are functional only until
+their own complete cold pairs; game/whole roadmap/A1000/FPU/040 remain OPEN.
+
+
+### Cannon pickup raw compaction and bounded diagnostics retained - 2026-10-25
+
+The126-guard pickup route above is FULLY cold accepted, sessions46040/36671
+finished. Both own accepted steps.jsonl files were removed only AFTER
+renewed compact proof, all26 actual individual PNG reviews/hashes, traceSHA,
+rawSHA/size, exact absolute two-path allowlist and ALL-ancestor reparse
+checks completed before first deletion. Total172358778bytes; inventory/result
+ tmp/cannon-m2p2-corner-ammo-full-raw-cleanup-*-20261025.json.
+All26PNG/trace/proof/inputs/privateCPs/binaries remain; --compact passed again
+without requiring permitted removed logs. No pending building raws removed.
+
+Nine additional bounded/negative NORMAL feedback-free controls, all8actual
+functional PNGs individually opened (47five,57three), three separately marked
+RECORDER-ONLY diagnostics59/60/61, and all17new private builds47..63 are
+consolidated in
+ tmp/cannon-m2p2-corner-ammo-negative-controls-verified-summary-20261025.json
+(4161330bytes). Exact manifests/physical inputs, sourceCP/Raw/Trace/Binary/
+Build/PNG SHA, all lossless watch-delta histories and real final states retained.
+Short raws/snapshots/images/CPs/old private binaries are NOT deleted.
+
+47shortened east order613/518 and48earlier-fire both remain true Type4
+negative controls;47 normalnative Type4F61263/PC C16D3C despite positiveX/HUD.
+50/51 actual lower corner orders remain bounded without pickup.52/54/55
+stop nonneutral state38 while still Type0: these are NOT healthy passes and
+nonzero state alone is not asserted death.53 actually reaches Type4. Its
+initial expected C01DD0=1 host guard failed when original counting scratch
+word transiently0; distinct no-counter-guard replay of IDENTICAL physical
+inputs completes and all first failed outputs remain. Counter0 alone is
+not building destruction. Earlier Type0-only passes are not downgraded.
+
+57 near-building actual bank4->3 atF62095/PC C17E18 is a consumption CONTROL,
+not a healthy building pass. Real actual PNGs show4then3 HUD, but native
+player state becomes nonneutral. Recorder-only59 similarly stops nonneutral;
+60 reaches building explosion/count0 while3Type0/state1, not healthy;61
+continues to F62469 with players0/2 actually Type4/X8000/state6 and player1
+stillType0/state6. No normal-replay/cold acceptance inferred from59..61.
+No shooter/own-blast/knockback/HUD/pathfinding/physics/renderer repair claim.
+
+Initial consolidated verifier assumed state38 watched in all older normal
+controls; actual47/57 watchlists omit it. Host check stopped before proof
+write, now missing bytes explicitly null/unwatched and recorder samples
+separately SHA-pinned. No invented zero statuses, no guest/input/Core change.
+ tmp/cannon-m2p2-negative-control-proof-development-20261025.json.
+Other host-only encoding/counter-guard corrections and first failed logs
+remain; no invented guest regression. All17successful private builds0warnings/
+errors and identical historicalCore, no old recorder or evidence runner overwritten.
+
+
+### Cannon defence, retreat and required-building destruction functional; whole cold pair pending - 2026-10-25
+
+This is a POSITIVE NORMAL fixed-input functional route; NOT YET a whole cold
+pass. It starts at the now cold-covered pickupCP F62076/ammo4. Native defence
+58 removes current NEW15F62168 and current NEW16F62249, bothPC C2B8C2,
+keeping all3neutral Type0 through F62259. Reverse ground route62 retains
+ammo4/all3neutral and removes current NEW29F62588/PC C2B8C2. It reaches
+F62682 at551/523,561/524,570/525. Retreat is ordinary physical orders, not
+RAM/CPU/state edits. No original enemy resurrection or repeated originalkill.
+
+Remote real two-button input63: Right already held, NEW Left-down edge,
+Left-up, Right-release plus12ordinary500000-cycle hold intervals. Numeric
+mode1 bank4->3 F62708/observerPC C17E18; actual required Type20 building7
+first damage state5 F62787/PC C1D768, original reset F62811/PC C14AA8,
+Type39(hex27)explosionF62812/PC C1B2B0, Type4F62824/PC C16D3C,
+X8000F62825/PC C2B8C2. Required-building scratchword stable0 at actualend,
+real visible warehouse wreck, all3neutral Type0 through F62899. Actual
+normal6weapon-route PNGs show4before/3after and explosion/wreck, and all
+3defence+5retreat+6weapon pictures (14total) individually opened/reviewed.
+This combination, NOT counter0 alone, proves the functional destruction.
+
+ tmp/cannon-m2p2-defence-building-functional-verified-summary-20261025.json
+(378490bytes) retains all14actual pictures, full native traces/capture states,
+sourceCP/manifest/raw/binary/PNG SHA, lossless watch histories and exact inputs.
+Combined890physical inputs match all3source normal replays exceptlabels/
+seconds/imagepaths/watchconfig, overlapping bytes equal, no CP-boundary
+presentation difference here, final5192sprite bytes equal own save. Source63
+has192recorded physical inputs plus12explicit ordinary wait inputs. New normal
+read-only29observer repeats all890states exactly and confirms actual NEW
+replacement29 Type5 allocation WRITE F62762/PC C14A1A/returnC16F70; first
+later sampledType5 F62763 is a distinct event. OLD current29 removalF62588
+remains valid. Final own CP has THREE current Type5 slots21/22/replacement29,
+not two; initial host prose/count and write-vs-sample-frame check corrected
+before acceptance with exact trace, no guest/Core/input change.
+ tmp/cannon-m2p2-defence-building-proof-development-20261025.json.
+
+Final functionalF62899:551/523,561/524,570/525 allType0/state38zero,
+ammo3/Goal0/Remaining1/Index1/buildingType4/X8000. OwnCP count is not a
+full unrecorded cold RAM equality claim. This is NOT Phase2/Mission2/later
+SingleDriveRequester completion; remaining actual3NPCs must be dealt with.
+Needed functional currentCP (NOT cold-covered until pending pair accepted):
+ tmp/cannon-m2p2-defence-retreat-building-combined-current-20261025-output/Cannon-M2P2-defence-retreat-building-combined-current/m2p2-defence-retreat-building-combined-current.amigasav.
+Source/portable exact890inputs:
+ tmp/cannon-m2p2-defence-retreat-building-combined-current-20261025.json
+ tmp/cannon-m2p2-defence-retreat-building-physical-tail-20261025.json.
+
+FIRST NEXT: two full independent nativeDF0 cold boots started11:21UTC
+2026-10-25 ONLY AFTER126-guard acceptance and positive normal combinedreplay.
+Sessions29603/51317 in tmp/cannon-m2p2-defence-building-type0-full-a/-b.
+Actual current candidate is the V2 file:
+ tmp/cannon-m2p2-defence-building-type0-full-candidate-v2-20261025.json
+ metadata-v2 alongside.25541normal physical actions/expected25542states,
+126old actual prefix guards,478952RAM assertions,32watches/16native observers,
+--no-final-checkpoint. First non-v2candidate rejected at validation BEFORE
+guest/output because35RAM guards on one action exceed32; V2 distributes
+same final21/22/29Type5 predicates over last3holdrows, same physicalinputs/
+totalRAM. Old rejected candidate retained, do NOT execute it. Development:
+ tmp/cannon-m2p2-defence-building-candidate-development-20261025.json.
+
+Prepared strictchecker
+ tmp/verify_cannon_m2p2_defence_building_type0_pair_20261025.py
+--preflight passed; ordinary mode ONLY AFTER BOTH actual result.json finish.
+After reboot inspect files/results, old sessions may be invalid. Require
+all126oldguards/478952RAM, full recorded-state pair equality exceptseconds/
+imagepaths,11063Phase1positiveType0,12341Phase2Type0 tails/12339positive
+outside exactly2old initrows,12316explicitPhase2gameplay,890newtailpositive
+Type0/X/Y plus5340neutral-state runtimebytes. Only exactold4initnegativeX
+writes and2oldX8000/Type0initrows, ZERO nonzeroPlayerTypeLosswrites. Exactly
+729original protectionprobes5=1/4=6/9=722; ZERO additional CPUevents/HDF/
+floppywrites. Keep all old identity windows/pinned nativeprefixproofs, no
+permanent Type4 reused-slot assumptions. Require new15/16/29native removals,
+replacement29 WRITE62762/sample62763, actual bank62708, buildingdamage/
+explosion/deactivation/finalX8000 as above. Fullobserver does not watch
+buildingX; normalXtrace is hash-pinned and full final8000 runtimeguard applies.
+
+Exactly14 unique actual captures PER BOOT, expected functional frames below.
+ALL28actual cold PNGs must be individually opened and all14pairs hash/byteequal
+BEFORE accepting verified-summary or promoting140guard permanent route.
+NO unknownCP hashes as new coldguards, NO cachednonBlack/rowhash substitutes
+for actual visual contents. Candidate is still PENDING, not already a pass.
+
+| Actual pending capture label | Expected frame |
+| --- | --- |
+| m2p2-pickup-nearest-defence-target-left-type5 | 62168 |
+| m2p2-pickup-nearest-defence-hold-03 | 62198 |
+| m2p2-pickup-nearest-defence-hold-11 | 62259 |
+| m2p2-ammo-safe-retreat-wp0-arrived | 62334 |
+| m2p2-ammo-safe-retreat-wp1-arrived | 62385 |
+| m2p2-ammo-safe-retreat-wp2-arrived | 62412 |
+| m2p2-ammo-safe-retreat-wp3-arrived | 62591 |
+| m2p2-ammo-safe-retreat-hold-11 | 62682 |
+| m2p2-special-retreated-building-settle | 62705 |
+| m2p2-special-retreated-building-real-left-down-while-right-held | 62712 |
+| m2p2-special-retreated-building-real-left-up | 62716 |
+| m2p2-special-retreated-building-final-right-release | 62815 |
+| m2p2-special-retreated-building-live-hold-03 | 62843 |
+| m2p2-special-retreated-building-live-hold-11 | 62899 |
+
+After actual whole-pair acceptance, use newly cold-covered62899CP to read
+current21/22/replacement29 phases/positions and find genuine safe movement/
+fire inputs, retaining3positiveType0/neutralState38 and nativeX/Type traces.
+Independent normal feedback-free fixed replay and two whole cold boots with
+all real images remain required before another new pass. Do not repeat
+accepted routes without real regression/change. No later visible media
+request inferred from filenames, phasecounter or prior handoffs.
+
+Core/RUNNER unchanged: frozenWide35/c43416bb...,Core5a06285a...; historical
+416/416Debug+Release andRunner35/35 remain, not new broad tests. All media,
+5normal saves, oldprivate runners preserved. No Core/state/hardware/menu/
+publication changes. Whole seven-point roadmap/A1000/FPU/040/OS/video/timing/
+controller/storage/late-requester work remains OPEN. Latest focused integrity/
+checks in tmp/cannon-m2p2-corner-ammo-and-building-roadmap-integrity-20261025.json
+and tmp/cannon-m2p2-corner-ammo-and-building-final-checks-20261025.json.
+
+
+### Cannon required-building destruction fully cold-accepted; current140 guards - 2026-10-25
+
+The earlier pending/functional-only building paragraphs are now HISTORICAL.
+Tools/a500-cannon-fodder-mission-two-phase-two-defence-retreat-building-route.json
+is FULLY cold accepted. Sessions29603/51317 are FINISHED/accepted; no whole
+boots pending. Two independent native A500512KChip+512KSlow/Kick1.3/read-only
+DF0 boots, each25542states/F62899, all126old actual imageguards,478952runtime
+RAM-byte assertions and335671present loggedwatchbytes independently checked.
+All11063Phase1samples3positiveType0;12341Phase2Type0tails/12339positive
+outside exactly2old initrows,12316explicitPhase2gameplay and890newtailsamples
+3positiveType0/X/Y;5340additional state38zero runtimebytes. Only exact4old
+nativeinitnegativeXwritesF46414/PC C14B4C/C23990 and exactly2oldActorInitrows
+F46440/F46511 X8000/Type0, no death/general exception. No nonzeroPlayerType
+losswrites. Exactly729originalprobes5=1/4=6/9=722 (366+originalbitidentical363),
+ZERO additional combatCPUevents/HDFs/floppywrites. Whole recordedstate pairs
+identical exceptseconds/imagepaths; no full unrecordedRAM equality claimed.
+
+Three current NEWType5 instances15/16/29 removedF62168/F62249/F62588 at
+originalPC C2B8C2. Replacement29 actualType5 allocation WRITEF62762/PC C14A1A/
+returnC16F70, firstlaterloggedsampleF62763, strictly preserved in BOTH cold
+runs; not repeated original29kill/resurrection. Native weaponbank4->3
+F62708/PC C17E18, actualBuilding7damageState5F62787/PC C1D768, Type39explosion
+F62812/PC C1B2B0, Type4F62824/PC C16D3C. Normal originalX8000WriteF62825 is
+SHA-pinned (not unwatched fresh cold address); finalcoldX8000runtimeguard
+passes. Stable endrequiredcounter0 plus native states and ACTUAL visible
+explosion/wreck, not scratchcounter0 alone, establishes destruction.
+
+ALL28actual whole-cold PNGs individually opened/reviewed. All14actual hash/
+PNG pairs byteidentical;14real new guards promoted=>140. Actual62815PNGs
+show large orange explosion;62843damaged frame/remaining explosion;62899
+actual collapsed warehouse wreck. Actual HUD4before/3after, all3names;
+life independently established by nativeType0/XY/neutralstateguards, notHUD.
+NO Phase2/Mission2 victory text or later requester accepted. Actual hashes:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-pickup-nearest-defence-target-left-type5 | 62168 | 1D465E6BDBA9143425BD5C1DEE620CA68A8F084D5437C73B7CE2FD4A6D66E3FD |
+| m2p2-pickup-nearest-defence-hold-03 | 62198 | 3506055CE9E23E454C1571A419DC9B5B11B712C365DFB7DDC8B79F259F0D6C1C |
+| m2p2-pickup-nearest-defence-hold-11 | 62259 | A7A02DBC659598092286B2776E2E0399C00EFBD2DFC36D585DA9997B86519391 |
+| m2p2-ammo-safe-retreat-wp0-arrived | 62334 | 8EC34CAAF20984AFEF3A8457BDC0DB05F6DCE8D623026D1076456AD9E02EC08B |
+| m2p2-ammo-safe-retreat-wp1-arrived | 62385 | 15895F5EF27F91EE4E5F0D38FD07C6C5AE4B8690090208BEDB4D1C1FD94F3674 |
+| m2p2-ammo-safe-retreat-wp2-arrived | 62412 | A0B53B5C275F73AD566855E324DA63CC009534915D99B2F839A797699BA548F3 |
+| m2p2-ammo-safe-retreat-wp3-arrived | 62591 | 8CC2B9E25FDA38627939EC55FA3E2CA4409D15493E7C9F90435ABBFC4010BB87 |
+| m2p2-ammo-safe-retreat-hold-11 | 62682 | D122B46E50C3DF694431216683DFE96C9F01B4F471A54A68743F93471035284A |
+| m2p2-special-retreated-building-settle | 62705 | F1E24A7B2BB4C8196F7BCBFC3917D23727EA3C7911E1EB40692AA06741F67EDA |
+| m2p2-special-retreated-building-real-left-down-while-right-held | 62712 | D2EFAAA341A6340969F93CA002A7458A15B556DB32507F7FD55817E1E1204CAB |
+| m2p2-special-retreated-building-real-left-up | 62716 | 62436B036A9DA2D3941D410D3E2140CDAF12543158EFB6CE1C09D8C7EA64DE8A |
+| m2p2-special-retreated-building-final-right-release | 62815 | 0F21E128045BB69B1BCD9A192ADC693153FC8FCF48FFE7CD7D5ACB5B42EC3513 |
+| m2p2-special-retreated-building-live-hold-03 | 62843 | FBFAA4657B5D19877B81D49640DD0CE9921CDB451D12B2305A9067CE932579B5 |
+| m2p2-special-retreated-building-live-hold-11 | 62899 | CE1A39132A5608442A164C10E8AD5E93EC5D73F0D475BB4122FF954EB69C4C25 |
+
+FinalACTUALF62899 players551/523,560/524,569/525, all3Type0/state38zero,
+ammo3/Goal0/Remaining1/Index1. Earlier manual metadata/prose incorrectly
+copied retreatF62682followers561/570 to final62899; the ALREADY SAVED
+normal combinedfinal was560/569 and both wholecoldfinals match it exactly.
+Initial strictcheck stopped BEFORE acceptance; expectedFinal now derived
+from pinned normalFINAL, no tolerance relaxation/guest/Core/input/runtimeguard
+change. Transparent oldmetadataSHA/priorvalues/exactsourcefinal retained in
+ tmp/cannon-m2p2-defence-building-final-expectation-development-20261025.json.
+RetreatF62682 values561/570 remain correct for that earlier checkpoint.
+
+Proofs/ALL28PNGs/Traces/fullCaptureStates/individualReviews/manifest/binary/
+raw/PNG/traceSHA retained in
+ tmp/cannon-m2p2-defence-building-type0-full-a/-b/verified-summary.json.
+Actual separate review record
+ tmp/cannon-m2p2-defence-building-actual-cold-visual-reviews-20261025.json.
+python tmp/verify_cannon_m2p2_defence_building_type0_pair_20261025.py --compact
+passes. No unknownCP hashes as new coldguards. CandidateV2unchanged, first
+invalidnon-v2 and allhostdevelopment/proofs preserved. Current pairraws
+retained until separately verified permitted compaction; no blanket deletion.
+
+Needed now cold-covered own62899CP:
+ tmp/cannon-m2p2-defence-retreat-building-combined-current-20261025-output/Cannon-M2P2-defence-retreat-building-combined-current/m2p2-defence-retreat-building-combined-current.amigasav.
+Read-only ownCP analysis
+ tmp/cannon-m2p2-post-building-current-ram-analysis-20261025.json
+shows currentType5slots21at573/417,22at567/417,NEWreplacement29at644/530
+(state38=5 for29). This is ownCP count, not full unrecorded coldRAM equality.
+Goal0, ammo3, required building deactivated. FIRST next: legitimate bounded
+nearest-current-Type5 defence or actual ground movement, preserve all3
+positiveType0/neutralState38 and native X-/Type-traces. Native NPCstate5 is
+not a kill whileType5/positiveX. New portable fixed inputs must independently
+replay normally without feedback; two full cold boots and ALL actual new
+images before another new pass. No former ORIGINAL identities recounted.
+Phase2/entireMission2/later visible SingleDriveRequester/larger campaign and
+whole roadmap/A1000/FPU/040/OS/video/timing/controllers remain OPEN.
+
+
+### Cannon current140 accepted-pair raw compaction - 2026-10-25
+
+Exactly2new own accepted building steps.jsonl files178580203bytes removed
+ONLY after renewed compact proof/ALL28actualPNG reviews/hashes/traceSHA/
+rawSHA/size/exactabsolute two-path allowlist and ALL-ancestor reparse checks
+completed before first deletion. Inventory/result
+ tmp/cannon-m2p2-defence-building-full-raw-cleanup-*-20261025.json.
+ALL28images/Traces/Proofs/CPs/Inputs/Binaries retained; --compact passed after
+removal, removed permitted raws are NOT a regression. This turn preserves
+54new actual cold PNGs and compacted exactly4ownacceptedraws350938981bytes,
+no other targets. All shorter/failed/recorder rawlogs remain intact.
+
+### Cannon post-building replacement29 normal control positive; next whole pair pending - 2026-10-25
+
+AFTER140-guard/full-building acceptance, new separated private recorder64
+uses only own RAM/camera reads to choose ordinary RightFire pins toward next
+actual currentType5. No new Left edge/ammo consumption/RAM/CPU/Trainer patch.
+All3neutralType0 required, first selectedType5 removal then12defensive holds,
+0warnings/errors/identicalCore. Old controllers/runners never overwritten.
+
+Normal fixed feedback-free299inputs/302states replay now POSITIVE through
+F63144. Every physical action has3Type0/neutralState38 runtimeguards, total
+1794neutral bytes; all samples3positiveX/Y, ammo3/building4/Goal0/rem1/index1,
+zero new CPUevents/HDF/floppywrites/playerTypeLoss/negativeXwrites. Exact
+portable physical sequence matches recorder, finalCPU/Frame/Hashmatch,
+5192sprite snapshot equals ownSave. NativeNEWreplacement29/C7E88A negative
+XwriteF63053/PC C2B8C2, initialType5/orderedType4/finalX8000. This is the
+NEWType5 allocatedF62762 after earlier current29removal62588, not another
+ORIGINAL29kill/resurrection. Actual remaining21/22 stayType5 allnew samples.
+
+ALL4actual normal PNGs individually opened, real lowerforest/warehousewreck/
+RightFire/ammo3 and3HUDnames; nativeguards prove health, notHUD. No phase/
+mission victory or later requester. Proof
+ tmp/cannon-m2p2-post-building-new29-functional-verified-summary-20261025.json
+(65499bytes), with exact inputs/Raw/CP/Source/Build/Binary/Trace/PNG SHA and
+lossless watch histories. Normalmanifest
+ tmp/cannon-m2p2-post-building-nearest-current-v64-20261025.json/-output.
+Source recorder/build/runtime distinctv64 paths retained. Own functional CP
+ tmp/cannon-m2p2-post-building-nearest-current-v64-20261025-output/Cannon-M2P2-post-building-nearest-current-v64/m2p2-post-building-nearest-current.amigasav.
+FinalF63144 players551/523,560/524,569/525 Type0/state38zero,ammo3/Goal0,
+ownCP2Type5slots21/22, no unrecorded fullcoldRAM equality or newcoldpass yet.
+
+FIRST NEXT: two NEW independent completeDF0 cold boots started11:44UTC
+25.10.2026 ONLY after140guard acceptance/positive normal299inputreplay.
+ tmp/cannon-m2p2-post-building-new29-type0-full-candidate-20261025.json
+ in tmp/cannon-m2p2-post-building-new29-type0-full-a/-b,
+ sessions13200/37728. After restart inspect actual files/results; IDs mayexpire.
+25840normal physical actions/expected25841states,140accepted actualprefix
+imageguards,485536runtimeRAM,32watches/15nativeWriteObservers,
+--no-final-checkpoint. Strict prepared checker
+ tmp/verify_cannon_m2p2_post_building_new29_type0_pair_20261025.py
+--preflight and normal--validate pass; ordinary mode ONLY AFTER BOTHactual
+result.json finish. No other whole candidates pending.29603/51317 and
+46040/36671 DONE/accepted, do not wait/repeat old routes or request removedraws.
+
+Require all140oldguards/485536RAM/full recorded-state pair equality except
+seconds/imagepaths;11063Phase1positiveType0,12640Phase2Type0tails/12638positive
+outside exactly2known oldinitrows,12615explicitPhase2gameplay/299newtail
+3positiveType0/X/Y plus1794state38zero runtimebytes. Only exactold4negativeX
+initwrites/2initrows, no nonzeroPlayerTypeLoss,exact729originalprobes5=1/4=6/
+9=722, ZEROadditionalCPUevents/HDF/floppywrites. Keep old140SHA-pinned
+nativeproofs at unwatched oldaddresses and everyold physicalguard/predicate.
+Require replacement29actualspawnWRITE62762/firstsample62763/nativekill63053,
+new ordered5->4/final8000,21/22remainType5,ammo3noConsumptionafter62899.
+
+Exactly4unique actual new captures PER BOOT:
+- m2p2-post-building-nearest-target-left-type5 F63053;
+- m2p2-post-building-nearest-hold-03 F63083;
+- m2p2-post-building-nearest-hold-11 F63144;
+- m2p2-post-building-nearest-final-right-release F63144.
+ALL8actual cold PNGs individually open,4hash/PNGpairs equal BEFORE
+verified-summary acceptance/permanent144guard route. TwoF63144labels really
+have separate actualPNG files at0cycleRightrelease; reviewboth, not just3.
+NoCP hashes as newcoldguards/cachednonBlack as visualpass. PENDING, not yet
+cold accepted and not Phase2/Mission2/laterRequester victory.
+
+After own new299pair acceptance, continue from nowfunctional63144CP toward
+actual21at573/417 and22at567/417 using legitimate safe ground/fire inputs,
+retain3healthyType0 and exactnativehits/Goal before anynewpass. Never count
+sprite disappearance/HUD/positivecoordinates alone as life/kill; do not invent
+immunity/terrain/pathfinding/physics/renderer repair. Two whole boots with
+actualimages still required before each new accepted passage. Other seven
+roadmap/A1000/FPU/040/OS/video/timing/controller/storage gates remain open.
+
+Latest focused checks and unchangedSource/Media/Usersave/FrozenBinarySHA:
+ tmp/cannon-m2p2-corner-ammo-and-building-final-checks-20261025.json
+ tmp/cannon-m2p2-corner-ammo-and-building-roadmap-integrity-20261025.json.
+No Corebuild/source/state/hardware gate, broad unit/boot rerun, Gitpublication.
+
+
+### Cannon post-building replacement29 fully cold-accepted; current144 guards - 2026-10-25
+
+Both complete independent nativeA500512KChip+512KSlow/Kick1.3/read-onlyDF0
+boots are FINISHED/accepted, oldsessions13200/37728 do not wait/repeat.
+Tools/a500-cannon-fodder-mission-two-phase-two-post-building-new-twentynine-route.json
+has144actual cold guards. Each25841states/F63144, all140oldguards and485536
+runtimeRAM-byte assertions,333058present loggedwatchbytes independently
+rechecked.11063Phase1positiveType0 samples;12640Phase2Type0tails/12638positive
+outside exactly2old initrows,12615explicitPhase2gameplay,299new positiveType0/
+X/Ysamples plus1794neutralState38Runtimebytes. Only exact4oldnegativeXinit
+writesF46414/PC C14B4C/C23990 and2oldX8000/Type0 initrowsF46440/F46511,
+no death/general exemption, no nonzeroPlayerTypeLosswrite. Exactly729original
+Protectionprobes5=1/4=6/9=722, ZERO new combatCPUevents/HDF/floppywrites.
+All recordedwhole states pairwise equal exceptseconds/imagepaths, no full
+unrecordedRAM equality claimed. All old144predecessor predicates/proofs kept.
+
+The NEWreplacement29 allocatedF62762/PC C14A1A/returnC16F70 (first logged5
+F62763) is genuinely removedF63053/PC C2B8C2. This is not another ORIGINAL29
+or earlier NEW29kill. Current21/22 remainpositiveType5 through all299new
+samples; ammo3 no consumption, building4/Goal0/rem1/index1. FinalF63144
+551/523,560/524,569/525 all3Type0/state38zero. ALL8actual fullcold PNGs
+individually opened,4actual pairs byteidentical,4newrealguards=>144. Both
+separate same-frame F63144 actualPNGfiles individually reviewed, noCPsubstitute.
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-post-building-nearest-target-left-type5 | 63053 | BCD29373CAE2ED6284878B607CB2F0A2E251FFABE3F45A7BFB3B2D33E05BE944 |
+| m2p2-post-building-nearest-hold-03 | 63083 | 168796F8AA9A17426CAB24705A802F575CA51703F99E766C54458C3E8C5FE034 |
+| m2p2-post-building-nearest-hold-11 | 63144 | 37C79FC7D9763D0F60828316F0ACFD97C8FD739B56D92E1401AC469386BD862F |
+| m2p2-post-building-nearest-final-right-release | 63144 | 37C79FC7D9763D0F60828316F0ACFD97C8FD739B56D92E1401AC469386BD862F |
+
+Proofs/ALL8PNG/Traces/FullCaptureStates/individualReviews/Manifest/Runner/Core/
+PNG/Raw/TraceSHA remain in
+ tmp/cannon-m2p2-post-building-new29-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2p2_post_building_new29_type0_pair_20261025.py --compact
+passes after permitted removal exactly2ownacceptedsteps.jsonl180667447bytes.
+ALL8PNG/Trace/Proof/CP/Inputs/privatebinaries retained, allSHA/size/exacttwo
+absolute allowlist/ALL-ancestor Reparse checks BEFORE first deletion; inventory/
+result tmp/cannon-m2p2-post-building-new29-full-raw-cleanup-*-20261025.json.
+No other targets removed, short controls and all old evidence unchanged.
+No mission/phase/later requester pass inferred from this144route.
+
+Needed now cold-covered own63144CP:
+ tmp/cannon-m2p2-post-building-nearest-current-v64-20261025-output/Cannon-M2P2-post-building-nearest-current-v64/m2p2-post-building-nearest-current.amigasav.
+Remaining2currentType5 ownCP count21at573/417 and22at567/417, not fullcoldRAM
+identity. Read-only terrain planning from this ownCP used original footX+8/
+Y-3, native736x544map and excludedWater6/nonzeroCollision/no diagonalcorner
+cut. First exploratory point573/435 is actually blockedForest3, not a guest
+failure; actualtarget573/417 is land. Pixel-checked short land waypoints
+551/523->585/523->609/497->617/459->583/423->573/417 are planning only,
+not group/fire/health proof or an emulator/pathfinding/physics repair.
+ tmp/cannon-m2p2-final-two-native-terrain-plan-20261025.json and
+ tmp/cannon-m2p2-final-two-native-land-route-20261025.json retained.
+
+### Cannon normal Mission2 final-two objective positive; whole pair pending - 2026-10-25
+
+New separated private recorder65 starts ONLY after144cold acceptance, reads
+own RAM/camera and issues actual short worldclicks591/518,615/492,623/454,
+589/418,579/412; Right released/native left/right/queue neutral before Left
+orders, immediate RightFire after actualLeft-up. No special leftedge while
+Rightheld/ammo consumption. ALL3positiveType0/neutralstate required.
+0warnings/errors, identicalhistoricalCore, no old private recorder overwritten.
+
+Normal921fixed physical inputs replay WITHOUTfeedback,924states/F63830,
+18474runtimeRAM assertions including5526state38zero bytes. All recorded
+samples3positiveType0/X/Y/ammo3/buildingType4/Remaining1/Index1, noCPUevent/
+HDF/floppywrite/PlayerTypeLoss/negativeXwrite or ammo consumption. Exact
+physical sequence equals recorder, finalCPU/Frame/Hash equals recorder,
+final5192sprite snapshot equals ownSave. Current22/C7E550 nativeXnegative
+F63565/PC C2B8C2, current21/C7E4DA F63715/PC C2B8C2, both actualType4writes
+at same nativeframe/PC C16D3C. First logged21Type4 is F63716, a distinct
+ordered event; do not conflate it with nativeXwriteF63715. FirstGoalC01DCC
+FFFF F63718/PC C1DE1E, subsequent same writes repeat normally. FirstloggedFF
+labelm2p2-final-two-land-objective-poll-03/F63718; preserve ordered transition,
+not broad assumptions from frame>= alone.
+
+ALL13actual normalPNG individually opened/reviewed. Actual MISSION COMPLETE
+really visible in hold03/F63746,07/F63774,11/F63802 and15/F63830. Objective
+observedF63718 has NO text yet. Actual0cyclefinalRightRelease PNG alsoF63830
+has NO visible text despite preceding same-frameHold15 actualPNG WITH text.
+Retain exact separate image observations; no cachedhash/nonblack substitute,
+no unsupported renderer repair/blink-cause conclusion. Native Type0/XY/
+state38 and traces establish health, not HUD/names/positiveX alone.
+
+Proof tmp/cannon-m2p2-final-two-objective-functional-verified-summary-20261025.json
+(203841bytes) preserves full capturestates/individualreviews/lossless watch
+histories/nativehits/Goal/SourceCP/manifest/raw/build/binary/PNG/traceSHA.
+Normal exact source tmp/cannon-m2p2-final-two-objective-current-v65-20261025.json
+and-output; allshortRaws/13PNGs/Traces/Snapshots/Inputs/CPs/Binaries retained.
+Own currently FUNCTIONAL endCP (NOT whole-cold accepted until newpair):
+ tmp/cannon-m2p2-final-two-objective-current-v65-20261025-output/Cannon-M2P2-final-two-objective-current-v65/m2p2-final-two-objective-current.amigasav.
+Final573/417,581/422,583/423 allType0/state38zero,GoalFFFF/ammo3/building4/
+buildingcount0/Remaining1/Index1/noType5 inOWNCP. This is ownCP count, not
+fullunrecordedcoldRAM equality. Native objective and visible text prove NORMAL
+functional victory, NOT YET a full-cold Mission2 pass or later requester/Mission3.
+
+FIRST NEXT: two whole independent DF0 cold boots started12:58UTC25.10.2026
+ONLY AFTER144-guard acceptance and positive normal921input replay:
+ tmp/cannon-mission-two-complete-objective-type0-full-candidate-20261025.json
+ in tmp/cannon-mission-two-complete-objective-type0-full-a/-b,
+ sessions52638/5399. Inspect actual files/results afterrestart, IDs mayexpire.
+26761normalphysical actions/expected26762states,144acceptedactualoldguards,
+504010runtimeRAM,32watches/16nativeWriteObservers,--no-final-checkpoint,
+unchangedWide35/Core416. Preparedstrict checker
+ tmp/verify_cannon_mission_two_complete_objective_type0_pair_20261025.py
+--preflight and normal--validate pass. Ordinary mode ONLY AFTER BOTHactual
+result.json finish. No other whole candidates/recorders pending.
+
+Require all144oldguards/504010RAM/fullStatepair equality exceptseconds/
+imagepaths,11063Phase1positiveType0,13561Phase2Type0tails/13559positive
+outsideexact2oldInitrows,13536explicitPhase2gameplay/921newtailsamples all3
+positiveType0/X/Y +5526neutralbytes. Only exactold4initnegativeXwrites and2
+initrows, no nonzeroPlayerTypeLoss,exact729originalProbes5=1/4=6/9=722/ZERO
+additionalCPUevents/HDFs/floppywrites. Ammo3no newconsumption/Building4.
+Current22F63565/21F63715/nativePC C2B8C2/Type4C16D3C, first21loggedType4
+F63716, firstnativeGoalF63718/PC C1DE1E/firstFFsamplepoll03F63718 allstrict.
+Final63830players573/417,581/422,583/423 Type0/state0/GoalFFFF/ammo3/rem1/
+index1, bothcurrentNPCX8000Type4/buildingcount0 via runtimeguards. Old144
+proofs SHA-pinned at unwatched oldaddresses, no oldpermanentType4slotassumption.
+Exactly13unique actual new captures PER BOOT, expected normalframes:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m2p2-final-two-land-wp0-arrived | 63208 |
+| m2p2-final-two-land-wp1-arrived | 63265 |
+| m2p2-final-two-land-wp2-arrived | 63334 |
+| m2p2-final-two-land-wp3-arrived | 63394 |
+| m2p2-final-two-land-wp4-arrived | 63412 |
+| m2p2-final-two-land-current22-left-type5 | 63565 |
+| m2p2-final-two-land-current21-left-type5 | 63716 |
+| m2p2-final-two-land-objective-observed | 63718 |
+| m2p2-final-two-land-objective-hold-03 | 63746 |
+| m2p2-final-two-land-objective-hold-07 | 63774 |
+| m2p2-final-two-land-objective-hold-11 | 63802 |
+| m2p2-final-two-land-objective-hold-15 | 63830 |
+| m2p2-final-two-land-final-right-release | 63830 |
+
+ALL26actual coldPNGs individually open and13hash/PNGpairs equal; actual
+MISSION COMPLETE must genuinely be visible in the wholecoldPNG, notCP or
+cachedfields. Final63830RightRelease and precedingHold15 separately evaluate
+actualcontents. ONLY THEN accept verified-summary and promote
+Tools/a500-cannon-fodder-mission-two-complete-objective-route.json with13new
+ACTUAL cold guards=>157 and accept Phase2/wholeMission2. NO CP hashes asnew
+coldguards and no Mission2coldpass before thispair/ALLimages. Overallroadmap
+and later SingleDriveRequester/larger campaign remain open even on success.
+
+After fullMission2acceptance use own63830CP with real Confirm into actual
+loader; only activeWrapper/requestfields, legitimate bounded mediareactions,
+actual visible victory/promotions/nextArmy/nextbriefing/requester required.
+No request from WON.RAW cacheentry/filename/Remaining, no blind priorDisk1/
+Disk2 handoff assumption or blackloader rendered as a pass/rendererbug.
+No Save/Format options/Originalmedia writes. Subsequent native protection
+reloads need exact original-bit-equal event evidence, no blanket vectorwaiver;
+currentMission2candidate exactly729. No Phase3/Mission3 inferred fromfilename.
+
+Latest focusedchecks/immutableSourceMediaUsersaveFrozenBinarySHA:
+ tmp/cannon-m2p2-new29-and-mission-two-final-checks-20261025.json
+ tmp/cannon-m2p2-new29-and-mission-two-roadmap-integrity-20261025.json.
+HistoricalCore416/416Debug+Release/Runner35/35 unchanged, no Corebuild or
+broadboot/suite repeats, state/hardware gates/publication untouched. Whole
+seven-pointroadmap/A1000/FPU/040/OS/video/timing/controller work stays OPEN.
+
+### Cannon Mission2 both phases fully cold-accepted;157 actual guards - 2026-10-25
+
+Both independent native A500/512KChip+512KSlow/Kick1.3/read-onlyDF0 boots
+are FINISHED/accepted. Old sessions52638/5399 do not wait/repeat. Permanent
+Tools/a500-cannon-fodder-mission-two-complete-objective-route.json now has
+157 actual cold guards. Each26762states/F63830, all144previous imageguards,
+504010runtimeRAM-byte assertions,342170present loggedwatchbytes independently
+checked.11063Phase1positiveType0 samples;13561Phase2Type0tails/13559positive
+outside exactly2old initrows;13536explicitPhase2gameplay/921new final-tail
+samples all3positiveType0/X/Y plus5526neutralState38 runtimebytes. Only exact
+4old nativeinitnegativeXwritesF46414/PC C14B4C/C23990 and2oldinitrows
+F46440/F46511X8000/Type0; no death/general exception and no PlayerTypeLoss.
+Exactly729original protectionevents5=1/4=6/9=722, initial366 plus the exact
+repeated363F31985/31986. ZERO unexplained combatCPUevents/HDF/floppywrites.
+All whole recorded statepairs equal exceptseconds/imagepaths; no unrecorded
+wholeRAM equality. Older144prefix native proofs are SHA-pinned at unwatched
+addresses, not misrepresented as fresh observation.
+
+Current22/C7E550 native negativeX and Type4writesF63565, current21/C7E4DA
+F63715, originalPC C2B8C2/Type4PC C16D3C. First logged21Type4sampleF63716
+is a distinct ordered event. First nativeGoalC01DCC=FFFFF63718/PC C1DE1E,
+first loggedFF is m2p2-final-two-land-objective-poll-03/F63718; subsequent
+native FF writes repeat normally. Final63830players573/417,581/422,583/423
+allType0/state38zero,ammo3/buildingType4/count0/GoalFFFF/rem1/index1. Own
+CP has noType5, only an ownCP count, not unrecorded wholecoldRAM equality.
+Both phases and ALL of Mission2 now passed; longer campaign/later visible
+SingleDriveRequester/overall roadmap still OPEN.
+
+ALL26actual fullcold PNGs individually opened/reviewed,13actual PNG/hashpairs
+byteidentical. Actual MISSION COMPLETE is visible in BOTH boots in hold03/
+63746,07/63774,11/63802,15/63830 AND finalRightRelease/63830. ObjectiveObserved
+63718 has no text yet. All13new ACTUAL cold guards are permanent:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2p2-final-two-land-wp0-arrived | 63208 | C97AD8005EB092DA2FC9B431D89AEEA39C430B56B062ECB93F85A29A3D31DCAF |
+| m2p2-final-two-land-wp1-arrived | 63265 | 0680BFBF696FD7C473E1067F784EEF52A9D7E2E4364C1C9B2D89FC8EF78B1B09 |
+| m2p2-final-two-land-wp2-arrived | 63334 | 86AE24CC8A58588702B69D3267F20275A334169890BABA7D52A250D660F628B8 |
+| m2p2-final-two-land-wp3-arrived | 63394 | A93431B690D2903612C9678F56D1455411D85DC201D35C6F247F5083558C4C75 |
+| m2p2-final-two-land-wp4-arrived | 63412 | C144FB34E3A2A6E750428D7BA1F69682D24130E14AC31AB1FFEB64823CFF9347 |
+| m2p2-final-two-land-current22-left-type5 | 63565 | 40219C9A45FEE647FE7E2E41DCCB6EE55DE8A0FCBD4834551B70B96CCC881770 |
+| m2p2-final-two-land-current21-left-type5 | 63716 | 9BE16BF778EEA5E81524C811BCB87BD26FCE0F2D0FCF0712ED840D2D6DD5E076 |
+| m2p2-final-two-land-objective-observed | 63718 | 9BE16BF778EEA5E81524C811BCB87BD26FCE0F2D0FCF0712ED840D2D6DD5E076 |
+| m2p2-final-two-land-objective-hold-03 | 63746 | 95F4273C7CF37D8C02CC20970553F82AB50D1A86CE8944AC2755A5BE926446E1 |
+| m2p2-final-two-land-objective-hold-07 | 63774 | 8247574BCFB8E4AB5D4AFB46B87506E1C89897F2139F52E017C35FECE5E2B63E |
+| m2p2-final-two-land-objective-hold-11 | 63802 | CB0BC0ADF0BF28B4BACBB2B9A5F5AA1DEA4F6CEC14B21971951C5A0CEE34F433 |
+| m2p2-final-two-land-objective-hold-15 | 63830 | D85F2F242B788B855562320D17A36962F300E1DF6062BDD7F7D078581D735919 |
+| m2p2-final-two-land-final-right-release | 63830 | D85F2F242B788B855562320D17A36962F300E1DF6062BDD7F7D078581D735919 |
+
+A previous host visual-review statement that the zero-cycle finalRelease63830
+was blank is FALSE and explicitly superseded here. The unchanged normal and
+both cold hold15/release files (all SIX) are byteidentical PNGSHA
+9bb43cf9a8dabdd5646aef28e2d0a6990213d2c45150fc7e1be9d9d972808543.
+An actual-source crop clearly reads MISSION COMPLETE; decoded brightpixel
+count2945 in the same central region for all6. Multiimage tool output was
+visually inconsistent. This is a corrected HOST image-review error, no guest/
+Core/input/renderer change and no general blink/zero-cycle exception.
+ tmp/cannon-mission-two-actual-png-visual-review-correction-20261025.json
+pins all6actual files and the crop/source SHA. Original203841byte normal
+functionalproof is retained byteexact for provenance; the supplement supersedes
+only its false final visual prose/boolean. Fullcold proofs carry correct reviews.
+
+Proofs/ALL26PNGs/Traces/fullCaptureStates/individualReviews/Manifest/Runner/
+Core/PNG/Raw/TraceSHA remain in
+ tmp/cannon-mission-two-complete-objective-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_mission_two_complete_objective_type0_pair_20261025.py
+--compact passes after permitted removal of exactly2ownacceptedsteps.jsonl
+187096529bytes. Exact absolute two-path allowlist, ALLancestorReparse, size/
+SHA/ALL26images/trace/proof checks completed BEFORE first deletion; inventory/
+result tmp/cannon-mission-two-complete-objective-full-raw-cleanup-*-20261025.json.
+ALLactual pictures/traces/proofs/canonicalInputs/neededCPs/privatebinaries and
+all short control rawlogs preserved. No other targets removed; old permitted
+compactions remain valid and are not regressions.
+
+Needed now cold-covered final63830CP:
+ tmp/cannon-m2p2-final-two-objective-current-v65-20261025-output/Cannon-M2P2-final-two-objective-current-v65/m2p2-final-two-objective-current.amigasav.
+
+### Cannon actual Mission2 victory to Mission3 four-soldier normal replay; full pair pending - 2026-10-25
+
+Twelve bounded normal own-CP controls use genuine Confirm/media changes/waits,
+no CPU/RAM/Trainer patch. ALL36actual source pictures individually reviewed,
+black loader/transition images explicitly remain black, not a visible pass.
+Real post-victory native requests and progress: rankfont.lbm->Disk1, then
+morphbig.lbm->Disk2 gives actual HEROES IN VICTORY / Mission2 at65956 and
+JOPS/JOOLS promotions66237. Real Confirm then pstuff.lbm->Disk1, native
+mapm4.spt->Disk2 gives nextARMY67940/68222 with JOPS/JOOLS/STOO roster.
+Current real mouse183/94 is below the header; original C258F8..C25970 branch
+starts a mission, no Save/Format option chosen. Next direct pstuff load needs
+Disk1; native mapm4.map->Disk2 gives actual Mission3 title70628, followed by
+MISSION3/PHASE1OF1/BUGGER ME IT'S COLD/KILL ALL ENEMY/DESTROY ENEMY
+BUILDINGS71023 and same actual title again71867. ExistingDisk2 active
+icearmy.lbm request loads lower WITH4SOLDIERS/41RECRUITS/GO FOR IT72317.
+Actual real Confirm yields snowy active field72726/73035/73317 with four
+HUDnames JOPS/JOOLS/STOO/RJ. Names alone are not a health proof: all4signed
+X/Ypositive,Type0000/state38word0000 for101action samples,3232runtimebytes,
+no native loss writes after actual confirm72613. Final73317 actors
+16/21,22/35,31/21,38/34 allType0/state0. No later visible SingleDriveRequester
+has been established. Filename mapm4 is NOT Mission4; actual title says Mission3.
+C00658 remains phaseRemaining, not a missionnumber.
+
+Read-only current-request proofs remain in tmp/cannon-m2-victory-*-native-request-proof-20261025.json,
+ tmp/cannon-m2-next-army-*-native-request-proof-20261025.json,
+ tmp/cannon-next-*-native-request-proof-20261025.json and
+ tmp/cannon-m3-icearmy-native-request-proof-20261025.json.
+Current C0C7B8 plus active wrapper/callstack is used; WON.RAW cacheentry is
+not a request/payload. Generic C026F2 wrapper can be STALE during directloader.
+A0/PC inside audioIRQ C24102 is audio state, not a requestname. Directwrapper
+LEA starts at C075C4, BSR C075D0 returns C075D4. Old disassembly starting
+C075B2 was inside ASCII disk1/disk2/disk3; read-only signature-based correction
+ tmp/cannon-next-direct-wrapper-disassembly-correction-20261025.json retains
+old proof and unsuccessful host alignment attempt, no guest/Core/input change.
+Initial Chip/SlowRAM request-proof preparation and fixed-length icearmy name
+assertions also stopped before proof write/guest; corrections documented, no
+invented guest regression. Catalog raw fields kept uninterpreted; actual response
+progress/images required, not payload mapping from filenames alone.
+
+New direct pstuff reload has EXACT363original protectioneventsF69291/69292,
+4=2/9=361. Every vector/pc/sr/opcodePc/opcode/target equals the original loader's
+last363, source/trace/event details in
+ tmp/cannon-next-start-native-protection-reload-proof-20261025.json.
+This justifies exactly that third original set, never a general waiver. Future
+whole route total1092=original366+363+363, vectors5=1/4=8/9=1083. No further
+CPUevents/HDF/floppywrite; subsequent ordinary CP controls require ZERO new.
+
+Source control proof
+ tmp/cannon-mission-two-next-campaign-source-controls-verified-summary-20261025.json
+retains all36individual actual image reviews, all exact inputs/states, full
+lossless watchdeltas with roundtrip, raw/CP/source/binary/PNG/traceSHA. Normal
+direct combined replay has1210fixed physical inputs/1212states/F73317 without
+feedback or intermediateCPrestore; all10actual combined pictures individually
+reviewed and PNG-byteidentical to corresponding sources. All1210CPU/cache/
+input/audio/disk/frame/hashes and overlapping watchbytes equal sources, final
+5192spritebytes equal ownsourceSave. Full state equality to CP fragments is
+NOT claimed: exactly240inactive/queue0DMA ready-bit differences, six zero-cycle
+black disk-action cached line-descriptor differences and462later rows whose
+host exceptioncounter restarts at CP vs direct cumulative363 are retained
+explicitly. No broad tolerance/Core/guest/input fix; direct combined is the
+whole-cold tail reference. Proof:
+ tmp/cannon-mission-two-victory-mission-three-active-functional-verified-summary-20261025.json.
+Normal source1210inputs:
+ tmp/cannon-m2-victory-through-m3-four-soldier-combined-current-20261025.json.
+Needed OWN FUNCTIONAL final73317CP:
+ tmp/cannon-m2-victory-through-m3-four-soldier-combined-current-20261025-output/Cannon-M2-victory-through-M3-four-soldier-combined-current/m2-victory-through-m3-four-soldier-combined-current.amigasav.
+This continuation is NOT cold-accepted until its own fullpair and all20pictures.
+
+FIRST NEXT: two independent full DF0 boots started14:33UTC25.10.2026 ONLY
+AFTER157cold acceptance and positive normal1210input replay:
+ tmp/cannon-m2-victory-m3-active-type0-full-candidate-20261025.json
+ in tmp/cannon-m2-victory-m3-active-type0-full-a/-b,
+ sessions95336/8011. Inspect current actual files/results afterrestart; IDs
+may expire.27971normalphysical actions/expected27972states,157acceptedold
+actual guards/507242runtimeRAM/32watches/16nativeWriteObservers, unchanged
+Wide35/Core416,--no-final-checkpoint. Strict prepared checker
+ tmp/verify_cannon_m2_victory_m3_active_type0_pair_20261025.py --preflight
+and normal scenario--validate pass. Ordinary check ONLY AFTER BOTHresult.json
+finish. No other whole candidates/recorders pending. Require all157guards/
+507242RAM/all recorded statepair equality exceptseconds/imagepaths, exactly
+1092original events with exactthird363F69291/69292, no additional, normal1210
+CPU/cache/input/audio/disk/display/frame/hashes/watch match and exact normal
+newtail native write sequence. Fouractors101positiveType0/XY/state38zero
+samples after actualbriefingconfirm72613; no loss writes in this exact window.
+All old157native identity/Goal proofs retained/pinned at oldunwatchedaddresses,
+no permanent oldType4slot assumption. ExactlyTEN unique new captures PER BOOT:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m2-victory-morphbig-disk-two-wait-079 | 65956 |
+| m2-victory-morphbig-disk-two-wait-119 | 66237 |
+| m2-next-army-mapm4-disk-two-wait-079 | 67940 |
+| m2-next-army-mapm4-disk-two-wait-119 | 68222 |
+| next-mapm4-map-disk-two-wait-079 | 70628 |
+| m3-briefing-data-wait-015 | 71023 |
+| m3-icearmy-data-wait-079 | 72317 |
+| m3-four-soldier-active-wait-015 | 72726 |
+| m3-four-soldier-active-wait-059 | 73035 |
+| m3-four-soldier-active-wait-099 | 73317 |
+
+Individually open ALL20actual coldPNGs and require10hash/PNGpairs equal.
+Only THEN accept verified-summary and permanent167-guard route. No CP hashes
+as newcoldguards, no Mission3completion/later requester inferred. Current
+157Mission2 remains accepted independent of this pending continuation.
+Core416/416Debug+Release/Runner35/35 historicalbaseline unchanged, no Corebuild/
+source/state/hardware selector/publication changes or redundant broad suites.
+All seven approved roadmap points/A1000/FPU/040/OS/video/CPU/controller work
+remain OPEN. Latest focusedchecks/integrity will be recorded separately below.
+
+Latest focused checks all pass (7commands/8Pythonparsers), with no new Core
+or broad boot/suite runs:
+ tmp/cannon-mission-two-accepted-and-next-campaign-final-checks-20261025.json.
+Current sixSource/threeOriginalADF/fiveUserSave/old-and-current frozenBinary
+integrity proof:
+ tmp/cannon-mission-two-accepted-and-next-campaign-roadmap-integrity-20261025.json.
+This bookkeeping does not promote the pending Mission3 whole pair or enable
+hardware/publication. All old accepted rawcompactions remain valid.
+
+### Cannon Mission2 victory to Mission3 activation fully cold-accepted;167 guards - 2026-10-25
+
+Both independent native A500/512KChip+512KSlow/Kick1.3/read-onlyDF0 boots
+are FINISHED/accepted. Old sessions95336/8011 do not wait/repeat. Permanent
+Tools/a500-cannon-fodder-mission-two-victory-mission-three-active-route.json
+has167actual cold guards. Each27972states/F73317, all157previous actual
+guards,507242runtimeRAM-byte assertions,244100present loggedwatchbytes
+independently checked. Watchschema now follows four complete ActorXY/Type/
+state38; the different present-watch count is not a lost runtime assertion.
+All1210new physical inputs replay exact normalCPU/cache/input/audio/disk/
+display/frame/hash/watch states. Whole recorded cold statepairs identical
+exceptseconds/imagepaths; no unrecorded wholeRAM equality claimed. All older
+native enemy/Goal/initialization proofs remain SHA-pinned at old unwatched
+addresses, not misrepresented as fresh signals.
+
+Actual cold pictures in BOTH boots reproduce HEROES IN VICTORY/Mission2,
+JOPS/JOOLS promotions, nextArmy with JOPS/JOOLS/STOO, actual Mission3 title,
+MISSION3/PHASE1OF1/BUGGER ME IT'S COLD/KILL ALL ENEMY/DESTROY ENEMY
+BUILDINGS, lower WITH4SOLDIERS/41RECRUITS/GO FOR IT and active snowy field
+with JOPS/JOOLS/STOO/RJ. ALLE20actual cold PNGs individually opened at original
+detail,10hash/PNGpairs byteidentical,10new ACTUALcold guards=>167. Four native
+actors remain positiveX/Y/Type0000/state38word0000 for101actual action
+samples from real briefingConfirmF72613 through73317; no loss writes in this
+exact window. Final73317 positions16/21,22/35,31/21,38/34 allType0/state0.
+HUD names alone do not establish health. No Mission3objective/building/later
+visible SingleDriveRequester or overall roadmap pass inferred from activation.
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m2-victory-morphbig-disk-two-wait-079 | 65956 | BEA1B1E8CAE4DA91BE355ECA18E3D28D3026AC368174AC3E93F89911BDB5182E |
+| m2-victory-morphbig-disk-two-wait-119 | 66237 | 64964F02C1864DB23E5CE7656B3E67A0C8D2BFC7A160614DA302835360DE51E0 |
+| m2-next-army-mapm4-disk-two-wait-079 | 67940 | 072A440E56619913B7E36B5BC352DA25DDBBFC89D93D485DE21BA656C372C76A |
+| m2-next-army-mapm4-disk-two-wait-119 | 68222 | 89BEF0B7035248A7D55F54CB8259F64DC7DCBA706A625BF63FE4A54ED4FF1715 |
+| next-mapm4-map-disk-two-wait-079 | 70628 | B53B443CA796CF7206B4D25F5A0A3B3B9A4706655AFF01A03E3E98F7A7344F80 |
+| m3-briefing-data-wait-015 | 71023 | 70623149C8218A47B536C2C5974621BAD1B3DDD5306AC52E54A0B4E9504F76B1 |
+| m3-icearmy-data-wait-079 | 72317 | F94736070B565B32A5A98FD2364C98659413F34BB04858BEE8A79FC486345553 |
+| m3-four-soldier-active-wait-015 | 72726 | 08C10F68A20B3D28A672777EFE2724C36DCAA897D50A1725D0914D822E644644 |
+| m3-four-soldier-active-wait-059 | 73035 | AD2FB9692FC1E1975525D79914C664BBCF3B78E68B7E7BFA28825DE09EDDAB0B |
+| m3-four-soldier-active-wait-099 | 73317 | FFF2E54AD70BC8EF84B6C4E64A1A1349EA0D1EB864E3D7C8E25EB837EACCD0C4 |
+
+Exactly1092NON-ROM original protectionevents5=1/4=8/9=1083: original366,
+secondbitidentical363F31985/31986, thirdbitidentical363F69291/69292. ZERO
+additional nativeCPUevents/HDF/floppywrites. All135original ROM exceptions
+are separately required exact original includingframes/pc/sr/opcode/target.
+Initial checker incorrectly counted the whole1227event trace as1092native;
+it stopped BEFORE acceptance. The same ROM opcodePc filter as older accepted
+checker restored; native1092 remains strict AND original135ROM is now separately
+strict. No event waiver/Gast/Core/inputs/candidate change. Transparent proof:
+ tmp/cannon-m2-victory-m3-active-verifier-development-20261025.json.
+
+Exactly17first-tail samples63845..64070 differ from the normal restoredCP in
+ONLY DMAreadyFalse(normal)/True(cold), DMAinactive/queue0 and all other DMA
+fields exact. Presentation and all1210normal CPU/cache/RAM/input/audio/disk/
+display/frame/hashes are exact. Those17specific labels/values are required,
+not a general DMA tolerance; whole cold pair allfields remain equal. The
+already retained240ready/sixcachedline/462counter differences between separate
+CP source fragments and direct normalcombined are a separate bounded finding,
+not full recorded-state equality and not an emulator/physics/rendering fix.
+
+Proofs/ALL20actual PNGs/traces/fullCaptureStates/individualReviews/Manifest/
+Runner/Core/PNG/Raw/TraceSHA remain in
+ tmp/cannon-m2-victory-m3-active-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m2_victory_m3_active_type0_pair_20261025.py --compact
+passes after permitted removal exactly2ownacceptedsteps.jsonl195544215bytes.
+ALL20pictures/Proof/Trace/RawSHA/size/exact absolute two-pathallowlist/ALL
+ancestorReparse checks completed BEFORE first deletion. Inventory/result
+ tmp/cannon-m2-victory-m3-active-full-raw-cleanup-*-20261025.json.
+Initial copied cleanup expected wrong status, safely stopped on firstproof
+BEFORE any inventory/deletion; corrected exact acceptedstatus, full checks
+rerun, no broad bypass. Development proof
+ tmp/cannon-m2-victory-m3-active-cleanup-development-20261025.json.
+ALLactual images/traces/proofs/canonicalinputs/neededCPs/privatebinaries and
+short normal rawlogs retained, no other target removed. Old compactions valid.
+
+Now cold-covered OWN73317CP:
+ tmp/cannon-m2-victory-through-m3-four-soldier-combined-current-20261025-output/Cannon-M2-victory-through-M3-four-soldier-combined-current/m2-victory-through-m3-four-soldier-combined-current.amigasav.
+Read-only ownCP map is640x544 (not Phase2's736x544), phaseRemaining1/index0,
+ammo0; eight initialType5slots4/14/15/16/26/27/28/29, fourType20slots19..22,
+separateType15slots5..8 and pickups9..13. This is OWNCP observation, not full
+coldRAM identity or vehicle/weapon naming. Later newType5instances are expected,
+not resurrection of old Mission2 slots. All3previous soldiers plus RJ are four
+live Actor0..3; new combat controls must check all4Type0/positiveXY/state38zero.
+
+### Cannon Mission3 original16 normal first-hit replay positive; whole pair pending - 2026-10-25
+
+Separated new private recorder66 based on retained64 reads only own RAM/camera
+and issues real mouse/right-button input, no leftorder/specialweapon/ammo use,
+no CPU/RAM/trainer/statepatch. All4neutralType0 required; max600trackingsteps
+and stop at first nearestType5removal, then12bounded ordinary defensive holds.
+0warnings/errors, exacthistoricalCoreDLL, old controller/runner never overwritten.
+Actual336physical inputs replay normally WITHOUT feedback,339states/F73582,
+9412runtimeRAM-byte assertions,6720present watchbytes checked. All336physical
+actions/339recorded rows retain fourpositiveX/Y/Type0000/state38word0000,
+zeroCPUevents/HDF/floppywrites/Playerloss/Goal/ammo writes. Native ORIGINAL16
+of the NEW Mission3 instance C7E28C Type4writeF73490/PC C16D3C precedes its
+negativeXwriteF73491/PC C2B8C2; ordered distinct events, not sameframe. Final
+negativeX8000/Type4 via runtimeguard, no originalMission2identity reuse claim.
+All4actual normal pictures individually opened (targetLeftType5/hold03/hold11/
+finalRightRelease), ordinary active snow field/four HUDnames, no objective text.
+Final73582four actors16/21,22/35,31/21,38/34 allType0/state0,Goal0/ammo0/
+remaining1/index0; ownCP10positiveType5slots4/14/15/23/24/25/26/27/28/29.
+New23/24/25 are ownCP/sample observations, not a fresh nativeallocationPC claim.
+Pool is nonmonotonic. A first removal does NOT finish the phase/buildings.
+
+Exact portable336inputs equal recorder after excluding additional normal
+RAMguards only; finalCPU/frame/hash equal recorder,5192snapshotbytes exactly
+match ownSave. Full lossless watchdeltas roundtrip and all4actual image reviews/
+CP/Raw/Trace/Source/Build/Binary/PNG SHA in
+ tmp/cannon-m3-first-original-sixteen-functional-verified-summary-20261025.json.
+Source tmp/cannon-m3-first-original-sixteen-current-v66-20261025.json/-output;
+portable recorded-inputs.json and controller-observations.json in
+ tmp/cannon-m3-first-nearest-recording-v66-20261025.
+Needed OWN FUNCTIONAL endCP (not yet fullcold firstkill):
+ tmp/cannon-m3-first-original-sixteen-current-v66-20261025-output/Cannon-M3-first-original-sixteen-current-v66/m3-first-original-sixteen-current.amigasav.
+All short rawlogs/4actual pictures/traces/CPs/inputs/private66builds preserved.
+
+FIRST NEXT: two independent wholeDF0 cold boots started15:07UTC25.10.2026
+ONLY AFTER167cold acceptance and positive normal336input replay:
+ tmp/cannon-m3-first-original-sixteen-type0-full-candidate-20261025.json
+ in tmp/cannon-m3-first-original-sixteen-type0-full-a/-b,
+ sessions84422/5786. Inspect actual files/results afterrestart, IDs mayexpire.
+28307normalphysicalactions/expected28308states,167acceptedoldactualguards/
+516658runtimeRAM/32Watches/16nativeWriteObservers, unchangedWide35/Core416,
+--no-final-checkpoint. Strict prepared checker
+ tmp/verify_cannon_m3_first_original_sixteen_type0_pair_20261025.py --preflight
+and normalScenario--validate pass; ordinary checker only AFTER BOTHresults
+finish. No other whole candidates/recorders pending. Require all167guards/
+516658RAM and whole recorded pair equality exceptseconds/imagepaths; exact
+1092originalNON-ROM events plus135exactoriginalROM, ZERO further events/HDF/
+floppywrites. Normal336tail CPU/cache/RAM/input/audio/disk/display/frame/hash
+must match, exactnew native write sequence/Type4F73490 vsXnegativeF73491.
+All437M3actions from realbriefingConfirmF72613 (101old+336new) preserve4positive
+Type0/XY/state38zero/noLosswrites. First0cycleRightDown has4extra runtime
+identity bytesX0016/Type0005 at C7E28C from exact ownsourceCP, physicalinputs
+unchanged; finalX8000/Type4 guards retained. These4extra bytes explain normal
+9412vswholetail9416, total516658. Exactly336tailDMAreadyFalse(normal restored)
+vsTrue(cold) required ONLY whileinactive/queue0/all other DMAfields exact,
+not a blanket state tolerance; whole pair remains allfields equal. Four actual
+unique captures PER BOOT, no CP hashes as newguards:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m3-first-nearest-v66-target-left-type5 | 73491 |
+| m3-first-nearest-v66-hold-03 | 73521 |
+| m3-first-nearest-v66-hold-11 | 73582 |
+| m3-first-nearest-v66-final-right-release | 73582 |
+
+Individually open ALL8actual coldPNGs/require4hashPNGpairs equal, including
+separate same-frame hold11/finalrelease files. Only THEN accept new171guard
+route; no firstkill coldpass from normal/CPimages. Current167activation remains
+accepted. After fullpair, read legitimate nextenemy/building/ammo/terrain phases
+from endCP; all4healthy, genuine inputs, normal replay withoutfeedback then
+2wholeDF0boots/allactual images before each new pass. No renderer/physics/
+pathfinding/immunity/HUD-command repair invented. All other seven-point/A1000/
+FPU/040/OS/video/controller/performance work OPEN, no publication/hardware
+availability/Core/source/stateversion change or broad suite/boot reruns.
+
+Latest focused Headeraudit/Diffcheck/accepted157-and167 compactproofs/current
+normal and pending scenarios/preflight/Pythonparser checks:
+ tmp/cannon-m3-activation-and-first-enemy-final-checks-20261025.json.
+Latest unchangedSource/OriginalADF/normalUserSave/oldFrozenBinary/privateBuild
+integrity proof:
+ tmp/cannon-m3-activation-and-first-enemy-roadmap-integrity-20261025.json.
+The first Mission3enemy16 candidate remains pending its own pair/all8images;
+167actual cold guards and all older accepted routes remain valid independently.
+
+### Cannon Mission3 first original16 fully cold-accepted;171 guards - 2026-10-25
+
+Both complete independent native A500/512KChip+512KSlow/Kick1.3/read-only
+DF0 boots are FINISHED/accepted. Old sessions84422/5786 do not wait/repeat.
+Tools/a500-cannon-fodder-mission-three-first-original-sixteen-route.json now
+has171ACTUALcold guards. Each28308states/F73582, all167previous actualguards,
+516658runtimeRAM assertions,250820present loggedwatchbytes independently
+checked. All437Mission3action samples from realbriefingConfirm72613 (101old+
+336new) retain all4positiveX/Y/Type0000/state38word0000 and no native loss
+writes; final16/21,22/35,31/21,38/34 allType0/state0/Goal0/ammo0/rem1/index0.
+Native original16/C7E28C Type4F73490/PC C16D3C, negativeXF73491/PC C2B8C2
+are distinct ordered events. First0cycleType5identityX0016/Type0005 and final
+X8000/Type4 are guarded in both whole boots. Old Mission2 slot identity is
+not reused as a new proof. Exactly1092original NON-ROM protectionevents plus
+135separately exact originalROM exceptions, ZERO new CPUevents/HDF/floppywrites.
+All recorded wholecold statepairs equal exceptseconds/imagepaths, no full
+unrecordedRAM equality; all older171predecessor windows/nativeproofs preserved.
+
+ALL8actual coldPNGs individually opened at original detail,4PNG/hashpairs
+byteidentical. Allfour actual HUDnames/active snow field, no objective text;
+health from native Type0/positiveXY/state38/write evidence, not names alone.
+Both distinctsameframe73582hold11/finalrelease files individually opened.
+Four new ACTUALcold guards=>171:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m3-first-nearest-v66-target-left-type5 | 73491 | A973F47691FEA3021FDE3F062E39B54F8AE000D7D5A6001C95E988BBD15735DB |
+| m3-first-nearest-v66-hold-03 | 73521 | 316CF2DA14A8BB984B2595E4610120310243D20136DFAD5E1DCEB073A22CB9CE |
+| m3-first-nearest-v66-hold-11 | 73582 | 0172EBDE3BBD90EE4D5CB6EBF1A20096B545ED2BF274A731C1B1A31619EE4FE1 |
+| m3-first-nearest-v66-final-right-release | 73582 | 0172EBDE3BBD90EE4D5CB6EBF1A20096B545ED2BF274A731C1B1A31619EE4FE1 |
+
+All336normalReplayCPU/cache/RAM/input/audio/disk/displayregister/frame/hash
+states equal wholecold. Exactly336inactive/queue0DMAreadyFalse(normalRestore)
+vsTrue(cold), ALLother DMAfields exact; no general tolerance. Exactly TWO first
+F73317presentation-cache probes differ: first0cycleRightDown has normalnone/
+none/none; following40000cycletrack0000 stillF73317 has normal44:0+640,
+240:none,280:none; cold both equals exact pinned167prefix final0+640all3lines.
+Allremaining334presentationfields and all336actualhashes/CPU etc strict.
+Initial preparation assumed onlyfirstzero-cycleprobe; ordinary check stopped
+before acceptance on the secondsameframeprobe. Both fullruns have exactlythe
+same2specific label/value differences. Proof
+ tmp/cannon-m3-first-original-sixteen-verifier-boundary-development-20261025.json.
+No guest/Core/input/candidate/renderer change, blanket hash exception or CP
+image substituted. Wholecold PAIRallfields strict equal exceptseconds/imagepaths.
+
+Proofs/ALL8actual PNGs/traces/fullCaptureStates/individualReviews/Manifest/
+Runner/Core/PNG/Raw/TraceSHA remain in
+ tmp/cannon-m3-first-original-sixteen-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m3_first_original_sixteen_type0_pair_20261025.py
+--compact passes after permitted removal exactly2ownacceptedsteps.jsonl
+197893197bytes; exact absolute2pathallowlist/ALLancestorReparse/all8actual
+images/Proof/Trace/SHA/size checks BEFORE first deletion. Inventory/result
+ tmp/cannon-m3-first-original-sixteen-full-raw-cleanup-*-20261025.json.
+This turn preserves28actual coldpictures (20activation+8firstkill) and compacted
+exactly4ownacceptedraws393437412bytes; ALLPNGs/Traces/CPs/Inputs/binaries/short
+normal controls retained, no other target or original media/save/HDF touched.
+Older allowed compactions remain valid, not regressions.
+
+Now cold-covered OWN73582CP:
+ tmp/cannon-m3-first-original-sixteen-current-v66-20261025-output/Cannon-M3-first-original-sixteen-current-v66/m3-first-original-sixteen-current.amigasav.
+This firstkill is NOT Mission3objective/buildings/later visibleSingleDriveRequester
+or fullroadmap acceptance. OwnCP10positiveType5 including23/24/25 remains only
+ownCP count, not unrecorded wholecoldRAM identity. Read-only pixel terrainplan
+ tmp/cannon-m3-upper-bank-own-terrain-plan-20261025.json finds a numeric
+collision0/nonWater6 orthogonal131pixel path16/21->141/26 on640x544map,
+ignoring enemies/bullets/formation; planning ONLY, not a group movement pass.
+
+### Cannon Mission3 current upper27 normal removal and NEW27 reuse; full pair pending - 2026-10-25
+
+Separated private recorder67 begins ONLY AFTER171fullcold acceptance from
+own73582CP, all4neutralType0/current10Type5/rem1/index0/ammo0 required.
+Only ordinary RightFire/mouse, first selectedType5removal then12boundedholds,
+max600trackingsteps, noLeftorder/specialammo/CPU/RAM/trainer/statepatch.
+0warnings/errors/identicalCore, all old66andearlierprivatebuilds untouched.
+Normal370fixed physical inputs replay WITHOUTfeedback,373states/F73866,
+10370runtimeRAM/7400presentwatchbytes independently checked. All370actions/
+373rows fourpositiveXY/Type0000/state38word0000, zero CPUevents/HDF/floppywrites/
+Playerloss/Goal-/AmmoWrites. Finalpositions16/21,22/35,31/21,38/34 allType0/
+state0,Goal0/ammo0/rem1/index0. Exact recorderinputs/finalCPU/Frame/Hash,
+5192spritesnapshotbytes exactly equal ownSave. ALL4actual normal PNGs separately
+opened/reviewed, active snow/fourHUDnames/NOobjective text. Full lossless
+watchdeltas roundtrip/sourceCP/inputs/Raw/Trace/Build/Binary/PNG/CP SHA in
+ tmp/cannon-m3-upper-current27-replacement-functional-verified-summary-20261025.json.
+
+Current upper-bank slot27/C7E79E is genuinely removed, then natively reused!
+Six exact ordered writes are retained:
+
+- F73775/PC C16D3C type4, then F73775/PC C2B8C2 X80 (actual current27kill).
+- F73778/PC C14AA8 X80 initializer and C14AAC type00clear are NOT a secondkill.
+- F73779/PC C14A1A type05, returnC16F70, then C14A1C newXposition is NEW
+  Type5allocation. Final27Type5/X29/Y446 is a NEWinstance, no resurrection.
+Same-frame labeltargetLeftType5 can precede the negativeXwrite within73775;
+keep ordered actions/native trace, no frame>= shortcut. Filename-original27
+is historical provenance, NOT independent proof of its complete original-map
+initialization lifetime; fresh whole observerhistory is required before such
+an additional identity claim. Current-upper-instance removal/newallocation are
+proved in normal replay; no extra original/Mission2 kill from slotnumber alone.
+OwnendCP10positiveType5slots4/14/15/23/24/25/26/27/28/29 is only ownCP count.
+Legacy recorder fields buildingType(slot7)/itemType(slot8) remain raw numeric
+diagnostic labels, NOT Mission3 buildings/items. RealType20slots19..22 and
+Type15slots5..8 are separate ownCP observations. C01DD0 remains countscratch.
+
+Normal source
+ tmp/cannon-m3-upper-original27-replacement-current-v67-20261025.json/-output;
+portable370inputs/controllerobservations in
+ tmp/cannon-m3-upper-nearest-recording-v67-20261025.
+Needed OWN FUNCTIONAL73866CP (not yet cold upper27 pass):
+ tmp/cannon-m3-upper-original27-replacement-current-v67-20261025-output/Cannon-M3-upper-original27-replacement-current-v67/m3-upper-original27-replacement-current.amigasav.
+All short rawlogs/4actual pictures/traces/CPs/inputs/private67builds preserved.
+
+FIRST NEXT: two independent fullDF0cold boots started15:32UTC25.10.2026
+ONLY AFTER171cold acceptance and positive normal370inputReplay:
+ tmp/cannon-m3-upper-current27-replacement-type0-full-candidate-20261025.json
+ in tmp/cannon-m3-upper-current27-replacement-type0-full-a/-b,
+ sessions4512/3838. Inspect actual files/results afterrestart; IDs mayexpire.
+28677normalphysicalactions/expected28678states,171oldactualcoldguards/
+527028runtimeRAM/32Watches/16nativeWriteObservers,unchangedWide35/Core416,
+--no-final-checkpoint. Strict prepared checker
+ tmp/verify_cannon_m3_upper_current27_type0_pair_20261025.py --preflight and
+normalScenario--validate pass. Ordinary check ONLY AFTER BOTHresultsfinish.
+No other full candidates/recorders pending. Require all171oldguards/527028RAM/
+whole recordedstatepair equality exceptseconds/imagepaths, exact1092original
+NON-ROM+135exactoriginalROM/ZEROadditionalCPUevents/HDFs/floppywrites.
+All370normalCPU/cache/RAM/input/audio/disk/displayregister/frame/hashes must
+match, complete freshtail nativewrites including exactSIXslot27events above.
+All807Mission3actionSamples from realConfirmF72613 (101+336+370) retain all4
+positiveType0XY/state38zero/noLosswrites,Goal0/ammo0/rem1/index0. Initial and
+final27Type5/X guards represent DIFFERENT instances, targetcaptureguardType4
+is strict in between. All older171proofs/native identities SHA-pinned, no old
+permanentType4 assumption or freshly unobserved oldenemy claim.
+NormalRestore first2exactcachedpresentation descriptors atF73582 are pinned
+inmetadata vs exactaccepted171finaldescriptor; allremaining368presentation
+fields strict. All370DMAreadyFalse(normal)/True(cold) ONLYinactive/queue0,
+ALLother DMAfields exact, no blanket state tolerance; wholecoldPAIRallfields
+strict equal. ExactlyFOURunique new actual captures PER BOOT:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m3-upper-nearest-v67-target-left-type5 | 73775 |
+| m3-upper-nearest-v67-hold-03 | 73805 |
+| m3-upper-nearest-v67-hold-11 | 73866 |
+| m3-upper-nearest-v67-final-right-release | 73866 |
+
+Individually open ALL8actualcoldPNGs/require4hashPNGpairs equal, separately
+open both73866hold11/finalreleasefiles; ONLY THEN accept175guardroute.
+No CP hashes as newguards, no current27coldpass from normal/CPimages. No
+Mission3objective/buildings/later visibleSingleDriveRequester/whole roadmap pass.
+After actual acceptance read remaining current/new enemy/building/Ammo phases,
+all4healthy, normal fixed feedback-free replay then2wholeDF0boots/ALLactual
+pictures before each pass. Current171remains accepted independently.
+No Core/source/state/hardwareavailability/publication change or redundant broad
+suite/boot rerun. Core416/416Debug+Release/Runner35/35 historicalbaseline kept.
+All other seven-point/A1000/FPU/040/OS/video/timing/controller gates OPEN.
+
+Latest focused checks and immutable integrity for accepted171/pendingupper27:
+ tmp/cannon-m3-first-and-upper-final-checks-20261025.json
+ tmp/cannon-m3-first-and-upper-roadmap-integrity-20261025.json.
+Headeraudit/Diffcheck/accepted167-and171 compactproofs/public171/currentnormal/
+pendingUpperScenario/preflight/Pythonparsers are checked without new Core or
+broad suite/boot runs. SixFPU/Core/TestSources,threeOriginalADFs,fiveUserSaves,
+old/currentFrozenRunnerCore and preservedprivate66/67build SHAs remain checked.
+This does not promote the still-pending upper27 pair or enable hardware/publication.
+
+### Cannon Mission3 current upper27 removal and NEW27 reuse fully cold-accepted;175 guards - 2026-10-25
+
+Two independent whole native A500/512KChip+512KSlow/Kick1.3/read-only DF0
+boots FINISHED/accepted; old4512/3838 do not wait/repeat. Permanent
+Tools/a500-cannon-fodder-mission-three-upper-current-twentyseven-replacement-route.json
+has175ACTUALcold guards. Each28678states/F73866, all171previous actualguards,
+527028runtimeRAM-byte assertions,258220present loggedwatchbytes independently
+checked. All807Mission3action samples from actualConfirm72613 (101+336+370)
+fourpositiveXY/Type0000/state38word0000, no losswrites. Final16/21,22/35,
+31/21,38/34 all4Type0/state0/Goal0/ammo0/rem1/index0. Exactly1092original
+NON-ROM protectionevents5=1/4=8/9=1083 plus135separately exact originalROM,
+ZERO additional CPUevents/HDFs/floppywrites. Entire recorded coldstatepairs
+allfields equal exceptseconds/imagepaths; no unrecorded wholeRAM equality.
+All older175predecessor identity/native windows remain SHA-pinned; old
+unwatched addresses are not described as freshly observed.
+
+Six ordered current27 writes in BOTHwholeboots and normal replay:
+F73775/C16D3C Type04 then C2B8C2 X80 = current upper27 removal;
+F73778/C14AA8 X80 and C14AAC type00 = free-slot initialization, NOT secondkill;
+F73779/C14A1A type05/ReturnC16F70 then C14A1C newX = NEW27 instance.
+Final27Type5 at29/446 is NEW, not resurrection. Fresh full observer history
+ALSO proves the removed current27 itself was allocated F73112/C14A1A/
+ReturnC16F70 (after actualMission3confirm), NOT an initial-map original27.
+Historical filename-original27 is retained only for provenance, not an extra
+originalenemy claim. Same-frame73775 targetLeftType5 sample and negativeX
+write retain strict action/trace order, not blind frame>= filtering.
+
+ALL8actual coldPNG individually opened at original detail;4PNG/hashpairs
+byteidentical. Both distinct73866hold11/release files separately opened.
+Visible active snowy bank/cabin/water/fourHUDnames, no objective text; health
+from four nativeType0/XY/state38 and writes, not names alone. Four new actual
+cold guards=>175:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m3-upper-nearest-v67-target-left-type5 | 73775 | 2286312133995395FCE27CA1689104216E083165849F603C39ECD876A81E59AA |
+| m3-upper-nearest-v67-hold-03 | 73805 | 05C141F3FA696FA47BF5D4D278D1D363C268E76717DA72C1F76A242E003CACF6 |
+| m3-upper-nearest-v67-hold-11 | 73866 | 51FCF97FF02E3D7D074A5EA16C0AF62572A26AEFD5CACF5997AED476DE5ACA75 |
+| m3-upper-nearest-v67-final-right-release | 73866 | 51FCF97FF02E3D7D074A5EA16C0AF62572A26AEFD5CACF5997AED476DE5ACA75 |
+
+#### Continuous normal706 reference resolves exact fragment-boundary hashes
+
+First ordinary checker stopped BEFORE visual/cold acceptance on two logged
+probes of ONE F73583: labels v67-track-0001/-0002. Original normal370CPfragment
+had hash0172EBDE3BBD90EE4D5CB6EBF1A20096B545ED2BF274A731C1B1A31619EE4FE1,
+nonBlack156733; BOTHwholecold runs had41CA399E08E4A45E2ABF2043B17FCC3702ACE60A65217088BAD987694085EB3D,
+nonBlack156846. AllCPU/cache/RAM/input/audio/disk/displayregister/frame fields
+were already exact; separate first2F73582cachedpresentation descriptor
+findings remain preserved. NO hash waiver, renderer/guest/Core/input fix.
+Original370fragment/functionalproof remain byte-exact as diagnostics.
+
+Same336+370fixed inputs replayed continuously from earlier OWN73317CP,
+WITHOUT intermediate73582restore:706actions/709rows/F73866. All706CPU/cache/
+RAM/input/audio/disk/display/frame/HASH states EXACT to BOTHwholecold boots;
+all370uppertail presentation fields now EXACT too, no cachedline/hash exception.
+Only370DMAreadyFalse(normalRestore)/True(cold) inactive/queue0, ALLotherDMA
+fields strict, are explicitly retained. Wholecold PAIR remains allfieldsstrict.
+All4actual direct-normal PNGs individually opened, no substitute for8coldPNGs.
+5192ownSpritebytes equal oldfragmentownsave; finalCPU/frame/hash exact.
+Proof tmp/cannon-m3-first16-upper27-direct-functional-verified-summary-20261025.json;
+transparent host development
+ tmp/cannon-m3-upper-current27-direct-reference-development-20261025.json.
+The candidate physicalinputs/runtimeguards/Core were unchanged; metadata and
+checker select the strict continuous normal reference. Two exact hash probes
+and two exact cached-descriptor probes of the older fragment remain verbatim.
+No blanket restore/hash/presentation tolerance was added.
+
+Proofs/ALL8coldPNGs/traces/capturestates/individualreviews/Manifest/Runner/Core/
+Raw/PNG/TraceSHA in tmp/cannon-m3-upper-current27-replacement-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m3_upper_current27_type0_pair_20261025.py --compact
+passes after permitted removal EXACTLY2ownacceptedsteps.jsonl200482889bytes.
+ALL8actualimages/proof/trace/SHA/size/exactabsolute2pathallowlist/ALLancestor
+Reparse checks BEFORE first removal; inventory/result
+ tmp/cannon-m3-upper-current27-replacement-full-raw-cleanup-*-20261025.json.
+All images/traces/neededCPs/inputs/privatebinaries/shortnormal raws preserved;
+no other target, original media/usersave/HDF or old blocked tree touched.
+Older compactions remain valid. No Core/source/state/hardware/publication change.
+
+Canonical cold-covered OWN73866CP is now the continuous706normal endpoint:
+ tmp/cannon-m3-first16-upper27-direct-combined-current-20261025-output/Cannon-M3-first16-upper27-direct-combined-current/m3-first16-upper27-direct-combined-current.amigasav.
+Old fragment endpoint remains preserved. Mission3objective/buildings/later
+visibleSingleDriveRequester/fullroadmap/A1000/FPU/040/OS/video/controller OPEN.
+
+### Cannon Mission3 bounded stationary control68 and positive upper land current23 normal replay; new whole pair pending - 2026-10-25
+
+Separate private68/69 builds ONLY AFTER175acceptance, both0warnings/errors,
+identical frozenCore; old66/67/earlier builds preserved. Read-only ownRAM/camera
+choice of genuine physical mouse/RightFire/Leftorders, no CPU/RAM/trainer/
+state patch. Four positiveXY/Type0000/neutralState38 mandatory for all samples.
+
+V68: stationary602physicalinputs, max600trackingintervals, bounded-no-type5-removal,
+F74204 all4still16/21,22/35,31/21,38/34,Goal0/ammo0/rem1/index0. Normal direct
+706+602=1308inputs/1311rows,36638runtimeRAM/26160presentwatchbytes independently
+checked, recorderfinalCPU/frame/hash exact, zeroCPUevents/HDF/floppywrites/
+playerloss/Goal-/AmmoWrites. ALL4actual normalPNG individually opened, active
+snow/fourHUDnames/noObjective. No selectedType5removal, not a new killroute.
+Proof tmp/cannon-m3-next-current-bounded-functional-verified-summary-20261025.json;
+short raw/trace/4actualPNG/CP/inputs/source/build/binarySHA retained. Do not
+repeat long unsuccessful stationary fire without a new reason.
+
+V69: two ACTUAL short world clicks86/16 and147/21 give native soldier body
+80/21F74020 then141/26F74141; Right released/native queue neutral beforeLeft,
+immediate realRightFire afterLeftRelease. All4remain neutral/positiveType0.
+Current Type5slot23/C7E5C6 Type04F74348/PC C16D3C then negativeXF74348/PC C2B8C2;
+not an initial-map original/Mission2identity claim. Normal direct706+1038=
+1744fixedphysicalinputs/1747rows/F74478,48850runtimeRAM/34880presentwatchbytes
+independently checked. All706authoritative prefixstates exact, no intermediate
+restore. All1038tail actions and allrows fourpositiveXY/Type0/state38zero;
+final141/26,132/25,122/24,112/23 allType0/state0/Goal0/ammo0/rem1/index0.
+OwnCP9positiveType5 is only ownCP count, not fullcoldRAM equality. All4actual
+normalpictures individually opened; real movement and native removal, no
+objective text/buildingpass. Native Goal/Ammo unchanged, no playerloss/CPUevent/
+HDF/floppywrite. All5192spritebytes match ownsave, recorderfinalCPU/frame/hash
+exact; complete lossless watchdeltas roundtrip, exact inputs/sourceCP/Raw/
+Trace/Source/Project/Assembly/Buildlog/Binary/PNG/CP SHA preserved.
+Proof tmp/cannon-m3-upper-land-current23-functional-verified-summary-20261025.json.
+Normal source tmp/cannon-m3-upper-land-current23-direct-v69-20261025.json/-output.
+Needed OWN FUNCTIONAL endpoint (NOT YET newcoldpass):
+ tmp/cannon-m3-upper-land-current23-direct-v69-20261025-output/Cannon-M3-upper-land-current23-direct-v69/m3-v69-upper-land-direct-current.amigasav.
+All8normalcontrolPNGs/shortRaws/traces/CPs/inputs/private68+69 preserved.
+
+FIRST NEXT: two independent whole DF0 cold boots started16:11UTC25.10.2026
+ONLY AFTER175fullacceptance and positive continuous normal1038tailReplay:
+ tmp/cannon-m3-upper-land-current23-type0-full-candidate-20261025.json
+ in tmp/cannon-m3-upper-land-current23-type0-full-a/-b,
+ sessions59698/6190. Inspect actualfiles/results after restart; IDs mayexpire.
+29715normalphysicalactions/expected29716states,175oldactualguards,
+556096runtimeRAM/32actorWatchbytes/16nativeWriteObservers,--no-final-checkpoint,
+unchangedWide35/Core416. Strict checker
+ tmp/verify_cannon_m3_upper_land_current23_type0_pair_20261025.py --preflight
+and normalScenario--validate pass. Ordinary check ONLY after BOTHresultsfinish.
+NOother fullcandidates/recorderspending. Require all175oldguards/556096RAM/
+wholecoldpair allrecordedfields equal exceptseconds/imagepaths; exact1092
+originalNON-ROM+135exactoriginalROM/ZEROadditionalCPUevents/HDF/floppywrites.
+All1845M3actions from realConfirm72613 (807old+1038new) fourpositiveXY/Type0/
+state38zero/noLosswrites. All1038normalCPU/cache/RAM/input/audio/disk/display/
+frame/HASH/presentation fields strict, exactwhole tailnativewrites to normal
+including current23F74348Type04/C16D3C thenX80/C2B8C2. Fresh current23type
+history from newMission3map retained, no original claim from filename.
+Only1038inactivequeue0DMAreadyFalse(normal)/True(cold), ALLotherDMAfields strict;
+wholecoldPAIRallfieldsstrict. Goal0/ammo0/rem1/index0; final current23X8000/
+Type4 runtimeguard. Allolder175identities/nativeproofs SHA-pinned, not fresh
+unwatched signals. ExactlyFOUR unique newactual captures PER BOOT:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m3-upper-land-v69-wp0-arrived | 74020 |
+| m3-upper-land-v69-wp1-arrived | 74141 |
+| m3-upper-land-v69-current23-left-type5 | 74348 |
+| m3-upper-land-v69-final-right-release | 74478 |
+
+ALL8actualcoldPNGs must be individually opened, all4hash/PNGpairs identical,
+ONLY THEN verified-summary/newpermanent179Guardroute. No CP hash as newcold
+Guard or Mission3objective/buildings/later visibleRequester/roadmap pass.
+Afteractualacceptance read remaining current/new enemies/buildings/ammo/terrain,
+all4healthy, truephysicalinputs, normalcontinuousfeedbackfreereplay from earlier
+73317CP+336+370+1038+newtail (no intermediate restore), then2wholeDF0boots/all
+actualimages for each passage. Never overwrite old private68/69orolderbuilds.
+No redundant broadCore/boot suites, Core416/416Debug+Release/Runner35/35 remains
+historical. All other seven-roadmap/A1000/FPU/040/OS/video/timing/controller gates OPEN.
+
+### Cannon Mission3 upper-bank land route/current23 removal fully cold-accepted;179 actual guards - 2026-10-25
+
+Both independent whole native A500/512KChip+512KSlow/Kick1.3/read-only DF0
+boots FINISHED/accepted; oldsessions59698/6190 do not wait/repeat. Permanent
+Tools/a500-cannon-fodder-mission-three-upper-land-current-twentythree-route.json
+has179ACTUALcold guards. Each29716states/F74478,175previous actualguards,
+556096runtimeRAM-byte assertions,278980presentwatchbytes independently checked.
+All1845M3action samples from realConfirm72613 (807old+1038new) fourpositiveXY/
+Type0000/state38word0000/noLosswrites. Real world clicks86/16,147/21 reached
+body80/21F74020 then141/26F74141. Final141/26,132/25,122/24,112/23 allType0/
+state0/Goal0/ammo0/rem1/index0; current23X8000/Type4 runtimeguard.
+Exactly1092original NON-ROM protectionevents5=1/4=8/9=1083 plus135separately
+exact originalROM; ZEROadditionalCPUevents/HDF/floppywrites. Whole recorded
+coldstatepair allfields equal exceptseconds/imagepaths, no unrecorded RAM
+identity claimed. All1038continuous normal tail CPU/cache/RAM/input/audio/
+disk/display/frame/HASH/presentation fields exact; only1038DMAreadyFalse
+(normal)/True(cold) whileinactive/queue0 and ALLotherDMAfields exact. No hash/
+cache/presentation waiver. All175older native/identity windows SHA-pinned,
+not freshly observed at unwatched addresses.
+
+Fresh whole observerhistory proves current23/C7E5C6 Type5 allocation F73575/
+PC C14A1A/ReturnC16F70, after actualMission3confirm. Type04 F74348/PC C16D3C
+then negativeX F74348/PC C2B8C2 removes this spawned CURRENTinstance, NOT an
+initial-map original23 or oldMission2slot identity. Ordered native trace and
+labels retained; no permanentType4/unique80-write assumption for futuretails.
+ALL8actualcoldPNG individually opened at original detail;4PNG/hashpairs
+byteidentical. Actual squadmovement/snowy bank/cabin/rock/water/fourHUDnames,
+NOobjective text. Health from native XY/Type0/state38/writes, not names alone.
+Four new ACTUALcold guards=>179:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m3-upper-land-v69-wp0-arrived | 74020 | DD0D846DBC69A9896D10A5AED65C8FA4371983A657F3DACFCBB22BBD0D6AF1F5 |
+| m3-upper-land-v69-wp1-arrived | 74141 | 1C7F269DB0293C2C82FDE7F1D280A45E2047C79A1BD1664E47FC739C16F9C1EF |
+| m3-upper-land-v69-current23-left-type5 | 74348 | 7EA3161F108E299AFD5634F773D971E7D292FD63E4A5D6F72A030499C1E1DA09 |
+| m3-upper-land-v69-final-right-release | 74478 | 9A8EA2B62DFD30284F53BB281B571ADAA4AEB80E543CD62D8135C0CDAC8EF753 |
+
+Proofs/ALL8actualcoldPNGs/traces/capturestates/individualreviews/Manifest/
+Runner/Core/Raw/PNG/TraceSHA in tmp/cannon-m3-upper-land-current23-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m3_upper_land_current23_type0_pair_20261025.py
+--compact passes after permitted removal EXACTLY2ownacceptedsteps.jsonl
+207737485bytes. ALL8pictures/Proof/Trace/SHA/size/exactabsolute2pathallowlist/
+ALLancestorReparse checks BEFOREfirstremoval; inventory/result
+ tmp/cannon-m3-upper-land-current23-full-raw-cleanup-*-20261025.json.
+Allactualimages/traces/neededCPs/inputs/privatebinaries/shortnormalRaws retained;
+no other path or original media/usersave/HDF/oldblockedtree touched. Older
+permitted compactions remain valid; no regression from removed checkedRaws.
+
+Now cold-covered OWN74478CP:
+ tmp/cannon-m3-upper-land-current23-direct-v69-20261025-output/Cannon-M3-upper-land-current23-direct-v69/m3-v69-upper-land-direct-current.amigasav.
+Current ownCP9positiveType5/4requiredType20building observations are only ownCP
+counts, NOT unrecorded wholecoldRAM identity or a constantC01DD0 invariant.
+Mission3objective/buildings/later visibleRequester/fullroadmap/A1000/FPU040/
+OS/video/timing/controller gates remain OPEN; nohardware/publication change.
+
+### Cannon Mission3 upper-east bounded70 and positive mask-bend/current4 normal71; next whole pair pending - 2026-10-25
+
+ONLY AFTER179fullcoldacceptance: read-only own74478 native terrain planning,
+ tmp/cannon-m3-upper-east-own74478-terrain-plan-20261025.json,640x544map,
+originalfootX+8/Y-3/collision0/nonWater6 geometry. Initial proposed endpoint
+330/26 is native terrain3/collision1: host static assertion stopped BEFORE
+planwrite/controllercreation/guestexecution. Revised actual world orders go
+south. Geometry ignores enemy/bullets/formation/objectblocking, not a pass.
+No emulator/physics/pathfinding/immunity fix from this planning.
+
+New separate private70/71 builds both0warnings/errors/identical frozenCore,
+all old69andearlier untouched. Genuine ordinary mouse/Leftorders/RightFire,
+read-only ownRAM/camera choice, Right/nativequeue neutral beforeLeft then
+immediateRight afterLeftRelease; fourpositiveXY/Type0/state38zero mandatory.
+
+V70: real world246/21,286/45,356/45 reaches bodies240/26F74666,280/50F74742,
+but last body stops309/50 with actualnativeGoal350/50. Healthy bounded result
+F74960P309/50,299/50,289/50,280/50 allType0/state0; no current4removal.
+Originalmask BFS path really turns309/50->309/51->350/51->350/50; next310/50
+is blocking terrain. This is an expected native geometry boundary, not a
+wrongorder/formation/renderer/physics regression. Normal fixed770tailinputs
+from continuous73317+1744prefix=2514inputs/2517rows;67334runtimeRAM/
+47204presentwatchbytes checked. ALL3actualnormalPNGs individually opened.
+NEW23Type5allocation F74838/C14A1A/ReturnC16F70 is NEW, oldaccepted23defeat
+remains. Proof tmp/cannon-m3-upper-east-land-bounded-functional-verified-summary-20261025.json.
+
+V71: same firsttwoorders plus actual315/46 and356/46 for body309/51 then
+350/51. AllFOURwaypoints genuinely reached: F74666/74742/74793/74868.
+Current4/C7DD04 Type04 F75102/PC C16D3C, negativeX F75103/PC C2B8C2 are
+DIFFERENT ordered events; actualcurrent4leftType5captureF75103. Later
+F75171/C14AA8 X80 and C14AAC type00 are free-slot initialization; F75172/
+C14ADE type17hex(decimal23) is a NON-Type5role, followed by type04F75203/
+C16D3C and X80F75204/C2B8C2. These latterwrites are NOT a secondenemykill.
+Exactseven-write sequence retained, no permanenttype4/unique80 assumptions.
+NEW23allocationF74826 and NEW16allocationF75117 eachC14A1A/ReturnC16F70;
+oldaccepted current23F74348 and original16F73491 removals remain valid.
+No resurrection or extra original kill inferred from slotnumbers/filenames.
+
+Normal continuous1744+1185=2929fixedphysicalinputs/2932rows/F75206 WITHOUT
+intermediate restore; all1744authoritativeprefix CPU/cache/RAM/input/audio/
+disk/display/frame/hash/presentation exact. All1185tailactions and everyrow
+fourpositiveXY/Type0/state38zero, no nativeplayerlosswrites/CPUevents/HDF/
+floppywrites. Goal0/ammo0/rem1/index0 runtime at everytailaction; Goal/Ammo
+addresses not freshly observed by this16addressset, so no claim of absent
+unwatchedwrites. FinalP350/51,341/51,332/51,323/51 allType0/state0, current4
+final8000/Type4.77298runtimeRAM/53844presentwatchbytes independently checked.
+OwnCP10positiveType5slots14/15/16/23/24/25/26/27/28/29 only ownCP count, no
+wholecoldRAM identity. All6actualnormalPNG individually opened: real movement,
+active snow/cabin/water/fourHUDnames, no Objective. FinalCPU/frame/hash exactly
+recorder; own5192spritebytes exactly ownsave; full lossless watchdeltas roundtrip,
+portableinputs/SourceCP/Raw/Trace/Source/Project/Assembly/Buildlog/Core/Binary/
+PNG/EndCP SHA in
+ tmp/cannon-m3-upper-east-bend-current4-functional-verified-summary-20261025.json.
+All9normalpictures/shortRaws/traces/CPs/inputs/private70+71 preserved.
+
+Initial host normalmanifests put24Type/state/counterbytes plus16fullXY(+4enemy)
+on one final expectedMemoryBytes action, exceeding unchanged runnercap32.
+Preflight AND attempted invocations rejected BEFORE output/guest. Rejected
+manifests and builder source retained; final guards now24strictType/state/
+counter +4ActorXhigh (+4finalenemyType/X for71), within32. FullActorXY remain
+independently positive/exact in everyloggedstate/ownsave; no general guard
+relaxation/physicalinput/Core/media change. Host proof
+ tmp/cannon-m3-east-controls-final-guard-development-20261025.json.
+Both final corrected manifests validate and normalplays finish strictly.
+
+Normal source tmp/cannon-m3-upper-east-bend-current4-direct-v71-20261025.json/-output.
+Needed OWN FUNCTIONAL75206CP (NOT YET newcoldpass):
+ tmp/cannon-m3-upper-east-bend-current4-direct-v71-20261025-output/Cannon-M3-upper-east-bend-current4-direct-v71/m3-v71-upper-east-bend-direct-current.amigasav.
+
+FIRST NEXT: two new independent whole DF0 coldboots started17:01UTC25.10.2026,
+ONLY AFTER179acceptance and positive normal1185tailReplay:
+ tmp/cannon-m3-upper-east-bend-current4-type0-full-candidate-20261025.json
+ in tmp/cannon-m3-upper-east-bend-current4-type0-full-a/-b,
+ sessions59260/54596. Afterrestart inspectactualfiles/results, IDs mayexpire.
+30900normalphysicalactions/expected30901states,179oldactualguards/
+584544runtimeRAM,32actorWatchbytes/16nativeWriteObservers,--no-final-checkpoint,
+unchangedWide35/Core416. Strict checker
+ tmp/verify_cannon_m3_upper_east_bend_current4_type0_pair_20261025.py --preflight
+and normalScenario--validate pass. Ordinary mode ONLY AFTER BOTHresultsfinish;
+NOother fullcandidates/recorderspending. Require all179oldguards/584544RAM/
+whole recordedColdstatepair allfields equal exceptseconds/imagepaths; exact
+1092originalNON-ROM+135separateexactoriginalROM/ZEROadditionalCPUevents/HDF/
+floppywrites. All3030M3actionSamples from actualConfirm72613 (1845+1185)
+fourpositiveXY/Type0/state38zero/noLosswrites. ALL1185normal CPU/cache/RAM/
+input/audio/disk/display/frame/HASH/presentation fields strict; exactwhole
+nativeTailWrites including seven current4/removal/nonType5role writes and
+NEW23/NEW16 allocations above. Only1185inactivequeue0DMAreadyFalse(normal)/
+True(cold), ALLotherDMAfields strict; wholecoldPAIRallfieldsstrict.
+Final75206actors350/51,341/51,332/51,323/51Type0/state0/Goal0/ammo0/rem1/index0;
+current4X8000Type4 runtimeguard. Fresh4typehistory since newMission3map must
+be inspected before additional original-map identity claims; allolder179native
+windows SHA-pinned, not newly unwatched signals. ExactlySIXuniqueactualimages
+PER BOOT:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m3-upper-land-v71-wp0-arrived | 74666 |
+| m3-upper-land-v71-wp1-arrived | 74742 |
+| m3-upper-land-v71-wp2-arrived | 74793 |
+| m3-upper-land-v71-wp3-arrived | 74868 |
+| m3-upper-land-v71-current4-left-type5 | 75103 |
+| m3-upper-land-v71-final-right-release | 75206 |
+
+ALL12actualcoldPNG individually open/6hashPNGpairs equal, ONLYTHEN accept
+verified-summary/newpermanent185Guardroute. NoCPHash as newcoldGuard; NOT M3
+objective/building/later visibleRequester/wholeRoadmap/hardwareacceptance.
+Afteractualacceptance inspect current enemies/buildings/Ammo/terrain from
+newendpoint. All4healthy, realinputs, normalcontinuousreplay from earlier73317+
+336+370+1038+1185+newtail WITHOUTintermediaterestore, then2wholeDF0boots/ALL
+actualimages before every new passage. Never overwrite old70/71orolderbuilds.
+HistoricalCore416/416Debug+Release/Runner35/35 unchanged; no broadCore/boot
+suites repeated, Core/source/state/hardwareavailability/publication unchanged.
+All remainingsevenRoadmap/A1000/FPU040/OS/video/timing/controller gates OPEN.
+
+Latest focused checks and immutable integrity for accepted179/normal70+71/pending185:
+ tmp/cannon-m3-land-accepted-and-east-final-checks-20261025.json
+ tmp/cannon-m3-land-accepted-and-east-roadmap-integrity-20261025.json.
+Headeraudit/Diffcheck/accepted175-and179 compactproofs/public179/currentnormal/
+pending185Scenario/preflight/Pythonparsers checked without new broadCore suites.
+All6CoreFPUTestSources/3OriginalADFs/5UserSaves/frozenoldcurrentBinaries/17old
+privatebuilds/preserved66..69/new70+71SHA remain checked; no hardware/publication.
+
+### Cannon Mission3 upper-east bend and initial entry4 fully cold-accepted;185 actual guards - 2026-10-25
+
+Two independent whole native A500/512KChip+512KSlow/Kick1.3/read-only DF0
+boots FINISHED/accepted. Oldsessions59260/54596 do not wait/repeat. Permanent
+Tools/a500-cannon-fodder-mission-three-upper-east-bend-current-four-route.json
+has185ACTUALcold guards. Each30901states/F75206,179previous actualguards,
+584544runtimeRAM-byte assertions,297944presentwatchbytes independently checked.
+All3030M3action samples abactualConfirm72613 (1845old+1185new) fourpositiveXY/
+Type0000/state38word0000/noLosswrites. Four real worldorders246/21,286/45,
+315/46,356/46 reach body240/26,280/50,309/51,350/51 at74666/74742/74793/74868.
+FinalP350/51,341/51,332/51,323/51 allType0/state0/Goal0/ammo0/rem1/index0.
+Current4finalX8000/Type4 runtimeguard. All1185normaltail CPU/cache/RAM/input/
+audio/disk/display/frame/HASH/presentation fields exact; only1185DMAreadyFalse
+(normal)/True(cold), inactive/queue0/ALLotherDMAfields strict. WholecoldPAIR
+allrecordedfields equal exceptseconds/imagepaths, no unrecorded wholeRAM claim.
+Exactly1092originalNON-ROM protectionevents5=1/4=8/9=1083 plus135separately
+exact originalROM; ZEROadditionalCPUevents/HDFs/floppywrites. Goal/Ammo strict
+runtime0, not fresh unwatchedWrite claims. Allolder179native/identity proofs
+SHA-pinned at their actually observed addresses, not new unwatched signals.
+
+Fresh complete Mission3type history in BOTHboots identifies INITIAL entry4:
+Type05 F71540/PC C0A5E4 before actualbriefingConfirm72613, NOinterveningtype
+write before Type04F75102/C16D3C, negativeXF75103/C2B8C2. This new map lifetime
+is independent of oldMission2slot4. Later initializations X80/type00F75171/
+C14AA8+C14AAC and NON-Type5role17hex(decimal23)F75172/C14ADE, then Type04
+F75203/C16D3C and X80F75204/C2B8C2 are NOT additionalenemykills. Exactseven
+ordered removal/rolewrites preserved; no permanentType4/unique80 assumption.
+NEW23allocationF74826 and NEW16allocationF75117 bothC14A1A/ReturnC16F70,
+oldaccepted current23F74348 and original16F73491 removals remain valid.
+ALL12actualcoldPNG individually opened at original detail,6hash/PNGpairs
+byteidentical. Real movement/snow/cabin/rock/water/fourHUDnames/NOObjectiveText;
+health and identity from nativeXY/Type0/state38/writes, not names alone.
+Six new ACTUALcold guards=>185:
+
+| Actual cold capture | Frame | Actual cold hash |
+| --- | --- | --- |
+| m3-upper-land-v71-wp0-arrived | 74666 | 1217F4E9686A964CAB1364A6A45DC417E6ED483047E5F3AC8B136D6FD47C4693 |
+| m3-upper-land-v71-wp1-arrived | 74742 | 671B7CFE82D1AC2A1B15B744A2528D4825A1E148CFF021E785A5393BDCA40306 |
+| m3-upper-land-v71-wp2-arrived | 74793 | 0DE1B6AD8F8B0F2D034EAA896F4B3D3F098F727AF172C273CE7658BAE4E44AFF |
+| m3-upper-land-v71-wp3-arrived | 74868 | C9F29647286709E3CC4B9A1C38439666BB86ACE9CCCEF02E070526CFD9B9DE95 |
+| m3-upper-land-v71-current4-left-type5 | 75103 | D2B0FBC4E136F7CA2CA696046423D86C32A729DF199CD578BDA9A9105B571016 |
+| m3-upper-land-v71-final-right-release | 75206 | 44C7192576FEE4C4748B31935E0D4E2A7B1E59D4A757C142961CD036362648AC |
+
+Proofs/ALL12actualcoldPNGs/traces/capturestates/individualreviews/Manifest/
+Runner/Core/Raw/PNG/TraceSHA in tmp/cannon-m3-upper-east-bend-current4-type0-full-a/-b/verified-summary.json.
+python tmp/verify_cannon_m3_upper_east_bend_current4_type0_pair_20261025.py
+--compact passes after permitted removal EXACTLY2ownacceptedsteps.jsonl
+216007089bytes. ALL12pictures/Proof/Trace/SHA/size/exactabsolute2pathallowlist/
+ALLancestorReparse checks BEFOREfirstremoval; inventory/result
+ tmp/cannon-m3-upper-east-bend-current4-full-raw-cleanup-*-20261025.json.
+Allactualimages/traces/neededCPs/inputs/privatebinaries/shortnormalRaws remain;
+no other path/originalmedia/usersave/HDF/oldblockedtree touched. Older allowed
+compactions stay valid. No Core/source/state/hardware/publication change.
+
+Now cold-covered OWN75206CP:
+ tmp/cannon-m3-upper-east-bend-current4-direct-v71-20261025-output/Cannon-M3-upper-east-bend-current4-direct-v71/m3-v71-upper-east-bend-direct-current.amigasav.
+185pass is NOT Mission3objective/buildings/AmmoPickup/later visibleRequester/
+fullroadmap/A1000/FPU040/OS/video/timing/controller acceptance.
+
+### Cannon Mission3 healthy bounded72..75, current native-goal normal76 and five Type5instances; next full pair pending - 2026-10-25
+
+New separated private72..76 builds ONLY AFTER185acceptance, each0warnings/
+errors/identical frozenCore, old71andearlier untouched. Read-only ownRAM/camera
+choice of real mouse/Leftorders/RightFire; no CPU/RAM/trainer/statepatch.
+Right/nativequeue neutral beforeLeft, immediateRight afterLeftRelease. All4
+positiveXY/Type0000/state38word0000 throughout every normal recorded row/action.
+All normal references continuous from earlierOWN73317CP+2929physicalprefix,
+WITHOUT intermediate75206restore; all2929prefix CPU/cache/RAM/input/audio/
+disk/display/frame/hash/presentation fields exact. No hash/presentation waiver.
+
+V72: stationary602inputs, no selectedType5removal, F75544 still350/51,341/51,
+332/51,323/51;3534normalRows/91750runtimeRAM/63480presentwatchbytes, ALL2actual
+PNG individually opened. Bounded healthy only, not a new killpass.
+V73:388inputs/3320rows/F75446,86614runtimeRAM/60056presentwatchbytes, ALL2actual
+PNGs reviewed. First originalworld416/46 requests nativeLastOrder410/51,
+actualplayerGoal becomes410/53; end386/80,382/86,376/94,375/61 allhealthy,
+bounded no waypointarrival under its nominal criterion. Actual NEW16-removal
+is retained in native trace, later slot16Type5 is a replacement, not resurrection.
+V74:628inputs/3560rows/F75581,92374runtimeRAM/63896presentwatchbytes, ALL2actual
+PNGs reviewed. Exact earlylatchedgoal criterion/max600steps still ends healthy
+391/74,387/79,383/84,380/89 for currentnativeGoal410/53; bounded, no waypointpass.
+V75:628inputs/3560rows/F75581,sameRAM/watchcounts, ALL2actualPNGs reviewed.
+Different actual firstworld416/85 requests nativeLastOrder410/90. Finalbody
+410/92,401/92,392/91,383/92 allhealthy; eachCURRENTnativeGoal410/92. Thus body0
+really equals currentgoal, but host still waited for the older latched90.
+Do NOT call the old bounded status a guestfailure/wrongorder/physics issue.
+Same frame/inputcount of74/75 does NOT imply identical inputs/CPU/positions.
+All earlier controls/sources/raws remain unchanged; no long repeats without
+new reason. Individual proofs
+ tmp/cannon-m3-east-followup-v72/-v73/-v74/-v75-functional-verified-summary-20261025.json.
+
+V76 reads exact CURRENT nativeActorGoal, both initially and onarrival bounded
+within4pixels of the real nominalclickbody. It recognizes exact actualarrival,
+then chooses the next genuineLeftorder. No guestgoal alteration. Three actual
+worldorders416/85,486/85,486/115 reach body410/92F75525,480/90F75717,
+480/120F75798. The retained generic recorderstatus says bounded-four-land-
+orders-current-type5-remain, historical code label only; there are THREEreal
+waypoints, not four. Final76135P480/120,480/115,480/108,480/102 allType0/state0,
+allgoals480/120,Goal0/ammo0/rem1/index0. CurrentownCP7positiveType5slots
+15/23/24/25/26/27/28 only ownCP count, not unrecorded wholecoldRAM identity.
+No M3AmmoPickup/requiredBuilding destruction/Objective yet.
+
+Normal1539fixedtailinputs plus2929prefix=4468physicalinputs/4471rows,
+114238runtimeRAM/78472presentwatchbytes independently checked; allfourpositive
+nativeXY/Type0/state38zero, no nativeXnegative/nonzeroType playerwrites,
+ZEROCPUevents/HDF/floppywrites. Goal/Ammo0 strict runtime eachtailaction,
+not fresh main unwatchedWrite claims. All8ACTUALnormalPNGs individually opened,
+real easternmovement/snow/cabin/water/fourHUDnames/NOObjectiveText. All16actual
+normal pictures across72..76 reviewed separately. Exact recorderphysicalinputs/
+finalCPU/frame/hash/5192ownSpritebytes equal ownsave; full losslesswatchdeltas
+roundtrip/SourceCP/Raw/Trace/Source/Project/Assembly/Buildlog/Core/Binary/PNG/
+EndCP SHA retained in
+ tmp/cannon-m3-east-followup-v76-functional-verified-summary-20261025.json.
+AllshortRaws/16normalPNGs/traces/CPs/inputs/private72..76 preserved.
+
+Four tracked slots contain FIVE distinct Type5instances, not four lifetimekills:
+- NEW16 allocation already coldproved F75117/C14A1A/ReturnC16F70, now Type04
+  F75430/C16D3C and negativeXF75431/C2B8C2. NEWreplacement16 allocated
+  F75434/C14A1A/ReturnC16F70 after exactfreeSlotinit, then Type04F76011/C16D3C
+  and negativeXF76012/C2B8C2. The second16removal is an additional native
+  instance removal between the existing routecaptures, not a separate PNG.
+- Current NEW23 (old185prefixallocation74826) Type04F75590/C16D3C, negativeX
+  F75591/C2B8C2. ActualleftType5capture is75590, BEFORE nextframeX80; keep
+  ordered trace/action semantics, not frame>= shortcut. NEW23allocation75607/
+  C14A1A/ReturnC16F70 survives, finalType5 at115/423 is a NEWinstance.
+- Current14 Type04F75851/C16D3C, negativeXF75852/C2B8C2. Later init75871 and
+  NON-Type5role06/C17746, its Type04/X80F75932, then init75967 and NON-Type5
+  role17hex/C14ADE, Type04F76006/X80F76007 are NOT more enemykills.
+- Current29 Type04 and X80F76082/C16D3C+C2B8C2, sameframeordereddistinctwrites.
+Full exact ordered NPCwindows retained; original-map14/29 classification waits
+for fresh wholecold typehistories. Oldoriginal16/current23 defeats remain,
+no resurrection/no flatwrite80killcount/no permanentType4slotassumption.
+Historical normal filenamefour-targets denotes FOURslots, FIVEinstances.
+
+Additional pure read-only goal/order observer replays EXACTLY4468samephysical
+inputs,4469rows,--no-final-checkpoint --no-images. All4468recorded CPU/cache/
+RAM/input/audio/disk/display/frame/HASH/presentation/otherfields exactly equal
+main exceptseconds/imagepaths, no guest/Core/input change. Original normal
+order/GoalY lowbyte5A(90) F75234/PC C211E4+C21238 then nativeGoalYlow5C(92)
+F75298/PC C160FA independently observed; sourcehighbyte0 retained/ownsavegoal
+checks, no claimed cause or pathfinding repair. Later trueorders480/90F75562
+and480/120F75734 also retained. No Goal/Ammo writes after75206 in this separately
+observed NORMAL case only; NOT new wholecold unwatched signals. Observer
+manifest/raw/trace/exceptionSHA and all13nativeGoal/Orderwrites are embedded
+in the functional76proof. v76 hostarrival criterion follows actualnativegoal,
+not the earlierlatch; earlier73/74/75 are preserved diagnostics.
+
+Normal source tmp/cannon-m3-east-current-goal-four-targets-direct-v76-20261025.json/-output.
+Needed OWN FUNCTIONAL76135CP (NOT YET newcoldpass):
+ tmp/cannon-m3-east-current-goal-four-targets-direct-v76-20261025-output/Cannon-M3-east-followup-direct-v76/m3-v76-east-followup-direct-current.amigasav.
+
+FIRST NEXT: two independent wholeDF0coldboots started18:19UTC25.10.2026,
+ONLY AFTER185coldacceptance/positive1539normalTailReplay:
+ tmp/cannon-m3-east-native-goal-five-instances-type0-full-candidate-20261025.json
+ in tmp/cannon-m3-east-native-goal-five-instances-type0-full-a/-b,
+ sessions2659/34533. Afterrestart inspectactualfiles/results, IDs mayexpire.
+32439normalphysicalactions/expected32440states,185previousactualguards/
+621484runtimeRAM,32ActorWatchbytes/16nativeWriteObservers,--no-final-checkpoint,
+unchangedWide35/Core416. Strict prepared checker
+ tmp/verify_cannon_m3_east_five_instances_type0_pair_20261025.py --preflight
+and normalScenario--validate pass. Ordinary mode ONLY AFTER BOTHresultsfinish.
+NOother fullcandidates/recorderspending. Require all185oldguards/621484RAM/
+wholeColdStatePAIR allfields equal exceptseconds/imagepaths. All4569M3actions
+from realConfirm72613 (3030+1539) fourpositiveXY/Type0/state38zero/noLosswrites.
+All1539normal CPU/cache/RAM/input/audio/disk/display/frame/HASH/presentation
+fields exact; only1539DMAreadyFalse(normal)/True(cold), inactive/queue0/ALL
+otherDMAfields strict. WholecoldPAIRallfieldsstrict. NativeWHOLEtailwrites
+must exactly match normal including allfour NPCwindows/fiveType5lifetimes/
+nonType5roles/replacements above, not merely selectedwrite80counts.
+Exactly1092originalNON-ROM+135separateexactoriginalROM, PLUS ENTIREexceptions
+trace INCLUDINGFRAMES must equal accepted185prefix trace, ZEROadditional
+CPUevents/HDF/floppywrites. Goal/Ammo0runtime, no fresh unwatchedMain claims;
+separate normalGoalobserver only SHA-pinned source evidence. Fresh wholeM3
+Typehistories14/16/23/29 retained; before extraoriginal14/29 claims inspect them.
+Older185proofs/nativewindows SHA-pinned at actually observed addresses.
+Final76135P480/120,480/115,480/108,480/102 Type0/state0/Goal0/ammo0/rem1/index0.
+ExactlyEIGHTuniqueactualpictures PER BOOT:
+
+| Pending actual capture | Expected frame |
+| --- | --- |
+| m3-upper-land-v76-current16-left-type5 | 75431 |
+| m3-upper-land-v76-wp0-arrived | 75525 |
+| m3-upper-land-v76-current23-left-type5 | 75590 |
+| m3-upper-land-v76-wp1-arrived | 75717 |
+| m3-upper-land-v76-wp2-arrived | 75798 |
+| m3-upper-land-v76-current14-left-type5 | 75852 |
+| m3-upper-land-v76-current29-left-type5 | 76082 |
+| m3-upper-land-v76-final-right-release | 76135 |
+
+ALL16actualcoldPNG individually opened/8HashPNGpairs equal, ONLYTHEN accept
+verified-summary/newpermanent193Guardroute. NoCPHashes as newcoldGuards;
+NOT Mission3objective/buildings/AmmoPickup/later visibleRequester/fullRoadmap/
+hardwareacceptance. Afteractualacceptance inspect real current/NEW enemies,
+requiredBuildings and Ammo/Terrain phases from newendpoint. All4healthy, true
+physicalinputs, normalcontinuousReplay from earlier73317+336+370+1038+1185+
+1539+newtail WITHOUTintermediaterestore, then2wholeDF0boots/ALLactualpictures
+before each newpass. Never overwrite72..76/oldprivatebinaries. Historical
+Core416/416Debug+Release/Runner35/35 unchanged; no broad Core/boot reruns,
+Core/source/state/hardwareavailability/publication unchanged. Other sevenRoadmap/
+A1000/FPU040/OS/video/timing/controller gates remain OPEN.
+
+Latest focused checks and immutable integrity for accepted185/normal72..76/pending193:
+ tmp/cannon-m3-bend-accepted-and-five-final-checks-20261025.json
+ tmp/cannon-m3-bend-accepted-and-five-roadmap-integrity-20261025.json.
+Headeraudit/Diffcheck/accepted179-and185 compactproofs/public185/allfiveNormal
+Scenarios/GoalObserver/pending193Scenario/preflight/Pythonparsers checked.
+All6CoreFPUTestSources/3OriginalADFs/5UserSaves/frozenoldcurrentBinaries/17old
+privatebuilds/preserved66..71/new72..76SHAs remain checked; no broadCore suite,
+new hardware/state/publication or Mission3completion inferred.
+
+### FPU next register/status contract checked against primary manual; no new implementation - 2026-10-25
+
+While the new Cannon193wholepair was pending, the next isolated FPU test
+contracts were rechecked against the primary [MC68881/MC68882 manual](https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf),
+sections2.1-2.3 (PDF36-39): reset/null puts positive quietNaNs in all eight FP
+registers; FPCR high-word reads0/ignoreswrites and reset clears it; enabling
+an already flagged exception must not retrospectively dispatch a trap.
+ tmp/fpu-register-status-primary-contract-research-20261025.json records the
+bounded independent reset/control/status test plan before any guest opcode
+hookup. RESEARCH ONLY: no register/status/backend code, no new tests/Corebuild/
+stateversion/hardware/menu/publication.416/416/F200-noFPU trap remain unchanged.
+The following acceptance section supersedes this historical pending193 status.
+No executing/selectableFPU or new implementation pass is inferred from this research.
+
+
+### Cannon east native-goal route and five distinct instances fully cold-accepted;193 actual guards - 2026-10-25
+
+Tools/a500-cannon-fodder-mission-three-east-native-goal-five-instances-route.json
+is now ACCEPTED after TWO complete independent native A500/Kick1.3/read-onlyDF0
+cold boots. Sessions2659/34533 are FINISHED/accepted; do not wait, terminate or
+repeat them. Earlier185/179/175 and all Mission1/2/3prefix passes remain valid.
+NO other full candidates or private recorders are pending. Earlier pending
+paragraphs above are historical; this is the current authoritative status.
+
+Each run32440states/F76135,185previousactualcoldguards,621484Runtime-RAM-byte
+assertions and322572present loggedWatchbytes independently verified. All4569
+Mission3actions since actual briefingConfirmF72613 (3030old+1539new) retain
+FOURpositive signedXY/Type0000/state38word0000, no negativeX/playerTypeLoss
+writes. Final480/120,480/115,480/108,480/102 Type0/state0, Goal0/ammo0/rem1/
+index0; runtime counters remain strict. Main Goal/Ammo addresses are NOT
+freshly observed by this16nativeaddress set: do not claim absent unwatched
+writes. The separate normal goal observer remains SHA-pinned source evidence.
+
+All1539 authoritative continuous normal-tail CPU/cache/RAM/input/audio/disk/
+display/frame/HASH/presentation fields match BOTH complete cold starts. Only
+1539DMAreadyFalse(normalRestore)/True(cold) differ, strictly inactive/queue0
+with ALLotherDMAfields equal. The WHOLE recorded cold STATE PAIR is equal in
+ALLfields exceptseconds/imagepaths; no unrecorded wholeRAM equality claimed.
+Exactly1092originalNON-ROM protections (5=1/4=8/9=1083) plus135separately exact
+originalROM events remain. ENTIRE exception trace INCLUDINGFRAMES equals
+accepted185prefix trace. ZERO additional CPUevents/HDFs/floppywrites. Core416/
+Runner35 historical baseline unchanged; no Corebuild/source/state/menu/
+hardwareavailability/publication change and no redundant broad suite/boot run.
+
+Fresh full-map histories establish FIVE Type5lifetimes in FOUR tracked slots:
+- NEW16allocated75117/C14A1A/ReturnC16F70 becomesType04F75430/C16D3C,
+  negativeXF75431/C2B8C2. Free-slot initF75434/C14AA8+C14AAC is NOT a kill;
+  replacement16allocatedF75434/C14A1A/ReturnC16F70 becomesType04F76011/C16D3C,
+  negativeXF76012/C2B8C2. This second real instance lies between route captures;
+  no separate screenshot is falsely claimed for that second16removal.
+- CurrentNEW23allocated74826 becomesType04F75590/C16D3C then negativeX
+  F75591/C2B8C2. The F75590leftType5 capture precedes negativeX in the next
+  frame: ordered actions/traces, not frame>= shortcuts. Replacement23allocated
+  F75607/C14A1A/ReturnC16F70 survives as NEWType5 at115/423 in own finalCP.
+- Initial Mission3entry14 is freshly proven by Type05F71540/C0A5E4 before real
+  Confirm72613, no intervening typewrite untilType04F75851/C16D3C, negativeX
+  F75852/C2B8C2. Later init75871/NON-Type5role06/C17746/deactivation75932 and
+  init75967/NON-Type5role17hex/C14ADE/deactivation76006..76007 are NOT more
+  enemy kills. Old original16/current23 passes remain valid, no resurrection.
+- Current29 was itself freshly allocatedF73103/C14A1A/ReturnC16F70 after actual
+  Mission3Confirm, following its Type00/C14AAC. Type04 and negativeX F76082/
+  C16D3C+C2B8C2 are ordered distinct same-frame writes. This is a spawned
+  CURRENT29, NOT initial original29/oldMission2identity. Historical own73317
+  slot count is not a full lifetime proof. No flatwrite80 counts or permanent
+  Type4-slot assumptions. Historical four-targets filename means four slots.
+
+ALL16actual complete-cold PNGs individually opened at original detail,8actual
+PNG/hash pairs byteidentical. Active snowy east corridor/cabin/rock/water and
+four HUD names; no objective text. Health comes from native Type0/XY/state38/
+write evidence. ALL8new hashes are genuinely cold and permanent, now193total:
+
+| Actual cold capture | Frame | Exact actual cold hash |
+| --- | --- | --- |
+| m3-upper-land-v76-current16-left-type5 | 75431 | 9B1601EC89A6F4AF2ACA38888155C13D01DD1300D8EB20736B97CA789A14A5F9 |
+| m3-upper-land-v76-wp0-arrived | 75525 | 36BFAC41B9B64C47E9DCCFAA4D4897B76E00CE9B704E039B567088CAC9B1B971 |
+| m3-upper-land-v76-current23-left-type5 | 75590 | 67449D4D3C2F6CC57ECE6DE4300079FEAD0B263F8C63F25C85A8BFF6170DB206 |
+| m3-upper-land-v76-wp1-arrived | 75717 | E5CA27D907C9F36C0A53945BC0BA0185AA62426F847C3ABBF3E11778C17EBEEC |
+| m3-upper-land-v76-wp2-arrived | 75798 | 88101499DF311C8B221A19E7D98A249D96141EB277CF0FDADEA6509737A56628 |
+| m3-upper-land-v76-current14-left-type5 | 75852 | 08808E3C10671F5151975C47EC28B609A8D1E59DB25657A7ED8476822BEEB6C6 |
+| m3-upper-land-v76-current29-left-type5 | 76082 | 1710C2116356D87E3DE819B8D01EC4D1959A6F6CCBB58B8D764F7E0C0FCB736D |
+| m3-upper-land-v76-final-right-release | 76135 | 074D8310F835DB440072C9B00A804197B0E0B9E58B0B1D468F56A0B9BB039597 |
+
+Proofs/ALL16actual coldPNGs/native traces/full capturestates/individual reviews/
+manifest/normal reference/binary/raw/PNG/traceSHA remain in
+ tmp/cannon-m3-east-native-goal-five-instances-type0-full-a/-b/verified-summary.json.
+ python tmp/verify_cannon_m3_east_five_instances_type0_pair_20261025.py --compact
+passes AFTER permitted compaction of EXACTLYTWO own accepted steps.jsonl,
+226736966bytes. ALL16images/Proof/Trace/SHA/size/exactabsolute2fileallowlist/
+ALLancestorReparsechecks passed BEFORE first removal. Inventory/result:
+ tmp/cannon-m3-east-native-goal-five-instances-full-raw-cleanup-inventory-20261025.json
+ tmp/cannon-m3-east-native-goal-five-instances-full-raw-cleanup-result-20261025.json.
+Together this continuation retains28actualcoldPNGs (12for185+16for193), plus
+16actualnormal72..76PNGs individually reviewed; exactlyFOUR own accepted full
+rawlogs442744055bytes compacted, no other targets. All actual images/traces/
+needed ownCPs/canonical inputs/private binaries/short normal rawlogs preserved.
+
+Canonical NOW COLD-COVERED own76135CP:
+ tmp/cannon-m3-east-current-goal-four-targets-direct-v76-20261025-output/Cannon-M3-east-followup-direct-v76/m3-v76-east-followup-direct-current.amigasav.
+Read-only current ownCP/terrain inspection is saved in
+ tmp/cannon-m3-own76135-ammo-terrain-plan-20261025.json.
+It confirms seven CURRENT positiveType5slots15/23/24/25/26/27/28, four required
+Type20slots19..22/state0, five still-active Type37pickups9..13, selectedActor0,
+ALLsix ammo banks0/Goal0/rem1/index0. These are OWNCP counts, NOT unrecorded
+wholecoldRAM equality or any further gameplay pass. Type15slots5..8 remain
+separate numeric roles, no guessed vehicle/weapon labels. C01DD0 remains scratch.
+
+FIRST NEXT: legitimate bounded approach toward Type37slot12 at478/246 from
+actor0body480/120. Original footX+8/Y-3 lookup gives a129-pixel orthogonal path
+480/120->480/244->476/244, allcollision0/notWater6. This is PLANNING ONLY,
+ignores enemies/bullets/formation/dynamic objects; no movement or pickup pass.
+No private77 has been created/executed. Fresh separate77 may test short real
+worldorders with actualcamera/nonHUD checks, Rightneutral beforeLeft and
+immediateRightFire afterLeftRelease; all4positiveType0XY/state38zero and
+relevant nativewrites required. An actual pickup needs nativebank+4/PC/item
+state/realPNG evidence, not proximity or a filename. No CPU/RAM/trainer/state
+patch or invented physics/pathfinding/renderer/immunity repair.
+
+Any new normal reference must replay continuously from earlier cold-covered
+73317CP+336+370+1038+1185+1539 (4468fixedphysicalprefixinputs)+newtail WITHOUT
+intermediate restores. Then two complete independent DF0coldboots and ALL
+actual images before a new pass. Do not overwrite private72..76 or older builds.
+193 is NOT Mission3objective/required-building destruction/AmmoPickup/later
+visible SingleDriveRequester/overallRoadmap/A1000/FPU040/OS/video/timing/
+controller/hardwareacceptance. All these broader gates remain OPEN.
+
+Latest focused checks and source/media/binary/proof integrity:
+ tmp/cannon-m3-five-accepted-final-checks-20261025.json
+ tmp/cannon-m3-five-accepted-roadmap-integrity-20261025.json.
+Headeraudit/Diffcheck/accepted185-and193 compactproofs/public193Scenario/
+normal72..76/goalobserver scenarios and Pythonparsers are focused checks only.
+SixCore/FPU/TestSources/3OriginalADFs/5normalUsersaves/frozenoldcurrentBinaries/
+17oldPrivateBuilds/preserved66..71/new72..76 remain pinned; no new broad suite,
+Core/state/hardwareavailability/publication or overall completion inferred.
+The preceding FPU primary-register research remains RESEARCH ONLY/no code/test
+pass; no executing or selectable FPU and no 68040 implementation is inferred.
+
+
+### Cannon legitimate Mission3 ammo approach: bounded77 and normal pickup78; full pair pending - 2026-10-25
+
+Accepted193actualcoldguards remain unchanged. New separated private77/78 builds
+both0warnings/errors and exactly the frozen Core5a06285a...039da; no old private
+binaries/inputs/Proofs were overwritten. ALL11actual normalPNGs individually
+opened at original detail (5for77,6for78); all shortRaws/Traces/CPs/inputs kept.
+
+77:426fixedTailinputs/normal4897rows/F76433,127020RuntimeRAM/86992presentWatch
+bytes. Genuine threeorders486/155,486/195,482/239 and all4positiveXY/Type0/
+state38zero throughout. Its immediateRightFire version reaches body476/244,
+followers477/238,477/232,478/227, but no bankpickup: all6banks remain0 in all
+privateRecorder actionreads and ownFinalCP; normal runtimeprimary/sister banks
+and watchedlowbytes remain0/no writes. Own item12State38=1 then native original
+C1B3FA changesType37->Type12 at76275. This is the original damage-state branch,
+not a pickup/playerdeath/enemykill. Later item/effect-slot deactivations/reuse
+are retained in exact ordered trace; no flatType4/X80 kill counting. Actual
+late77PNGs show the nearby cabin damaged/burning, but this observation setup
+did NOT freshly watch its full building-PC transitions. No buildingpass from
+scratch counter or ownFinalType alone. Specific damage-causing writer/attacker
+was not watched: do not invent which bullet or shooter caused it.
+
+78 is a separate legitimate physical-input alternative: Right stays RELEASED
+for the approach, same three realworldorders. It completes204fixedphysical
+Tailinputs in the normal runner WITHOUTfeedback, continuously from earlier
+73317CP+4468accepted physicalprefixinputs, NOintermediate76135restore.4675rows/
+F76378,120360RuntimeRAM/82552presentWatchbytes; ALL4468prefixrecordedStates
+ALLfields equal exceptseconds/imagepaths, all204tailActorfields exactly private
+postactionreads, finalCPU/frame/HASH exactlyRecorder,5192spritebytes exactly
+own savedRAM. Every action retains fourpositiveXY/Type0000/state38word0000;
+noPlayerLosswrites/nonROMCPUevents/HDF/floppywrites. Counter/Goal/primary-and-
+sisterbank Runtimeguards strict; otherfour bankwords only privateRecorder
+peractionreads/ownFinalCP evidence, not unobserved transient-write absence.
+
+Native originalType37slot12 pickup is explicit:
+F76293/C1B3EE C01F4C0->4; itemType04 at SAMEframe/C16D3C;
+F76294/C2B8C2 negativeX. Exactly theseTHREE ordered normalitem/bank events,
+no subsequent consumption/otherobservedbankwrite. First bank-observedPNG76293
+does NOT yet visibly show laterHUD4. Actual hold03/F76322,hold11/F76378 and
+separate finalRelease/F76378 ALL showHUD4; all6actual normal pictures individually
+reviewed. Final476/244,477/238,477/232,478/225 Type0/state0/Goal0/Ammo4/rem1/
+index0. OwnCP10positiveType5/fourType20 and banks4,0,0,0,0,0 are only OWNCP
+counts; NOT unrecorded wholecoldRAM equality or furtherbuilding/objectivepass.
+
+Proofs tmp/cannon-m3-ammo-v77-functional-verified-summary-20261025.json and
+ tmp/cannon-m3-ammo-v78-functional-verified-summary-20261025.json retain full
+captures/individualreviews/losslessWatchdeltas/exactphysicalInputs/NativeWrites/
+SourceCP/Source/Project/Assembly/Buildlog/Raw/Trace/Binary/PNG/EndCP-SHA.
+Read-only original code supplement:
+ tmp/cannon-m3-ammo-native-code-and-v77-state-supplement-20261025.json.
+Fresh owned M3 codeC1B3B0..C1B48E is BYTEIDENTICAL to original ammo sourceproof;
+no emulator/physics/pathfinding/renderer/immunity repair, no guessed weaponname.
+Normal78source tmp/cannon-m3-ammo-no-fire-direct-v78-20261025.json/-output.
+Needed OWN FUNCTIONAL76378CP (NOT yet cold-covered):
+ tmp/cannon-m3-ammo-no-fire-direct-v78-20261025-output/Cannon-M3-ammo-no-fire-direct-v78/m3-v78-ammo-no-fire-direct-current.amigasav.
+
+FIRST NEXT: two independent WHOLEDF0coldstarts started19:06UTC25.10.2026,
+ONLY AFTER193acceptance and the positive normal204TailReplay:
+ tmp/cannon-m3-ammo-pickup-type0-full-candidate-20261025.json
+ in tmp/cannon-m3-ammo-pickup-type0-full-a/-b, sessions4243/11454.
+After restart inspect actual files/results, IDs may expire.32643ordinaryphysical
+inputs/expected32644states,193acceptedactualprefixguards/627606RuntimeRAM,
+32ActorWatchbytes/16nativeWriteObservers,--no-final-checkpoint, unchanged
+Wide35Runner/Core416. Strict prepared checker
+ tmp/verify_cannon_m3_ammo_pickup_type0_pair_20261025.py --preflight
+and normalScenario--validate pass. ORDINARYchecker only AFTER BOTHresultsfinish.
+No other whole candidates/recorders pending. No private79 yet created.
+Require all193oldGuards/627606RAM/entireColdStatePAIR allfields equal except
+seconds/imagepaths; all4773M3actions since realConfirm72613 (4569old+204new)
+fourpositiveType0XY/state38zero/noLosswrites. ALL204normalCPU/cache/RAM/input/
+audio/disk/display/frame/HASH/presentation strict; only204DMAreadyFalse(normal)/
+True(cold), strictlyinactive/queue0/ALLotherDMAfields equal. WholecoldPAIRstrict.
+Entire newTailnativeWrites must exactly match normal including the THREE
+ordered nativebank+4/itemType4/nextframeXnegative events. NoAmmoConsumption,
+Goal0runtime; old193NativeIdentityproofs SHApinned, not freshunwatchedclaims.
+Exactly1092originalNON-ROM+135separately exactROM and ENTIREexceptionTrace
+INCLUDINGFRAMES equals accepted193prefix, ZEROadditionalCPUevents/HDF/writes.
+All SIXunique actualcaptures perboot:
+ wp0-arrivedF76209;wp1-arrivedF76234;bank-change-observedF76293;
+ pickup-hold-03F76322;pickup-hold-11F76378;final-right-releaseF76378,
+all with prefix m3-ammo-v78-. BOTH76378files separately. ALL12actualcoldPNGs
+MUST individually be opened/6actualPNG/hashpairs equal BEFORE verified-summary/
+newpermanent199Guardroute acceptance. No CP hashes as newcoldGuards. No M3
+objective/buildingdestruction/laterVisibleRequester/hardware/wholeRoadmappass.
+After actual acceptance read current enemies/buildings/remainingAmmo from
+own76378endpoint and choose a bounded physical defence/retreat/weaponInput;
+all4healthy, true nativebankConsumption/projectile/building/Goal signals.
+Normal reference continuous from73317+4468+204+newtail withoutintermediate
+restore, then2wholeboots/ALLactualpictures before a new pass. Neveroverwrite77/78.
+
+### Isolated 68881 exception-status policy implemented and independently tested; no executing FPU - 2026-10-25
+
+Cpu/M68881ExceptionStatus.cs is a pure, explicitly called status proposal.
+It replaces supplied currentEXC, accrues into oldAEXC, preserves upper condition/
+quotient bytes and raw unusedlowbits, and returns highest enabled NEWstatus.
+No CPUtrap is dispatched; oldflags cannot retrospectively select an exception.
+The underflow/accrual and priority contracts follow the primary
+[MC68881/MC68882 manual](https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf),2.2.1/2.3.3/2.3.4.
+A future dispatcher must BYPASS this policy for FMOVEM/control moves; none is
+implemented. Conversion PrecisionLost/Tiny/Overflow/NaN observations still have
+NOautomaticstatus bridge. FPregisterbank/FPCR/FPIAR, instructionexecution,
+ALU/BCD/FSAVE/FRESTORE/CPUbus/trap/state/hardware/menu integration remain OPEN.
+
+Five new independent tests cover16literalcases,65536current/accruedbytepairs,
+65536raised/enablepairs,65536oldflag/newenablepairs,4096seededfullstatusvalues
+and stickysequences. Debug AND Release421/421, zeroFailures/Skips; builds0warnings/
+errors.421=previous416+5; this new implementation justified these runs, no
+additional broad nativeboot suite. ActiveCore references outside definition:
+NONE. Old absent-MMU/FPU trap regression remains passed. No selectableFPU/040.
+
+Proof tmp/fpu-exception-status-v4-verified-summary-20261025.json pins sources,
+privateDebug/Releasebinaries/build/testlogs/media/frozenoldRunner/Core. Cannon
+wholepair4243/11454 uses unchanged frozen Core416/Runner35, never newFPU binaries.
+Previous five FPUformat/output sources remain byteidentical; Tests/Program.cs
+INTENTIONALLY changes by exactlyONE test-registration line. Removing that line
+reconstructs earlierSHA8ed64012...dc9dae0 byteforbyte; do not demand all6old
+sourceSHAs equal after this authorized increment. Transparent host correction:
+firstregistration guard expectedCRLF but acceptedProgram wasLF; stopped before
+Program/proof mutation. The earlier build had NOnewtests registered and is not
+counted as a five-test pass. ExactLFregistration then both421suites verified.
+ tmp/fpu-exception-status-v4-source-registration-change-20261025.json preserves
+before/after/newfileSHAs and exact one-line reconstruction. No oldprivatebinary,
+Corebehaviour/model/stateversion/publication gate or sourcehistory overwritten.
+
+
+### Cannon Mission3 genuine ammo pickup fully cold-accepted;199 actual guards - 2026-10-25
+
+Tools/a500-cannon-fodder-mission-three-ammo-pickup-four-soldiers-route.json is
+now ACCEPTED after both complete independent native A500/Kick1.3/read-onlyDF0
+cold starts. Sessions4243/11454 are FINISHED/accepted; NEVER wait/terminate/
+repeat them. ALLolder193/185/179 and M1/M2/M3prefix proofs remain accepted.
+NO other full candidates or private recorders are pending. Earlier pending
+paragraphs are historical; private79 has NOT been created/executed.
+
+Each32644states/F76378,193previousactualcoldguards,627606Runtime-RAM-byte
+assertions and326652present loggedWatchbytes independently checked. All4773
+Mission3actions from realConfirm72613 (4569old+204new) fourpositive signedXY/
+Type0000/state38word0000/noLosswrites. All204continuousnormalTailCPU/cache/
+RAM/input/audio/disk/display/frame/HASH/presentation strict; only204DMAready
+False(normalRestore)/True(cold), strictlyinactive/queue0/ALLotherDMAfields equal.
+WHOLErecordedColdStatePAIRS allfieldsstrict exceptseconds/imagepaths; no
+unrecorded wholeRAM equality claimed. Exactly1092originalNON-ROMProtection
+5=1/4=8/9=1083 plus135separately exactoriginalROM. ENTIREexceptionTrace INCLUDING
+FRAMES exactly accepted193prefix, ZEROextraCPUevents/HDFs/floppywrites.
+Cannon frozen Core416/Runner35 unchanged; this pair never uses newFPU binaries.
+
+Fresh full M3Typehistory proves sourceItem12 Type37(25hex) loaded71540/C0A5E4,
+nointerveningTypewrite until actual pickupType04F76293/C16D3C. Native Bank
+C01F4C0->4 F76293/C1B3EE, itemType04sameframe, negativeX F76294/C2B8C2 are
+THREEordered events, not playerdeath/enemykill. NoAmmoConsumption/extraobserved
+bankwrite. LaterHUD4 appears in actual hold03/hold11/finalRelease; first
+bank-observed76293PNG does NOT yet showHUD4. ALL12actualcoldPNGs individually
+opened at ORIGINALdetail;6actualPNG/hashpairs byteidentical, both76378files
+separately reviewed. SixREALnewcoldguards permanent, now199total:
+
+| Actual cold capture | Frame | Exact actual cold hash |
+| --- | --- | --- |
+| m3-ammo-v78-wp0-arrived | 76209 | 7180AF3A75E9BD55EFF6D0BDC0AC0B8ACBDD56187709D12E0BE4FE2C34E5871D |
+| m3-ammo-v78-wp1-arrived | 76234 | E3114ED8BC71626B9B316F2E6E4C8EA3E6303AA504FA81D8164139CB67118B4E |
+| m3-ammo-v78-bank-change-observed | 76293 | 0918BF3385C2B40A9782C850A069F0AE3E37CC560022857593B5F8BFAB6A7DAD |
+| m3-ammo-v78-pickup-hold-03 | 76322 | FE66139F5027A3FE864CD4352D3D66EDB37DF0DC5391A992A60D54B3ED97E8D1 |
+| m3-ammo-v78-pickup-hold-11 | 76378 | 8563FB6FF8380146B79E2E869D0DC81A2DA144D4DBFA3BDDE54F678252B361DE |
+| m3-ammo-v78-final-right-release | 76378 | 8563FB6FF8380146B79E2E869D0DC81A2DA144D4DBFA3BDDE54F678252B361DE |
+
+Final476/244,477/238,477/232,478/225 allType0/state38zero/Ammo4/Goal0/rem1/
+index0. Required buildings/remainingenemies/M3objective/laterSICHTBARERsingle-
+driveRequester and wholeRoadmap remain OPEN. Normal ownCPcounts tenType5,
+fourType20/fourremainingType37/banks4,0,0,0,0,0 are NOT fullcoldRAMequality.
+No guessed weaponname/attacker, no emulator/physics/pathfinding/immunity/
+renderer repair or hardwareavailability/stateversion/publication change.
+
+Proofs/ALL12actualcoldPNGs/Traces/CaptureStates/individualreviews/Manifest/
+Source/Binary/Raw/PNG/TraceSHA remain in
+ tmp/cannon-m3-ammo-pickup-type0-full-a/-b/verified-summary.json.
+ python tmp/verify_cannon_m3_ammo_pickup_type0_pair_20261025.py --compact
+passes after exactpermitted removal of TWOownaccepted steps.jsonl228154357bytes.
+ALL12PNG/Proof/Trace/SHA/size/exactabsolute2fileallowlist/ALLancestorReparse
+checks passed BEFORE first removal. Inventory/result
+ tmp/cannon-m3-ammo-pickup-full-raw-cleanup-*-20261025.json retained. Noother
+paths removed; ALL12cold+11normal77/78PNGs, shortRaws,Traces,neededCPs,canonical
+inputs/privatebinaries retained. Prior permitted Rawcompactions remain valid.
+
+NOW COLD-COVERED own76378CP:
+ tmp/cannon-m3-ammo-no-fire-direct-v78-20261025-output/Cannon-M3-ammo-no-fire-direct-v78/m3-v78-ammo-no-fire-direct-current.amigasav.
+Fresh read-only object/terrain plan
+ tmp/cannon-m3-own76378-defence-building-plan-20261025.json confirms fourhealthy,
+selectedActor0, currentType5slot16at487/260 and25at444/246 near squad, four
+requiredType20s19..22 still0state. Source16/25 laterallocations were not freshly
+watched in199configuration: inspect future wholetraces before exact lifetime
+or original/spawn assertions. Needed defensive/retreat/weapon path is OPEN.
+FIRST next bounded alternative may create fresh separate79 from retained78,
+with genuine RightFire at CURRENTType5 then a cautious short retreat toward
+body480/200. A49pixel originalfoot path exists, but geometry ignores bullets/
+formation/dynamicobjects and is NOT a movement/healthpass. NeutralRight/native
+queue before ordinaryLeftorder; specialweapon only explicitnewLeftwhileRight
+at actuallyverified safe separation. NativeBankdecrement/projectile/building
+state/Type/X/Goal evidence needed; all4positiveType0XY/state38zero throughout.
+Any new normal reference continuously73317+4468+204=4672acceptedphysicalprefix+
+newtail WITHOUTintermediate76378restore. Then2wholeDF0coldboots and ALLactual
+pictures before a new pass. Never overwrite77/78/olderprivate builds.
+
+Latest focused final checks/integrity:
+ tmp/cannon-m3-ammo-and-fpu-status-final-checks-20261025.json
+ tmp/cannon-m3-ammo-and-fpu-status-roadmap-integrity-20261025.json.
+Headeraudit/Diffcheck/accepted193-and199compact/public199/77-78scenarios/
+Pythonparsers are focusedchecks only; no repeated broadBoots. Separate newly
+implemented isolatedFPUstatuspolicy has Debug+Release421/421 as documented
+above, FIVEoldFPUformatSources unchanged and EXACToneLineProgramregistration
+change reconstructing oldSHA; do not call all6sourcesunchanged after that
+intentional implementation. FrozenCannonCore416/Runner35 and old binaries/
+3OriginalADFs/5normalUsersaves/17oldbuilds/66..78 retained. No executing FPU,
+registerbank/FPCR/FPIAR/opcode/ALU/BCD/FSAVE/FRESTORE/backend/68040/A1000realboot/
+publichardware/state/publication/fullRoadmap acceptance inferred.
+
+
+### Cannon Mission3 defence controls79..81: original terrain status, three current instances; new full pair pending - 2026-10-25
+
+The accepted permanent route remains199 actual cold guards through76378.
+Older4243/11454 and every earlier accepted session remain FINISHED, never repeat
+or require their permitted compacted raw logs. New separated private79/80/81
+are FINISHED; zero warnings/errors, each uses frozenCore416 SHA5a06285a...039da.
+They only read own RAM/camera and choose real physical inputs. Old78 and earlier
+private sources/binaries are preserved. No new recorders are pending.
+
+All three normal replays run the same4672 accepted fixed prefix inputs from
+own cold-covered73317 CP continuously, WITHOUT intermediate76378restore. All
+4672 prefix recorded states match the accepted78 reference in every field
+except seconds/image paths. Each new tail's actor fields/finalCPU/frame/hash
+match its recorder;5192 sprite snapshot bytes match its own final saved RAM.
+All21 actual normal PNGs individually opened at ORIGINAL detail:6negative79,
+6bounded80,9bounded81. All show actual snowy cliff/cabin/water scenes, four HUD
+names and ammo4; cabin remains standing, no objective text. Native Type/XY/
+state38 and write evidence establishes health, not names or positiveXY alone.
+
+| Normal control | New fixed inputs / total rows | Runtime RAM / present logged bytes | Actual result |
+| --- | --- | --- | --- |
+|79 defence then direct retreat |999 /5674|148332 /102532|Negative health control, two nonneutral state38 words; not a Type4 death claim|
+|80 west detour |1618 /6293|165664 /114912|All4 Type0/positiveXY/state38zero;450/244 reached,450/200 not reached, original goal becomes450/216|
+|81 stepped detour |1896 /6571|173448 /120472|All4 Type0/positiveXY/state38zero; actual450/244,450/216,460/216,460/204 reached; later460/160 remains bounded at460/205|
+
+In all three, CURRENT16/C7E28C and CURRENT25/C7E6B2 receive Type04/C16D3C
+and negativeX/C2B8C2 at76633 and76899 respectively (ordered native events).
+These are current instances, not newly claimed initial-map originals. Slot16
+initialization and NEW Type5 allocation at76643/C14A1A/ReturnC16F70 are NOT a
+second kill or resurrection. In81, NEWreplacement25 allocated77303 byC14A1A/
+ReturnC16F70 is actually removed77512 byC16D3C/C2B8C2; another NEW25 allocation
+77516 follows. THREE Type5 instances across TWO slots; no flat write80 count.
+The third removal is between selected route captures; no extra PNG is invented.
+Fresh full-map Type histories in the pending pair must establish earlier
+lifetimes before any additional original/spawn attribution.
+
+79 source proof: original code compares terrain8 atC15136, branchesC15212,
+requires zero38/nonzero36/zero52/zero1E, calls originalC1D850 and masks3F, then
+C15240 writes0032 to Actor+38 (observer nextPC C15246). Actual native writes to
+player0/1 lowbytes C7DB65/C7DBDB occur76957; first recorded post-action sample
+76958 has both0032 with Type0 and positiveXY. Exact last two physical actions
+997/998 are explicitly guarded as this negative endpoint; action996/PNG76957
+still has neutral state38. This is NOT evidence for Type4 death, attacker,
+immunity or emulator/renderer/physics failure. Original code bytes match own
+73317 and76378 CPs. Read-only proof:
+ tmp/cannon-m3-v79-original-terrain-eight-state32-proof-20261025.json.
+Geometry-only collision0/notWater6 did not guarantee neutral gameplay health.
+
+80/81 avoid that direct terrain8 segment through actual short world orders.
+NativeGoalY writes C21238/C160FA/C1618C explain recorded original goal updates;
+no guest goal was patched and no wrong-command/pathfinding repair is claimed.
+81 final77554: players460/205,460/207,460/207,460/207, allType0/state38zero;
+ammo4/Goal0/rem1/index0. All four requiredType20 slots19..22 remain state0
+in own normal endCP (ownCP evidence, not unrecorded whole-cold-RAM equality).
+No special Left-while-Right action was reached/executed, no observed primary
+bank consumption, no required-building/objective pass. Do not repeat either
+long bounded waiting tail without a new reason.
+
+Proofs preserve inputs, all functional PNGs, raw logs, complete native tails,
+lossless roundtripped Watch deltas, source/endCP and source/project/build/
+assembly/Core/PNG SHA:
+ tmp/cannon-m3-defence-v79-functional-verified-summary-20261025.json
+ tmp/cannon-m3-defence-v80-functional-verified-summary-20261025.json
+ tmp/cannon-m3-defence-v81-functional-verified-summary-20261025.json.
+Verifier tmp/verify_cannon_m3_defence_controls79_81_20261025.py is a one-time
+proof writer; outputs exist, do not blindly rerun it and reinterpret the
+existing-output guard as a guest failure. Retain all short raws/CPs/binaries.
+No raw files removed this continuation so far.
+
+FIRST inspect the ONLY new whole pair, started20:21UTC after normal81 proof:
+ tmp/cannon-m3-defence-three-instances-detour-type0-full-candidate-20261025.json
+ tmp/cannon-m3-defence-three-instances-detour-type0-full-a/-b,
+ sessions67462/39187. After a reboot inspect actual result.json/files instead
+of assuming old session IDs still live.34539 physical actions/34540 states,
+199 genuine old guards/680694 Runtime RAM bytes/32 Watches/16 write observers,
+--no-final-checkpoint, unchanged frozenWide35/Core416. Preflight and ordinary
+scenario --validate passed. NO other full candidates or recorders pending.
+
+Strict checker tmp/verify_cannon_m3_defence_three_detour_type0_pair_20261025.py
+ordinary mode ONLY after BOTH results complete. Require all199oldguards/
+680694RAM, all6669M3actions fourpositiveType0XY/state38zero/noLosswrites, all
+1896 continuous normal tail CPU/cache/RAM/input/audio/disk/display/frame/HASH/
+presentation and native tail writes exact. Only1896 inactive/queue0 DMAready
+False(normal)/True(cold), ALL other DMA fields exact. Whole recorded coldPAIR
+allfields strict except seconds/image paths; no unrecorded wholeRAM equality.
+Entire exceptions INCLUDING frames exactly accepted199 prefix:1092original
+NON-ROM(5=1/4=8/9=1083)+135 separately exact originalROM; ZERO additional events/
+HDFs/floppywrites. Current three lifetime windows and later slot reuses strict.
+
+Nine unique actual PNGs per whole boot, ALL18 individually open before any
+verified-summary/permanent208-guard promotion:
+76633 current16-left-type5;76899 current25-left-type5;76949 wp0-arrived;
+77045 wp1-arrived;77123 wp2-arrived;77177 wp3-arrived;77217 wp4-left-up;
+77554 track1754 AND separate final-right-release (two real distinct files).
+No CP/normal hash is a new cold guard. Intended460/160 retreat was not reached;
+acceptance would cover three instances/actual healthy bounded movement only.
+No Mission3building/objective/later visible requester/roadmap/hardware pass.
+
+Functional81 endpoint, not yet cold-covered:
+ tmp/cannon-m3-defence-detour-v81-bounded-direct-20261025-output/Cannon-M3-defence-detour-v81-bounded-direct/m3-v81-bounded-direct-current.amigasav.
+A later authoritative normal reference must continue73317+4672+1896=6568
+fixed inputs without intermediate restore. Only after full pair acceptance
+read new actual object/terrain state and choose a new bounded alternative;
+private82 has NOT been created. Avoid guessed physics/pathfinding/immunity/
+renderer/weapon/vehicle labels. All previous199 proofs and media limits stand.
+
+### Isolated 68881 development-register storage and reset tested; no instruction backend - 2026-10-25
+
+Cpu/M68881DevelopmentRegisters.cs adds explicitly created standalone storage.
+No active CPU/machine references it. Eight raw80bit values preserve signs,
+J/payload/unnormals/SNaNs without normalization or automatic EXC processing.
+The explicit CreateIsolated factory and standalone Reset do not enable a
+hardware model or connect to CPU RESET/FRESTORE. Reset produces positive quiet
+NaNs and zero FPCR/FPSR/FPIAR; all-one NaN payload is a deterministic local
+choice, not claimed as an exact mandated reset payload. FPCR high16 readzero/
+writeignore; low16 retained, RND decoded, PREC11 explicitly Reserved with no
+invented arithmetic behavior. Raw FPSR and FPIAR software writes retain all32
+bits; enabling classes leaves previous FPSR/FPIAR unchanged. Register contract
+verified against the primary [MC68881/MC68882 manual](https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf),2.1..2.4.
+
+Six independent tests cover reset/instance separation,12 raw edge cases plus
+8192 seeded80bit patterns across all8 slots (65632 writes), all65536 FPCRlow
+words with permuted highword and literal mode tables,4096 full FPSR/FPIARwrite
+pairs,5 invalid indices (read/write before any mutation),65536 oldstatus/new
+control-enable pairs. Debug AND Release427/427, zeroFailures/Skips; builds0
+warnings/errors.427=421+6. These new implementation tests justify the suites;
+no broad nativeboot repetition. Existing absent-FPU/MMU trap case still passes.
+
+Proof tmp/fpu-register-state-v5-verified-summary-20261025.json pins sources,
+privateDebug/Release427 binaries/build/testlogs, media and all frozen old
+Cannon/421status binaries. New private outputs
+ tmp/fpu-register-state-v5-debug/-release never overwrite frozenCannonRunner.
+Five oldformat/output sources PLUS existing v4statuspolicy/test sources remain
+byteidentical. Tests/Program.cs adds exactlyONE more registration line; removing
+it reconstructs421 SHA6cc8ceec...92ea3ce, removing both new registration lines
+reconstructs416 SHA8ed64012...dc9dae0. Exact before/after registration proof:
+ tmp/fpu-register-state-v5-source-registration-change-20261025.json.
+No other existing source changes. Both suites passed on first registered build.
+
+Statuspolicy remains a separate pure caller-supplied proposal. New raw storage
+does not call it or conversion helpers. ExecutionBackend/ALU/67bitintermediates/
+BCD/FSAVE/FRESTORE/instruction-specific FPIAR capture/CPUopcodes/trapqueue/bus/
+stateversion/UI/menu integration and distinct68040 remain OPEN. No executing/
+selectableFPU or hardware acceptance. Running Cannon67462/39187 uses ONLY
+frozen416Core/35Runner, entirely separate from new427 private binaries.
+
+
+Latest focused checks/integrity for this continuation:
+ tmp/cannon-m3-defence-and-fpu-registers-final-checks-20261025.json
+ tmp/cannon-m3-defence-and-fpu-registers-roadmap-integrity-20261025.json.
+Headeraudit (including both new untracked source headers), Diffcheck, accepted
+199compact,79/80/81scenarios, new wholecandidate/preflight and7Pythonparsers
+pass. First host header-audit command omitted the process Git environment and
+failed before iterating sources; rerun uses per-process GIT_DIR/GIT_WORK_TREE,
+no Git relocation/configuration or guest failure. All3OriginalADFs/5normal
+Usersaves/frozenRunnerCore/17oldprivatebuilds/66..81/old421/new427binaries and
+old accepted proofs/PNGs are SHAchecked. No new raw removal, no publication,
+stateversion, hardwareavailability or whole-roadmap completion. Hourly prompt
+now points to the only pending67462/39187 pair and separate427storage proof.
+
+
+Read-only follow-up source evidence for80/81:
+ tmp/cannon-m3-v80-v81-original-terrain-goal-motion-proof-20261025.json.
+The original terrain9 path atC15110 updatesActor56; C160E8 tests56==1, sets
+Actor12=1 and C160F6 adds2 toGoalY (observer nextPC C160FA). OriginalC16146
+addsActor12 to bodyY; C16164..C16182 looks upGoalX+8/GoalY-3 and numeric9/10,
+thenC16188 addsActor12 toGoalY (observer nextPC C1618C). Matching own76378/
+77554 code bytes and actual normalGoalY writes explain original vertical
+terrain responses. BodyY itself was NOT a native-write observer here; actual
+post-action reads remain separate evidence. No command/pathfinding/physicsfix.
+A405pixel originalFoot plan from lower476/244 around east/north to460/140
+avoids numeric3/6/8/9/10, but ignores enemies/bullets/formation/dynamicobjects
+and full actor collision: planning ONLY, no movement/buildingpass. It starts
+from earlier lowerground, not the pending77554 endpoint. Private82NOTcreated.
+
+
+### Cannon Mission3 defence three distinct instances and actual bounded detour fully cold-accepted;208 actual guards - 2026-10-25
+
+Tools/a500-cannon-fodder-mission-three-defence-three-instances-detour-route.json
+is now ACCEPTED after two independent complete native A500/Kick1.3/read-onlyDF0
+cold starts. Sessions67462/39187 are FINISHED/accepted, never wait/terminate/
+repeat. NO whole candidate or private recorder remains pending. All older199/
+193/185/179 and M1/M2/M3native identity/goal/picture proofs remain accepted;
+earlier pending paragraphs above are historical. Private82 has NOT been created.
+
+Each34540states/F77554,199previousactualcoldguards,680694Runtime-RAM-byte
+assertions/364572present loggedWatchbytes independently checked. All6669M3
+physical action samples since realConfirm72613 (4773old+1896new) fourpositive
+signedXY/Type0000/state38word0000, no PlayerLosswrites. All1896continuousnormal
+TailCPU/cache/RAM/input/audio/disk/display/frame/HASH/presentation strict in
+BOTH whole runs, complete nativeTailWrites exactly savedNormal. Only1896
+DMAreadyFalse(normalRestore)/True(cold), strictlyinactive/queue0/ALLotherDMA
+fields equal. WHOLErecordedcoldStatePAIRS allfieldsstrict exceptseconds/image
+paths; no unrecorded wholeRAM equality claimed. EntireexceptionTrace INCLUDING
+FRAMES exactly accepted199prefix:1092originalNON-ROMProtection5=1/4=8/9=1083
+plus135separately exactoriginalROM, ZEROextraCPUevents/HDFs/floppywrites.
+Original366+second363F31985/31986+third363F69291/69292 stay strictly proved,
+not a general vector waiver. FrozenCannonCore416/Runner35 unchanged, no new
+FPU427binaries used in these boots.
+
+Fresh FULL M3Typehistory proves all THREE defeated Type5 instances were NEW:
+CURRENT16/C7E28C allocated76362/C14A1A/ReturnC16F70 -> Type04/C16D3C and
+negativeX/C2B8C2 at76633. Initialization76643/C14AA8+C14AAC and NEW16Type05/
+C14A1A are no second kill or resurrection. CURRENT25/C7E6B2 allocated73574/
+C14A1A/ReturnC16F70 ->Type04/C16D3C and negativeX/C2B8C2 at76899. Replacement25
+allocated77303/C14A1A/ReturnC16F70 ->Type04/C16D3C and negativeX/C2B8C2 at77512;
+NEW25Type05 allocation77516 follows. Three instances in two trackedslots;
+initialization/later role/slot reuse never counted as old original kills.
+The third removal is between selectedcaptures, no extraimage invented. Older
+accepted original16/current-instance removals stay valid. New16/new25 final
+Type5 are later instances, no permanentType4 requirement.
+
+ALL18actualcoldPNGs individually opened at ORIGINALdetail,9actualPNG/hash
+pairs byteidentical; both distinct77554track/finalRelease files separately.
+Actual snowy cabin/cliff/water passage and movement/formation, all4HUDnames and
+ammo4; cabin standing/no objective text. Health from nativeType0/XY/state38/
+write evidence. NineREALnewcoldguards permanent, now208total:
+
+| Actual cold capture | Frame | Exact actual cold hash |
+| --- | --- | --- |
+| m3-defence-v81-current16-left-type5 | 76633 | 1F5B180543A39C6D8BD23D82BE300EA1FC13D1E3EBA701471746AB94D033A7B8 |
+| m3-defence-v81-current25-left-type5 | 76899 | F38272448E11DB971785E91DD4A9E877F8AB4050FA5742DFD18EA54DF248EA6E |
+| m3-defence-v81-retreat-wp0-arrived | 76949 | DCA7A4E083297731BD401250EB546717E6C5116A45AEA84512269CF3257460E3 |
+| m3-defence-v81-retreat-wp1-arrived | 77045 | 95F7485BD6624CAB281687B936531E20FE43A542771D69901309E6F45B15C883 |
+| m3-defence-v81-retreat-wp2-arrived | 77123 | 84252DB028145C123F44E8FA8DD2B4631AB1E348218B2661F8B18A8E5053205B |
+| m3-defence-v81-retreat-wp3-arrived | 77177 | A3C31E822A36484A01CACC17D7D2C41B993C33DCD41E636948A864161582E3EF |
+| m3-defence-v81-retreat-wp4-left-up | 77217 | A15BF0FD961EE2187A911C0D38812FC107FFE1D7929D8528C76E3951873D2585 |
+| m3-ammo-v81-track-1754 | 77554 | 73EF756FA76A384A17BDA0FBEF587076BD3E57DBF279CB8751030937D4EA2532 |
+| m3-defence-v81-final-right-release | 77554 | 73EF756FA76A384A17BDA0FBEF587076BD3E57DBF279CB8751030937D4EA2532 |
+
+Actually reached450/244F76949,450/216F77045,460/216F77123,460/204F77177.
+The subsequent460/160order did NOT reach160; originalGoalY became162 then205.
+Final77554P460/205,460/207,460/207,460/207 allType0/state38zero/Ammo4/Goal0/
+rem1/index0. Native terrain9/10 vertical-motion source proof above explains
+original goal updates, not an emulator/command/pathfinding/physicsfix. This
+pass accepts three defeated instances and actual healthy bounded movement,
+NOT an intended destination/building/objective or later visibleRequester.
+No specialLeftwhileRight input executed, primarybank4 no consumption. Four
+requiredType20s19..22 remain0state in ownNormalEndCP, ownCPcounts not fullcold
+RAM equality. No weapon/vehicle/attacker labels inferred, no hardwaregate.
+
+Proofs/ALL18actualcoldPNGs/Traces/CaptureStates/individualreviews/manifest/
+source/binary/raw/PNG/traceSHA remain in
+ tmp/cannon-m3-defence-three-instances-detour-type0-full-a/-b/verified-summary.json.
+ python tmp/verify_cannon_m3_defence_three_detour_type0_pair_20261025.py --compact
+passes after exact permitted removal of TWOownaccepted steps.jsonl241363929
+bytes. ALL18actualPNG/Proof/Trace/rawSHA/size/exactabsolute2fileallowlist/ALL
+ancestorReparse checks passed BEFORE first removal; no other target removed.
+Inventory/result tmp/cannon-m3-defence-three-instances-detour-full-raw-cleanup-*-20261025.json
+retained. ALL18cold+21normal79..81actualPNGs, traces/shortRaws/neededCPs/inputs/
+privatebinaries retained. Old permitted compactions remain valid. Candidate,
+normalinputs, runtimeguards and Core unchanged throughout; ordinary fullpair
+passed on first check, no new hash/cache/status exceptions introduced.
+
+NOW COLD-COVERED own77554CP:
+ tmp/cannon-m3-defence-detour-v81-bounded-direct-20261025-output/Cannon-M3-defence-detour-v81-bounded-direct/m3-v81-bounded-direct-current.amigasav.
+Read-only inventory tmp/cannon-m3-own77554-defence-current-state-plan-20261025.json:
+tenpositiveType5/fourrequiredType20/fourremainingType37/banks4,0,0,0,0,0/
+selectedActor0. OwnCP counts/coordinates only, no unrecordedwholecoldRAMequality.
+All4neutralActors, but followers retain realgoal460/162; not fabricated200/160
+arrival. New bounded82 may read this own state and use real inputs; it does
+NOT yet exist. Long unsuccessful stationary tails80/81 must not be repeated
+without a new reason. Reaching lowerground again before the405pixel east/
+north no8/9/10plan is only a planning option; that plan starts476/244, not77554
+body460/205, and ignores fullactorcollision/formation/enemies/bullets/objects.
+All4positiveType0XY/state38zero eachaction/actualnativegoal/ordered write proof
+required. Specialweapon only after truly verified separation and deliberate
+newLeftwhileRightheld; bankdecrement/projectile/buildingType/state/X/goal must
+be proved, not guessed. No CPU/RAM/trainer/state/physics/pathfinding/rendererfix.
+
+Future authoritative normalreference continuously from earlier cold73317CP+
+4672+1896=6568 acceptedfixedphysicalprefix+newtail WITHOUTintermediate restore,
+then two full independent DF0boots/ALLactualPNG before a new pass. Mission3
+required-buildings/objective/later visibleSingleDriveRequester and overall
+seven-point/A1000/FPUexecution/040/OS/video/timing/controller work remain OPEN.
+FPUisolatedregisterstorage427/427 remains a separate development-only step;
+no executing/selectableFPU, trapbus/state/hardware/publication acceptance.
+
+Latest focused accepted checks/integrity:
+ tmp/cannon-m3-defence-accepted-and-fpu-registers-final-checks-20261025.json
+ tmp/cannon-m3-defence-accepted-and-fpu-registers-roadmap-integrity-20261025.json.
+Prior pending-stage focusedlogs remain intact as historical checks, not failed
+or superseded guest runs. Source/control/private427 builds unchanged after the
+passing427Debug/Release suites; no broadtests/boots repeated for documentation.
+
+
+Accepted208 final-focused checks:10/10 commands pass,10 Pythonparsers valid;
+427Debug/Release logs are pinned, not rerun. Host-only final-check development:
+new integrityscript was initially written by Python's Windows1252 default at
+a German prompt literal; parser stopped before final proof output. Only new
+hostscript encoding converted to UTF8, all10 first focusedlogs preserved,
+then exact focused checks/integrity passed. No guest/Core/input/runtimeguard/
+PNG/hash acceptance change, no extra Core suite or boot. Transparent record:
+ tmp/cannon-m3-defence-accepted-final-host-encoding-development-20261025.json.
+Current208/427 checks and integrity above are authoritative; no pending whole
+pair/recorder or private82. Overall roadmap remains OPEN.
+
+
+### Cannon Mission3 east-rim normal building19 destruction; full pair pending; isolated FPU exception-vector decision
+
+2026-10-25: accepted208/old67462+39187 remain COMPLETE, not pending. New
+separate82/83 recorders are finished, both0warnings/errors/frozenCore416.
+All31 actual normal PNGs individually opened at original detail:12bounded82,
+19positive83. Both authoritative fixed-input replays run continuously from
+own cold73317CP+6568acceptedphysicalprefix WITHOUT intermediate77554restore;
+all6568prefix recordedstates match allfields except seconds/imagepaths.
+82 has712newinputs/7283rows/F78172/193388RuntimeRAM/134712loggedwatchbytes.
+Actual nine waypoints reach564/100, then proposed550/86 is NOT reached;
+originalGoal550/109 and bounded no-progress stop are preserved, all4positive
+XY/Type0000/state38zero/ammo4/Goal0, no special input or building pass.
+83 has911newinputs/7482rows/F78411/198960RuntimeRAM/138692loggedwatchbytes.
+Nine real worldorders reach body460/244,480/244,481/226,510/214,530/214,
+540/204,550/184,564/166,564/100 at77630/77663/77691/77751/77784/77808/
+77846/77879/78048. RealRight/nativequeue neutral before ordinaryLeftorder,
+no ordinaryRightFire near pickups, actual mouse edge panning only.
+Every postaction requires all4positive signedXY/Type0/state38word0; no loss
+X/Type writes, CPUevents/HDF/floppywrites. Goal0/ammo sampled strictly at
+runtime; main16observers do NOT freshly observe Goal/sisterbanks/player38
+transientwrites. All4actual distance>=100 from intact required19 before
+explicit freshLeft whileRightheld. Nativeprimarybank4->3F78101/C17E18;
+firstpostbank3F78107. Originaladjacent projectileType2/C17EFE andType3/C17F04
+bothF78101, with actual typedYwrite windows retained. Later12/4/6roles are
+slot reuse, not extra enemies/same projectile or guessed weapon/vehicle.
+Required19/C7E3EE state5F78285/C1D768, state6F78290/C16FA8, intermediate
+initializerX80F78310/C14AA8 is NOT final removal; same slot Type39F78310/
+C1B2B0, Type4F78325/C16D3C, actualnegativeXF78326/C2B8C2. Actual normal
+PNGs show roof explosions78285/78290, debris/collapse78310/78325/78326,
+collapsed cabin wreck78354/78383/78411, HUD3 after the special input.
+Final78411players564/100,564/105,564/110,564/115 allType0/state0, bank3,
+Goal0/rem1/index0. OwnCP three otherrequired20..22Type20/state0/tenpositive
+Type5 is ownCPcount, NOT unrecorded wholecoldRAM equality or M3victory.
+5192spritebytes equal each ownSave; finalCPU/frame/hash equal recorder;
+lossless watchdeltas/inputs/CP/source/build/assembly/binary/raw/trace/PNG SHA
+remain in tmp/cannon-m3-rim-v82-functional-verified-summary-20261025.json
+and tmp/cannon-m3-rim-v83-functional-verified-summary-20261025.json.
+All31normalimages/shortRaws/private82+83Binaries/inputs/neededCPs retained.
+326bytes originalC17DF8..C17F3D are identical across own73317/77554/78411;
+read-only disassembly/native bank/projectile/building source evidence:
+ tmp/cannon-m3-rim83-original-mode1-projectile-source-proof-20261025.json.
+
+After accepted208 and positive83normal replay, two new whole independent
+nativeA500/Kick1.3/read-onlyDF0 boots started21:21UTC, sessions8948/20299:
+ tmp/cannon-m3-east-rim-building19-type0-full-candidate-20261025.json
+ tmp/cannon-m3-east-rim-building19-type0-full-a/-b.
+35450physicalactions/expected35451states,208oldactualguards/706206RAM,
+32watchbytes/16nativewriteaddresses/frozenRunner35Core416/no-final-checkpoint.
+Strict checker tmp/verify_cannon_m3_rim_building19_type0_pair_20261025.py
+--preflight and ordinaryScenario--validate passed. Ordinary pair verification
+ONLY after BOTH result.json complete: all208guards/RAM,7580M3fourhealthy
+samples, exact911normalCPU/cache/RAM/input/audio/disk/display/frame/HASH/
+presentation/nativewrites, only inactivequeue0DMAreadyFalse(normal)/True
+(cold) with allotherDMAfields exact; WHOLE recorded coldPAIR allfields strict
+except seconds/imagepaths. ENTIREexceptiontrace includingFRAMES must equal
+208prefix:1092originalNON-ROM+135separateROM/ZEROadditional CPUevents/HDF/
+floppywrites. FreshfullMap required19Type20 provenance and ordered actual
+bank/projectile/state/type/X windows required. ALL38 actual coldPNGs must be
+opened individually,19PNG/hashpairs equal, actual explosions/collapsedwreck,
+then and ONLY then promote227actualguards. NO cold building19pass yet from
+normalCP/PNG or mere candidate. No other wholecandidate/recorder pending.
+OwnFUNCTIONAL78411 next-state plan is read-only, not a new cold pass/input:
+ tmp/cannon-m3-own78411-functional-building-next-plan-20261025.json.
+It gives3remainingrequired20..22Type20, ammo3,10currentType5, static191pixel
+upperwest564/100->420/80 path excludes3/6/8/9/10 but ignores fullcollision/
+formation/enemies/bullets/objects; no movement/health guarantee/private84.
+
+New separate Cpu/M68881InstructionExceptionDecision.cs and six independent
+tests are a PURE exception-vector decision, no execution/mutation backend.
+Primary MC68881UM Table6-1/6.1.9/6.1.10 gives vector priority and the extra
+maskedOVFL+ENABLE(INEX2) rule: selects Inexact even with no INEX2 in newEXC.
+Source: https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf .
+V4HighestEnabledStatus remains byteexact rawnewEXC&enable selection, NOT a
+complete architecturaltrapselector; v6 separately implements vector choice
+without altering EXC/AEXC/registers, synthesizingflags or dispatching a trap.
+INEX1/2 sharevector49; priority differs from numerical vector order, proven
+by literal table48/54/52/53/51/50/49. Six tests:8flag-vector literals,
+18combinedcases,65536newflag/enablepairs against independent set oracle,
+256overflow-enablecases preserving rawV4status,65536oldflag/enablecases,
+8192fullregisterpurityseeds. Debug AND Release433/433/0skips/finalbuild
+0warnings/errors,433=427+6. First oracle tuple declaration failed compile
+(3errors/2warnings), corrected type declaration only; firstDebug433/1failed
+because newliteral(raised0x30,enables0x12) wrongly expected49 despite enabled
+OVFL. Correct paired masked0x02=>49/enabled0x12=>53 now explicit; production
+selector neverchanged/exhaustive65536alreadypassed. Both firstlogs retained,
+no firstpass claimed. Development proof files fpu-instruction-exception-v6-
+build-development-20261025.json and -literal-development-20261025.json.
+Final proof tmp/fpu-instruction-exception-v6-verified-summary-20261025.json;
+private433binaries tmp/fpu-instruction-exception-v6-debug/-release separate
+from preserved421/427 and frozenCannon416/Runner35. Fiveoldformat/output,
+v4policy/tests, v5register/tests remain byteidentical. Program.cs explicitly
+ONE further LF registration; removingit reconstructs427SHA25817ee9...79d587,
+removingthree added lines reconstructs416SHA8ed64012...dc9dae0. Do not demand
+allhistoric6SourceSHAs blindly equal. All3originalADFs/5normalusersaves and
+oldbinaries unchanged. No activeCPU/Machine reference, selectableFPU/040,
+trapqueue/timing/decoder/bus/FPIARcapture/ALU/BCD/FSAVEFRESTORE/State/UI.
+Primary mutation-contract research (not implementation) separately captures
+instruction-family FPSR/FPIAR boundaries and destination-specific exception
+writeback/reporting; a universal trap=>no-destination-write rule is invalid:
+ tmp/fpu-instruction-mutation-primary-contract-research-v6-20261025.json.
+Full gated instruction execution/mutation backend with independent state/
+exception/writeback tests remains next, before any guestopcodes. No automatic
+converter/status bridge. Cannon newpair uses ONLY unchanged frozen416/35.
+No extra broadboot suite or hardware/publication release; whole roadmap OPEN.
+
+
+### Cannon Mission3 first required building19 fully cold-accepted;227 actual guards; isolated FPU decision433
+
+2026-10-25: NEW full nativeA500/Kick1.3/read-onlyDF0 pair8948/20299 is NOW
+FINISHED/ACCEPTED; NEVER wait, terminate or repeat these or earlier completed
+sessions. No wholecoldcandidate or recorder pending; private84 NOT created.
+Earlier pending normal83/pair lines immediately above are historical only.
+Permanent route:
+ Tools/a500-cannon-fodder-mission-three-east-rim-required-nineteen-route.json
+has227 ACTUAL cold imageguards,208acceptedprefix+19genuine new captures.
+Two independent wholeboots each35451States/F78411, all208oldguards and
+706206RuntimeRAM-byte assertions independently checked,382792presentlogged
+watchbytes independently matched. All7580M3action samples since real72613
+confirm (6669old+911new) fourpositive signedXY/Type0000/state38word0000;
+no observed negativeX/nonzeroType Playerlosswrites. All911continuousnormal
+TailCPU/cache/RAM/input/audio/disk/display/frame/HASH/presentation fields
+and COMPLETE nativeTailwrite sequence match BOTH wholeboots exactly.
+Only911inactive/queue0DMAreadyFalse(normalRestore)/True(cold), allotherDMA
+fields strict. WHOLE recorded coldPAIR allfields strict except seconds/
+imagepaths, NOT unrecorded fullRAM equality. Strict ordinary pair verifier
+passed first time; no new hash/cache/native/runtime/CPU/input exception.
+ENTIREexceptiontrace INCLUDINGFRAMES equals accepted208prefix exactly:
+1092originalNON-ROM (5=1/4=8/9=1083) plus135separately exactOriginalROM,
+ZEROadditional nativeCPUevents/HDFs/floppywrites. Original366+second363+
+third363loader sequences remain strictly original, no blanket vectorallow.
+All old208native identitywindows/Proofs/media/frozenCore416Runner35 preserved;
+new16writeobservers do not imply freshly unobservedGoal/sisterbank/player38
+transientwrite assertions. Goal0/Bank4then3/rem1/index0 strictly runtime.
+
+Actual nine ordinary waypoints from77554 to564/100 match the normal frames
+above, all4actualdistance>=100 from intact required19 before deliberateNEW
+Left edge whileRightheld. Actual nativeprimarybank4->3F78101/C17E18; first
+postactionBank3F78107, original numericType2/C17EFE andType3/C17F04 pair
+createdF78101. COMPLETE new pair/projectileY/type and required19nativewrites
+match the saved normal exactly. FreshwholeM3trace proves required19/C7E3EE
+sourceType20 loaded71540/C0A5E4 beforeM3Confirm72613 and noTypewrite until
+78310; firstdamage state5F78285/C1D768, state6F78290/C16FA8. F78310
+initializerX80C14AA8 andType00C14AAC are NOT finalremoval/extraenemykill.
+Same building slot becomesType39F78310/C1B2B0, Type4F78325/C16D3C,
+actualnegativeXF78326/C2B8C2. Exact ordered windows prove initialrequired19
+building destruction, not scratch0 alone or flat80-write counts. Later
+projectile/effectType12/4/6 slotreuse is not a named weapon/vehicle/attacker.
+
+ALL38 ACTUAL cold PNGs individually opened at ORIGINALdetail,19PNG/HASHpairs
+byteidentical. Both separate78411hold11/finalrelease files individually
+reviewed, not collapsed into oneview. Actual cabin roof explosions78285/
+78290, debris/collapsing frame78310/78325/78326, persistent collapsedwreck
+78354/78383/78411; HUD4 before,HUD3 after special input. Later background
+blast at hold11/finalrelease is NOT inferred extra required building/attacker.
+No ObjectiveText; health from native all4Type0/XY/state38/writes, not HUDnames.
+Final78411P564/100,564/105,564/110,564/115 allType0/state0/Goal0/ammo3/
+Remaining1/Index0, hash1813D4685F9AA9691F06F50DA2D01222B1239B878D8F85DFE0C2C91591397C72.
+Actual new cold captures/guards (frame/hash, same in BOTH wholeboots):
+ m3-rim-v83-wp0-arrived F77630 577424A2A9722F1F55DDDBA9EF83558C0B263731F3A10E1C2E7AF833FBBD7B43
+ m3-rim-v83-wp1-arrived F77663 7C9CDAC314B5382E8913F6CD8D2C9172F57F6E8D04D163ABD47B5BDF630701EA
+ m3-rim-v83-wp2-arrived F77691 48ED91913AD0189784B8582FFD5B4FAFFAEC001030C1016D67D97DE7FC7F8D11
+ m3-rim-v83-wp3-arrived F77751 4D1CFE294AFB8AFCBBB1758F56855155290A98F3210D7E6B14D6DDAD2C863537
+ m3-rim-v83-wp4-arrived F77784 EA6FCD5DC5E67EDD4B2FF2DEB14C9A0FA7BC8D94E106ACBF7FA142B1C5EAD996
+ m3-rim-v83-wp5-arrived F77808 0DFFE57DC1665B5B354ABF6293953F8C1E9539E8196DF5EEBD43D1E76F36A934
+ m3-rim-v83-wp6-arrived F77846 3A6271B4C663520970C1DD712543A141A2D84CC2CD83509A38531F4C95C1D93C
+ m3-rim-v83-wp7-arrived F77879 47D947FC1F9818FEDA2423FBB55E033DAAEFD5D4C922E3AC443A97668F29DFBC
+ m3-rim-v83-wp8-arrived F78048 308068A8AF5345A4E4071E4DFDD43519E020B11CB0A7E20EEFDB2A768456337A
+ m3-rim-v83-special-new-left-while-right F78107 1495FFFEF5C5576E7C515B5953D6CD69B02EDFBB1F3277D9A85DD5699B388455
+ m3-rim-v83-projectile-247 F78285 465593CA9ABB0FD82018FA8C36A0D0D32E3B64742209EC6AC189B35690298D38
+ m3-rim-v83-projectile-254 F78290 76E38C0DA2BA276A791D3392A512EB867C90B351DD1719D943CC749FA50B3CDB
+ m3-rim-v83-projectile-282 F78310 FCF3B70D7840D12C64BCEDDF7E2AA424D738A1C0C94AA3C9F837AEFD65E42C99
+ m3-rim-v83-projectile-303 F78325 1BC1D605EFDCC9F067C925D7E8B837D41D3914749F138BB0807F8A2456B6BC4C
+ m3-rim-v83-building19-deactivated F78326 1BC1D605EFDCC9F067C925D7E8B837D41D3914749F138BB0807F8A2456B6BC4C
+ m3-rim-v83-building19-hold-03 F78354 388D29EC255914CE0B0DA72CDC993516BBB01F606CA4CAD2E3F26AFBAFDC11CD
+ m3-rim-v83-building19-hold-07 F78383 DA5AC171C55EDCC8992C0FEE169AF7FC972F5BD0BCB3DD0E9DBFE31DA2509196
+ m3-rim-v83-building19-hold-11 F78411 1813D4685F9AA9691F06F50DA2D01222B1239B878D8F85DFE0C2C91591397C72
+ m3-defence-v83-final-right-release F78411 1813D4685F9AA9691F06F50DA2D01222B1239B878D8F85DFE0C2C91591397C72
+
+Proofs/ALL38coldPNG/Traces/CaptureStates/individualreviews/Manifest/Binary/
+Raw/PNG/TraceSHA retained:
+ tmp/cannon-m3-east-rim-building19-type0-full-a/verified-summary.json
+ tmp/cannon-m3-east-rim-building19-type0-full-b/verified-summary.json.
+python tmp/verify_cannon_m3_rim_building19_type0_pair_20261025.py --compact
+PASSES after permitted exact2ownacceptedsteps.jsonl compaction247710506bytes.
+All38PNG/proofs/traces/rawSHA/size/exact absolute2fileallowlist/ALLancestor
+Reparse checks completed BEFORE first deletion; no other targets removed.
+ tmp/cannon-m3-east-rim-building19-full-raw-cleanup-inventory-20261025.json
+ tmp/cannon-m3-east-rim-building19-full-raw-cleanup-result-20261025.json.
+This continuation retains38actualcold+31actualnormalPNG/shortRaws/CPs/inputs/
+private82/83binaries; only these2acceptedfullRaws compacted. All oldallowed
+compactions remain valid. Actualreviewrecord:
+ tmp/cannon-m3-rim-building19-all38-actual-cold-png-reviewed-20261025.json.
+
+Now canonical COLD-COVERED OWN78411CP:
+ tmp/cannon-m3-east-rim-v83-building-direct-20261025-output/Cannon-M3-east-rim-v83-building-direct/m3-v83-rim-direct-current.amigasav.
+OwnCP remaining3requiredType20slots20..22state0 at84/155,308/43,36/443;
+10positivecurrentType5,3/0/0/0/0/0ammo,Goal0/Remaining1/Index0, selected0.
+These are ownCPcounts/coordinates, NOT wholeunrecordedcoldRAM equality.
+Earlier read-only78411next plan is now associated with this accepted route;
+its prior functional-only wording is historical, NOT a separate boot result:
+ tmp/cannon-m3-own78411-functional-building-next-plan-20261025.json.
+Private84 does NOT yet exist. Next boundedlegitimate option: read current
+positions/all4health, use actualmouseedgepan to intactrequired21(308/43),
+verify actual all4separation, neutralRight/nativequeue before ordinaryLeft,
+then deliberatefreshLeftwhileRight ONLY for specialinput. Require actual
+bankdecrement/projectile/nativebuildingstate/type/X/actualPNG together.
+Static191pixelWestUpper564/100->420/80 path onlyPLANNING, ignores enemies/
+bullets/formation/fullactorcollision/dynamicobjects; no movement guarantee.
+No CPU/RAM/trainer/State/physics/pathfinding/renderer patch. Authoritative
+new normalreference continuously from EARLIERcold73317CP+6568+911=7479fixed
+acceptedphysicalprefix+newTail WITHOUT intermediate78411restore; then TWO
+wholeindependentDF0boots/ALLactualPNG before eachnewpass. Never promote CP
+or cached hashes into coldguards. Remaining3required buildings/M3whole
+objective/later VISIBLEsingleDriveRequester/sevenRoadmap/A1000/040/OS/video/
+timing/controller and fullhardware acceptance remain OPEN.
+
+Isolated FPUv6 six new pureinstruction-exception-vector decision tests remain
+Debug AND Release433/433/0skips/finalbuild0warnings/errors,6new beyond427.
+No newCPU opcode/executingFPU/ExecutionMutationBackend/FPIARautomaticcapture/
+trapqueue/CPUbus/ALU/BCD/FSAVEFRESTORE/State/UI/hardware enable. Oldv4 raw
+HighestEnabledStatus andv5registerstorage byteexact, old421/427privatebinary
+SHA exact; newv6 maskedOVFL+INEX2enable fallback is separate purevectorreturn.
+Intentional THIRD LF registration inProgram reconstructs427/421/416 by exact
+line removal. Newwrongliteral/tuple firstfailures preserved before finalpass;
+no productionselector change, no firstfailedpassclaimed. Proof:
+ tmp/fpu-instruction-exception-v6-verified-summary-20261025.json.
+Cannon wholepair8948/20299 used unchanged FrozenCore416/Runner35 exclusively;
+newseparate433 builds never overwrote frozen/privateolderBinaries.
+
+Latest accepted focused checks/integrity (no redundant broad suite/boot):
+ tmp/cannon-m3-rim-building-accepted-and-fpu-decision-final-checks-20261025.json
+ tmp/cannon-m3-rim-building-accepted-and-fpu-decision-roadmap-integrity-20261025.json.
+Headeraudit/per-processGitdiff/scenario/--compact/parsers/media/source/binary
+checks pin current227/433; older208/427 checks remain historical accepted.
+Overall work is OPEN, no commits/pushes/tags/releases/newhardware selection.
+
+
+### Cannon Mission3 upper-west controls84..88 and positive required21 normal replay; new whole pair pending
+
+2026-10-25: Accepted227/required19 and separate isolatedFPU433 remain valid.
+Private84..88 are now FINISHED, all separate builds0warnings/errors and exact
+FrozenCore416 SHA5a06285a0ac63a5536581486cb75d18c2135a28b5cd6d1a38391459ad24039da.
+Old83 and earlier private controllers/binaries are unchanged. ALL35 actual
+normal PNGs individually opened at ORIGINALdetail (3+3+3+7+19), not replaced
+by save previews. Normal replays continuously from own cold-covered73317CP
+through7479accepted fixedphysicalprefix, WITHOUT intermediate78411restore.
+All7479prefix recordedstates strict except seconds/imagepaths; all new actor
+poststates/finalCPU/frame/hash exactly recorder,5192spritebytes ownSave equal,
+losslessWatchDeltas and inputs/source/project/build/binary/raw/trace/PNG/CP SHA.
+No core source/build or redundant core suite/boot repeated for these controls.
+
+84:163newinputs/7645Rows/F78630/203528RuntimeRAM/141952presentWatchbytes.
+85:164newinputs/7646Rows/F78631/203556RAM/141972logged. Both bounded target21
+outside real viewport; horizontal nativeCamera335 unchanged, vertical52->0.
+85adds genuine ordinaryRightDown; neither proves horizontal pan or special
+attack. All4positiveType0XY/state38zero/Bank3/Goal0, no Left/special input.
+86:127newinputs/7609Rows/F78518/202520RAM/141232logged. Short first north
+body564/88 was NOT reached: nativeGoal/lastorder/body remain564/100, bounded
+100noBodyProgress. Read-only originalC1E60A selectionbbox and actual mouse/
+camera produce hitTest571/88 within selectedActor564/100 bbox568..574/87..100.
+This is source-condition evidence, not freshly observed branchPC. Larger
+north20pixel click in87/88 genuinely sets movement to564/80; no wrong-order,
+pathfinding/physics or camera repair. NativeMouseX32 HUD threshold C1EC80;
+new hostminimum36 stays above it and actualMouseX>=32 checked before Left.
+Source byteidentical73317/78411/86CP ranges and all actual fields pinned:
+ tmp/cannon-m3-upper-ui-selection-camera-state1-source-proof-20261025.json.
+
+87:246newinputs/7728Rows/F78650/205852RAM/143612logged,7actualPNG. Real
+arrivals564/80F78469,520/86F78530,472/86F78598,472/99F78619; then NEGATIVE.
+Last neutralphysical243/F78649, first negative244/F78650 and finalRelease245
+sameframe. Exactly2original nativeword1 writes toPlayer0state38 atF78650/
+observerPC C20A82; originalmove.w#1toActor+38 atC20A7C. Four recordednegative
+rows INCLUDE2diagnostics, only2physicalactions244/245 negative. Player0
+remainsType0/positive460/99/state1, other3Type0/state0; NOT Type4death or
+known attacker/physicscause, NOT healthy passage. No special/bankconsumption.
+
+88:808new fixedphysicalinputs/8290normalRows/F79138/221596RAM/154852logged.
+All4positive signedXY/Type0000/state38word0000 EVERY new physicalaction.
+Six genuine ordinary orders arrive564/80F78490,520/86F78580,472/86F78684,
+472/99F78727,420/99F78841,420/80F78885. Right/nativequeue neutral BEFORE
+ordinaryLeft; immediate realRightFire after LeftRelease, read-only visible
+currentType5 aiming while moving. No camera/RAM/CPU/State/input patch.
+Before special attack target21 really visible/intact and all4distance>=100;
+actual NEW Leftedge while Rightheld. Nativeprimarybank3->2F78904/C17E18,
+firstpostBank2F78909. Numeric projectile4Type2/C17EFE and5Type3/C17F04 birth
+both78904; mainwriteobservers track their TYPE, not unobserved Y writes.
+Current25 Type4/C16D3C and actualnegativeX/C2B8C2F78961; init78964 is NOT
+anotherkill; NEW25Type5 allocation78964/C14A1A/ReturnC16F70. Prior lifetime
+needs fresh upcoming fulltrace, no Original25 assignment from CP/filename.
+
+Required21 normalstate5F79020/C1D768, state6F79021/C16FA8; initializerX80
+F79038/C14AA8 NOT actualremoval. Type39F79038/C1B2B0, Type4 and actualX80
+F79053/C16D3C+C2B8C2. Later init79057/Type6C17746/Type4F79111/actualX80
+79112 are NON-Type5 slotroles, NOT secondbuilding/enemykill. Earlier19raw
+slot also reused; old227lifetime proof remains valid, no permanentType4 rule.
+ALL19normal actualPNG reviewed: firststate5F79020 still standing cabin,
+79021smallentryblast,79038large roof/front explosions,79053..79138 damaged/
+collapsed frame and persistent wreck/HUD2. Both79138hold11/finalRelease
+actualfiles reviewed separately. NoObjectiveText/health-from-HUD-alone.
+Final79138P420/80,420/85,420/90,420/95 allType0/state0/Bank2/Goal0/rem1/index0.
+OwnCP two remainingType20slots20at84/155 and22at36/443, eightpositiveType5
+are ownCP counts ONLY, not unrecorded full coldRAM equality.
+Normalproofs (one-time writers already finished; preserve shortRaws):
+ tmp/cannon-m3-upper-v84-functional-verified-summary-20261025.json
+ tmp/cannon-m3-upper-v85-functional-verified-summary-20261025.json
+ tmp/cannon-m3-upper-v86-functional-verified-summary-20261025.json
+ tmp/cannon-m3-upper-v87-functional-verified-summary-20261025.json
+ tmp/cannon-m3-upper-v88-functional-verified-summary-20261025.json.
+Normal88 source:
+ tmp/cannon-m3-upper-land-defence-v88-building-direct-20261025.json.
+FUNCTIONAL79138CP (NOT yet a new coldpass):
+ tmp/cannon-m3-upper-land-defence-v88-building-direct-20261025-output/Cannon-M3-upper-required21-v88-positive-building-direct/m3-v88-upper-direct-current.amigasav.
+
+Only wholepair PENDING: sessions71157/15687 started22:26UTC after227acceptance
+and positive continuous88normal. Candidate:
+ tmp/cannon-m3-upper-west-building21-type0-full-candidate-20261025.json
+in tmp/cannon-m3-upper-west-building21-type0-full-a/-b. Expected36259States/
+F79138,227oldactualguards/728842RAM/8388fourhealthyM3actions/808newTail,
+32watches/16nativewriteobservers/--no-final-checkpoint/Frozen416Runner35.
+Strict checker tmp/verify_cannon_m3_upper_west_building21_type0_pair_20261025.py
+--preflight and scenario--validate pass. Ordinary mode only after BOTH actual
+result.json files finish; require all normal808CPU/cache/RAM/input/audio/
+disk/display/frame/HASH/presentation/nativewrites exact, whole recordedcold
+PAIR allfields exceptseconds/imagepaths, onlyinactiveq0DMAready difference
+versus normal. ENTIREexceptiontrace INCLUDINGFRAMES must equal accepted227:
+1092originalNON-ROM5=1/4=8/9=1083 +135separateexactROM/ZEROadditionalCPUevents/
+HDF/floppywrites. Fresh fulltrace initialType20 and current25 identitywindows,
+ALL38 actualcoldPNG individuallyOriginaldetail/19PNGHashpairs before any
+246guard promotion. No CP/cachedhash as coldguard. No other candidate or
+recorder pending, private89 NOT created. No rawlogs deleted in this interval.
+Read-only functional79138next plan:
+ tmp/cannon-m3-own79138-functional-next-building-plan-20261025.json.
+279orthogonalFootpixels420/80->220/80/collision0/excluding3,6,8,9,10 are ONLY
+geometric planning, ignoring enemies/bullets/formation/fullcollision/dynamic
+objects. First complete the actual pair and38reviews before bounded89.
+New authoritative reference would be continuous73317+7479+808=8287fixed
+acceptedprefix+newTail WITHOUT intermediate79138restore AFTER acceptance.
+Remaining2buildings/M3wholeobjective/laterVISIBLEsingleDriveRequester/whole
+sevenRoadmap/A1000/hardware stay OPEN, no publication/availability change.
+
+A1000 optional reset-warning contract: primary-source research ONLY,
+ tmp/a1000-reset-warning-primary-contract-research-20261025.json.
+[Original Commodore HRM Appendix G](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_g.html)
+separates optional warning acknowledgement/grace from the existing hard-reset
+pulse. No abort semantics inferred. Existing A1000HLE sources/16synthetic
+proofs unchanged; no new implementation/test/build/realboot or hardware gate.
+FPU433 puredecision remains unchanged, no new FPU suite repeated here.
+
+
+### Cannon Mission3 second required building21 fully cold-accepted;246 actual guards; FPU433 unchanged
+
+2026-10-25: Whole nativeA500/Kick1.3/read-onlyDF0 pair71157/15687 NOW
+FINISHED/ACCEPTED. NEVER rewait/terminate/repeat these or older accepted
+sessions. Earlier pending84..88/pair lines are historical. No wholecandidate
+or recorder pending; private89 NOT created. Permanent route:
+ Tools/a500-cannon-fodder-mission-three-upper-west-required-twentyone-route.json
+has246 ACTUAL cold imageguards:227acceptedprefix+19real new captures.
+Both independent wholeboots each36259States/F79138; all227oldguards and
+728842RuntimeRAM-byte assertions independently checked,398952presentlogged
+Watchbytes independently matched. All8388M3action samples since real72613
+confirm (7580old+808new) fourpositive signedXY/Type0000/state38word0000,
+no observed negativeX/nonzeroType playerlosswrites. Complete808continuous
+normalTail CPU/cache/RAM/input/audio/disk/display/frame/HASH/presentation
+and COMPLETE new nativewrite sequence EXACT to BOTH boots. Only808DMAready
+False(normalRestore)/True(cold), strictly inactive/queue0/allotherDMAfields
+equal. WHOLE recordedColdPAIR ALLfields strict exceptseconds/imagepaths,
+NOT unrecorded fullRAM equality. Ordinary strict pair verifier passed FIRST
+attempt, no new hash/cache/native/runtime/CPU/input tolerance or sourcefix.
+ENTIREexceptiontrace INCLUDINGFRAMES EXACT accepted227prefix:1092original
+NON-ROM5=1/4=8/9=1083+135separateexactROM, ZEROadditionalnativeCPUevents/
+HDF/floppywrites. Original366+second363+third363 loader sets remain exact,
+no blanket vectorallow. All old227identityproofs/media/frozen416Runner35
+preserved. Main16writeobservers cover fourPlayerX/Type, primaryBanklow,
+required21X/Type/state38low, projectile4/5Type and current25X/Type. No fresh
+unwatchedGoal/sisterbank/player38transient/projectileY-write claims.
+
+Six actual ordinary waypoints reach564/80,520/86,472/86,472/99,420/99,420/80
+at78490/78580/78684/78727/78841/78885; realRight/nativequeue neutral BEFORE
+ordinaryLeft, immediateRightFire AFTERLeftRelease. All4distance>=100 from
+intactrequired21 before deliberateNEWLeftedge whileRightheld. NativeBank
+3->2F78904/C17E18, firstpost78909; originalnumericalType2/C17EFE andType3/
+C17F04 birthF78904 in slots4/5. Same nativecode/pair, no named weapon/vehicle.
+FreshfullM3trace proves initialrequired21/C7E4DA Type20=14hex loaded71540/
+C0A5E4 BEFORE realconfirm72613; noTypewrite until79038. State5F79020/C1D768,
+state6F79021/C16FA8. InitializerX80C14AA8/Type00C14AACF79038 NOT actual
+removal or extraenemykill; Type39F79038/C1B2B0, Type4/C16D3C and actual
+negativeX/C2B8C2 BOTH79053 ordered. Same slot later init79057/Type6C17746/
+Type4F79111/X80F79112 is a NON-Type5 role, NOT another requiredbuilding or
+enemykill. Earlier19slot reused too: old19lifetime proof persists, no permanent
+Type4/every80writekill assumption. Freshcurrent25 lastType5 allocation77516/
+C14A1A/ReturnC16F70 ->Type4 andactualX80F78961/C16D3C+C2B8C2; init78964
+notsecondkill, NEW25allocation78964/C14A1A/ReturnC16F70. No initialOriginal25
+or resurrected oldenemy claim; earlier accepted identitywindows stay valid.
+
+ALL38 ACTUAL coldPNG individually opened at ORIGINALdetail,19PNG/HASHpairs
+byteidentical. Both79053projectile/deactivated-label files AND79138hold11/
+finalRelease files each separately opened. Actualfirststate5F79020 STILL
+standingcabin, firstvisibleentranceblast79021, large roof/frontblasts79038,
+debris/open collapsedframe79053..79138/persistentwreck. HUD3 before input,
+HUD2 after, fourHUDnames/noObjectiveText; health from nativeXY/Type/state38/
+writes, not HUD alone. LaterType6 role/deactivation adds NO secondbuilding.
+Final79138P420/80,420/85,420/90,420/95 allType0/state0/Bank2/Goal0/rem1/
+index0; hash0E71464E3B3D8F146FCB3FAFE3E799D407A4FEAF1E40D37B1950123FF5AA1FB9.
+All19 actual new coldguards (same in BOTH boots):
+ m3-rim-v88-wp0-arrived F78490 742E893CF0B9D9E4F206111E7AEB45AD8F78AE72746CC9A53C57DA04A85E6712
+ m3-rim-v88-wp1-arrived F78580 2222798C529166B1C183D1EE0586FF84F63F5D2E49FCC7A353FA46253C594941
+ m3-rim-v88-wp2-arrived F78684 2D97A73C7D27B43119BEC0C3DF21470591163B5F59E61513F2A0C017230A1880
+ m3-rim-v88-wp3-arrived F78727 84EBB445432ECC07A02ACD427B1373AA5F156116A59F5A0E2ED6A2C628E985D5
+ m3-rim-v88-wp4-arrived F78841 FB0C5D33B7EF2E52EF6EC4A8D0C9AD07B4D48F603898CE69DE0FB78C212B3EEF
+ m3-rim-v88-wp5-arrived F78885 2404E90324B1116B79B7C13116E3C83A2CD05CC69016C92ECFC86402255B8CD2
+ m3-rim-v88-special-new-left-while-right F78909 121DE648A3D2C56E66E8482779E78853596EAC0532B34374188FC3370CF550B3
+ m3-rim-v88-projectile-068 F78961 E2B2C309C3BB6A7834B55D54E38587F72F4E2888C821D59F209F6758887AB2F1
+ m3-rim-v88-projectile-152 F79020 172328A562C1BCCBDCE1F9AE5590B7843EF70ABB2008F34AA0FFA4CE1EF9312C
+ m3-rim-v88-projectile-153 F79021 6955D4BBB6831EF5EFAEE6F2EF3AB30D4960B236EB8B6313246A3E98E17B38EF
+ m3-rim-v88-projectile-177 F79038 C071DF00F9F11CC482E34E061D6FBAA8F45CACBAE95ED2DA975C9654A63C6F94
+ m3-rim-v88-projectile-199 F79053 4FB0258946AE2AD2048BC743B0D047225696B8E3640A3F801FE9E4739B304721
+ m3-rim-v88-building21-deactivated F79053 4FB0258946AE2AD2048BC743B0D047225696B8E3640A3F801FE9E4739B304721
+ m3-rim-v88-building21-hold-00 F79061 C0C0491B75EEB39913712A3884148C138472F57547E8F21AF302BE7DFB572C22
+ m3-rim-v88-building21-hold-03 F79082 21C3A80F7FF24C48FC3D3789F3F3E09E8537FD143C9A6C922AA6918CD9E045BB
+ m3-rim-v88-building21-hold-07 F79110 50ADD9F6C3BBC534C0475B227EACCE0A5A1DA114FC9D71588C59CEFC99858D41
+ m3-rim-v88-building21-hold-08 F79117 C4377BF5377411FF39FD214BD3DC2BB02E9485DA0A460374FB71FD4F325746E2
+ m3-rim-v88-building21-hold-11 F79138 0E71464E3B3D8F146FCB3FAFE3E799D407A4FEAF1E40D37B1950123FF5AA1FB9
+ m3-defence-v88-final-right-release F79138 0E71464E3B3D8F146FCB3FAFE3E799D407A4FEAF1E40D37B1950123FF5AA1FB9
+
+Proofs/ALL38actualcoldPNG/Traces/CaptureStates/individualreviews/Manifest/
+Binary/Raw/PNG/TraceSHA preserved:
+ tmp/cannon-m3-upper-west-building21-type0-full-a/verified-summary.json
+ tmp/cannon-m3-upper-west-building21-type0-full-b/verified-summary.json.
+python tmp/verify_cannon_m3_upper_west_building21_type0_pair_20261025.py --compact
+PASSES after permitted exact2ownacceptedsteps.jsonl compaction253340287bytes.
+ALL38actualimages/proof/trace/SHA/size/exactabsolute2fileallowlist/ALLancestor
+Reparse checks completed BEFORE first deletion, no other targets removed:
+ tmp/cannon-m3-upper-west-building21-full-raw-cleanup-inventory-20261025.json
+ tmp/cannon-m3-upper-west-building21-full-raw-cleanup-result-20261025.json.
+ALL38cold+35normalactualPNG/shortRaws/Traces/neededCPs/inputs/private84..88
+binaries preserved. Older allowedcompactions valid. Actual38reviewrecord:
+ tmp/cannon-m3-upper-building21-all38-actual-cold-png-reviewed-20261025.json.
+84/85boundednohorizontalpan,86tinyclick originalselectionbbox/noactualgoal,
+87nativeState38=1negative NOTType4death/healthyPass,88actualsixwaypoint/
+bank/projectile/required21 pass; all old controls/proofs remain preserved.
+
+NOW canonical COLD-COVERED own79138CP:
+ tmp/cannon-m3-upper-land-defence-v88-building-direct-20261025-output/Cannon-M3-upper-required21-v88-positive-building-direct/m3-v88-upper-direct-current.amigasav.
+OwnCP eightcurrentpositiveType5 (15/16/23/24/25/26/27/28), two remaining
+required20at84/155 and22at36/443 Type20/state0, allsixbanks2/0/0/0/0/0,
+Goal0/rem1/index0/selected0. These are OWNCP counts/coordinates, NOT whole
+unrecorded coldRAM equality. Earlier functional79138plan now associated with
+acceptedroute, NOT anotherboot result:
+ tmp/cannon-m3-own79138-functional-next-building-plan-20261025.json.
+279orthogonalFootpixels420/80->220/80/collision0/excludes3,6,8,9,10 are ONLY
+planning, ignoreenemies/bullets/formation/fullcollision/dynamicobjects.
+Next bounded separate89 can be derived from retained88 after reading current
+health/positions, using genuine ordinaryorders withRight/nativequeue neutral
+beforeLeft, all4positiveType0XY/state38zero everyaction. For specialinput,
+first actualtarget20visibility/all4distance>=100/intactstate, then freshLeft
+whileRight, nativebank/projectile/requiredstate/type/X/actualPNG evidence.
+No CPU/RAM/trainer/State/physics/pathfinding/renderer patch. Private89 NOT
+created, no currentcandidate/recorder pending. Every next normalreference
+continuousfrom EARLIERcold73317CP+7479+808=8287acceptedfixedphysicalprefix+
+newTail WITHOUT intermediate79138restore, then2wholeindependentDF0boots/
+ALLactualPNG before eachnewpass; noCP/cachedhash as coldguard. Remaining2
+required buildings/M3wholeobjective/laterVISIBLEsingleDriveRequester/whole
+sevenRoadmap/A1000/FPU040/OS/video/timing/controller/hardware OPEN.
+
+FPU sixpuredecisiontests remain433/433Debug+Release/0skips/finalbuild0warnings/
+errors from existing proof, NOT rerun. Fiveformats/v4status/v5registerstorage/
+v6decision source SHA and old421/427/new433binaries unchanged; intentional
+THIRDProgramLFregistration reconstructs427/421/416. No newFPU implementation,
+CPUreference/trapqueue/FPIARcapture/decoder/ExecutionMutationBackend/ALU/
+BCD/FSAVEFRESTORE/bus/State/UI/availableFPU/68040. Cannon used unchanged
+frozen416Runner35 exclusively, no corebuild/sourcechange in Cannon.
+A1000optionalwarningprimarycontract above remains RESEARCHONLY, unchanged
+source/16syntheticproofs, no warning/abortimplementation/realboot/hardwaregate.
+Latest focusedchecks/integrity:
+ tmp/cannon-m3-upper-building-accepted-final-checks-20261025.json
+ tmp/cannon-m3-upper-building-accepted-roadmap-integrity-20261025.json.
+Headeraudit/per-processGitdiff/scenario/--compact/parsers/media/source/binary
+checks, no redundantbroadsuite/boot. Old227/433notes remain provenance,
+latest246/unchanged433takesprecedence. OverallOPEN/no publicationchange.
+
+
+### Cannon Mission3 western required20 normal replay positive;263-guard candidate pending
+
+2026-10-26 local /2026-10-25UTC: accepted246/required21 pair71157/15687 and
+allolderproofs remain valid, NEVER rewait/terminate/repeat them. Private89/90
+NOW FINISHED, both separate builds0warnings/errors/exact FrozenCore416SHA.
+Old88 and earlier binaries unchanged; no Cannoncore source/build, no newFPU
+source/test/433suite. Initial160media/frozen/private/FPUsource/binary SHA pins
+passed. ALL24actual normalPNG individuallyOriginaldetail reviewed (7v89+
+17v90). All normal replays continuous from earliercold73317CP+8287accepted
+fixedphysicalprefix WITHOUT79138intermediaterestore. All8287prefixrecorded
+states strict exceptseconds/imagepaths; all newActorpoststates/finalCPU/
+frame/hash exactly recorder,5192spritebytes ownSave equal/losslessWatchdeltas/
+source/project/build/binary/raw/trace/PNG/CP hashes retained.
+
+89:941Tail/9231Rows/F79858/247952RuntimeRAM/173672presentWatchbytes.
+Five actualbodyarrivals380/81F79244,360/103F79293,338/123F79383,264/119
+F79506,230/114F79559. Nominalbody360/99 and338/119 goals were natively
+adjusted by4; actual arrived coordinates above, no literal99/119arrival or
+wrongorder/pathfinding repair claim. Later230/82 target NOT reached:
+body230/88/Goal230/82 at bounded end, all4Type0/state0 at230/88,230/93,
+230/98,230/103, Bank2/Goal0/rem1/index0. No specialLeftwhileRight executed,
+no watchedBank/required20 writes; target20 remains intact20/state0. Sameframe
+finaltrack/release actualPNG individually reviewed. No healthy arrival82 or
+required-building pass; do not repeat long unsuccessful north tracking.
+
+90:omits unnecessary unsuccessful later north order, stops after those five
+actual arrivals and deliberately attacks required20 fromactual230/114.
+848fixedTailInputs/9138normalRows/F79887,245352RuntimeRAM/171812loggedWatch.
+All4positive signedXY/Type0000/state38word0000 EVERY action, no Playerloss
+writes/nativeCPUevents/HDF/floppywrites. RealRight/nativequeue neutral before
+ordinaryLeft/immediateRightFire afterLeftRelease. Target20 actuallyvisible/
+intactType20/state0/all4actualdistance>=100 before freshLeftwhileRight.
+BankC01F4C2->1 NATIVEF79586/C17E18, firstpostF79590; firstactual79590PNG
+still HUD2, later79747+ capturesHUD1: no sameframeHUDupdate assumption.
+NumericType2/C17EFE andType3/C17F04 birthboth79586 in slots4/5; no named
+weapons/vehicles or unobserved projectileY writes. Required20/C7E464state5
+NATIVE79746/C1D768 (firstpostsample79747), state6NATIVE79751/C16FA8.
+InitializerX80C14AA8/Type00C14AAC79786 NOT actualremoval/extraKill;
+Type39/C1B2B079786 ->Type4/C16D3C79801 ->actualnegativeX/C2B8C279802.
+Later same-slot init79805/Type6C17746/Type4F79855/negativeXF79856 and
+init79884/Type17hex(decimal23)C14ADE are NON-Type5roles, NOT additional
+required-building/enemykills. Finalraw20isPOSITIVE84/129/Type23/state0,
+not permanentType4. InitialsourceType20 identity needs fresh fullM3trace
+in upcomingpair; no new Originalmapassignment fromCP/filename. Former21
+slot is currentType5 in ownCP, not restored building/oldenemy resurrection.
+
+ALL17actualnormal90PNG individuallyOriginaldetail reviewed: actualwest
+movement alongcliff/water/prior21wreck, actualnewcabinblast79747/roofdebris
+79751/damagedopenframe79786/79801/79802 and persistentcollapsedwrack through
+79887. Sameframe79802projectile/deactivated-label files and79887hold11/
+finalRelease files individually viewed. Later79887explosions/debris NOT
+extra building/attacker claims. FourHUDnames/noObjectiveText; health from
+nativeXY/Type/state38/writes, notHUDalone. FinalP230/114,239/116,249/117,
+259/119Type0/state0/Bank1/Goal0/rem1/index0. Own10positiveType5 and one
+remainingrequired22Type20/state0at36/443 are ownCPcounts only, NOT whole
+unrecordedcoldRAM equality. Normalproofs (one-time writers finished):
+ tmp/cannon-m3-west-v89-functional-verified-summary-20261026.json
+ tmp/cannon-m3-west-v90-functional-verified-summary-20261026.json.
+Normal90 source:
+ tmp/cannon-m3-upper-west-v90-building-direct-20261026.json.
+FUNCTIONAL79887CP (NOT yet coldpass):
+ tmp/cannon-m3-upper-west-v90-building-direct-20261026-output/Cannon-M3-upper-west-required20-v90-direct/m3-v90-west-direct-current.amigasav.
+Bothnormalrunner82180/94041 finished, no recorder pending; do not rewait.
+HostCLI grammar and candidate-source quoting corrections stopped BEFORE
+any respective guest/output/candidatecreation; successfulnormal/candidate/
+strictpreflight preserved, no guest/core/input/Runtime/hash relaxation:
+ tmp/cannon-m3-west-controls-host-command-development-20261026.json.
+
+ONLY pending wholepair36490/90019, started23:12UTC AFTERfull246acceptance and
+positive normal848Replay/ALL17realnormalPNG. Candidate:
+ tmp/cannon-m3-western-building20-type0-full-candidate-20261026.json
+in tmp/cannon-m3-western-building20-type0-full-a/-b. Expected37107States/
+F79887,246oldactualGuards/752598RuntimeRAM/32watches/16nativewriteobservers,
+37106fixedphysicalactions/--no-final-checkpoint/Frozen416Runner35. Strict
+ tmp/verify_cannon_m3_western_building20_type0_pair_20261026.py --preflight
+and normalscenario--validate PASS. Ordinarymode ONLY AFTER BOTH actual
+result.json finish. Require all9236M3action samples sinceconfirm72613 four
+positiveXY/Type0/state38word0/zeroPlayerloss; ALL848normalCPU/cache/RAM/
+input/audio/disk/display/frame/HASH/presentation/completeNativeWritesexact;
+only848inactiveq0DMAreadyFalse(normal)/True(cold)/allotherDMAfieldsstrict.
+WHOLE recordedcoldPAIR allfields exceptseconds/imagepathsSTRICT. ENTIRE
+exceptiontrace INCLUDINGFRAMES EXACTaccepted246:1092originalNON-ROM5=1/
+4=8/9=1083+135separateexactROM/ZEROadditionalCPUevents/HDF/floppywrites.
+Fresh sourceType20 initial71540/C0A5E4/type39/4/negativeX/reuse6/23 window,
+remaining22sourceType20/noTypewritehistory strictly checked. Main16observers:
+all4X/type, bankprimarylow, required20X/Type/state38low, projectile4/5Type,
+player0state38low,remaining22TypeLow; no fresh unobservedGoal/sisterbank/
+projectileY/player1..3state38transientwrite claim. Require ALL34actualcold
+PNG individuallyOriginaldetail/17PNGHashpairs before any263guardpromotion.
+No CP orcachedhashes as coldguards, no M3objective/laterVisibleRequester/
+wholeRoadmap/hardwarepass. No new ownrawlogs deleted this continuation.
+No other wholecandidate/recorder pending, private91 NOT created. Afteractual
+pairacceptance nextauthoritative normalreference continuous73317+8287+848=
+9135fixedphysicalprefix+newtail WITHOUT79887intermediaterestore. Remaining
+22building, tenowncurrentType5 and actualM3objective require genuineinputs/
+nativeproofs/normalfixedreplay+2wholeboots/ALLactualPNG before eachpass.
+FPU433puredecision/allolder421427/416binaries/gates and A1000researchonly
+remain unchanged; all sevenRoadmap/A1000/hardware work stillOPEN.
+
+
+### Cannon Mission3 third required building20 fully cold-accepted;263 actual guards; last22 and objective open
+
+2026-10-26 local: wholepair36490/90019 NOW FINISHED/ACCEPTED, do NOT rewait/
+terminate/repeat these or earlier accepted sessions. Earlier normal90/pair
+pending paragraphs are historical. Private89/90 and both normal replays are
+finished; NO wholecandidate/recorder pending, private91 NOT created.
+Permanentroute:
+ Tools/a500-cannon-fodder-mission-three-western-required-twenty-route.json
+has263 ACTUAL coldimageguards:246acceptedprefix+17real new capturelabels.
+Both independentwholeDF0boots each37107States/F79887,246oldGuards and
+752598RuntimeRAM-byteassertions independentlychecked. All9236M3action samples
+since realConfirm72613 (8388old+848new) fourpositive signedXY/Type0000/
+state38word0000/zeroPlayerlosswrites. All848continuousnormalTailCPU/cache/
+RAM/input/audio/disk/display/frame/HASH/presentation and COMPLETEnewnative
+writes exact in BOTHboots. Only848inactive/queue0DMAreadyFalse(normalRestore)/
+True(cold), allotherDMAfields strict; WHOLErecordedcoldPAIR allfields strict
+exceptseconds/imagepaths, NOT unrecorded wholeRAM equality. ENTIREexception
+trace INCLUDINGFRAMES exact246acceptedPrefix1092originalNON-ROM5=1/4=8/
+9=1083+135separateexactOriginalROM/ZEROextraCPUevents/HDF/floppywrites.
+Original366+second363+third363 remain original strict sets/no blanketvector
+allow. Old246nativeidentityproofs SHA-pinned at actuallyobservedaddresses,
+no freshly unobserved oldslotwrites claimed. No newGuest/Core/Input/runtime/
+hash/cache exception introduced for this candidate.
+
+Five actualbodywaypoints380/81F79244,360/103F79293,338/123F79383,264/119
+F79506,230/114F79559. NativeGoaladjusted nominal99/119 by4, actualarrivals
+above, no literalnominalarrival or emulator/pathfinding repair. NeutralRight/
+nativequeue beforeordinaryLeft/immediateRightFire afterLeftRelease; actual
+all4distance>=100/visibleintacttarget20 before deliberatefreshLeftwhileRight.
+Bank2->1 NATIVE79586/C17E18, firstpost79590; numericType2/C17EFE andType3/
+C17F04 births same79586 in slots4/5. FreshFULLM3trace proves required20/
+C7E464 sourceType20=14hex71540/C0A5E4 BEFORErealConfirm72613, noTypewrite
+until79786. State5NATIVE79746/C1D768 (firstpostsample79747), state6NATIVE
+79751/C16FA8. InitializerX80C14AA8/Type00C14AAC79786 NOT actualremoval or
+extraKill. Type39/C1B2B079786 ->Type04/C16D3C79801 ->ACTUALnegativeX/
+C2B8C279802. Laterinit79805/Type6C17746/Type04F79855/X80F79856 and init
+79884/Type17hex(decimal23)C14ADE are NEWNON-Type5roles, NOT secondrequired
+building/enemykills. Finalraw20POSITIVE84/129/Type23/state0, no permanent
+Type4 or uniquewrite80 assumptions. Earlier21rawslot nowType5 in ownCP;
+old246source-building lifetime remains accepted, not buildingrestoration or
+oldenemy resurrection. Freshremaining22Type20load71540/C0A5E4 with NO later
+Typewrite in wholeM3trace; state38 word0 strict runtime at selectedfinalguard
+and ownCP, not unobserved transientstate assertions. Main16observefour
+playersX/type,banklow,building20X/type/state38low,projectile4/5Type,player0
+state38low,remaining22TypeLow. No freshGoal/sisterbank/projectileY/player1..3
+state38-transientwrite claims. CurrentType5kills outside these observers
+NOT inferred from filenames/raw80writes/CP-only counts.
+
+ALL34 ACTUALcoldPNG individuallyOriginaldetail opened,17PNG/HASHpairs
+byteidentical. Sameframe79802projectile/deactivated files and79887hold11/
+finalRelease files EACH individually opened. Actualsnow/cliff/water/west
+movement and old21wrack, actualrequired20roof/side explosions79747, detached
+roof/debris79751, collapsedopenframe79786..79887. FirstpostnativeBank1
+F79590actualPNG stillHUD2, later79747+ capturesHUD1; no sameframeHUDupdate
+assumption. Later79887blast/debris NOT inferred extra building/attacker.
+FourHUDnames/noObjectiveText; nativeXY/Type/state38/writes provehealth.
+FinalP230/114,239/116,249/117,259/119 allType0/state0/Bank1/Goal0/rem1/index0.
+Actualnewcoldcaptures/hashes (same BOTHboots):
+ m3-rim-v90-wp0-arrived F79244 8A144F390E8525A32F6AEC873A694D6504CBF491BD1BF775A32113366645F9AB
+ m3-rim-v90-wp1-arrived F79293 C112664C69DF9881DB2E463633FE2CCB3B2812F0050D326F63C09C95064EA14D
+ m3-rim-v90-wp2-arrived F79383 F6AE7058148119D7487ACBBAF7681964863EA021D656908204E82AAD626BBDC8
+ m3-rim-v90-wp3-arrived F79506 D645165FFB77E97E37CD1FFABB370B4E6EE05376163D2DD44DF7FEE36A3E97BE
+ m3-rim-v90-wp4-arrived F79559 3A617A37E0135DCFE82A60A00416056C9D966898BB661207622EC046F0BB6EFB
+ m3-rim-v90-special-new-left-while-right F79590 4BD7B803656FD9415C850CBE80F714BDC9ECA734215CF60E4B17B2C65B300821
+ m3-rim-v90-projectile-217 F79747 37B2124AF541CBB9868E63EFBF762E51C86F64336B3E44000B4F8A5B27B5734B
+ m3-rim-v90-projectile-224 F79751 CC57349675F60CAA7FA7B3D98157FF7165FCDFC7AFA0C8F2285C8598D0E7760C
+ m3-rim-v90-projectile-273 F79786 3DB56AAEA609A69AA96D310320A4D1BB9D2D5BF47EA7EDD6F7420DBE33B57527
+ m3-rim-v90-projectile-294 F79801 AF7F73DA208A2D055BC0F7948E9CCB6939667EED0471AFBBF15F8844F2254701
+ m3-rim-v90-projectile-296 F79802 AF7F73DA208A2D055BC0F7948E9CCB6939667EED0471AFBBF15F8844F2254701
+ m3-rim-v90-building20-deactivated F79802 AF7F73DA208A2D055BC0F7948E9CCB6939667EED0471AFBBF15F8844F2254701
+ m3-rim-v90-building20-hold-00 F79809 C3141051385D7D21555072297BDA28489D1C6D49A2D67154C7AB6B27E8DC8EF4
+ m3-rim-v90-building20-hold-03 F79830 458BCBED267B1A31F2062CC79A5F2E0F18CFAB9F3C8558CF94BF53F5BA283EE8
+ m3-rim-v90-building20-hold-07 F79858 2C0B4197AB477CD5F50EF1E6380366D814BB5C2FAFAB045FA69B169573881638
+ m3-rim-v90-building20-hold-11 F79887 FC5F4DF3CF5774641EA2F2F3D2A1F5A1A8D6DA80DE4ABA431A05128A9DED141F
+ m3-defence-v90-final-right-release F79887 FC5F4DF3CF5774641EA2F2F3D2A1F5A1A8D6DA80DE4ABA431A05128A9DED141F
+
+Each fullboot 415912 presentWatchbytes independently matched. FinalhashFC5F4DF3CF5774641EA2F2F3D2A1F5A1A8D6DA80DE4ABA431A05128A9DED141F.
+Proofs/ALL34PNG/Traces/CaptureStates/individualreviews/Manifest/Binary/Raw/
+PNG/TraceSHA retained:
+ tmp/cannon-m3-western-building20-type0-full-a/verified-summary.json
+ tmp/cannon-m3-western-building20-type0-full-b/verified-summary.json.
+python tmp/verify_cannon_m3_western_building20_type0_pair_20261026.py --compact
+PASSES after permittedexact2ownacceptedsteps.jsonl compaction259255421bytes.
+ALL34actualPNGs/proofs/traces/SHA/size/exactabsolute2fileallowlist/ALLancestor
+Reparse checks completed BEFOREfirstdeletion, NO other targets removed:
+ tmp/cannon-m3-western-building20-full-raw-cleanup-inventory-20261026.json
+ tmp/cannon-m3-western-building20-full-raw-cleanup-result-20261026.json.
+All34cold+24normal89/90PNG/shortRaws/Traces/neededCPs/fixedInputs/private89/90
+binaries preserved. Oldercompactions remain valid. Individualreviewrecord:
+ tmp/cannon-m3-western-building20-all34-actual-cold-png-reviewed-20261026.json.
+Normal89boundedbody230/88 NOT Goal230/82/noSpecial/Bank2; normal90omits
+unnecessarynorthorder and positively destroys thirdrequired20. No sourcefix/
+firstfailedpassclaim; hostCLI/sourcequoting notes preserve pre-guest failures:
+ tmp/cannon-m3-west-controls-host-command-development-20261026.json.
+Original bank/projectile/building code ranges byteidentical own73317/79138/
+79887, readonlydisassembly/nativewindows supplemental, NOT hardwarepass:
+ tmp/cannon-m3-west90-original-projectile-building-source-supplement-20261026.json.
+
+NOW canonical COLD-COVERED own79887CP:
+ tmp/cannon-m3-upper-west-v90-building-direct-20261026-output/Cannon-M3-upper-west-required20-v90-direct/m3-v90-west-direct-current.amigasav.
+Own10currentpositiveType5 and lastrequired22at36/443 Type20/state0, sixbanks
+1/0/0/0/0/0/Goal0/rem1/index0/selected0 are ownCPcounts/coordinates ONLY,
+NOT unrecorded wholecoldRAM equality. Newread-onlyown79887plan:
+ tmp/cannon-m3-own79887-functional-last-building-plan-20261026.json.
+Its functional/pairpending wording is historicalpreparation; latest263proof
+has precedence, not a separatebootresult.1039originalFootpixels230/114->
+160/338/collision0/excludes3,6,8,9,10 ONLYgeometry, ignores enemies/bullets/
+formation/fullActorcollision/dynamicobjects. NO movement/health/attack pass.
+Alternative earliest-range geometry plan1009pixels230/114->185/343:
+ tmp/cannon-m3-own79887-last-building-closest-range-terrain-plan-20261026.json.
+Its path starts east around the large water area; approximateviewport/range
+planning only, no actual camera/movement/health/throw guarantee.
+Private91 NOT created. After reading actualhealth/positions/terrain, next
+boundedlegitimate alternative towardrequired22 must retain all4positiveXY/
+Type0/state38zero everyaction, genuineorders/Rightqueue neutralbeforeLeft,
+actualtargetvisibility/all4distance100/intactstate beforefreshLeftwhileRight,
+nativebank/projectile/requiredStateTypeX/actualPNG. Remainingcurrent/newType5
+instances and actualM3Objective must also be handled; no flatkillcount or
+permanentoldslotrole. NO CPU/RAM/trainer/State/physics/pathfinding/renderer
+patch. Every next normalreference continuousEARLIERcold73317CP+8287+848=
+9135acceptedfixedphysicalprefix+newtail WITHOUT79887intermediaterestore,
+then2wholeindependentDF0boots/ALLEactualPNG before eachpass. No CP/cached
+hash as coldguard. Last22building/M3wholeobjective/laterVISIBLEsingleDrive
+requester/whole sevenRoadmap/A1000/hardware remain OPEN.
+FPU433puredecision/5formats/v4/v5/v6/ProgramthirdLFregistration/old421427433
+binaries unchanged, no newFPUcode/test/suite. Cannon uses frozen416Runner35
+only; A1000warningprimaryresearch stillresearch, no realboot/MCU/gateenable.
+Latest focusedchecks/integrity:
+ tmp/cannon-m3-western-building-accepted-final-checks-20261026.json
+ tmp/cannon-m3-western-building-accepted-roadmap-integrity-20261026.json.
+No newcommits/pushes/tags/releases/publication or hardware availability.
+
+
+### Cannon Mission3 east-lake controls91..94 and continuous seven-waypoint normal reference; new whole pair pending
+
+2026-10-26: accepted263/required20 and ALL older cold routes/identity windows,
+actualPNG/proofs/allowed compactions remain accepted. Old36490/90019 DONE;
+NEVER rewait/terminate/repeat old accepted sessions. Private91..94 NOW DONE,
+all4 separated builds0warnings/errors/exact frozen416Core; private95 NOT
+created. No Core/FPU/A1000 source/test/build change. FPU433 unchanged and
+not rerun. New recorders/replays all finished; old90 and earlier preserved.
+ALL31 actual normal PNGs individually ORIGINALdetail opened,7v91+7v92+8v93+
+9v94, including distinct sameframe finalhold/release files. Reviewrecord:
+ tmp/cannon-m3-east-lake-controls-all31-actual-normal-png-reviewed-20261026.json.
+Normalproofs one-time written, do NOT blind rerun the proofwriter:
+ tmp/cannon-m3-east-lake-v91-functional-verified-summary-20261026.json
+ tmp/cannon-m3-east-lake-v92-functional-verified-summary-20261026.json
+ tmp/cannon-m3-east-lake-v93-functional-verified-summary-20261026.json
+ tmp/cannon-m3-east-lake-v94-functional-verified-summary-20261026.json.
+ALL new normal references continuous from earlier own73317CP+9135 accepted
+fixedphysicalprefix WITHOUT79887intermediate restore. All9135 prefixstates
+allfields exact exceptseconds/imagepaths. New Actorpoststates exact recorder,
+finalCPU/frame/hash recorder exact/5192spritebytes ownSave exact; lossless
+watchdelta roundtrips/source/project/assembly/build/raw/trace/input/CP/PNG SHA.
+
+91:1314new actions/10452rows/F80890/282148RuntimeRAM/198092presentlogged.
+First5 real bodyarrivals279114/349121/419119/439119/519114. Then requested
+541/92 NOT reached; originalGoalY shifts to131/body541131/goal541131,
+originalLastOrder54192 unchanged. Final541131/532134/529139/526144 all4
+Type0/state38word0/Bank1/Goal0/rem1/index0. Bounded-no-progress, no health
+failure and no arrival92 claim.92:1314new/10452rows/F80891/sameRAMlogged,
+genuine revised order564100 still NOT reached: body/nativeGoal564114,
+originalLastOrder564100. Final564114/559119/556124/548130 Type0/state0.
+93:1283new/10421rows/F80879/281280RAM/197472logged. Genuine revised564114
+order reaches564116F80793 under UNCHANGED within4 criterion; six actual
+arrivals. Following small550127 order does NOT updateLastOrder564114,
+selectedActorOffset remains0. Mouse237119/camera33511/nearformation reads
+are source/state geometry only; no freshly observed branchPC/actorheight1E,
+no exact click-selection causality or selectedactorchange claimed. Final
+564116/559121/553126/547131 Type0/state0/Bank1/Goal0. No wrongorder,
+pathfinding/physics/renderer repair. Long failed north/no-progress controls
+not repeat without new reason. No arrival tolerances loosened.
+
+94: removes unnecessary close550127 click and issues genuine larger520153
+order after actual564116.1329new FIXED physicalinputs/10467rows/F80937,
+282568RAM/198392presentlogged, all4 positive signedXY/Type0000/state38word0
+at every new action, zeroPlayerLoss/CPUevents/HDF/floppywrites. Seven real
+leaderarrivals279114F80205,349121F80349,419119F80451,439119F80484,
+519114F80592,564116F80793,520153F80909; original nominal119/114 values
+where adjusted are NOT literalarrival claims. Right/nativeQueue neutral
+BEFORE ordinaryLeft; physicalRightFire afterLeftRelease. No specialLeftwhile
+Right/no bankconsumption/no required22 damage; Bank1/Goal0/rem1/index0.
+Final80937 P520153/525148/557123/552127 all4Type0/state0. Last2followers
+still goal564116, so NOT all4 arrived520153/synchronizedformation. Actual
+finalpictures show lower and upper soldiers, HUD1/fourHUDnames/noObjective.
+Own9positiveType5count and last22Type20/state0 ONLY ownCP counts, not full
+unrecordedcoldRAM equality. Source:
+ tmp/cannon-m3-east-lake-v94-seven-waypoints-direct-20261026.json.
+FunctionalONLY endCP (NOT yet cold-covered):
+ tmp/cannon-m3-east-lake-v94-seven-waypoints-direct-20261026-output/Cannon-M3-east-lake-v94-seven-waypoints-direct/m3-v94-east-lake-direct-current.amigasav.
+
+Native normal three currentType5instances, tracked24/28/29: current29 Type4
+and actualnegativeX79897/C16D3C+C2B8C2; init80014/C14AA8+C14AAC and new
+non-Type5Role6/C17746 then deactivation80063 are NOT secondenemy kill.
+NEW29Type5allocation80346/C14A1A/ReturnC16F70. Current28 Type4+negativeX
+80023/C16D3C+C2B8C2; init/NEW28allocation80752 for92/93/94 (80748in91,
+not tolerance). Current24 Type4native80154/C16D3C then actualnegativeX
+80155/C2B8C2. No initial-map/spawn assignment from CP/filelabels: freshFULL
+M3 birth histories must be inspected in upcoming whole traces. Three native
+removals all precede firstactualcapture80205; no invented killframe PNG.
+Normal main16 watch4PlayerX/Type+banklow+last22TypeLow+threeenemyX/Type,
+NOT fresh nativeGoalY/playerY/state38transient/sisterbank writes. Strict
+runtime4ActorXY/Type/state38/counters are separate. No flatwrite80 kills,
+permanentType4 slot/oldenemy resurrection assumption. Identityhelper:
+ tmp/cannon_m3_type5_identity_windows_20261026.py.
+
+ONLY after263 acceptance and positive1329normal fixed replay, two new
+independent wholeDF0boots started00:24UTC2026-10-26, sessions2330/3804:
+ tmp/cannon-m3-east-lake-seven-waypoints-type0-full-candidate-20261026.json
+ tmp/cannon-m3-east-lake-seven-waypoints-type0-full-a
+ tmp/cannon-m3-east-lake-seven-waypoints-type0-full-b.
+After restart read actualresult.json/files; old sessionIDs may be invalid.
+38435physicalactions/expected38436states/F80937/263oldactualguards/
+789814RuntimeRAM/32watches/16nativewriteobservers/no-final-checkpoint,
+frozenWide35/Core416. Strict preflight and normalScenario--validate PASS.
+Checker tmp/verify_cannon_m3_east_lake_seven_waypoints_type0_pair_20261026.py
+ordinary mode ONLY AFTER BOTH finished. Require ALL263oldguards/allRAM,
+whole recordedcoldPAIR allfields exact exceptseconds/imagepaths, all10565
+M3healthsamples (9236+1329) all4positiveXY/Type0/state38zero/noLosswrites.
+All1329normalCPU/cache/RAM/input/audio/disk/display/frame/HASH/presentation/
+watch/nativewrites exact bothboots, only inactiveq0DMAreadyFalse(normal)/
+True(cold) with ALLotherDMAfields strict. Entireexceptiontrace INCLUDING
+FRAMES exactly263prefix1092NONROM5=1/4=8/9=1083+135separateoriginalROM,
+ZEROadditional CPUevents/HDF/floppywrites. Fresh current24/28/29 Type5births
+must prove actualidentity, role6 exclusion/NEW29+28 allocations strict.
+9 uniqueactualcaptures perboot, ALL18actualcoldPNG individually ORIGINAL
+opened/9hashPNGpairs identical before any new acceptance/public272route.
+No CP/cachedhash as coldguard, no last22/M3Objective/laterVISIBLERequester/
+wholeRoadmap/hardware pass. ALL31normalPNG/shortRaws/Traces/Inputs/CPs/
+private91..94binaries preserved; NO rawlogs removed this turn so far.
+
+
+### FPU instruction-family begin/FPIAR qualification: primary research only,433 unchanged
+
+2026-10-26 source clarification ONLY:
+ tmp/fpu-family-specific-begin-fpiar-primary-research-20261026.json.
+Official MC68881/MC68882 User's Manual sections2.3.1..2.4/8.1 rechecked:
+ https://www.nxp.com/docs/en/reference-manual/MC68881UM.pdf.
+EXC clear/AEXC completion exclude FMOVEM/control moves. Arithmetic result
+condition codes, external move preservation and FMOD/FREM quotient ownership
+need separate family masks. Section8.1 arithmetic PC-transfer explicitly
+excludes BSUN-only enables; a future FPIAR contract cannot simply use any
+nonzero enable byte for every family. Conditional-family address protocol
+needs its own proof. This is RESEARCH ONLY, not instruction begin/completion,
+FPIAR capture, dispatcher, register mutation, ALU, CPU or hardware execution.
+All433source/registration/old421427433binaries and frozenCannon41635 unchanged.
+No new test/Corebuild/suite/boot/CPU/UI/state/FPU/68040 availability change.
+
+
+### Cannon Mission3 east-lake seven actual waypoints and three distinct Type5 instances fully cold-accepted;272 actual guards
+
+2026-10-26: wholepair2330/3804 NOW FINISHED/ACCEPTED, NEVER rewait/terminate/
+repeat these or earlier accepted sessions. Previous91notcreated/263pending/
+newpairpending paragraphs are historical. Private91..94 and all4 normal
+replays DONE; NO wholecandidate/recorder remains pending, private95 NOT
+created. Old263 and ALLolder proofs/actualimages/nativeidentitywindows/
+allowedcompactions remain accepted. Frozen416Core/Wide35Runner unchanged,
+NO Core/FPU/A1000source/test/build change this turn;433suites NOT repeated.
+Permanentroute:
+ Tools/a500-cannon-fodder-mission-three-east-lake-seven-waypoints-three-instances-route.json
+has272 ACTUALcoldimageguards=263acceptedprefix+9real new capturelabels.
+Each independentwholeDF0boot38436States/F80937/263oldactualguards/
+789814RuntimeRAM-byteassertions independently checked. All10565M3action
+samples since realConfirm72613 (9236old+1329new) fourpositive signedXY/
+Type0000/state38word0000/noPlayerLosswrites. ALL1329continuousnormalTail
+CPU/cache/RAM/input/audio/disk/display/frame/HASH/presentation/watch and
+COMPLETE nativeTailWrites exact in BOTHboots. Only1329DMAreadyFalse
+(normalRestore)/True(cold), strictinactive/queue0/ALLotherDMAfields exact.
+WHOLErecordedcoldPAIR allfields strict exceptseconds/imagepaths; NOT
+unrecorded wholeRAM equality. ENTIREexceptiontrace INCLUDINGFRAMES exactly
+accepted263prefix1092originalNONROM5=1/4=8/9=1083+135separateexactOriginal
+ROM/ZEROadditionalCPUevents/HDF/floppywrites. Original366+second36331985/
+31986+third36369291/69292 remain strictoriginalsets/no blanketvectorallow.
+No new hash/cache/runtime/native/Guest/Core/Input tolerance for this pass.
+
+Seven real LEADERbodyarrivals279114F80205,349121F80349,419119F80451,
+439119F80484,519114F80592,564116F80793,520153F80909. Nominal119/114
+adjustments retained as actualnativeGoal observations, no false literal
+arrivalclaim. Right/nativeQueue actually neutral BEFORE ordinaryLeft,
+immediatephysicalRightFire AFTERLeftRelease/read-only currentvisibleType5
+tracking. NO specialLeftwhileRight/NObankconsumption/required22damage.
+Final80937P520153/525148/557123/552127 allType0/state0/Bank1/Goal0/rem1/
+index0. Last2followers STILLgoal564116, NOT all4 arrived520153/formation
+synchronized. Own9positiveType5/last22Type20state0 counts onlyownCP; no
+unrecordedcoldRAMequality. All3enemy removals precede firstcapture80205;
+no killframe PNG exists in this route and none is invented.
+FreshFULLM3 Type5instance identity windows (separate ordered events):
+ Slot29 Type05birthF79427/C14A1A/Return00C16F70, Type04F79897/C16D3C, ACTUALnegativeXF79897/C2B8C2.
+ Slot28 Type05birthF73103/C14A1A/Return00C16F70, Type04F80023/C16D3C, ACTUALnegativeXF80023/C2B8C2.
+ Slot24 Type05birthF73574/C14A1A/Return00C16F70, Type04F80154/C16D3C, ACTUALnegativeXF80155/C2B8C2.
+All THREE are newly generated AFTERrealConfirm72613, NOT initial map foes:
+29birth79427/28birth73103/24birth73574 allC14A1A/ReturnC16F70. Old ownCP
+slotlists/filenames never establish originalmaplifetimes. Full birth records/
+complete ordered Type5 windows retained in bothproofs;
+no initial-map/spawn assignment from filename/ownCP alone. Current29 later
+init80014/C14AA8+C14AAC/Type6C17746/deactivation80063/C16D3C+C2B8C2 is
+NEWNON-Type5role6, NOT another enemykill. NEW29Type05allocation80346/
+C14A1A/ReturnC16F70, NEW28Type05allocation80752/C14A1A/ReturnC16F70;
+old28/29removal stays passed, no resurrection or permanentType4slot rule.
+First ordinarychecker stopped BEFORE acceptance in its exact29rolelist:
+missed originalType00/C14AAC initializer80346 BEFORE NEWType05/C14A1A.
+Savednormal and BOTHcold traces already contained exactly the same six
+orderedTypewrites. Exacthostlist corrected to allsix, then fullstrictpair
+passed, no Guest/Core/Inputs/candidate/runtime/hash/cache tolerancechange:
+ tmp/cannon-m3-east-lake-role29-initialization-verifier-development-20261026.json.
+This is NOT a first-attempt pass and initializer80346 is NOT anotherkill.
+A separate PowerShell quoting failure occurred before a futureintegrity
+script edit/execution; literal-script correction/firsterror preserved:
+ tmp/cannon-m3-east-lake-integrity-host-quoting-development-20261026.json.
+No guest/test/build/runtime/hash failure from that hostcommand.
+Freshlast22 Type20load71540/C0A5E4 with NO subsequent Typewrite; its
+state38word0 strictfinalruntimeguard/ownCP, NOT native transientproof.
+Main16observers are4PlayerX/Type+banklow+last22TypeLow+24/28/29X/Type.
+No freshnativeGoalY/PlayerY/state38transient/sisterbank write claim. All
+fourActorXY/Type/state38/Bank1/Goal0/rem1/index0 are runtime/privateaction
+reads separately. Every earlier263identitywindow stays SHA-pinned at
+actually observedaddresses, no freshly unobserved oldrole claimed.
+
+ALL18 ACTUALcoldPNG individually opened atOriginaldetail,9PNG/hashpairs
+byteidentical; both80937finalhold03/rightRelease files separately opened.
+Actual snow/water/cliff/earlierwreck passage/sevenleader movements/4HUDnames/
+HUD1/noObjectiveText, final two lower/two upper actors. Health uses native
+Type0/XY/state38/writes, notHUDalone. Actualnewcapturehashes BOTHboots:
+ m3-rim-v94-wp0-arrived F80205 A50BAEECC24E884C7A43868F1E52BB643B23CECEC1477C2ED8C7C8C8943F8FE8
+ m3-rim-v94-wp1-arrived F80349 08F6792ACE7128DEF3B9B49CA6B8C874A06C5153CC7BE9875B152A86E555AE45
+ m3-rim-v94-wp2-arrived F80451 3EDFB2C440AD04058EC0BF73E028E575AA82FB02D92EEB0D3576A87F419891E1
+ m3-rim-v94-wp3-arrived F80484 18C390CBD52BAA76F717932E2E85B7299F8E2C8AA596A29196138E8445D3DA73
+ m3-rim-v94-wp4-arrived F80592 AF12C0BA94C67BBE272FB47A8C7B2F7D81C837FEE5B5080A943DC4BD7C39E958
+ m3-rim-v94-wp5-arrived F80793 A69AC7C77E21DE761C200D0BB5EBC1BBA8420B4FE925FC6453F48038EB770350
+ m3-rim-v94-wp6-arrived F80909 11A6D1FBF8BE0E01D11DA10EE714A76A915A6A53F27AFA6949F71258AF555400
+ m3-east-lake-v94-final-hold-03 F80937 729284AA371B49DD6BA3E2138A3059DFB7A20F755F3EABC7942C9D198FE1C00A
+ m3-defence-v94-final-right-release F80937 729284AA371B49DD6BA3E2138A3059DFB7A20F755F3EABC7942C9D198FE1C00A
+
+Each boot independently checked 442492 presentWatchbytes. Finalhash729284AA371B49DD6BA3E2138A3059DFB7A20F755F3EABC7942C9D198FE1C00A.
+Proofs/ALL18coldPNG/Traces/CaptureStates/individualreviews/Manifest/
+Binary/Raw/PNG/TraceSHA retained:
+ tmp/cannon-m3-east-lake-seven-waypoints-type0-full-a/verified-summary.json
+ tmp/cannon-m3-east-lake-seven-waypoints-type0-full-b/verified-summary.json.
+python tmp/verify_cannon_m3_east_lake_seven_waypoints_type0_pair_20261026.py --compact
+PASSES after permittedexact2ownacceptedsteps.jsonl compaction268518142bytes.
+ALL18actualPNG/proofs/traces/SHA/size/exactabsolute2fileallowlist/ALLancestor
+Reparse checks BEFOREfirstdeletion, NOothertargets. Inventory/result:
+ tmp/cannon-m3-east-lake-seven-waypoints-full-raw-cleanup-inventory-20261026.json
+ tmp/cannon-m3-east-lake-seven-waypoints-full-raw-cleanup-result-20261026.json.
+All18cold+31normal91..94actualPNG/shortRaws/Traces/neededCPs/fixedInputs/
+privatebinaries preserved, oldercompactions valid. Actualcoldreviewrecord:
+ tmp/cannon-m3-east-lake-seven-waypoints-all18-actual-cold-png-reviewed-20261026.json.
+All4normalproofs/31actualpictures/source/privatebuilds retained;91/92bounded
+unreached northGoals,93sixrealwaypoints then unchangedoldorder on smallclick,
+94larger genuine520153order/sevenrealwaypoints as precedingsection. No
+Pathfinding/physics/input/renderer/selectionrepair or tolerance relaxation.
+
+NOW canonical COLD-COVERED own80937CP:
+ tmp/cannon-m3-east-lake-v94-seven-waypoints-direct-20261026-output/Cannon-M3-east-lake-v94-seven-waypoints-direct/m3-v94-east-lake-direct-current.amigasav.
+Read-only next ownCPstate/plan:
+ tmp/cannon-m3-own80937-functional-four-goals-and-last-building-plan-20261026.json.
+Its functional/pairpending wording is historicalpreparation, latest272
+acceptance has precedence, not separatebootresult. Actual4goals520153/
+520153/564116/564116, all4healthy/Bank1/last22intact36/443/9owncurrentType5.
+526originalFootpixels520153->185343 are ONLYgeometry, excludes3/6/8/9/10/
+collision0 but ignoresenemies/bullets/formation/fullActorcollision/dynamic
+objects/actualviewport. NOT all4synchronization/movement/health/throwpass.
+Private95 NOTcreated. After actualhealth/positions/goals/terrain reads,
+next boundedgenuineorders must keep all4positiveXY/Type0/state38zero every
+action/immediateNEGATIVE onnonneutral38/Type4/negativeX; corpseHUD/XYnotlife.
+Rightqueue neutralbeforeordinaryLeft, actualtarget22viewport/intactType20/
+all4distance>=100 BEFORE freshLeftwhileRight/nativebank1->0/projectile/
+buildingstate/type/ACTUALnegativeX/realexplosion+wreck beforelastbuildingpass.
+Remainingcurrent and newlyspawnedType5instances/actualM3Objective must also
+be handled; no objective from C01DD0scratch or flatkillcounts. No CPU/RAM/
+trainer/State/physics/pathfinding/renderer patch. Every authoritative new
+normalreference continuous EARLIERcold73317CP+9135+1329=10464acceptedfixed
+physicalprefix+newtail WITHOUT80937intermediaterestore, then2wholeDF0boots/
+ALLactualcoldPNG individually reviewed before each newpass. No CPhash as
+coldguard. Last22/M3wholeobjective/laterVISIBLEsingleDriveRequester/whole
+sevenRoadmap/A1000/hardware remain OPEN. FPU433/421427/formats/v4/v5/v6/
+thirdProgramregistration unchanged, A1000research stillresearch/noRealboot.
+Latestfocusedchecks/integrity:
+ tmp/cannon-m3-east-lake-accepted-final-checks-20261026.json
+ tmp/cannon-m3-east-lake-accepted-roadmap-integrity-20261026.json.
+No commits/pushes/tags/releases/publication/hardware availability change.

@@ -23,6 +23,8 @@ namespace AmigaEmulator.Tests
             yield return Test("savestate resumes partial ATA transfer and does not snapshot the host disk", TestState);
             yield return Test("Zorro II 2/4/8 MB Autoconfig assignment registers non-aliased RAM", TestAutoConfig);
             yield return Test("Zorro III 8/16/32 MB native Autoconfig, 32-bit RAM, reset and restore", TestZorroIII);
+            yield return Test("Zorro III slot chain isolates nibble reads, assignment, shut-up and RAM", TestZorroIIISlots);
+            yield return Test("Zorro III multi-card restore preserves partial configuration and guards layout", TestZorroIIISlotState);
             yield return Test("A4000 IDE uses DD2020, automatic interrupt acknowledgement and distinct board state", TestA4000Wiring);
             yield return Test("A4000 bus transfers preserve multi-sector writes, partial restore and read-only errors", TestA4000Transfer);
         }
@@ -48,6 +50,8 @@ namespace AmigaEmulator.Tests
                 Check.Equal((byte)0xA0, bus.ReadByte(0xFF000000), "Zorro III type and size upper nibble.");
                 Check.Equal((byte)(size == 32 * 1024 * 1024 ? 0x10 : 0x00), bus.ReadByte(0xFF000100), "Size low nibble.");
                 Check.Equal((byte)(size == 8 * 1024 * 1024 ? 0x6F : 0x4F), bus.ReadByte(0xFF000008), "Memory flags are complemented.");
+                Check.Equal((byte)(size == 8 * 1024 * 1024 ? 0x5F : 0xFF), bus.ReadByte(0xFF000108),
+                    "8 MiB declares its explicit sub-size; larger boards link their full physical size.");
                 uint baseAddress = size == 32 * 1024 * 1024 ? 0x12000000u : 0x10000000u;
                 bus.WriteByte(0xFF000048, (byte)(baseAddress >> 16));
                 bus.WriteByte(0xFF000044, (byte)(baseAddress >> 24));
@@ -78,6 +82,81 @@ namespace AmigaEmulator.Tests
                 Check.True(bus.ZorroIII.Configured && bus.ZorroIII.BaseAddress == 0, "Shut-up hides the board until reset.");
             }
         }
+        private static AmigaModel ZorroIIISlotModel(params int[] sizes) =>
+            AmigaModel.Create(AmigaMachineModel.A3000, AmigaRamProfile.Chip2MbFast4Mb)
+                .WithDevelopmentZorroIIIRamBoards(sizes);
+
+        private static void TestZorroIIISlots()
+        {
+            const int mib = 1024 * 1024;
+            int[] sizes = { 8 * mib, 16 * mib, 32 * mib, 8 * mib };
+            var model = ZorroIIISlotModel(sizes); sizes[0] = 32 * mib;
+            Check.Equal(8 * mib, model.ZorroIIIRamBoardBytes[0], "Caller cannot mutate the attached slot layout.");
+            Check.Equal(4, model.WithDevelopmentProcessor(AmigaCpuModel.M68030, 25000000)
+                .WithDevelopmentChipset(AmigaChipset.Ecs).WithDevelopmentIde(AmigaIdeModel.Gayle)
+                .WithDevelopmentDesktopResources().ZorroIIIRamBoardBytes.Count, "Development clones retain every slot.");
+            using var system = new AmigaSystem(model); var bus = system.Bus;
+            var cards = bus.ZorroIIIExpansion.Cards;
+            Check.Equal(4, cards.Count, "Four RAM boards are installed.");
+            Check.Equal((byte)0x6F, bus.ReadByte(0xFF000008), "Only first 8 MiB board presents its ROM.");
+            Check.Equal(0L, cards[1].ConfigReads, "Later slot cannot see config reads before CFGIN.");
+            bus.WriteByte(0xFF000048, 0); bus.WriteByte(0xFF000044, 0x40);
+            Check.Equal((byte)0x4F, bus.ReadByte(0xFF000008), "Assignment enables the second slot.");
+            bus.WriteWord(0xFF000044, 0x4100);
+            Check.Equal((byte)0x10, bus.ReadByte(0xFF000100), "Third 32 MiB size nibble now drives config.");
+            bus.WriteByte(0xFF00004C, 0);
+            Check.True(cards[2].Configured && cards[2].BaseAddress == 0, "Shut-up passes the chain without mapping RAM.");
+            bus.WriteWord(0xFF000044, 0x4280);
+            Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(0xFF000000), "Last assignment releases Autoconfig.");
+            uint[] bases = { 0x40000000, 0x41000000, 0x42800000 };
+            for (int i = 0; i < bases.Length; i++) bus.WriteLong(bases[i] + 0x104, (uint)(0x12340000 + i));
+            for (int i = 0; i < bases.Length; i++)
+            {
+                Check.Equal((uint)(0x12340000 + i), bus.ReadLong(bases[i] + 0x104), "Cards do not alias one another.");
+                Check.True(bus.IsDataCacheable(bases[i] + 0x104), "Each assigned RAM range is cacheable.");
+            }
+            bus.ResetExpansionDevices();
+            Check.Equal((byte)0x6F, bus.ReadByte(0xFF000008), "Reset starts again at the first slot.");
+            Check.Equal(AmigaAddressRegion.Unmapped, bus.GetRegion(bases[1]), "Reset unmaps later cards too.");
+            bus.WriteWord(0xFF000044, 0x4000); bus.WriteWord(0xFF000044, 0x4100);
+            Check.Equal(0x12340001u, bus.ReadLong(0x41000104), "Warm reset retains each card's RAM.");
+            bus.ZorroIIIExpansion.ClearRam();
+            Check.Equal(0u, bus.ReadLong(0x41000104), "Power-loss clearing reaches later cards.");
+            foreach (int[] invalid in new[] { Array.Empty<int>(), new[] { 8 * mib, 4 * mib }, new[] { 8 * mib, 8 * mib, 8 * mib, 8 * mib, 8 * mib } })
+            {
+                bool rejected = false; try { ZorroIIISlotModel(invalid); } catch (ArgumentException) { rejected = true; }
+                Check.True(rejected, "Unsupported slot layouts are rejected.");
+            }
+        }
+
+        private static void TestZorroIIISlotState()
+        {
+            const int mib = 1024 * 1024;
+            using var system = new AmigaSystem(ZorroIIISlotModel(16 * mib, 8 * mib)); var bus = system.Bus;
+            bus.WriteWord(0xFF000044, 0x4000); bus.WriteLong(0x40000100, 0x12345678);
+            bus.WriteByte(0xFF000048, 0x80); // Second board is waiting for the high address byte.
+            using var state = new MemoryStream(); system.SaveState(new BinaryWriter(state));
+            Check.Equal(20, BitConverter.ToInt32(state.ToArray(), 0), "Only multi-card states use the new layout version.");
+            bus.WriteByte(0xFF000044, 0x41); bus.WriteLong(0x41800100, 0x99);
+            state.Position = 0; system.LoadState(new BinaryReader(state));
+            Check.True(bus.ZorroIII.Configured && !bus.ZorroIIIExpansion.Cards[1].Configured, "Restore resumes the config chain.");
+            Check.Equal(0x12345678u, bus.ReadLong(0x40000100), "Earlier card's contents restore independently.");
+            bus.WriteByte(0xFF000044, 0x42);
+            Check.Equal(0x42800000u, bus.ZorroIIIExpansion.Cards[1].BaseAddress, "Partial assignment latch survives restore.");
+            using var mismatch = new AmigaSystem(ZorroIIISlotModel(8 * mib, 16 * mib));
+            mismatch.Bus.WriteLong(0x200, 0xFACECAFE); state.Position = 0; bool rejected = false;
+            try { mismatch.LoadState(new BinaryReader(state)); } catch (InvalidDataException) { rejected = true; }
+            Check.True(rejected, "Equal total RAM with different slot sizes is rejected.");
+            Check.Equal(0xFACECAFEu, mismatch.Bus.ReadLong(0x200), "Layout rejection precedes changes to live machine RAM.");
+            bus.WriteLong(0x42800100, 0xABCD1234);
+            using var expansion = new MemoryStream(); bus.ZorroIIIExpansion.SaveState(new BinaryWriter(expansion));
+            byte[] truncated = expansion.ToArray(); Array.Resize(ref truncated, truncated.Length - 1);
+            rejected = false;
+            try { bus.ZorroIIIExpansion.LoadState(new BinaryReader(new MemoryStream(truncated))); } catch (EndOfStreamException) { rejected = true; }
+            Check.True(rejected, "Truncated later-card data is rejected.");
+            Check.Equal(0xABCD1234u, bus.ReadLong(0x42800100), "Rejected expansion restore preserves all current cards.");
+        }
+
         private static void TestA4000Transfer()
         {
             using var fixture = new Fixture();

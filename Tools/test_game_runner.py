@@ -14,6 +14,14 @@ RUNNER = Path(__file__).parent / "GameRunner/bin/x64/Release/net10.0-windows7.0/
 
 
 class PreflightTests(unittest.TestCase):
+    def test_unverified_a1000_requires_diagnostic_core_factory(self):
+        for ram in (None, "Chip512K", "Chip1Mb"):
+            with self.subTest(ram=ram):
+                scenario = {"name": "unreleased-a1000", "model": "A1000", "actions": []}
+                if ram is not None:
+                    scenario["ram"] = ram
+                self.assert_invalid([scenario])
+
     def run_scenario(self, scenarios, *, validate=True, raw=False, extra_args=()):
         with tempfile.TemporaryDirectory(prefix="AmigaScenarioPreflight-") as temp:
             root = Path(temp)
@@ -100,6 +108,45 @@ class PreflightTests(unittest.TestCase):
                                     [0, 0x1FFFFF, 0x200000], "actions": [{"type": "wait"}]}])
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_slow_ram_diagnostics_accept_configured_storage(self):
+        result = self.run_scenario([{"name": "slow-diagnostics", "model": "A500",
+            "ram": "Chip512KSlow512K", "memoryWatchAddresses": [0xC00000, 0xC7FFFF],
+            "traceMemoryWriteAddresses": [0xC00000, 0xC7FFFF], "actions": [
+                {"type": "wait", "expectedMemoryBytes": {str(0xC00000): "00", str(0xC7FFFF): "00"}},
+                {"type": "memory-snapshot", "memoryStart": 0xC7F000, "memoryLength": 4096}]}])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn("VALID 1", result.stdout)
+
+    def test_slow_ram_diagnostics_reject_missing_or_outside_storage(self):
+        def diagnostics(address):
+            return ({"memoryWatchAddresses": [address]},
+                    {"traceMemoryWriteAddresses": [address]},
+                    {"actions": [{"type": "wait", "expectedMemoryBytes": {str(address): "00"}}]},
+                    {"actions": [{"type": "memory-snapshot", "memoryStart": address, "memoryLength": 1}]})
+        for model, ram, address in (("A500", "Chip1Mb", 0xC00000),
+                                    ("A500", "Chip512K", 0xC00000),
+                                    ("A3000", "Chip2MbFast4Mb", 0xC00000),
+                                    ("A500", "Chip512KSlow512K", 0xC80000)):
+            for fields in diagnostics(address):
+                with self.subTest(model=model, ram=ram, address=address, fields=fields):
+                    self.assert_invalid([{"name": "invalid-slow", "model": model,
+                                         "ram": ram, "actions": [], **fields}])
+
+    def test_slow_ram_snapshots_cannot_cross_the_configured_end(self):
+        for length, valid in ((16, True), (17, False)):
+            with self.subTest(length=length):
+                scenario = {"name": "slow-end", "model": "A500", "ram": "Chip512KSlow512K",
+                            "actions": [{"type": "memory-snapshot", "memoryStart": 0xC7FFF0,
+                                         "memoryLength": length}]}
+                if valid:
+                    result = self.run_scenario([scenario])
+                    self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                else:
+                    self.assert_invalid([scenario])
+        self.assert_invalid([{"name": "slow-wrap", "model": "A500", "ram": "Chip512KSlow512K",
+                             "actions": [{"type": "memory-snapshot", "memoryStart": 0xFFFFFFFF,
+                                          "memoryLength": 2}]}])
+
     def test_zorro_iii_development_ram_requires_a_supported_desktop_board(self):
         for model, size in (("A500", 8), ("A1200", 8), ("A3000", 7)):
             with self.subTest(model=model, size=size):
@@ -109,6 +156,42 @@ class PreflightTests(unittest.TestCase):
                                     "ram": "Chip2MbFast4Mb", "zorroIIIRamMiB": 8,
                                     "actions": [{"type": "wait"}]}])
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_zorro_iii_multiple_slots_require_distinct_scalar_or_list_configuration(self):
+        for sizes in ([], [8, 4], [8] * 5, [-8, 16]):
+            with self.subTest(sizes=sizes):
+                self.assert_invalid([{"name": "invalid-z3-slots", "model": "A3000",
+                                     "zorroIIIRamBoardsMiB": sizes, "actions": []}])
+        self.assert_invalid([{"name": "ambiguous-z3", "model": "A3000", "zorroIIIRamMiB": 8,
+                             "zorroIIIRamBoardsMiB": [16], "actions": []}])
+        self.assert_invalid([{"name": "unsupported-z3", "model": "A1200",
+                             "zorroIIIRamBoardsMiB": [8, 16], "actions": []}])
+        result = self.run_scenario([{"name": "valid-z3-slots", "model": "A3000",
+                                    "ram": "Chip2MbFast4Mb", "zorroIIIRamBoardsMiB": [8, 16, 32, 8],
+                                    "actions": [{"type": "wait"}]}])
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_full_squad_enemy_objective_write_observation_is_accepted(self):
+        # A three-soldier fight needs all five enemy slots and the native objective,
+        # in addition to each player's type word: nine independent observations.
+        addresses = [0xC7DB45, 0xC7DBBB, 0xC7DC31, 0xC7E1A0, 0xC7E216,
+                     0xC7E28C, 0xC7E728, 0xC7E79E, 0xC01DCC]
+        for watched in (addresses, list(range(0xC00000, 0xC00010))):
+            with self.subTest(addresses=watched):
+                result = self.run_scenario([{"name": "full-squad-observation",
+                    "model": "A500", "ram": "Chip512KSlow512K",
+                    "traceMemoryWriteAddresses": watched, "actions": []}])
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("VALID 1", result.stdout)
+
+    def test_write_observation_remains_bounded_and_ram_only(self):
+        for watched in (list(range(0xC00000, 0xC00011)),
+                        [0xC00000] * 9,
+                        list(range(0xC00000, 0xC00008)) + [0xDFF000]):
+            with self.subTest(addresses=watched):
+                self.assert_invalid([{"name": "bad-wide-observation",
+                    "model": "A500", "ram": "Chip512KSlow512K",
+                    "traceMemoryWriteAddresses": watched, "actions": []}], validate=False)
 
     def test_write_protection_requires_an_explicit_tab_and_valid_drive(self):
         for action in ({"type": "write-protect"},

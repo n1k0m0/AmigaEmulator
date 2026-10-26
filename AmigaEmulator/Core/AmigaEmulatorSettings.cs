@@ -48,6 +48,8 @@ namespace AmigaEmulator.Core
 
         public void ApplyStartupModel(AmigaModel model)
         {
+            if (!AmigaModel.IsSelectableMachine(model.Machine))
+                throw new InvalidOperationException("Development boards cannot be selected through frontend settings.");
             MachineModel = model.Machine;
             RamProfile = AmigaModel.NormalizeRamProfile(MachineModel, GetRamProfile(model));
             Kickstart = AmigaKickstart.Auto; CustomKickstartPath = string.Empty;
@@ -236,7 +238,7 @@ namespace AmigaEmulator.Core
             {
                 settings.MachineModel = AmigaMachineModel.A500;
             }
-            if (!Enum.IsDefined(settings.MachineModel)) settings.MachineModel = AmigaMachineModel.A500;
+            if (!AmigaModel.IsSelectableMachine(settings.MachineModel)) settings.MachineModel = AmigaMachineModel.A500;
             if (!Enum.IsDefined(settings.RamProfile)) settings.RamProfile = AmigaRamProfile.Chip1Mb;
             settings.RamProfile = AmigaModel.NormalizeRamProfile(settings.MachineModel, settings.RamProfile);
             if (settings.PcmciaSramMiB != 0 && settings.PcmciaSramMiB != 1 && settings.PcmciaSramMiB != 2 && settings.PcmciaSramMiB != 4)

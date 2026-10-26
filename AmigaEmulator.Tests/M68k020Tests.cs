@@ -40,6 +40,10 @@ namespace AmigaEmulator.Tests
             yield return Test("68030 protection faults create a format A frame and double faults halt", Test030Fault);
             yield return new ChipTestCase("CPU/030MMU", "MOVE postincrements survive a protected write and RTE retry",
                 "Motorola MC68030UM 8.2.3, 8.4", Test030MovePostincrementRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVE device-source data waits for a writable simple destination",
+                "Motorola MC68030UM 8.2.1-8.2.3; bounded translation preflight, not full bus-cycle continuation", Test030MoveDeviceSourceRetry);
+            yield return new ChipTestCase("CPU/030MMU", "MOVE aliased simple EAs retain ordering and A7 byte stride",
+                "Motorola M68000 PRM MOVE; MC68030UM 8.2.1-8.2.3", Test030MoveAliasedEaRetry);
             yield return new ChipTestCase("CPU/030MMU", "split long source read retries after a second-page fault",
                 "Motorola MC68030UM 8.2.1-8.2.3", Test030SplitLongSourceRetry);
             yield return new ChipTestCase("CPU/030MMU", "split long register write never repeats its first physical word",
@@ -718,6 +722,122 @@ namespace AmigaEmulator.Tests
                 Check.Equal(0x4002u, cpu.GetA(1), "Destination advances once.");
                 Check.Equal((ushort)0xABCD, bus.ReadWord(0xA000), "Original source reaches the destination.");
                 Check.Equal((ushort)0, bus.ReadWord(0xA002), "Retry does not write the next word.");
+            }
+        }
+
+        private static void Test030MoveDeviceSourceRetry()
+        {
+            // The retry implementation cannot replay a completed device read.
+            // For these extension-free EAs, defer physical data until source
+            // and destination translations both succeed. Exercise all sizes,
+            // indirect/postincrement/predecrement combinations and both paths.
+            foreach (bool deferred in new[] { false, true })
+            foreach (int size in new[] { 1, 2, 4 })
+            foreach (int sourceMode in new[] { 2, 3, 4 })
+            foreach (int destinationMode in new[] { 2, 3, 4 })
+            {
+                int prefix = size == 1 ? 0x1000 : size == 2 ? 0x3000 : 0x2000;
+                ushort opcode = (ushort)(prefix | 0x0200 | destinationMode << 6 | sourceMode << 3);
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, opcode);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0x9009);
+                bus.WriteLong(0x5010, 0xA00D);
+                bus.WriteLong(0x9000, 0xABCD1234);
+                uint sourceBase = sourceMode == 4 ? 0x3000u + (uint)size : 0x3000u;
+                uint destinationBase = destinationMode == 4 ? 0x4000u + (uint)size : 0x4000u;
+                cpu.SetA(0, sourceBase);
+                cpu.SetA(1, destinationBase);
+                bus.TrackedWordReadAddress = 0x9000;
+                bus.TrackedByteReadAddress = 0x9000;
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Protected destination enters the handler.");
+                Check.Equal(sourceBase, cpu.GetA(0), "Fault leaves source An restartable.");
+                Check.Equal(destinationBase, cpu.GetA(1), "Fault leaves destination An restartable.");
+                Check.Equal(0, size == 1 ? bus.TrackedByteReadCount : bus.TrackedWordReadCount,
+                    "No physical device source read precedes the destination translation fault.");
+                Check.Equal(0u, bus.ReadLong(0x5010) & 0x10u, "An unretired destination is not modified.");
+                bus.WriteLong(0x5010, 0xA009);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x1000u, cpu.PC, "RTE retries the MOVE.");
+                cpu.Step();
+                Check.Equal(0x1002u, cpu.PC, "MOVE completes after the repair.");
+                Check.Equal(1, size == 1 ? bus.TrackedByteReadCount : bus.TrackedWordReadCount,
+                    "The physical device source is read only once.");
+                uint expectedSource = sourceMode == 2 ? 0x3000u : sourceMode == 3 ? 0x3000u + (uint)size : 0x3000u;
+                uint expectedDestination = destinationMode == 2 ? 0x4000u : destinationMode == 3 ? 0x4000u + (uint)size : 0x4000u;
+                Check.Equal(expectedSource, cpu.GetA(0), "Source EA retires once.");
+                Check.Equal(expectedDestination, cpu.GetA(1), "Destination EA retires once.");
+                uint value = size == 1 ? bus.ReadByte(0xA000) : size == 2 ? bus.ReadWord(0xA000) : bus.ReadLong(0xA000);
+                Check.Equal(size == 1 ? 0xABu : size == 2 ? 0xABCDu : 0xABCD1234u, value,
+                    "Original source value reaches the repaired destination.");
+            }
+        }
+
+        private static void Test030MoveAliasedEaRetry()
+        {
+            foreach (bool deferred in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, 0x32D8);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, 0);
+                bus.WriteLong(0x5010, 0);
+                cpu.SetA(0, 0x3000);
+                cpu.SetA(1, 0x4000);
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                if (deferred)
+                    for (int i = 0; i < 500 && bus.ReadLong(cpu.A7 + 16) != 0x3000; i++) cpu.Tick(true);
+                Check.Equal(0x3000u, bus.ReadLong(cpu.A7 + 16), "Source translation fault takes priority over the destination.");
+                Check.Equal(0x3000u, cpu.GetA(0), "A source fault preserves its original address.");
+                Check.Equal(0x4000u, cpu.GetA(1), "A source fault cannot advance the destination.");
+            }
+            foreach (bool deferred in new[] { false, true })
+            foreach (bool descending in new[] { false, true })
+            {
+                // MOVE.W (A0)+,(A0)+ or MOVE.W -(A0),-(A0).
+                // Destination EA must include the source's stride even though
+                // preflight itself must not change the architectural register.
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, descending ? (ushort)0x3120 : (ushort)0x30D8);
+                Map030(cpu, bus);
+                bus.WriteLong(0x500C, descending ? 0x900Du : 0x9009u);
+                bus.WriteLong(0x5010, 0xA00D);
+                uint initial = descending ? 0x3004u : 0x3FFEu;
+                uint sourcePhysical = descending ? 0x9002u : 0x9FFEu;
+                uint destinationPhysical = descending ? 0x9000u : 0xA000u;
+                bus.WriteWord(sourcePhysical, 0x5678);
+                bus.TrackedWordReadAddress = sourcePhysical;
+                cpu.SetA(0, initial);
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x2000; i++) cpu.Tick(true);
+                else cpu.Step();
+                Check.Equal(0x2000u, cpu.PC, "Aliased protected store faults.");
+                Check.Equal(initial, cpu.GetA(0), "Both strides are rewound on fault.");
+                Check.Equal(0, bus.TrackedWordReadCount, "Aliased preflight does not read the device source.");
+                bus.WriteLong(descending ? 0x500Cu : 0x5010u, descending ? 0x9009u : 0xA009u);
+                cpu.MemoryManagementUnit.Flush();
+                if (deferred)
+                    for (int i = 0; i < 500 && cpu.PC != 0x1000; i++) cpu.Tick(true);
+                else cpu.Step();
+                cpu.Step();
+                Check.Equal(descending ? 0x3000u : 0x4002u, cpu.GetA(0), "Both ordered strides retire once.");
+                Check.Equal((ushort)0x5678, bus.ReadWord(destinationPhysical), "Store uses the post-source destination EA.");
+                Check.Equal(1, bus.TrackedWordReadCount, "Aliased source is read exactly once.");
+            }
+            foreach (bool descending in new[] { false, true })
+            {
+                var (cpu, bus) = Prepare(AmigaCpuModel.M68030, descending ? (ushort)0x1F27 : (ushort)0x1EDF);
+                Map030(cpu, bus);
+                cpu.SetA(7, descending ? 0x7FFCu : 0x7FF8u);
+                bus.WriteByte(descending ? 0x7FFAu : 0x7FF8u, 0xA5);
+                cpu.Step();
+                Check.Equal(descending ? 0x7FF8u : 0x7FFCu, cpu.GetA(7), "Byte MOVE applies A7's two-byte stride twice.");
+                Check.Equal((byte)0xA5, bus.ReadByte(descending ? 0x7FF8u : 0x7FFAu), "A7 alias copies to the ordered byte address.");
             }
         }
 

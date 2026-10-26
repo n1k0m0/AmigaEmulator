@@ -1,0 +1,85 @@
+[
+  {
+    "name": "A3000-ZorroIII-bus-regression",
+    "model": "A3000",
+    "ram": "Chip2MbFast4Mb",
+    "zorroIIIRamMiB": 8,
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "sized-card-insert",
+        "expectedFrameHash": "4D01745C0CFA0218661EAA0C88D915FBDD3C7BC5943102362DC327D56E5B3FF7"
+      }
+    ]
+  },
+  {
+    "name": "A3000-ZorroIII-2-cards",
+    "model": "A3000",
+    "ram": "Chip2MbFast4Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "sized-card-insert",
+        "expectedFrameHash": "4D01745C0CFA0218661EAA0C88D915FBDD3C7BC5943102362DC327D56E5B3FF7"
+      }
+    ],
+    "zorroIIIRamBoardsMiB": [
+      8,
+      16
+    ]
+  },
+  {
+    "name": "A4000-ZorroIII-2-cards",
+    "model": "A4000Ec030",
+    "ram": "Chip2MbFast4Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A4000.ROM",
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "sized-card-insert",
+        "expectedFrameHash": "9192DD4A048E00810E72F976C7B658AA50B8051C10439AAB5283DF9DD1BD0733"
+      }
+    ],
+    "zorroIIIRamBoardsMiB": [
+      8,
+      16
+    ]
+  },
+  {
+    "name": "A3000-ZorroIII-4-cards",
+    "model": "A3000",
+    "ram": "Chip2MbFast4Mb",
+    "kickstartRom": "%APPDATA%/AmigaEmulator/roms/KICK31-A3000.ROM",
+    "strict": true,
+    "traceExceptions": true,
+    "maximumNonRomExceptions": 0,
+    "actions": [
+      {
+        "type": "wait",
+        "cycles": 30000000,
+        "label": "sized-card-insert",
+        "expectedFrameHash": "4D01745C0CFA0218661EAA0C88D915FBDD3C7BC5943102362DC327D56E5B3FF7"
+      }
+    ],
+    "zorroIIIRamBoardsMiB": [
+      8,
+      16,
+      32,
+      8
+    ]
+  }
+]

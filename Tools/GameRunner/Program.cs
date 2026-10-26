@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 using AmigaEmulator.Core;
 using AmigaEmulator.Core.Input;
 using AmigaEmulator.Core.Media;
+using AmigaEmulator.Core.Memory;
 using AmigaEmulator.Core.SaveStates;
 
 // Deterministic input/disk scenarios. A screenshot is evidence for review, never an automatic gameplay pass.
@@ -92,6 +93,16 @@ foreach (var scenario in selected)
 }
 return failures == 0 ? 0 : 1;
 
+static AmigaModel AttachDevelopmentZorroIII(AmigaModel model, Scenario scenario, bool saved)
+{
+    if (scenario.ZorroIIIRamMiB == 0 && scenario.ZorroIIIRamBoardsMiB == null) return model;
+    if (saved) throw new ArgumentException("Zorro III development RAM requires a cold boot, not a saved checkpoint.");
+    if (scenario.ZorroIIIRamMiB != 0 && scenario.ZorroIIIRamBoardsMiB != null)
+        throw new ArgumentException("Use either zorroIIIRamMiB or zorroIIIRamBoardsMiB, not both.");
+    var sizes = scenario.ZorroIIIRamBoardsMiB ?? new List<int> { scenario.ZorroIIIRamMiB };
+    return model.WithDevelopmentZorroIIIRamBoards(sizes.Select(size => checked(size * 1024 * 1024)).ToArray());
+}
+
 static void Validate(Scenario scenario)
 {
     static void Name(string value)
@@ -111,13 +122,11 @@ static void Validate(Scenario scenario)
     var machine = metadata?.MachineModel ?? Enum.Parse<AmigaMachineModel>(scenario.Model ?? "A500");
     var ram = metadata?.RamProfile ?? (scenario.Ram == null ? AmigaModel.GetDefaultRamProfile(machine) : Enum.Parse<AmigaRamProfile>(scenario.Ram));
     var model = AmigaModel.Create(machine, ram); // Reject unsupported board/RAM pairs rather than normalize them silently.
-    if (scenario.ZorroIIIRamMiB != 0)
-    {
-        if (metadata != null) throw new ArgumentException("Zorro III development RAM requires a cold boot, not a saved checkpoint.");
-        model = model.WithDevelopmentZorroIIIRam(checked(scenario.ZorroIIIRamMiB * 1024 * 1024));
-    }
+    model = AttachDevelopmentZorroIII(model, scenario, metadata != null);
     bool InspectableRam(uint start, int length) =>
         (start < 0xA00000 && (ulong)start + (uint)length <= 0xA00000) ||
+        (model.SlowRamBytes > 0 && start >= MemoryMap.SlowRamStart &&
+         (ulong)start + (uint)length <= (ulong)MemoryMap.SlowRamStart + (uint)model.SlowRamBytes) ||
         (model.HasDesktopResources && model.FastRamBytes > 0 &&
          start >= model.MotherboardFastRamStart && (ulong)start + (uint)length <= 0x08000000);
     if (scenario.MemoryWatchAddresses is { } watched &&
@@ -125,9 +134,9 @@ static void Validate(Scenario scenario)
          watched.Distinct().Count() != watched.Count))
         throw new ArgumentException("memoryWatchAddresses requires at most 32 distinct inspectable RAM addresses.");
     if (scenario.TraceMemoryWriteAddresses is { } traced &&
-        (traced.Count is < 1 or > 8 || traced.Any(address => !InspectableRam(address, 1)) ||
+        (traced.Count is < 1 or > 16 || traced.Any(address => !InspectableRam(address, 1)) ||
          traced.Distinct().Count() != traced.Count))
-        throw new ArgumentException("traceMemoryWriteAddresses requires 1..8 distinct inspectable RAM addresses.");
+        throw new ArgumentException("traceMemoryWriteAddresses requires 1..16 distinct inspectable RAM addresses.");
     string mediaRoot = Environment.ExpandEnvironmentVariables(scenario.MediaRoot ?? "%USERPROFILE%/Documents/AmigaEmulator");
     void Disk(string filename, int drive)
     {
@@ -270,8 +279,7 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
     var ram = saveMetadata != null ? saveMetadata.RamProfile : scenario.Ram != null
         ? Enum.Parse<AmigaRamProfile>(scenario.Ram) : AmigaModel.GetDefaultRamProfile(machine);
     var model = AmigaModel.Create(machine, ram);
-    if (scenario.ZorroIIIRamMiB != 0)
-        model = model.WithDevelopmentZorroIIIRam(checked(scenario.ZorroIIIRamMiB * 1024 * 1024));
+    model = AttachDevelopmentZorroIII(model, scenario, saveMetadata != null);
     var accuracy = (scenario.Strict ? AmigaAccuracyOptions.Compatible : AmigaAccuracyOptions.Fast).Clone();
     using var system = new AmigaSystem(model, accuracy);
     using var exceptionTrace = scenario.TraceExceptions
@@ -690,6 +698,11 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
                 lastConfigWriteValue = system.Bus.ZorroIII.LastConfigWriteValue,
                 highWriteValue = system.Bus.ZorroIII.HighWriteValue,
                 lowWriteValue = system.Bus.ZorroIII.LowWriteValue },
+            zorroIIICards = system.Bus.ZorroIIIExpansion.Cards.Select((card, slot) => new {
+                slot, size = card.Size, configured = card.Configured, address = card.BaseAddress,
+                ramReads = card.RamReads, ramWrites = card.RamWrites, configReads = card.ConfigReads,
+                configWrites = card.ConfigWrites, assignments = card.Assignments, shutups = card.Shutups }),
+            zorroIIIGuestMemory = system.Model.ZorroIIIRamBytes != 0 ? GuestMemory() : null,
             pcmcia = new { size = system.Bus.Pcmcia.Size, status = system.Bus.PeekByte(0xDA8000), changes = system.Bus.PeekByte(0xDA9000),
                 guestMemory = scenario.ExpectPcmciaRam ? GuestMemory() : null }, accuracy = accuracy.Name,
             imagePath, nativeImagePath, nativeHash, interlacedImagePath, interlacedHash,
@@ -716,11 +729,19 @@ static string Run(Scenario scenario, string output, bool writeFinalCheckpoint, b
     List<GuestMemoryRegion> GuestMemory()
     {
         var result = new List<GuestMemoryRegion>();
+        bool GuestRam(uint address, uint bytes)
+        {
+            if (address < 0x400 || bytes == 0 || (ulong)address + bytes > 0x100000000UL) return false;
+            var region = system.Bus.GetRegion(address);
+            return (region == AmigaAddressRegion.ChipRam || region == AmigaAddressRegion.SlowRam ||
+                region == AmigaAddressRegion.FastRam || region == AmigaAddressRegion.ZorroIIIRam) &&
+                system.Bus.GetRegion(address + bytes - 1) == region;
+        }
         uint exec = system.Bus.PeekLong(4);
-        if (exec < 0x400 || exec > 0x9FFF00) return result;
-        uint header = system.Bus.PeekLong(exec + 322); // ExecBase.MemList, shared by the classic 68000 ROMs.
+        if (!GuestRam(exec, 326)) return result;
+        uint header = system.Bus.PeekLong(exec + 322); // ExecBase.MemList, including headers in native 32-bit RAM.
         var visited = new HashSet<uint>();
-        while (header >= 0x400 && header <= 0x9FFFE0 && visited.Add(header) && result.Count < 32)
+        while (GuestRam(header, 28) && visited.Add(header) && result.Count < 32)
         {
             uint next = system.Bus.PeekLong(header);
             if (next == 0) break; // List's tail sentinel is not a MemHeader.
@@ -742,6 +763,7 @@ class Scenario
     public string Ram { get; set; }
     public string Model { get; set; }
     public int ZorroIIIRamMiB { get; set; }
+    public List<int> ZorroIIIRamBoardsMiB { get; set; }
     public bool Strict { get; set; }
     public string KickstartRom { get; set; }
     public string HardDisk { get; set; }

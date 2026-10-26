@@ -38,7 +38,8 @@ namespace AmigaEmulator.Core.Memory
             // Zorro III, auto-linked memory, with size extension for 16/32 MiB.
             _rom[0] = (byte)(size == 32 * 1024 * 1024 ? 0xA1 : 0xA0);
             _rom[1] = 1; // Emulator development board product.
-            _rom[2] = (byte)(size == 8 * 1024 * 1024 ? 0x90 : 0xB0);
+            // Explicit 8 MiB sub-size prevents the OS linking the minimum 16 MiB Z3 aperture.
+            _rom[2] = (byte)(size == 8 * 1024 * 1024 ? 0x9A : 0xB0);
             _rom[4] = 0x07; _rom[5] = 0xDB; _rom[9] = 1;
         }
 

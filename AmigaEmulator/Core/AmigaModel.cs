@@ -17,14 +17,37 @@ using System;
 
 namespace AmigaEmulator.Core
 {
-    /// <summary>Hardware models implemented by the current core.</summary>
-    public enum AmigaMachineModel { A500, A500Plus, A600, A2000Ocs, A2000Ecs, A1200, A4000Ec030, A3000 }
+    /// <summary>Core machine identities. A1000 is development-only pending native boot acceptance.</summary>
+    public enum AmigaMachineModel { A500, A500Plus, A600, A2000Ocs, A2000Ecs, A1200, A4000Ec030, A3000, A1000 }
     public enum AmigaChipset { Ocs, Ecs, Aga }
     public enum AmigaCpuModel { M68000, M68EC020, M68020, M68EC030, M68030 }
 
     /// <summary>Immutable machine capabilities and memory configuration.</summary>
     public sealed class AmigaModel
     {
+        public static bool IsSelectableMachine(AmigaMachineModel machine) => Enum.IsDefined(machine) && machine != AmigaMachineModel.A1000;
+
+        public static AmigaMachineModel CycleSelectableMachine(AmigaMachineModel machine, int direction)
+        {
+            var values = Enum.GetValues<AmigaMachineModel>();
+            int index = Array.IndexOf(values, machine);
+            if (index < 0) index = 0;
+            int step = direction < 0 ? -1 : 1;
+            if (direction == 0 && IsSelectableMachine(machine)) return machine;
+            do { index = (index + step + values.Length) % values.Length; }
+            while (!IsSelectableMachine(values[index]));
+            return values[index];
+        }
+
+        /// <summary>Core-only A1000 PAL board. Bootstrap/DF0 acceptance is required before frontend exposure.</summary>
+        public static AmigaModel CreateDevelopmentA1000Pal(int chipRamBytes = 256 * 1024)
+        {
+            if (chipRamBytes != 256 * 1024 && chipRamBytes != 512 * 1024)
+                throw new ArgumentOutOfRangeException(nameof(chipRamBytes), "A1000 bring-up supports 256 or 512 KiB Chip RAM.");
+            return new AmigaModel("A1000 PAL DEVELOPMENT", 7093790, chipRamBytes, 0, 227, 312, 640, 256)
+                { Machine = AmigaMachineModel.A1000 };
+        }
+
         public AmigaMachineModel Machine { get; private set; } = AmigaMachineModel.A500;
         public AmigaChipset Chipset { get; private set; } = AmigaChipset.Ocs;
         public AmigaCpuModel Cpu { get; private set; } = AmigaCpuModel.M68000;
@@ -32,6 +55,7 @@ namespace AmigaEmulator.Core
         public Media.AmigaIdeModel IdeModel { get; private set; }
         public bool HasDesktopResources { get; private set; }
         public int ZorroIIIRamBytes { get; private set; }
+        public System.Collections.Generic.IReadOnlyList<int> ZorroIIIRamBoardBytes { get; private set; } = Array.Empty<int>();
         public bool HasRicohClock => HasDesktopResources;
         public uint MotherboardFastRamStart => HasDesktopResources ? 0x08000000u - (uint)FastRamBytes : 0;
         public bool HasBuiltInIde => Machine == AmigaMachineModel.A600 || Machine == AmigaMachineModel.A1200 || Machine == AmigaMachineModel.A4000Ec030;
@@ -48,6 +72,7 @@ namespace AmigaEmulator.Core
         public static AmigaModel Create(AmigaMachineModel machine, AmigaRamProfile ram)
         {
             if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
+            if (!IsSelectableMachine(machine)) throw new InvalidOperationException("A1000 is available only through the diagnostic board factory pending native boot validation.");
             if (!Enum.IsDefined(ram)) throw new ArgumentOutOfRangeException(nameof(ram));
             AmigaModel memory = ForRamProfile(ram);
             if (machine == AmigaMachineModel.A500) return memory;
@@ -76,18 +101,23 @@ namespace AmigaEmulator.Core
         {
             if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
             if (machine == AmigaMachineModel.A1200 || machine == AmigaMachineModel.A4000Ec030) return AmigaChipset.Aga;
-            return machine == AmigaMachineModel.A500 || machine == AmigaMachineModel.A2000Ocs
+            return machine == AmigaMachineModel.A500 || machine == AmigaMachineModel.A2000Ocs || machine == AmigaMachineModel.A1000
                 ? AmigaChipset.Ocs : AmigaChipset.Ecs;
         }
 
-        public static AmigaRamProfile GetDefaultRamProfile(AmigaMachineModel machine) =>
-            machine == AmigaMachineModel.A3000 ? AmigaRamProfile.Chip2MbFast4Mb :
-            GetChipset(machine) == AmigaChipset.Aga ? machine == AmigaMachineModel.A4000Ec030 ? AmigaRamProfile.Chip2MbFast4Mb : AmigaRamProfile.Chip2Mb :
-            GetChipset(machine) == AmigaChipset.Ocs ? AmigaRamProfile.Chip512KSlow512K : AmigaRamProfile.Chip1Mb;
+        public static AmigaRamProfile GetDefaultRamProfile(AmigaMachineModel machine)
+        {
+            if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
+            if (!IsSelectableMachine(machine)) throw new InvalidOperationException("A1000 development memory is configured through the diagnostic board factory.");
+            return machine == AmigaMachineModel.A3000 ? AmigaRamProfile.Chip2MbFast4Mb :
+                GetChipset(machine) == AmigaChipset.Aga ? machine == AmigaMachineModel.A4000Ec030 ? AmigaRamProfile.Chip2MbFast4Mb : AmigaRamProfile.Chip2Mb :
+                GetChipset(machine) == AmigaChipset.Ocs ? AmigaRamProfile.Chip512KSlow512K : AmigaRamProfile.Chip1Mb;
+        }
 
         public static AmigaRamProfile NormalizeRamProfile(AmigaMachineModel machine, AmigaRamProfile ram)
         {
             if (!Enum.IsDefined(machine)) throw new ArgumentOutOfRangeException(nameof(machine));
+            if (!IsSelectableMachine(machine)) throw new InvalidOperationException("A1000 development memory is configured through the diagnostic board factory.");
             if (!Enum.IsDefined(ram)) throw new ArgumentOutOfRangeException(nameof(ram));
             if (machine == AmigaMachineModel.A500) return ram;
             var info = AmigaOverlaySettingCatalog.GetRamProfileInfo(ram);
@@ -124,6 +154,8 @@ namespace AmigaEmulator.Core
         public AmigaModel WithDevelopmentProcessor(AmigaCpuModel cpu, int clockHz)
         {
             if (!Enum.IsDefined(cpu)) throw new ArgumentOutOfRangeException(nameof(cpu));
+            if (Machine == AmigaMachineModel.A1000 && cpu != AmigaCpuModel.M68000)
+                throw new InvalidOperationException("The A1000 development board has a 68000 processor.");
             if (HasDesktopResources && (cpu == AmigaCpuModel.M68000 || cpu == AmigaCpuModel.M68EC020))
                 throw new InvalidOperationException("Motherboard Fast RAM requires 32 physical CPU address lines.");
             if (cpu == AmigaCpuModel.M68000 && clockHz != ChipMasterClockHz) throw new ArgumentException("68000 clock upgrades are not implemented.", nameof(clockHz));
@@ -131,17 +163,19 @@ namespace AmigaEmulator.Core
             return new AmigaModel(Name + " CPU DEVELOPMENT", clockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
                 { Machine = Machine, Chipset = Chipset, Cpu = cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel,
-                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes };
+                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes, ZorroIIIRamBoardBytes = ZorroIIIRamBoardBytes };
         }
 
         /// <summary>Custom-chip bring-up; not a complete A1200/A4000 motherboard.</summary>
         public AmigaModel WithDevelopmentChipset(AmigaChipset chipset)
         {
             if (!Enum.IsDefined(chipset)) throw new ArgumentOutOfRangeException(nameof(chipset));
+            if (Machine == AmigaMachineModel.A1000 && chipset != AmigaChipset.Ocs)
+                throw new InvalidOperationException("The A1000 development board has the original OCS chipset.");
             return new AmigaModel(Name + " CHIPSET DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
                 { Machine = Machine, Chipset = chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel,
-                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes };
+                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes, ZorroIIIRamBoardBytes = ZorroIIIRamBoardBytes };
         }
 
         public AmigaModel WithDevelopmentIde(Media.AmigaIdeModel ide)
@@ -150,7 +184,7 @@ namespace AmigaEmulator.Core
             return new AmigaModel(Name + " IDE DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
                 { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = ide,
-                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes };
+                  HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = ZorroIIIRamBytes, ZorroIIIRamBoardBytes = ZorroIIIRamBoardBytes };
         }
 
         public AmigaModel WithDevelopmentDesktopResources()
@@ -160,20 +194,32 @@ namespace AmigaEmulator.Core
             return new AmigaModel(Name + " DESKTOP DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
                 { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz, IdeModel = IdeModel,
-                  HasDesktopResources = true, ZorroIIIRamBytes = ZorroIIIRamBytes };
+                  HasDesktopResources = true, ZorroIIIRamBytes = ZorroIIIRamBytes, ZorroIIIRamBoardBytes = ZorroIIIRamBoardBytes };
         }
 
-        /// <summary>Opt-in Zorro III RAM board for bus bring-up; not a released machine configuration.</summary>
-        public AmigaModel WithDevelopmentZorroIIIRam(int bytes)
+        /// <summary>Opt-in Zorro III RAM board for bus bring-up; not a released configuration.</summary>
+        public AmigaModel WithDevelopmentZorroIIIRam(int bytes) => WithDevelopmentZorroIIIRamBoards(bytes);
+
+        /// <summary>Up to four RAM-only expansion slots; no bus-master DMA or IRQ hardware.</summary>
+        public AmigaModel WithDevelopmentZorroIIIRamBoards(params int[] sizes)
         {
             if (!HasDesktopResources || Cpu == AmigaCpuModel.M68000 || Cpu == AmigaCpuModel.M68EC020)
                 throw new InvalidOperationException("Zorro III requires a 32-bit desktop motherboard and CPU.");
-            if (bytes != 8 * 1024 * 1024 && bytes != 16 * 1024 * 1024 && bytes != 32 * 1024 * 1024)
-                throw new ArgumentOutOfRangeException(nameof(bytes), "Only 8, 16 or 32 MiB boards are implemented.");
+            if (sizes == null) throw new ArgumentNullException(nameof(sizes));
+            if (sizes.Length < 1 || sizes.Length > 4)
+                throw new ArgumentException("Development expansion supports one to four RAM boards.", nameof(sizes));
+            int total = 0;
+            foreach (int size in sizes)
+            {
+                if (size != 8 * 1024 * 1024 && size != 16 * 1024 * 1024 && size != 32 * 1024 * 1024)
+                    throw new ArgumentOutOfRangeException(nameof(sizes), "Only 8, 16 or 32 MiB boards are implemented.");
+                total += size;
+            }
             return new AmigaModel(Name + " ZORRO III DEVELOPMENT", CpuClockHz, ChipRamBytes, SlowRamBytes, FastRamBytes,
                 ChipCyclesPerLine, LinesPerFrame, VisibleWidth, VisibleHeight)
                 { Machine = Machine, Chipset = Chipset, Cpu = Cpu, ChipMasterClockHz = ChipMasterClockHz,
-                  IdeModel = IdeModel, HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = bytes };
+                  IdeModel = IdeModel, HasDesktopResources = HasDesktopResources, ZorroIIIRamBytes = total,
+                  ZorroIIIRamBoardBytes = Array.AsReadOnly((int[])sizes.Clone()) };
         }
 
         public static AmigaModel ForRamProfile(AmigaRamProfile profile)

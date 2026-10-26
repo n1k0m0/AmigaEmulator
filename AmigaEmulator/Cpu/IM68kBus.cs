@@ -69,6 +69,7 @@ namespace AmigaEmulator.Core.Cpu
     /// </summary>
     public interface IM68kDeferredCiaBus : IM68kPeekableBus
     {
+        bool IsCiaIcrRead(uint address, int size);
         bool RetireCiaIcrRead(uint address, int size, uint sampledValue);
     }
 

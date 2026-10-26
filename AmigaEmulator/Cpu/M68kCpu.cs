@@ -1318,11 +1318,14 @@ namespace AmigaEmulator.Core.Cpu
             // moves and long source reads into a register. A long register
             // source may also retry a split destination write because WriteLong
             // checks both MMU pages before retiring either physical word.
-            // Other split writes still need real bus-cycle continuation.
-            if ((sourceMode is 3 or 4 || destinationMode is 3 or 4) &&
-                (size <= 2 || (size == 4 &&
-                    (destinationMode is 0 or 1 ||
-                     (sourceMode is 0 or 1 && destinationMode is 3 or 4)))) &&
+            // Simple memory-to-memory EAs also preflight both operands before
+            // a device source read. Other split writes still need real bus-cycle
+            // continuation.
+            if (((sourceMode is >= 2 and <= 4 && destinationMode is >= 2 and <= 4) ||
+                 ((sourceMode is 3 or 4 || destinationMode is 3 or 4) &&
+                  (size <= 2 || (size == 4 &&
+                      (destinationMode is 0 or 1 ||
+                       (sourceMode is 0 or 1 && destinationMode is 3 or 4)))))) &&
                 _mmu != null && (_mmu.TranslationControl & 0x80000000) != 0)
                 return Execute030RestartableMove(opcode, size, sourceMode, sourceRegister,
                     destinationMode, destinationRegister);
@@ -1346,6 +1349,9 @@ namespace AmigaEmulator.Core.Cpu
             uint destinationAddress = _state.A[destinationRegister];
             try
             {
+                if (sourceMode is >= 2 and <= 4 && destinationMode is >= 2 and <= 4)
+                    Precheck030SimpleMove(sourceMode, sourceRegister, destinationMode,
+                        destinationRegister, size);
                 uint value = ReadEa(sourceMode, sourceRegister, size);
                 if (destinationMode == 1)
                 {
@@ -1361,6 +1367,37 @@ namespace AmigaEmulator.Core.Cpu
                 if (sourceMode is 3 or 4) SetA(sourceRegister, sourceAddress);
                 if (destinationMode is 3 or 4) SetA(destinationRegister, destinationAddress);
                 throw;
+            }
+        }
+
+        private void Precheck030SimpleMove(int sourceMode, int sourceRegister,
+            int destinationMode, int destinationRegister, int size)
+        {
+            // Whole-instruction retry must not repeat a physical device source
+            // read when the destination translation fails. These EAs need no
+            // extension/pointer reads, so probe both operands before bus data.
+            // Preserve source-first fault priority and include its stride when
+            // source and destination alias, without changing An during probing.
+            uint sourceStep = (uint)(size == 1 && sourceRegister == 7 ? 2 : size);
+            uint destinationStep = (uint)(size == 1 && destinationRegister == 7 ? 2 : size);
+            uint sourceBase = _state.A[sourceRegister];
+            uint source = sourceMode == 4 ? unchecked(sourceBase - sourceStep) : sourceBase;
+            uint destinationBase = _state.A[destinationRegister];
+            if (sourceRegister == destinationRegister)
+            {
+                if (sourceMode == 3) destinationBase = unchecked(destinationBase + sourceStep);
+                else if (sourceMode == 4) destinationBase = unchecked(destinationBase - sourceStep);
+            }
+            uint destination = destinationMode == 4 ? unchecked(destinationBase - destinationStep) : destinationBase;
+            if (size == 1)
+            {
+                Probe030Address(source & AddressMask, false, 1);
+                Probe030Address(destination & AddressMask, true, 1);
+            }
+            else
+            {
+                Probe030MovemOperand(source & AddressMask, size, false);
+                Probe030MovemOperand(destination & AddressMask, size, true);
             }
         }
 
@@ -3365,34 +3402,6 @@ namespace AmigaEmulator.Core.Cpu
         }
 
         /// <summary>
-        /// Returns whether a CPU read targets the CIA interrupt-control register, which clears on read.
-        /// </summary>
-        private bool IsCiaIcrRead(uint address, int size)
-        {
-            uint normalized = address & AddressMask;
-            if (size > 1)
-            {
-                for (int offset = 0; offset < size; offset++)
-                {
-                    if (IsCiaIcrRead(normalized + (uint)offset, 1))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            bool ciaB = normalized >= MemoryMap.CiaBStart &&
-                normalized <= MemoryMap.CiaBEnd &&
-                (normalized & 1u) == 0;
-            bool ciaA = normalized >= MemoryMap.CiaAStart &&
-                normalized <= MemoryMap.CiaAEnd &&
-                (normalized & 1u) != 0;
-            return (ciaA || ciaB) && (((normalized >> 8) & 0x0Fu) == 13u);
-        }
-
-        /// <summary>
         /// Queues one or more ordered bus micro-operations for later retirement on real bus slots.
         /// </summary>
         private void EnqueueBusOperation(M68kTraceAccessType accessType, uint address, int size, uint value, bool write)
@@ -3500,7 +3509,7 @@ namespace AmigaEmulator.Core.Cpu
             if (_has020) UsedChipBusInLastTick = _busArbitration == null || _busArbitration.RequiresChipBus(operation.Address, operation.Size);
             if (!operation.Write)
             {
-                if (IsCiaIcrRead(operation.Address, operation.Size) && _bus is IM68kDeferredCiaBus deferredCiaBus)
+                if (_bus is IM68kDeferredCiaBus deferredCiaBus && deferredCiaBus.IsCiaIcrRead(operation.Address, operation.Size))
                 {
                     deferredCiaBus.RetireCiaIcrRead(operation.Address, operation.Size, operation.Value);
                     return;

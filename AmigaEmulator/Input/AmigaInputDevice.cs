@@ -74,6 +74,9 @@ namespace AmigaEmulator.Core.Input
         /// Stores keyboard Delay.
         /// </summary>
         private int _keyboardDelay;
+        [NonSerialized] private Action<byte, bool> _developmentResetKeyChanged;
+        internal void AttachDevelopmentResetKeys(Action<byte, bool> keyChanged) => _developmentResetKeyChanged = keyChanged;
+        internal bool IsRawKeyDown(byte code) => _pressedRawKeys.Contains(code);
 
         /// <summary>
         /// Initializes a new instance of the AmigaInputDevice class.
@@ -140,10 +143,21 @@ namespace AmigaEmulator.Core.Input
         /// <summary>
         /// Resets the value state.
         /// </summary>
-        public void Reset()
+        public void Reset(bool preserveKeyboard = false)
+        {
+            if (!preserveKeyboard)
+            {
+                _pressedRawKeys.Clear();
+                RestartKeyboardAfterExternalReset();
+            }
+            for (int index = 0; index < _ports.Length; index++) _ports[index].Reset();
+        }
+
+        // External keyboard restart retains physical keys and reports them in
+        // the FD/FE power-up stream after achieving synchronization with CIA-A.
+        internal void RestartKeyboardAfterExternalReset()
         {
             _keyboardQueue.Clear();
-            _pressedRawKeys.Clear();
             _keyboardDelay = 0;
             // Power-up first synchronizes with the host. Its acknowledgement
             // is followed by FD/FE, without the timeout-only F9 notification.
@@ -157,11 +171,9 @@ namespace AmigaEmulator.Core.Input
             _keyboardLostSyncPending = false;
             _keyboardSendingLostSync = false;
             EnqueueKeyboardSpecialCode(0xFD);
+            var heldKeys = new List<byte>(_pressedRawKeys); heldKeys.Sort();
+            foreach (byte key in heldKeys) EnqueueKeyboardEvent(key, false);
             EnqueueKeyboardSpecialCode(0xFE);
-            for (int index = 0; index < _ports.Length; index++)
-            {
-                _ports[index].Reset();
-            }
         }
 
         /// <summary>
@@ -172,6 +184,7 @@ namespace AmigaEmulator.Core.Input
             foreach (byte rawKey in _pressedRawKeys)
             {
                 EnqueueKeyboardEvent(rawKey, true);
+                _developmentResetKeyChanged?.Invoke(rawKey, false);
             }
 
             _pressedRawKeys.Clear();
@@ -204,6 +217,7 @@ namespace AmigaEmulator.Core.Input
             }
 
             EnqueueKeyboardEvent(rawKeyCode, false);
+            _developmentResetKeyChanged?.Invoke(rawKeyCode, true);
         }
 
         /// <summary>
@@ -218,6 +232,7 @@ namespace AmigaEmulator.Core.Input
             }
 
             EnqueueKeyboardEvent(rawKeyCode, true);
+            _developmentResetKeyChanged?.Invoke(rawKeyCode, false);
         }
 
         /// <summary>
